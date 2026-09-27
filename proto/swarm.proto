@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package swarm.v1;
+
+service SwarmService {
+  rpc Run(RunRequest) returns (RunResponse);
+  rpc Recall(RecallRequest) returns (RecallResponse);
+}
+
+message RunRequest {
+  string text = 1;
+  string thread_id = 2;
+}
+
+message RunResponse {
+  string text = 1;
+  bool cached = 2;
+  string active_agent = 3;
+  int32 tokens = 4;
+  string mode = 5;
+}
+
+message RecallRequest {
+  string query = 1;
+  int32 top_k = 2;
+}
+
+message MemoryHit {
+  int64 id = 1;
+  string text = 2;
+  float score = 3;
+}
+
+message RecallResponse {
+  repeated MemoryHit hits = 1;
+}
