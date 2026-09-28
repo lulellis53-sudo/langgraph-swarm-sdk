@@ -20,8 +20,10 @@ from swarm_sdk.gpu.opencl_math import (
     set_enabled,
     topk_ip,
 )
+from swarm_sdk.gpu.report import acceleration_report, print_report
 
 __all__ = [
+    "acceleration_report",
     "batch_cosine",
     "batch_dot",
     "is_enabled",
@@ -29,6 +31,7 @@ __all__ = [
     "normalize",
     "opencl_available",
     "opencl_status",
+    "print_report",
     "reset_opencl",
     "set_enabled",
     "topk_ip",
