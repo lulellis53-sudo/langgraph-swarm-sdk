@@ -24,6 +24,7 @@ def test_health_and_run(tmp_path: Path) -> None:
         memory_path=str(tmp_path / "mem.db"),
         cache_path=str(tmp_path / "cache.db"),
         embed_dim=32,
+        memory_backend="opencl",
     )
     sdk = SwarmSDK(
         settings,

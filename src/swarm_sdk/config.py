@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     retrieve_k: int = Field(default=20, ge=1)
     rerank_k: int = Field(default=4, ge=1)
     embed_dim: int = Field(default=384, ge=1)
-    embed_model: str = "BAAI/bge-small-en-v1.5"
+    embed_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     rerank_model: str = "Xenova/ms-marco-MiniLM-L-6-v2"
     memory_backend: MemoryBackend = "sqlite-vec"
     memory_path: str = "swarm.sqlite"

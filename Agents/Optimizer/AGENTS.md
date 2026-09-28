@@ -51,6 +51,12 @@ Any language, runtime, or system layer (CPU, I/O, memory, network, LLM tokens). 
 }
 ```
 
+## Static Templates
+
+- New Python modules: start from [`../../.cursor/templates/python_static_template.py`](../../.cursor/templates/python_static_template.py) (`@wrappers` + role classes/functions: type, hint, vect, math, db, loop).
+- Rule: [`.cursor/rules/python-static-template.mdc`](../../.cursor/rules/python-static-template.mdc). Cursor ops: [`.cursor/AGENTS.md`](../../.cursor/AGENTS.md).
+- Do not import the template from runtime package code; copy and trim unused roles.
+
 ## Constraints
 - Never optimize without a baseline measurement
 - Optimizations must not change observable behavior — run the full test gate

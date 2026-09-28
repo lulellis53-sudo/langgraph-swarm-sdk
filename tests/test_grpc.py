@@ -25,6 +25,7 @@ def test_grpc_run_and_recall(tmp_path: Path) -> None:
         memory_path=str(tmp_path / "mem.db"),
         cache_path=str(tmp_path / "cache.db"),
         embed_dim=32,
+        memory_backend="opencl",
     )
     sdk = SwarmSDK(
         settings,
@@ -71,6 +72,7 @@ def test_run_plan_without_plan_id_returns_pollable_id(
         memory_path=str(tmp_path / "mem.db"),
         cache_path=str(tmp_path / "cache.db"),
         embed_dim=32,
+        memory_backend="opencl",
     )
     sdk = SwarmSDK(
         settings,

@@ -1,0 +1,7 @@
+name: model_delegation
+sdk_entry: swarm_sdk.model_select.ModelSelector
+metrics: [route_correct, fallback_ready, gpu_enabled, backend]
+models: predefined
+pass:
+  route_correct: 1.0
+  fallback_ready: true

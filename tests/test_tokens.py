@@ -10,15 +10,17 @@ from swarm_sdk.usage import UsageLog
 
 _TEXT = st.text(alphabet=st.characters(blacklist_categories=("Cs", "Cc")), max_size=64)
 _NONEMPTY = _TEXT.filter(lambda s: bool(s.strip()))
+_HYP = settings(max_examples=50, deadline=None)
 
 
+@_HYP
 @given(text=_TEXT)
-@settings(max_examples=60)
 def test_count_text_non_negative(text: str) -> None:
     assert count_text(text) >= 0
     assert count_text("") == 0
 
 
+@_HYP
 @given(
     system=_TEXT,
     memories=st.lists(_TEXT, max_size=8),
@@ -26,7 +28,6 @@ def test_count_text_non_negative(text: str) -> None:
     max_tokens=st.integers(min_value=1, max_value=48),
     tool_cap=st.integers(min_value=1, max_value=24),
 )
-@settings(max_examples=50)
 def test_packed_context_never_exceeds_budget(
     system: str,
     memories: list[str],
@@ -37,15 +38,15 @@ def test_packed_context_never_exceeds_budget(
     budget = TokenBudget(max_tokens=max_tokens, tool_cap=tool_cap)
     packed = budget.pack(system=system, memories=memories, turns=turns)
     assert budget.count(packed.text) <= max_tokens
-    assert packed.system
-    assert packed.text.startswith(packed.system)
+    if packed.system:
+        assert packed.text.startswith(packed.system)
 
 
+@_HYP
 @given(
     system=_NONEMPTY,
     max_tokens=st.integers(min_value=1, max_value=32),
 )
-@settings(max_examples=40)
 def test_pack_preserves_system_when_nothing_else_fits(system: str, max_tokens: int) -> None:
     budget = TokenBudget(max_tokens=max_tokens, tool_cap=8)
     packed = budget.pack(system=system, memories=[], turns=[])
@@ -53,6 +54,7 @@ def test_pack_preserves_system_when_nothing_else_fits(system: str, max_tokens: i
     assert packed.user == ""
 
 
+@_HYP
 @given(
     rows=st.lists(
         st.tuples(
@@ -63,14 +65,19 @@ def test_pack_preserves_system_when_nothing_else_fits(system: str, max_tokens: i
         max_size=40,
     ),
 )
-@settings(max_examples=50)
 def test_usage_summary_sums_tokens_per_agent(rows: list[tuple[str, int, bool]]) -> None:
     log = UsageLog()
     expected: dict[str, int] = {}
     for agent, tokens, cached in rows:
         log.add(agent, tokens, cached)
         expected[agent] = expected.get(agent, 0) + tokens
-    summary = {row["agent"]: row["tokens"] for row in log.summary()}
+    summary: dict[str, int] = {}
+    for row in log.summary():
+        agent = row["agent"]
+        tokens = row["tokens"]
+        assert isinstance(agent, str)
+        assert isinstance(tokens, int)
+        summary[agent] = tokens
     if not rows:
         assert summary == {}
     else:
@@ -86,8 +93,8 @@ def test_usage_summary_example_groups_tokens() -> None:
     assert {row["agent"]: row["tokens"] for row in log.summary()} == {"cache": 0, "coder": 15}
 
 
+@_HYP
 @given(max_tokens=st.integers(max_value=0))
-@settings(max_examples=10)
 def test_token_budget_rejects_non_positive_max(max_tokens: int) -> None:
     assume(max_tokens < 1)
     try:

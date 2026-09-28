@@ -31,13 +31,14 @@ dependencies = [
     "grpcio>=1.71",
     "grpcio-tools>=1.71",
     # ## Tokenization & token budgets
+    # tiktoken = default token counter (cl100k_base); tokenizers = HF Tokenizer packing
     "tokenizers>=0.22",
     "tiktoken>=0.9",
     # ## Numerics & vector memory (CPU)
     "numpy>=2.1",
     "polars>=1.30",
     "sqlite-vec>=0.1.6",
-    # ## Embeddings (FastEmbed default model = ONNX int8 on CPU)
+    # ## Embeddings (FastEmbed default = MiniLM-L6-v2 ONNX INT8 on CPU)
     # onnxruntime has no macOS x86_64 wheel; FastEmbed skips on Intel Mac unless ORT is installed elsewhere.
     "fastembed>=0.7; sys_platform != 'darwin' or platform_machine != 'x86_64'",
 ]
@@ -72,7 +73,7 @@ faiss = ["faiss-cpu>=1.11"]
 faiss-gpu = [
     "faiss-gpu>=1.11; sys_platform == 'linux' and platform_machine == 'x86_64'",
 ]
-# ## FastEmbed + ONNX runtime (explicit install when not pulled by core deps)
+# ## FastEmbed + ONNX runtime (MiniLM-L6-v2 INT8; explicit when not in core deps)
 embed = [
     "fastembed>=0.7",
     "onnxruntime>=1.20; sys_platform != 'darwin' or platform_machine != 'x86_64'",

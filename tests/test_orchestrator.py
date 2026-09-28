@@ -1,11 +1,15 @@
 """Orchestration engine: plans, waves, workers, spawn, and LangGraph execution."""
 
+from __future__ import annotations
+
 import time
 from pathlib import Path
 
+import hypothesis.strategies as st
 import pytest
+from hypothesis import assume, given, settings
+from tests.fakes import Script, ScriptedModel, answer
 
-from fakes import Script, ScriptedModel, answer
 from swarm_sdk.agents.manifest import AgentManifest
 from swarm_sdk.orchestrator import Plan, PlanStep, make_factory, run_plan, spawn
 from swarm_sdk.orchestrator.graph import build_graph
@@ -21,6 +25,82 @@ def manifest(name: str = "Coder", **overrides: object) -> AgentManifest:
     }
     data.update(overrides)
     return AgentManifest.model_validate(data)
+
+
+def _chain_plan(n: int) -> Plan:
+    """S1 ← S2 ← … ← Sn (each depends on the previous)."""
+    steps = [
+        PlanStep(
+            id=f"S{i}",
+            title=f"t{i}",
+            description=f"d{i}",
+            agent="Coder",
+            depends_on=[] if i == 1 else [f"S{i - 1}"],
+        )
+        for i in range(1, n + 1)
+    ]
+    return Plan(steps=steps)
+
+
+@st.composite
+def dag_plans(draw: st.DrawFn) -> Plan:
+    """Generate a small DAG of unique step ids with edges only to earlier ids."""
+    n = draw(st.integers(min_value=1, max_value=8))
+    ids = [f"S{i}" for i in range(1, n + 1)]
+    steps: list[PlanStep] = []
+    for i, step_id in enumerate(ids):
+        prior = ids[:i]
+        deps = (
+            draw(st.lists(st.sampled_from(prior), max_size=min(3, len(prior)), unique=True))
+            if prior
+            else []
+        )
+        steps.append(
+            PlanStep(id=step_id, title=step_id, description=step_id, agent="Coder", depends_on=deps)
+        )
+    return Plan(steps=steps)
+
+
+@given(n=st.integers(min_value=1, max_value=12))
+@settings(max_examples=30)
+def test_chain_plan_has_one_step_per_wave(n: int) -> None:
+    waves = _chain_plan(n).waves()
+    assert len(waves) == n
+    assert [step.id for wave in waves for step in wave] == [f"S{i}" for i in range(1, n + 1)]
+
+
+@given(plan=dag_plans())
+@settings(max_examples=40)
+def test_dag_waves_cover_each_step_once(plan: Plan) -> None:
+    waves = plan.waves()
+    seen = [step.id for wave in waves for step in wave]
+    assert sorted(seen) == sorted(s.id for s in plan.steps)
+    assert len(seen) == len(set(seen))
+    completed: set[str] = set()
+    for wave in waves:
+        for step in wave:
+            assert set(step.depends_on) <= completed
+        completed.update(step.id for step in wave)
+
+
+@given(plan=dag_plans())
+@settings(max_examples=20)
+def test_cycle_via_self_edge_rejected(plan: Plan) -> None:
+    assume(plan.steps)
+    broken = Plan(
+        steps=[
+            PlanStep(
+                id=s.id,
+                title=s.title,
+                description=s.description,
+                agent=s.agent,
+                depends_on=s.depends_on if s.id != plan.steps[0].id else [s.id],
+            )
+            for s in plan.steps
+        ]
+    )
+    with pytest.raises(ValueError):
+        broken.waves()
 
 
 def test_plan_waves_parallel_frontier() -> None:
@@ -72,7 +152,6 @@ async def test_worker_run_uses_role_and_counts_tokens(tmp_path: Path) -> None:
     assert out.agent == "Coder"
     assert out.prompt_tokens > 0
     assert out.completion_tokens > 0
-    # user prompt carries the declared dep output, not a transcript
     assert "prior output" in script.seen[-1]
 
 
@@ -86,18 +165,17 @@ async def test_spawn_validates_and_falls_back() -> None:
 
     bad = Script([answer("no json here"), answer("still not json")])
     plan = await spawn("goal", manifests, model_override=ScriptedModel(script=bad))
-    assert len(plan.steps) == 1  # fallback plan
+    assert len(plan.steps) == 1
 
     unknown_agent = Script(
         [answer('{"steps": [{"id": "S1", "title": "t", "description": "d", "agent": "Ghost"}]}')],
     )
     plan = await spawn("goal", manifests, model_override=ScriptedModel(script=unknown_agent))
-    assert plan.steps[0].agent in manifests  # rejected, fell back
+    assert plan.steps[0].agent in manifests
 
 
 async def test_run_plan_executes_waves_in_parallel() -> None:
     manifests = {"Coder": manifest("Coder"), "Tester": manifest("Tester")}
-    # one scripted response per step; both wave-1 steps share the scripted model
     script = Script([answer("ok-1"), answer("ok-2"), answer("merged")])
     model = ScriptedModel(script=script)
     plan = Plan(
@@ -123,7 +201,7 @@ async def test_run_plan_executes_waves_in_parallel() -> None:
     assert result.outputs["S3"].content == "merged"
     assert result.usage.llm_calls == 3
     assert result.usage.prompt_tokens > 0
-    assert wall < 5  # scripted; guards against serialization bugs
+    assert wall < 5
 
 
 def test_build_graph_compiles() -> None:

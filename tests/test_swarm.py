@@ -11,7 +11,7 @@ from tests.fakes import Script, ScriptedModel, answer, handoff
 from swarm_sdk.cache import SemanticCache
 from swarm_sdk.config import Settings
 from swarm_sdk.embeddings import HashEmbedder, unit
-from swarm_sdk.memory.sqlite_vec import SqliteVecStore
+from swarm_sdk.memory.opencl_store import OpenClVecStore
 from swarm_sdk.rerank import IdentityReranker
 from swarm_sdk.swarm import SwarmSDK
 
@@ -50,6 +50,7 @@ def _settings(tmp_path: Path, *, max_tokens: int = 512) -> Settings:
         cache_path=str(tmp_path / "cache.db"),
         embed_dim=32,
         max_tokens=max_tokens,
+        memory_backend="opencl",
     )
 
 
@@ -60,20 +61,18 @@ def _sdk(
     specialist: ScriptedModel,
     embedder: HashEmbedder | SpyEmbedder | None = None,
     cache: SemanticCache | None = None,
-    memory: SqliteVecStore | None = None,
+    memory: OpenClVecStore | None = None,
 ) -> SwarmSDK:
     embed = embedder or HashEmbedder(32)
-    kwargs: dict[str, object] = {
-        "router_model": router,
-        "specialist_model": specialist,
-        "embedder": embed,
-        "reranker": IdentityReranker(),
-    }
-    if cache is not None:
-        kwargs["cache"] = cache
-    if memory is not None:
-        kwargs["memory"] = memory
-    return SwarmSDK(_settings(tmp_path), **kwargs)
+    return SwarmSDK(
+        _settings(tmp_path),
+        router_model=router,
+        specialist_model=specialist,
+        embedder=embed,
+        reranker=IdentityReranker(),
+        cache=cache,
+        memory=memory or OpenClVecStore(32),
+    )
 
 
 async def test_handoff_keeps_active_agent(tmp_path: Path) -> None:
@@ -85,7 +84,7 @@ async def test_handoff_keeps_active_agent(tmp_path: Path) -> None:
         tmp_path,
         router=router,
         specialist=specialist,
-        memory=SqliteVecStore(str(tmp_path / "mem.db"), 32),
+        memory=OpenClVecStore(32),
     )
     first = await sdk.run("please code this", "thread")
     assert first.active_agent == "coder"

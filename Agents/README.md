@@ -3,6 +3,7 @@
 | Agent | Role | Model | Think level | Manifest |
 |-------|------|-------|-------------|----------|
 | [Orchestrator](Orchestrator/AGENTS.md) | coordinate the swarm | gpt-4o-mini | low | [agent.yaml](Orchestrator/agent.yaml) |
+| [ModelDelegate](ModelDelegate/AGENTS.md) | pick provider/model routes and GPU dispatch | openrouter:z-ai/glm-5.3-flash | low | [agent.yaml](ModelDelegate/agent.yaml) |
 | [Planner](Planner/AGENTS.md) | decompose goals into task graphs | gpt-4o-mini | high | [agent.yaml](Planner/agent.yaml) |
 | [Researcher](Researcher/AGENTS.md) | read-only research and synthesis | gpt-4o-mini | medium | [agent.yaml](Researcher/agent.yaml) |
 | [Coder](Coder/AGENTS.md) | implement code changes | gpt-4o | high | [agent.yaml](Coder/agent.yaml) |
@@ -20,12 +21,15 @@
 ## How to use this swarm
 
 1. **Start with Orchestrator** — give it a goal; it loads `coordination.yaml` and routes to Planner.
-2. **Planner decomposes** the goal into a task graph and writes it to `coordination.yaml`.
-3. **Orchestrator assigns** tasks to agents in dependency order.
-4. **Each agent** reads its `AGENTS.md` for behavioral rules, executes its task, and returns a structured output contract.
-5. **Orchestrator merges** results and updates task statuses.
+2. **ModelDelegate picks routes** — for each sub-task it selects the cheapest capable model/provider and a fallback chain, preferring GPU embedding/math when available.
+3. **Planner decomposes** the goal into a task graph and writes it to `coordination.yaml`.
+4. **Orchestrator assigns** tasks to agents in dependency order.
+5. **Each agent** reads its `AGENTS.md` for behavioral rules, executes its task, and returns a structured output contract.
+6. **Orchestrator merges** results and updates task statuses.
 
 Each agent also has a [`Benchmarks/`](Coder/Benchmarks/) folder for role-scoped case notes and thresholds; shared runners live under [`benchmark/`](../benchmark/).
+
+Static Templates (all personas): [`.cursor/templates/python_static_template.py`](../.cursor/templates/python_static_template.py) — see each `AGENTS.md` → **Static Templates**.
 
 ## Adding tasks
 

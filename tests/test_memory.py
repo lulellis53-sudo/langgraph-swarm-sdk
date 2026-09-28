@@ -13,7 +13,16 @@ from swarm_sdk.embeddings import HashEmbedder, dedupe_texts, unit
 from swarm_sdk.hybrid import HybridSearchConfig, hybrid_search, rrf_merge, tokenize
 from swarm_sdk.memory.base import MemoryHit, MemoryStore
 from swarm_sdk.memory.opencl_store import OpenClVecStore
-from swarm_sdk.memory.sqlite_vec import SqliteVecStore
+
+
+def _sqlite_vec_available() -> bool:
+    try:
+        import sqlite3
+
+        conn = sqlite3.connect(":memory:")
+        return hasattr(conn, "enable_load_extension")
+    except Exception:
+        return False
 
 
 def _one_hot(dim: int, index: int) -> np.ndarray:
@@ -33,6 +42,11 @@ def _roundtrip(store: MemoryStore, *, dim: int = 8) -> None:
 
 
 def test_sqlite_vec_int8_roundtrip(tmp_path: Path) -> None:
+    if not _sqlite_vec_available():
+        pytest.skip("sqlite3 build lacks enable_load_extension")
+    pytest.importorskip("sqlite_vec")
+    from swarm_sdk.memory.sqlite_vec import SqliteVecStore
+
     store = SqliteVecStore(str(tmp_path / "mem.db"), dim=8)
     _roundtrip(store)
     hits = store.search(_one_hot(8, 1), 2)
@@ -108,7 +122,7 @@ class MemoryStub:
 def test_tokenize_is_lowercase_alnum_tokens(text: str) -> None:
     tokens = tokenize(text)
     assert all(t == t.lower() and t.isalnum() for t in tokens)
-    assert "".join(tokens) == "".join(tokenize("".join(tokens)))
+    assert tokenize(" ".join(tokens)) == tokens
 
 
 @given(
@@ -169,7 +183,10 @@ def test_dedupe_never_grows_and_keeps_order(texts: list[str], threshold: float) 
     vectors = embedder.embed(texts)
     kept = dedupe_texts(texts, vectors, threshold=threshold)
     assert len(kept) <= len(texts)
-    assert kept == [t for t in texts if t in kept]
-    # relative order preserved
-    positions = {t: i for i, t in enumerate(texts)}
-    assert kept == sorted(kept, key=lambda t: positions[t])
+    # kept is a subsequence of texts (relative order preserved)
+    cursor = 0
+    for item in kept:
+        while cursor < len(texts) and texts[cursor] != item:
+            cursor += 1
+        assert cursor < len(texts)
+        cursor += 1

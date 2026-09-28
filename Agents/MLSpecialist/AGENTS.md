@@ -57,6 +57,12 @@ Any ML task: embeddings, reranking, classification, generation. You do not write
 }
 ```
 
+## Static Templates
+
+- New Python modules: start from [`../../.cursor/templates/python_static_template.py`](../../.cursor/templates/python_static_template.py) (`@wrappers` + role classes/functions: type, hint, vect, math, db, loop).
+- Rule: [`.cursor/rules/python-static-template.mdc`](../../.cursor/rules/python-static-template.mdc). Cursor ops: [`.cursor/AGENTS.md`](../../.cursor/AGENTS.md).
+- Do not import the template from runtime package code; copy and trim unused roles.
+
 ## Constraints
 - Always pin model versions — never use a floating reference
 - Do not report benchmark results from a synthetic dataset as production-representative

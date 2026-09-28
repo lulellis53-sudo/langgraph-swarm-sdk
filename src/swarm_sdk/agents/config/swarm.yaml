@@ -52,10 +52,10 @@ circuit_breaker:
   half_open_max_probes: 1     # one probe call before reopening/closing
 
 embedding:
-  model: BAAI/bge-small-en-v1.5   # FastEmbed ONNX int8 weights (CPU)
+  model: sentence-transformers/all-MiniLM-L6-v2  # FastEmbed MiniLM2 ONNX INT8 (CPU)
   backend: fastembed            # fastembed | llama-cpp | hash
   # Path to a GGUF embedding model when backend=llama-cpp, e.g.:
-  # llama_model: /path/to/bge-small-en-v1.5-q4_0.gguf
+  # llama_model: /path/to/all-MiniLM-L6-v2-q4_0.gguf
   dim: 384
   batch_size: 64
   normalize: true

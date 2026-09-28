@@ -210,7 +210,7 @@ uv run python .cursor/templates/python_static_template.py
 ## Quick references
 
 - Root agent map: [`../AGENTS.md`](../AGENTS.md)
-- Swarm roles: [`../Agents/SKILLS.md`](../Agents/SKILLS.md)
+- Swarm roles: [`../Agents/README.md`](../Agents/README.md)
 - Extensions: [`extensions.txt`](extensions.txt)
 - Example command: [`commands/sql-pro.md`](commands/sql-pro.md)
 - Static template: [@templates/python_static_template.py](templates/python_static_template.py)

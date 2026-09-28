@@ -19,7 +19,7 @@ uv run python -m ipykernel install --user --name=swarm --display-name="Python (S
 uv run jupyter lab    # or: uv run jupyter notebook
 ```
 
-FastEmbed is the default embedder and reranker. Its default model (`BAAI/bge-small-en-v1.5`) is ONNX int8 on CPU. sqlite-vec stores int8 vectors; Qdrant can use scalar int8 when `vectorstore.quantization` is `int8`. FAISS GPU (`vectorstore.gpu: true`) needs a CUDA `faiss-gpu` build and falls back to CPU when that is missing.
+FastEmbed is the default embedder and reranker. Its default model (`sentence-transformers/all-MiniLM-L6-v2`, MiniLM2) is ONNX INT8 on CPU. Token budgets use **tiktoken** (`cl100k_base`) by default, with optional Hugging Face `tokenizers.Tokenizer` packing. sqlite-vec stores int8 vectors; Qdrant can use scalar int8 when `vectorstore.quantization` is `int8`. FAISS GPU (`vectorstore.gpu: true`) needs a CUDA `faiss-gpu` build and falls back to CPU when that is missing.
 
 ### GPU acceleration on Intel Mac + AMD Radeon Pro 5300M
 
@@ -77,7 +77,7 @@ Token savings: shared role-contract prompt cached per process, exact + semantic 
 
 gRPC: `SwarmService.SpawnPlan` (goal → plan handle), `RunPlan` (handle → per-step outputs + usage), `PlanStatus` (poll for long plans). Manifests may set `api_key_env: SWARM_<NAME>_API_KEY` — the env var *name*, never the key value.
 
-Predefined providers and routes live in [`src/swarm_sdk/agents/config/swarm.yaml`](src/swarm_sdk/agents/config/swarm.yaml). Per-agent roles, models, and tasks live in [`Agents/{Name}/agent.yaml`](Agents/Tester/agent.yaml) (see [`Agents/SKILLS.md`](Agents/SKILLS.md)). `SWARM_*` env vars override file defaults. Open [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace) for a multi-root editor layout.
+Predefined providers and routes live in [`src/swarm_sdk/agents/config/swarm.yaml`](src/swarm_sdk/agents/config/swarm.yaml). Per-agent roles, models, and tasks live in [`Agents/{Name}/agent.yaml`](Agents/Tester/agent.yaml) (see [`Agents/README.md`](Agents/README.md)). `SWARM_*` env vars override file defaults. Open [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace) for a multi-root editor layout.
 
 ## Token path
 

@@ -29,12 +29,12 @@ class ProviderEntry(BaseModel):
 
 
 class EmbeddingConfig(BaseModel):
-    model: str = "BAAI/bge-small-en-v1.5"
+    model: str = "sentence-transformers/all-MiniLM-L6-v2"
     dim: int = 384
     batch_size: int = 64
     normalize: bool = True
     dedup_threshold: float = 0.98
-    # FastEmbed ships this model as ONNX int8. Not a GPU flag.
+    # FastEmbed ships MiniLM-L6-v2 as ONNX INT8. Not a GPU flag.
     quantization: str = "int8"
     # fastembed | llama-cpp | hash
     backend: EmbedBackend = "fastembed"

@@ -13,7 +13,7 @@ from swarm_sdk.yaml_config import load_swarm_config
 @pytest.mark.asyncio
 async def test_hybrid_recall(tmp_path: Path) -> None:
     store = SqliteVecStore(str(tmp_path / "m.db"), dim=32)
-    embedder = HashEmbedder(32, model_name="BAAI/bge-small-en-v1.5")
+    embedder = HashEmbedder(32, model_name="sentence-transformers/all-MiniLM-L6-v2")
     fixture = Path(__file__).parent / "fixtures" / "memories.jsonl"
     for line in fixture.read_text(encoding="utf-8").splitlines():
         if not line.strip():

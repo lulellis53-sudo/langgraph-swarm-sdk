@@ -11,6 +11,7 @@ alwaysApply: false
 - Prefer `uv add` / `pyproject.toml` + lockfile. Use `uv run …`.
 - No new `# noqa` / `# type: ignore` / skip/xfail without a named rule and reason.
 - After editing library-facing Python, run **Context7** on the relevant package, then tighten.
+- New modules: start from [`.cursor/templates/python_static_template.py`](../templates/python_static_template.py) (`@wrappers` + role classes/functions). See `python-static-template` rule.
 
 ## Quality gate (before claiming done)
 

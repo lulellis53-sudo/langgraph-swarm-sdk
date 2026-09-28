@@ -29,6 +29,17 @@ uv run python benchmark/CPU_GPU.py --write-results --json
 uv run python benchmark/CPU_GPU.py --cuda   # include CUDA when available
 ```
 
+## Model Delegation benchmark suite
+
+Provider-routing and GPU-dispatch cases under `Tasks/model_delegation/`. No API keys required.
+
+```bash
+uv run pytest benchmark/Tasks/model_delegation -q
+uv run python -m benchmark.run --task model_delegation
+```
+
+Case definitions: `benchmark/model_delegation/suite.yaml`.
+
 ## SQL Pro benchmarkable suite
 
 Skill-aligned SQLite cases under `sql_pro/` (correctness, join rewrites, index plans). No LLM required.

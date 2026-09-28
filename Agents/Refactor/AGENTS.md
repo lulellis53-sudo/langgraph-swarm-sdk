@@ -138,6 +138,12 @@ Low-freedom techniques (do not improvise): rename with a whole-repo search, neve
 }
 ```
 
+## Static Templates
+
+- New Python modules: start from [`../../.cursor/templates/python_static_template.py`](../../.cursor/templates/python_static_template.py) (`@wrappers` + role classes/functions: type, hint, vect, math, db, loop).
+- Rule: [`.cursor/rules/python-static-template.mdc`](../../.cursor/rules/python-static-template.mdc). Cursor ops: [`.cursor/AGENTS.md`](../../.cursor/AGENTS.md).
+- Do not import the template from runtime package code; copy and trim unused roles.
+
 ## Constraints
 - Never change observable behavior inside a refactor step
 - Never continue after a red test by patching forward — revert and shrink the step

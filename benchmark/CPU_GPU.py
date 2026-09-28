@@ -24,7 +24,7 @@ if str(_REPO_ROOT) not in sys.path:
 from benchmark.metrics import Timer  # noqa: E402
 
 RESULTS_DIR = Path(__file__).resolve().parent / "results" / "cpu_gpu"
-DEFAULT_MODEL = "BAAI/bge-small-en-v1.5"
+DEFAULT_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 DEFAULT_SNIPPET = (
     "Hybrid search combines dense embeddings with BM25 keywords for retrieval."
 )

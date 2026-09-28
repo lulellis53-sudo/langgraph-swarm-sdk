@@ -1,18 +1,62 @@
-"""Tokenizer budgets so prompts stay under a hard token cap."""
+"""Tokenizer budgets so prompts stay under a hard token cap.
+
+Default counting uses **tiktoken** (`cl100k_base`). Pass a Hugging Face
+``tokenizers.Tokenizer`` (or a tiktoken ``Encoding``) for an explicit backend.
+"""
+
+from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any, Protocol
 
 from tokenizers import Tokenizer
 from tokenizers.pre_tokenizers import Whitespace
 
 _WHITESPACE = Whitespace()
+_DEFAULT_TIKTOKEN = "cl100k_base"
+_ENCODING_CACHE: dict[str, Any] = {}
+_ENCODING_MISSING: set[str] = set()
 
 
-def count_text(text: str, tokenizer: Tokenizer | None = None) -> int:
+class _HasEncode(Protocol):
+    def encode(self, text: str, *args: Any, **kwargs: Any) -> Any: ...
+
+
+def _tiktoken_encoding(name: str = _DEFAULT_TIKTOKEN) -> Any | None:
+    if name in _ENCODING_CACHE:
+        return _ENCODING_CACHE[name]
+    if name in _ENCODING_MISSING:
+        return None
+    try:
+        import tiktoken
+    except ImportError:
+        _ENCODING_MISSING.add(name)
+        return None
+    try:
+        encoding = tiktoken.get_encoding(name)
+    except Exception:
+        # Offline / first-download failure → whitespace fallback (retry next call).
+        return None
+    _ENCODING_CACHE[name] = encoding
+    return encoding
+
+
+def _count_with(tokenizer: _HasEncode, text: str) -> int:
+    encoded = tokenizer.encode(text)
+    ids = getattr(encoded, "ids", None)
+    if ids is not None:
+        return len(ids)
+    return len(encoded)
+
+
+def count_text(text: str, tokenizer: _HasEncode | None = None) -> int:
     if not text:
         return 0
     if tokenizer is not None:
-        return len(tokenizer.encode(text).ids)
+        return _count_with(tokenizer, text)
+    encoding = _tiktoken_encoding()
+    if encoding is not None:
+        return _count_with(encoding, text)
     return len(_WHITESPACE.pre_tokenize_str(text))
 
 
@@ -36,7 +80,7 @@ class TokenBudget:
         *,
         max_tokens: int = 2048,
         tool_cap: int = 128,
-        tokenizer: Tokenizer | None = None,
+        tokenizer: Tokenizer | _HasEncode | None = None,
     ) -> None:
         if max_tokens < 1:
             raise ValueError("max_tokens must be >= 1")
@@ -48,17 +92,28 @@ class TokenBudget:
         return count_text(text, self.tokenizer)
 
     def pack(self, *, system: str, memories: list[str], turns: list[str]) -> PackedPrompt:
-        system_text = system.strip() or "system"
-        if self.count(system_text) > self.max_tokens:
-            system_text = self._truncate(system_text, self.max_tokens)
+        system_text = self._fit_system(system)
         memories_fit = self._take(system_text, [], self._lines("memory: ", memories))
         turns_fit = self._take_newest(system_text, memories_fit, self._lines("turn: ", turns))
         user_parts = memories_fit + turns_fit
         user = "\n".join(user_parts)
         packed = PackedPrompt(system=system_text, user=user)
         if self.count(packed.text) > self.max_tokens:
-            packed = PackedPrompt(system=self._truncate(system_text, self.max_tokens), user="")
+            packed = PackedPrompt(system=system_text, user="")
         return packed
+
+    def _fit_system(self, system: str) -> str:
+        """Always return a non-empty system that fits ``max_tokens``."""
+        text = system.strip() or "system"
+        if self.count(text) <= self.max_tokens:
+            return text
+        truncated = self._truncate(text, self.max_tokens)
+        if truncated:
+            return truncated
+        for fallback in ("s", ".", "x"):
+            if self.count(fallback) <= self.max_tokens:
+                return fallback
+        return "s"
 
     def _lines(self, prefix: str, items: list[str]) -> list[str]:
         lines: list[str] = []

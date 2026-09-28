@@ -92,11 +92,11 @@ class HashEmbedder:
 
 
 class FastEmbedder:
-    """FastEmbed ONNX embedder. Default model ships int8 weights."""
+    """FastEmbed ONNX embedder. Default MiniLM-L6-v2 ships INT8 weights."""
 
     def __init__(
         self,
-        model_name: str = "BAAI/bge-small-en-v1.5",
+        model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
         dim: int = 384,
         batch_size: int = 64,
     ) -> None:

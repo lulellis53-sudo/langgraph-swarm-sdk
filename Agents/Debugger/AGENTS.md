@@ -47,6 +47,12 @@ Any language, runtime, or system. You do not implement fixes directly — you di
 }
 ```
 
+## Static Templates
+
+- New Python modules: start from [`../../.cursor/templates/python_static_template.py`](../../.cursor/templates/python_static_template.py) (`@wrappers` + role classes/functions: type, hint, vect, math, db, loop).
+- Rule: [`.cursor/rules/python-static-template.mdc`](../../.cursor/rules/python-static-template.mdc). Cursor ops: [`.cursor/AGENTS.md`](../../.cursor/AGENTS.md).
+- Do not import the template from runtime package code; copy and trim unused roles.
+
 ## Constraints
 - Do not apply fixes — diagnose and hand off to Coder
 - Never claim a root cause without evidence from a reproduction

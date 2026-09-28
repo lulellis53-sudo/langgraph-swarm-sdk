@@ -9,6 +9,11 @@ agents:
     contract: Agents/Orchestrator/AGENTS.md
     manifest: Agents/Orchestrator/agent.yaml
 
+  - name: ModelDelegate
+    role: model_delegation
+    contract: Agents/ModelDelegate/AGENTS.md
+    manifest: Agents/ModelDelegate/agent.yaml
+
   - name: Planner
     role: decompose goals into task graphs
     contract: Agents/Planner/AGENTS.md
@@ -109,4 +114,27 @@ agents:
 #     depends_on: [T04]
 #     status: todo
 
-tasks: []
+tasks:
+  - id: MD01
+    title: "Route: pick provider/model for a sub-task"
+    assigned: [ModelDelegate/Router]
+    depends_on: []
+    status: todo
+
+  - id: MD02
+    title: "Fallback: pre-compute retry chain for the selected route"
+    assigned: [ModelDelegate/FallbackResolver]
+    depends_on: [MD01]
+    status: todo
+
+  - id: MD03
+    title: "Embed: dispatch embedding task to GPU or registry provider"
+    assigned: [ModelDelegate/Embedder]
+    depends_on: []
+    status: todo
+
+  - id: MD04
+    title: "Math: dispatch numerical task to GPU or fast LLM"
+    assigned: [ModelDelegate/MathWorker]
+    depends_on: []
+    status: todo

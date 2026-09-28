@@ -39,6 +39,6 @@ def bench_sdk(bench_settings: Settings, file_config) -> SwarmSDK:
         file_config=file_config,
         router_model=model,
         specialist_model=model,
-        embedder=HashEmbedder(32, model_name="BAAI/bge-small-en-v1.5"),
+        embedder=HashEmbedder(32, model_name="sentence-transformers/all-MiniLM-L6-v2"),
         reranker=IdentityReranker(),
     )
