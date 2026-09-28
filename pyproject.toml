@@ -8,6 +8,7 @@ authors = [{ name = "dantenho", email = "dantenho@gmail.com" }]
 requires-python = ">=3.14.5"
 dependencies = [
     "aiohttp>=3.11",
+    # HTTP API (swarm-api entrypoint)
     "fastapi>=0.115",
     "grpcio>=1.71",
     "grpcio-tools>=1.71",
@@ -26,7 +27,7 @@ dependencies = [
     "requests>=2.32",
     "sqlite-vec>=0.1.6",
     "tokenizers>=0.22",
-    "uvicorn>=0.34",
+    "uvicorn[standard]>=0.34",
     "uvloop>=0.21; sys_platform != 'win32'",
     # onnxruntime has no macOS x86_64 wheel, so FastEmbed cannot install there.
     "fastembed>=0.7; sys_platform != 'darwin' or platform_machine != 'x86_64'",
