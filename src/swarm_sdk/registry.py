@@ -1,4 +1,4 @@
-"""Load config/model_registry.yaml and rank routes to select the best model per think level."""
+"""Load ``config/model_registry.yaml`` and rank routes per think level."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, Field
 
+from swarm_sdk.decorators import Static
 from swarm_sdk.model_select import ModelRoute, ModelSelectConfig, ThinkLevel
 
 DEFAULT_REGISTRY_PATH = Path(__file__).resolve().parents[2] / "config" / "model_registry.yaml"
@@ -14,6 +15,8 @@ _FALLBACK_REGISTRY_PATH = Path("config/model_registry.yaml")
 
 
 class RegistryEntry(BaseModel):
+    """One provider model entry in the registry file."""
+
     name: str
     provider: str
     api_key_env: str | None = None
@@ -25,10 +28,13 @@ class RegistryEntry(BaseModel):
 
 
 class Registry(BaseModel):
+    """Parsed model registry with selection helpers."""
+
     version: int = 1
     providers: list[RegistryEntry] = Field(default_factory=list)
 
     def routes(self) -> list[ModelRoute]:
+        """Convert registry rows to fallback-chain routes."""
         return [
             ModelRoute(
                 name=entry.name,
@@ -40,31 +46,56 @@ class Registry(BaseModel):
         ]
 
     def ranked(self, think_level: ThinkLevel) -> list[RegistryEntry]:
-        """All entries supporting `think_level`, best (lowest priority) first."""
+        """All entries supporting ``think_level``, best (lowest priority) first."""
         return sorted(
             (e for e in self.providers if think_level in e.think_levels),
             key=lambda e: e.priority,
         )
 
     def select_best(self, think_level: ThinkLevel) -> RegistryEntry:
-        """The single best entry for a think level."""
+        """The single best entry for a think level.
+
+        Raises:
+            ValueError: If no entry supports the level.
+        """
         ranked = self.ranked(think_level)
         if not ranked:
             raise ValueError(f"no registered model supports think_level={think_level!r}")
         return ranked[0]
 
     def fallback_order(self, think_level: ThinkLevel, depth: int = 3) -> list[RegistryEntry]:
-        """Best model plus its fallbacks, in try-order."""
+        """Best model plus fallbacks, in try-order."""
         return self.ranked(think_level)[:depth]
 
     def to_model_select_config(self, default_level: ThinkLevel = "medium") -> ModelSelectConfig:
+        """Build :class:`ModelSelectConfig` for the SDK."""
         return ModelSelectConfig(default_level=default_level, routes=self.routes())
 
 
+class RegistryLoader:
+    """Load registry YAML from disk."""
+
+    @Static
+    def load(path: str | Path | None = None) -> Registry:
+        """Load and validate the model registry.
+
+        Args:
+            path: Explicit file path; otherwise search default locations.
+
+        Returns:
+            Parsed registry.
+
+        Raises:
+            FileNotFoundError: If no registry file exists.
+        """
+        candidates = [Path(path)] if path else [DEFAULT_REGISTRY_PATH, _FALLBACK_REGISTRY_PATH]
+        for candidate in candidates:
+            if candidate.is_file():
+                data = yaml.safe_load(candidate.read_text())
+                return Registry.model_validate(data)
+        raise FileNotFoundError(f"model registry not found: {candidates[0]}")
+
+
 def load_registry(path: str | Path | None = None) -> Registry:
-    candidates = [Path(path)] if path else [DEFAULT_REGISTRY_PATH, _FALLBACK_REGISTRY_PATH]
-    for candidate in candidates:
-        if candidate.is_file():
-            data = yaml.safe_load(candidate.read_text())
-            return Registry.model_validate(data)
-    raise FileNotFoundError(f"model registry not found: {candidates[0]}")
+    """See :meth:`RegistryLoader.load`."""
+    return RegistryLoader.load(path)

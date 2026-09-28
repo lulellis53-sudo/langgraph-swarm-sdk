@@ -62,8 +62,12 @@ Contributor conventions for this repository. On case-insensitive filesystems, `R
 | `Agents/{Name}/` | `agent.yaml` manifest + `AGENTS.md` contract |
 | `Agents/coordination.yaml` | Swarm tasks and manifest links |
 | `codeworkspace/` | Multi-root VS Code/Cursor workspace (no path moves) |
+| `docs/` | Repo layout (`docs/LAYOUT.md`) |
+| `.vscode/` / `.cursor/` | Workspace settings and recommended extensions |
 
 Do not move `src/` under `codeworkspace/` — packaging and CI assume repo-root `pyproject.toml`.
+
+Open `codeworkspace/swarm.code-workspace` or the repo root; accept **recommended extensions** (Ruff, Python, YAML, ty) when prompted.
 
 ## Toolchain
 
@@ -156,10 +160,13 @@ class _DefaultBackend:
 
 | Decorator | Use |
 |-----------|-----|
+| `@wrapper` | Pure helpers (`swarm_sdk.decorators.wrapper`) — side-effect-free utilities |
+| `@Static` | Class utilities (`swarm_sdk.decorators.Static`) — project alias for `@staticmethod` |
 | `@property` | Cheap derived state (`CircuitBreaker.state`, flags) |
 | `@classmethod` | Alternate constructors (`SwarmSDK.from_settings`, validators) |
-| `@staticmethod` | Pure helpers that do not need `self` |
 | `@pytest.mark.asyncio` | Async tests (`asyncio_mode = auto` in pytest) |
+
+Group related callables in a **class** with `@Static` / `@wrapper` (e.g. `AgentManifestLoader`, `HybridRetriever`, `ModelProviders`). Keep thin module-level functions that delegate for backward compatibility. Use **Google-style** docstrings (`Args`, `Returns`, `Raises`) on public classes and methods.
 
 Prefer **plain functions** for one-off helpers; add a class when there is mutable state, lifecycle, or a clear boundary. Use **`Protocol`** for duck-typed dependencies (memory stores, rerankers, embedders).
 

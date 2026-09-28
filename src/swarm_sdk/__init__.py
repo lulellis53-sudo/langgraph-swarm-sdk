@@ -1,5 +1,7 @@
 """LangGraph swarm SDK with memory, reranking, token budgets, and semantic cache."""
 
+from __future__ import annotations
+
 from swarm_sdk.config import Settings
 from swarm_sdk.swarm import RunResult, SwarmSDK
 
