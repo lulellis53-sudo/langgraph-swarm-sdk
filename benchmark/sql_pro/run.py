@@ -5,9 +5,12 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 from benchmark.sql_pro.harness import SqlProSuite, load_suite
+
+RESULTS_DIR = Path(__file__).resolve().parent.parent / "results" / "sql_pro"
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -19,6 +22,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Path to suite.yaml (default: benchmark/sql_pro/suite.yaml)",
     )
     parser.add_argument("--json", action="store_true", help="Emit results as JSON")
+    parser.add_argument(
+        "--write-results",
+        action="store_true",
+        help="Write JSON results to benchmark/results/sql_pro/ (gitignored)",
+    )
     parser.add_argument("--case", action="append", default=[], help="Run only these case ids")
     args = parser.parse_args(argv)
 
@@ -30,9 +38,17 @@ def main(argv: list[str] | None = None) -> int:
 
     results = runner.run_all()
     failed = [r for r in results if not r.passed]
+    payload = [r.to_dict() for r in results]
+
+    if args.write_results:
+        RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+        out_path = RESULTS_DIR / f"{stamp}.json"
+        out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        print(f"wrote {out_path}")
 
     if args.json:
-        print(json.dumps([r.to_dict() for r in results], indent=2))
+        print(json.dumps(payload, indent=2))
     else:
         for result in results:
             status = "PASS" if result.passed else "FAIL"

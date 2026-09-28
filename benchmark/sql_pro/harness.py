@@ -87,11 +87,41 @@ def fetch_all(conn: sqlite3.Connection, query: str) -> list[tuple[Any, ...]]:
     return conn.execute(query).fetchall()
 
 
-def _run_timed(conn: sqlite3.Connection, query: str) -> tuple[list[tuple[Any, ...]], float]:
+def _seed(conn: sqlite3.Connection, name: str) -> None:
+    if name == "default":
+        seed_default(conn)
+        return
+    raise ValueError(f"unknown seed {name!r}")
+
+
+def _run_timed(conn: sqlite3.Connection, query: str) -> tuple[list[tuple[Any, ...]], float, list[str]]:
     start = time.perf_counter()
-    rows = fetch_all(conn, query)
+    cur = conn.execute(query)
+    rows = cur.fetchall()
+    columns = [str(col[0]) for col in cur.description] if cur.description else []
     elapsed_ms = (time.perf_counter() - start) * 1000.0
-    return rows, elapsed_ms
+    return rows, elapsed_ms, columns
+
+
+def _check_expect_columns(
+    expect: dict[str, Any], columns: list[str], notes: list[str]
+) -> bool:
+    expected = expect.get("columns")
+    if expected is None:
+        return True
+    if columns != list(expected):
+        notes.append(f"expected columns={expected!r}, got {columns!r}")
+        return False
+    return True
+
+
+def _check_plan_tokens(plan: str, must_contain: list[Any], notes: list[str], *, label: str) -> bool:
+    passed = True
+    for token in must_contain:
+        if str(token) not in plan:
+            passed = False
+            notes.append(f"{label} missing {token!r}")
+    return passed
 
 
 class SqlProSuite:
@@ -99,11 +129,14 @@ class SqlProSuite:
         self.suite = suite or load_suite()
         self.cases: list[dict[str, Any]] = list(self.suite.get("cases", []))
 
-    def _fresh_connection(self) -> sqlite3.Connection:
+    def _fresh_connection(self, seed: str = "default") -> sqlite3.Connection:
         conn = sqlite3.connect(":memory:")
         _apply_schema(conn)
-        seed_default(conn)
+        _seed(conn, seed)
         return conn
+
+    def _case_seed(self, case: dict[str, Any]) -> str:
+        return str(case.get("seed", "default"))
 
     def run_case(self, case: dict[str, Any]) -> CaseResult:
         case_id = str(case["id"])
@@ -113,17 +146,22 @@ class SqlProSuite:
             if "index_ddl" in case:
                 return self._run_index_case(case_id, case)
             return self._run_single_query_case(case_id, case)
+        except ValueError as exc:
+            return CaseResult(case_id=case_id, passed=False, error=str(exc))
         except sqlite3.Error as exc:
             return CaseResult(case_id=case_id, passed=False, error=str(exc))
 
     def _run_single_query_case(self, case_id: str, case: dict[str, Any]) -> CaseResult:
-        conn = self._fresh_connection()
+        conn = self._fresh_connection(self._case_seed(case))
         query = str(case["query"]).strip()
-        rows, latency_ms = _run_timed(conn, query)
+        rows, latency_ms, columns = _run_timed(conn, query)
         plan = explain_plan(conn, query)
         expect = case.get("expect", {})
         notes: list[str] = []
         passed = True
+
+        if not _check_expect_columns(expect, columns, notes):
+            passed = False
 
         if "row_count" in expect and len(rows) != int(expect["row_count"]):
             passed = False
@@ -152,21 +190,25 @@ class SqlProSuite:
         slow_q = str(case["query_slow"]).strip()
         fast_q = str(case["query_fast"]).strip()
 
-        conn_slow = self._fresh_connection()
-        slow_rows, slow_ms = _run_timed(conn_slow, slow_q)
+        seed = self._case_seed(case)
+        conn_slow = self._fresh_connection(seed)
+        slow_rows, slow_ms, _ = _run_timed(conn_slow, slow_q)
         conn_slow.close()
 
-        conn_fast = self._fresh_connection()
-        fast_rows, fast_ms = _run_timed(conn_fast, fast_q)
+        conn_fast = self._fresh_connection(seed)
+        fast_rows, fast_ms, _ = _run_timed(conn_fast, fast_q)
         plan = explain_plan(conn_fast, fast_q)
         conn_fast.close()
 
+        expect = case.get("expect", {})
         passed = slow_rows == fast_rows
         notes: list[str] = []
         if not passed:
             notes.append("slow and fast queries returned different result sets")
-        if case.get("expect", {}).get("results_equal"):
-            pass  # already checked
+
+        if expect.get("fast_faster_than_slow") and fast_ms >= slow_ms * 0.99:
+            passed = False
+            notes.append(f"expected fast faster than slow; slow_ms={slow_ms:.3f} fast_ms={fast_ms:.3f}")
 
         return CaseResult(
             case_id=case_id,
@@ -182,23 +224,37 @@ class SqlProSuite:
         index_ddl = str(case["index_ddl"]).strip()
         expect = case.get("expect", {})
 
-        conn_before = self._fresh_connection()
+        seed = self._case_seed(case)
+        conn_before = self._fresh_connection(seed)
         plan_before = explain_plan(conn_before, query)
         conn_before.close()
 
-        conn_after = self._fresh_connection()
+        conn_after = self._fresh_connection(seed)
         conn_after.executescript(index_ddl)
         conn_after.commit()
-        rows, latency_ms = _run_timed(conn_after, query)
+        rows, latency_ms, columns = _run_timed(conn_after, query)
         plan_after = explain_plan(conn_after, query)
         conn_after.close()
 
         passed = True
         notes = [f"plan_before:\n{plan_before}"]
-        for token in expect.get("plan_after_index_must_contain", []):
-            if token not in plan_after:
-                passed = False
-                notes.append(f"plan after index missing {token!r}")
+        if not _check_plan_tokens(
+            plan_before,
+            expect.get("plan_before_index_must_contain", []),
+            notes,
+            label="plan before index",
+        ):
+            passed = False
+        if not _check_plan_tokens(
+            plan_after,
+            expect.get("plan_after_index_must_contain", []),
+            notes,
+            label="plan after index",
+        ):
+            passed = False
+
+        if not _check_expect_columns(expect, columns, notes):
+            passed = False
 
         if "min_rows" in expect and len(rows) < int(expect["min_rows"]):
             passed = False

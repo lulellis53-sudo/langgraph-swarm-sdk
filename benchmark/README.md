@@ -19,13 +19,27 @@ uv run python -m benchmark.run --task token_cache_hit
 
 Results (optional): `benchmark/results/{task}/` (gitignored).
 
+## Embedding throughput (CPU vs CoreML GPU)
+
+Compare ONNX Runtime providers for FastEmbed (requires `uv sync --extra jupyter`):
+
+```bash
+uv run python benchmark/CPU_GPU.py
+uv run python benchmark/CPU_GPU.py --write-results --json
+uv run python benchmark/CPU_GPU.py --cuda   # include CUDA when available
+```
+
 ## SQL Pro benchmarkable suite
 
 Skill-aligned SQLite cases under `sql_pro/` (correctness, join rewrites, index plans). No LLM required.
 
+Both `pytest benchmark/Tasks/sql_pro` and `python -m benchmark.run --task sql_pro` execute the full suite (the task module delegates to `benchmark.sql_pro.run`).
+
 ```bash
 uv run python -m benchmark.sql_pro.run
+uv run python -m benchmark.sql_pro.run --write-results
 uv run pytest benchmark/Tasks/sql_pro -q
+uv run python -m benchmark.run --task sql_pro
 ```
 
 Case definitions: `benchmark/sql_pro/suite.yaml`. Cursor command: `/sql-pro`.
