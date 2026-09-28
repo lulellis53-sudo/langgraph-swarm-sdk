@@ -9,19 +9,7 @@ parallelism:
   task_queue_size: 128
   synth_timeout_s: 60
 
-providers:
-  - name: openai
-    models: ["openai:gpt-4o", "openai:gpt-4o-mini"]
-    api_key_env: OPENAI_API_KEY
-    priority: 10
-  - name: anthropic
-    models: ["anthropic:claude-sonnet-4-5", "anthropic:claude-haiku-4-5"]
-    api_key_env: ANTHROPIC_API_KEY
-    priority: 20
-  - name: groq
-    models: ["groq:llama-3.3-70b-versatile"]
-    api_key_env: GROQ_API_KEY
-    priority: 30
+# Provider list: config/providers.yaml (see swarm_sdk.providers.load_provider_catalog)
 
 model_select:
   default_level: medium       # off | low | medium | high | xhigh

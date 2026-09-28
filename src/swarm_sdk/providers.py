@@ -1,13 +1,69 @@
-"""Chat-model helpers."""
+"""Chat-model helpers and ``config/providers.yaml`` loading."""
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import yaml
 from langchain.chat_models import init_chat_model
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
+from pydantic import BaseModel, Field
 
 from swarm_sdk.decorators import Static, wrapper
 from swarm_sdk.runtime import offload
+
+DEFAULT_PROVIDERS_PATH = Path(__file__).resolve().parents[2] / "config" / "providers.yaml"
+_FALLBACK_PROVIDERS_PATH = Path("config/providers.yaml")
+
+
+class ProviderEntry(BaseModel):
+    """One LLM vendor block from ``providers.yaml``."""
+
+    name: str
+    models: list[str] = Field(default_factory=list)
+    api_key_env: str = ""
+    priority: int = 100
+
+
+class ProviderCatalog(BaseModel):
+    """Parsed provider catalog."""
+
+    version: int = 1
+    providers: list[ProviderEntry] = Field(default_factory=list)
+
+    def ranked(self) -> list[ProviderEntry]:
+        """Entries sorted by priority (lower = preferred)."""
+        return sorted(self.providers, key=lambda entry: entry.priority)
+
+
+class ProviderCatalogLoader:
+    """Load ``config/providers.yaml`` from disk."""
+
+    @Static
+    def load(path: str | Path | None = None) -> ProviderCatalog:
+        """Load and validate the provider catalog.
+
+        Args:
+            path: Explicit file path; otherwise search default locations.
+
+        Returns:
+            Parsed catalog.
+
+        Raises:
+            FileNotFoundError: If no catalog file exists.
+        """
+        candidates = [Path(path)] if path else [DEFAULT_PROVIDERS_PATH, _FALLBACK_PROVIDERS_PATH]
+        for candidate in candidates:
+            if candidate.is_file():
+                data = yaml.safe_load(candidate.read_text(encoding="utf-8"))
+                return ProviderCatalog.model_validate(data)
+        raise FileNotFoundError(f"provider catalog not found: {candidates[0]}")
+
+
+def load_provider_catalog(path: str | Path | None = None) -> ProviderCatalog:
+    """See :meth:`ProviderCatalogLoader.load`."""
+    return ProviderCatalogLoader.load(path)
 
 
 class ModelProviders:
