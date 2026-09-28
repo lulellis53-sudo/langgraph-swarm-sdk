@@ -1,0 +1,28 @@
+---
+description: Python Static Template — @wrappers, role sections, PEP 810 lazy-import safe
+globs: **/*.py
+alwaysApply: false
+---
+
+# Python Static Template (PEP 810–ready)
+
+When creating a **new** Python module, start from:
+
+@.cursor/templates/python_static_template.py
+
+Full ops notes: @.cursor/AGENTS.md (Static Templates). Spec: [PEP 810](https://peps.python.org/pep-0810/) (no PEP 850 exists).
+
+## Required shape
+
+1. `from __future__ import annotations`
+2. **`wrappers`** — `@wrappers.timed` / `logged` / `retry` with `@functools.wraps`
+3. Role classes: `Type` → `Hint` → `Vect` → `Math` → `Db` → `Loop`
+4. Role functions: `type_`, `hint_`, `vect_`, `math_`, `db_`, `loop_`
+5. Explicit `__all__`; smoke only under `__main__`
+
+## PEP 810 (lazy-import safety)
+
+- No import-time side effects (DB connect, threads, registry self-register).
+- Heavy deps: import inside the using function (3.14) or `lazy import` (3.15+).
+- Type-only: `if TYPE_CHECKING:`.
+- Do not import this template into the runtime package — copy and trim.
