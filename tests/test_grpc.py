@@ -1,6 +1,9 @@
+
 from pathlib import Path
 
+import pytest
 from langchain_core.messages import AIMessage
+from tests.conftest import sqlite_extension_loading_available
 from tests.fakes import Script, ScriptedModel, answer
 
 from swarm_sdk.config import Settings
@@ -8,6 +11,11 @@ from swarm_sdk.embeddings import HashEmbedder
 from swarm_sdk.pb import swarm_pb2
 from swarm_sdk.rerank import IdentityReranker
 from swarm_sdk.swarm import SwarmSDK
+
+pytestmark = pytest.mark.skipif(
+    not sqlite_extension_loading_available(),
+    reason="CPython build lacks sqlite3 extension loading; sqlite_vec cannot load",
+)
 
 
 def test_grpc_run_and_recall(tmp_path: Path) -> None:

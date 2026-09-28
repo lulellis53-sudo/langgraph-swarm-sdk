@@ -1,9 +1,17 @@
+
 from pathlib import Path
 
 import numpy as np
+import pytest
+from tests.conftest import sqlite_extension_loading_available
 
 from swarm_sdk.embeddings import HashEmbedder, dedupe_texts, unit
 from swarm_sdk.memory.sqlite_vec import SqliteVecStore
+
+pytestmark = pytest.mark.skipif(
+    not sqlite_extension_loading_available(),
+    reason="CPython build lacks sqlite3 extension loading; sqlite_vec cannot load",
+)
 
 
 def test_sqlite_vec_int8_roundtrip(tmp_path: Path) -> None:

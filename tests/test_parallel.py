@@ -1,11 +1,19 @@
+
 from pathlib import Path
 
+import pytest
+from tests.conftest import sqlite_extension_loading_available
 from tests.fakes import Script, ScriptedModel, answer
 
 from swarm_sdk.config import Settings
 from swarm_sdk.embeddings import HashEmbedder
 from swarm_sdk.rerank import IdentityReranker
 from swarm_sdk.swarm import SwarmSDK
+
+pytestmark = pytest.mark.skipif(
+    not sqlite_extension_loading_available(),
+    reason="CPython build lacks sqlite3 extension loading; sqlite_vec cannot load",
+)
 
 
 async def test_parallel_fanout_hides_full_history(tmp_path: Path) -> None:
