@@ -8,9 +8,9 @@ import threading
 
 import numpy as np
 
-from swarm_sdk.embeddings import unit
-from swarm_sdk.hybrid import tokenize
 from swarm_sdk.memory.base import MemoryHit
+from swarm_sdk.retrieval.embeddings import unit
+from swarm_sdk.retrieval.text import tokenize
 
 
 def _fts_match_query(query: str) -> str:

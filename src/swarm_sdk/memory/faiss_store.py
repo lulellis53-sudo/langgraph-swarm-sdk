@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from swarm_sdk.embeddings import unit
+from swarm_sdk.retrieval.embeddings import unit
 from swarm_sdk.memory.base import MemoryHit
 
 
