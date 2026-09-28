@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
+from pathlib import Path
 
 import numpy as np
 
@@ -27,6 +28,7 @@ class SqliteVecStore:
 
         self.dim = dim
         self._lock = threading.Lock()
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(path, check_same_thread=False)
         self._conn.enable_load_extension(True)
         sqlite_vec.load(self._conn)

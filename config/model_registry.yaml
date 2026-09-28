@@ -66,7 +66,7 @@ providers:
     api_key_env: NVIDIA_API_KEY
     think_levels: [high, xhigh]
     priority: 35
-    evidence: web (NVIDIA NIM has no MiMo yet - forum request open; Nemotron 3 Ultra = AA index 48, best NVIDIA-stack reasoner)
+    evidence: web (NVIDIA NIM has no MiMo yet; Nemotron 3 Ultra = AA index 48, best NVIDIA reasoner)
 
   - name: openrouter:z-ai/glm-5.3-flash
     provider: openrouter
@@ -74,7 +74,7 @@ providers:
     effort: medium
     think_levels: [low, medium, high]
     priority: 40
-    evidence: web (#2 OpenRouter by usage, best coding value; alt = deepseek/deepseek-v4.1-flash #1)
+    evidence: web ( # 2 OpenRouter by usage, best coding value; alt = deepseek-v4.1-flash )
 
   # ---- Standard pool: Ollama x2, Cohere x2, Mistral x2, Groq x2 ----
   - name: ollama:glm5.3
@@ -82,28 +82,28 @@ providers:
     base_url_env: OLLAMA_1_BASE_URL        # e.g. http://127.0.0.1:11434
     think_levels: ["off", low, medium]
     priority: 50
-    evidence: assumed (local Ollama instance #1)
+    evidence: assumed (local Ollama instance 1)
 
   - name: ollama:qwen3.8
     provider: ollama-2
     base_url_env: OLLAMA_2_BASE_URL        # e.g. http://127.0.0.1:11435
     think_levels: ["off", low]
     priority: 55
-    evidence: assumed (local Ollama instance #2)
+    evidence: assumed (local Ollama instance 2)
 
   - name: cohere:command-a
     provider: cohere-1
     api_key_env: COHERE_API_KEY_1
     think_levels: [low, medium]
     priority: 60
-    evidence: assumed (Cohere API #1)
+    evidence: assumed (Cohere API 1)
 
   - name: cohere:command-r7b
     provider: cohere-2
     api_key_env: COHERE_API_KEY_2
     think_levels: ["off", low]
     priority: 62
-    evidence: assumed (Cohere API #2)
+    evidence: assumed (Cohere API 2)
 
   - name: mistral:mistral-large-latest
     provider: mistral-1
@@ -117,7 +117,7 @@ providers:
     api_key_env: MISTRAL_API_KEY_2
     think_levels: ["off"]
     priority: 67
-    evidence: web (Ministral 3 8B 2512 listed on OpenRouter); assumed direct-API ID
+    evidence: web (Ministral 3 8B 2512 on OpenRouter); assumed direct-API ID
 
   - name: groq:moonshotai/kimi-k2.7
     provider: groq-1

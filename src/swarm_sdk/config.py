@@ -37,8 +37,9 @@ class Settings(BaseSettings):
     embed_model: str = "BAAI/bge-small-en-v1.5"
     rerank_model: str = "Xenova/ms-marco-MiniLM-L-6-v2"
     memory_backend: MemoryBackend = "sqlite-vec"
-    memory_path: str = "swarm.sqlite"
-    cache_path: str = "swarm-cache.sqlite"
+    # SQLite artifacts live under data/ (gitignored) instead of the repo root.
+    memory_path: str = "data/swarm.sqlite"
+    cache_path: str = "data/swarm-cache.sqlite"
     peer_url: str | None = None
     api_host: str = "127.0.0.1"
     api_port: int = 8000

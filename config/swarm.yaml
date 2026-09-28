@@ -48,7 +48,7 @@ embedding:
 
 vectorstore:
   backend: sqlite-vec         # sqlite-vec | faiss | qdrant
-  path: swarm.sqlite
+  path: data/swarm.sqlite     # SQLite artifacts live under data/ (gitignored)
   retrieve_k: 20
   final_k: 10
   # backend-specific

@@ -6,6 +6,7 @@ import hashlib
 import re
 import sqlite3
 import threading
+from pathlib import Path
 
 import numpy as np
 
@@ -23,6 +24,7 @@ class SemanticCache:
         self.embedder = embedder
         self.threshold = threshold
         self._lock = threading.Lock()
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(path, check_same_thread=False)
         self._conn.execute(
             """

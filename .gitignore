@@ -14,6 +14,7 @@ dist/
 *.egg-info/
 *.db
 *.sqlite
+data/
 benchmark/results/
 .coverage
 htmlcov/
