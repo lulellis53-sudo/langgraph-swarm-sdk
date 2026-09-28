@@ -1,17 +1,32 @@
-version: 1
+version: "1"
 name: Documenter
-role: maintains_docs
-langgraph_node: null
-think_level: low
+role: maintain_documentation
+
 model: openai:gpt-4o-mini
+think_level: low
+
 token_budget:
   max_prompt: 2048
   max_completion: 512
+
 tasks:
-  - id: readme_sync
-    description: Primary task for Documenter
-    outputs: [AGENTS.md output contract]
-  - id: api_docs
-    description: Secondary task for Documenter
-    outputs: [coordination.yaml task id when assigned]
-capabilities: ['markdown', 'readme']
+  - id: sync_docs
+    description: >-
+      Update documentation to accurately reflect the current state of
+      the code, API, or configuration.
+    outputs:
+      - changed_files
+      - coverage_summary
+
+  - id: generate_reference
+    description: >-
+      Generate or improve reference docs, docstrings, API specs, or
+      changelogs for a given module or release.
+    outputs:
+      - changed_files
+
+capabilities:
+  - markdown
+  - docstring_writing
+  - changelog
+  - openapi

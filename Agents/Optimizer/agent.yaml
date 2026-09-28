@@ -1,17 +1,33 @@
-version: 1
+version: "1"
 name: Optimizer
 role: performance_tuning
-langgraph_node: null
-think_level: medium
+
 model: openai:gpt-4o-mini
+think_level: medium
+
 token_budget:
-  max_prompt: 2048
-  max_completion: 512
+  max_prompt: 4096
+  max_completion: 1024
+
 tasks:
   - id: profile_hotpath
-    description: Primary task for Optimizer
-    outputs: [AGENTS.md output contract]
-  - id: token_budget_tune
-    description: Secondary task for Optimizer
-    outputs: [coordination.yaml task id when assigned]
-capabilities: ['profiling', 'tokens']
+    description: >-
+      Profile an execution path and identify the single largest bottleneck
+      with supporting measurement data.
+    outputs:
+      - profiling_report
+      - bottleneck_location
+
+  - id: apply_optimization
+    description: >-
+      Apply a targeted optimization to the identified bottleneck and
+      measure the before/after performance delta.
+    outputs:
+      - changed_files
+      - benchmark_delta
+
+capabilities:
+  - profiling
+  - benchmarking
+  - token_counting
+  - caching

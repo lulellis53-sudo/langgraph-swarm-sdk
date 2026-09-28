@@ -1,17 +1,33 @@
-version: 1
+version: "1"
 name: Researcher
-role: read_only_codebase_research
-langgraph_node: researcher
-think_level: medium
+role: read_only_research
+
 model: openai:gpt-4o-mini
+think_level: medium
+
 token_budget:
-  max_prompt: 2048
-  max_completion: 512
+  max_prompt: 4096
+  max_completion: 1024
+
 tasks:
   - id: code_search
-    description: Primary task for Researcher
-    outputs: [AGENTS.md output contract]
-  - id: summarize_findings
-    description: Secondary task for Researcher
-    outputs: [coordination.yaml task id when assigned]
-capabilities: ['grep', 'read_only']
+    description: >-
+      Locate definitions, callers, patterns, or evidence within a codebase
+      without modifying any files.
+    outputs:
+      - findings_report
+      - file_locations
+
+  - id: summarize_domain
+    description: >-
+      Synthesize documentation, issues, or external sources into a
+      structured summary for other agents.
+    outputs:
+      - summary_report
+      - key_facts
+
+capabilities:
+  - grep
+  - file_read
+  - web_search
+  - read_only

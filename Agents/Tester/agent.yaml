@@ -1,17 +1,33 @@
-version: 1
+version: "1"
 name: Tester
-role: writes_and_runs_tests
-langgraph_node: null
-think_level: medium
+role: write_and_run_tests
+
 model: openai:gpt-4o-mini
+think_level: medium
+
 token_budget:
-  max_prompt: 2048
-  max_completion: 512
+  max_prompt: 4096
+  max_completion: 1024
+
 tasks:
-  - id: pytest_gate
-    description: Primary task for Tester
-    outputs: [AGENTS.md output contract]
-  - id: hypothesis_properties
-    description: Secondary task for Tester
-    outputs: [coordination.yaml task id when assigned]
-capabilities: ['pytest', 'hypothesis']
+  - id: write_tests
+    description: >-
+      Write unit, integration, or property-based tests for a given module
+      or behavior.
+    outputs:
+      - test_files
+      - coverage_delta
+
+  - id: run_gate
+    description: >-
+      Execute the full test suite, report failures, and classify each as
+      flaky, regression, or newly introduced.
+    outputs:
+      - gate_result
+      - failure_classification
+
+capabilities:
+  - pytest
+  - hypothesis
+  - coverage
+  - test_runner

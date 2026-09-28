@@ -1,17 +1,33 @@
-version: 1
+version: "1"
 name: Reviewer
-role: reviews_diffs
-langgraph_node: reviewer
-think_level: medium
+role: review_changes
+
 model: openai:gpt-4o
+think_level: high
+
 token_budget:
-  max_prompt: 2048
-  max_completion: 512
+  max_prompt: 8192
+  max_completion: 2048
+
 tasks:
   - id: diff_review
-    description: Primary task for Reviewer
-    outputs: [AGENTS.md output contract]
+    description: >-
+      Review a diff or PR for correctness, security, style, and test
+      coverage; emit structured findings with severity.
+    outputs:
+      - findings
+      - verdict
+
   - id: security_smell_check
-    description: Secondary task for Reviewer
-    outputs: [coordination.yaml task id when assigned]
-capabilities: ['diff', 'ruff']
+    description: >-
+      Scan a diff for security smells: injection, secret exposure,
+      unsafe deserialization, OWASP Top 10.
+    outputs:
+      - security_findings
+      - severity_map
+
+capabilities:
+  - diff_reading
+  - static_analysis
+  - security_patterns
+  - lint

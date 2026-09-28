@@ -1,17 +1,31 @@
-version: 1
+version: "1"
 name: Orchestrator
-role: coordinates_the_swarm
-langgraph_node: null
-think_level: low
+role: coordinate_swarm
+
 model: openai:gpt-4o-mini
+think_level: low
+
 token_budget:
   max_prompt: 2048
   max_completion: 512
+
 tasks:
   - id: assign_tasks
-    description: Primary task for Orchestrator
-    outputs: [AGENTS.md output contract]
+    description: >-
+      Route incoming goals to the correct agents based on the task graph
+      and current agent availability.
+    outputs:
+      - task_assignments
+      - dependency_order
+
   - id: merge_results
-    description: Secondary task for Orchestrator
-    outputs: [coordination.yaml task id when assigned]
-capabilities: ['coordination', 'task_routing']
+    description: >-
+      Collect agent outputs and produce a unified result or status report.
+    outputs:
+      - merged_result
+      - blocked_tasks
+
+capabilities:
+  - task_routing
+  - result_aggregation
+  - status_tracking
