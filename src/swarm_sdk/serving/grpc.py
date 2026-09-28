@@ -34,6 +34,8 @@ def _to_handle(plan: Plan) -> swarm_pb2.PlanHandle:
                 agent=s.agent,
                 depends_on=s.depends_on,
                 inputs=s.inputs,
+                task=s.task,
+                files=s.files,
             )
             for s in plan.steps
         ],
@@ -49,6 +51,8 @@ def _from_handle(handle: swarm_pb2.PlanHandle) -> Plan:
                 "title": s.title,
                 "description": s.description,
                 "agent": s.agent,
+                "task": s.task,
+                "files": list(s.files),
                 "depends_on": list(s.depends_on),
                 "inputs": list(s.inputs),
             }
@@ -154,7 +158,13 @@ class SwarmServicer(swarm_pb2_grpc.SwarmServiceServicer):
             plan = _from_handle(request)
             _PLANS[plan_id] = plan
         manifests = load_all_agent_manifests()
-        result = asyncio.run(run_plan(plan, make_factory(manifests)))
+        result = asyncio.run(
+            run_plan(
+                plan,
+                make_factory(manifests),
+                max_concurrency=self.sdk.file_config.parallelism.max_concurrency,
+            )
+        )
         return _to_result_msg(plan_id, result)
 
     def PlanStatus(

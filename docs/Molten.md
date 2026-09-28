@@ -606,7 +606,7 @@ Mathematical inference with LLMs (like Qwen2.5-Math and DeepSeek-R1) typically p
 ### 11.1 Python Math Libraries & Imports
 
 ```bash
-pip install sympy scipy mpmath numpy gmpy2
+pip install sympy scipy mpmath numpy gmpy2 numba cvxpy pyopencl kp
 ```
 
 #### A. Symbolic Mathematics & Equation Solving (`sympy`)
@@ -633,6 +633,21 @@ integ = sp.integrate(sp.exp(-x**2), (x, -sp.oo, sp.oo))  # sqrt(pi)
 # 4. Matrix diagonalization and eigenvalues
 A = sp.Matrix([[1, 2], [2, 1]])
 eigenvalues = A.eigenvals()
+
+# 5. Linear systems, ODEs, and numeric roots (prefer these over from sympy import *)
+from sympy import Eq, Function, Matrix, dsolve, linsolve, nsolve, symbols
+
+t = symbols("t")
+x_fn = Function("x")
+ode = Eq(x_fn(t).diff(t, 2) + x_fn(t), 0)
+ode_sol = dsolve(ode)  # C1*sin(t) + C2*cos(t)
+lin_sol = linsolve([Eq(x + y, 1), Eq(x - y, 0)], [x, y])
+num_root = nsolve(sp.cos(x) - x, x, 1)  # Dottie number ≈ 0.739
+mat_sol = Matrix([[1, 2], [3, 4]]).LUsolve(Matrix([5, 6]))
+
+# 6. Compile a symbolic equation to a NumPy ufunc (vector acceleration)
+from sympy import lambdify
+f_np = lambdify((x, y), sp.sin(x) + y, modules="numpy")
 ```
 
 #### B. High-Precision & Multiple-Precision Arithmetic (`mpmath` / `gmpy2`)
@@ -672,9 +687,98 @@ U, S, Vt = la.svd(M)
 
 # 3. Special mathematical functions
 bessel_val = sp_special.jv(1, 2.5)  # Bessel function of the first kind
+
+# 4. FFT / DCT (import the submodule — scipy.fft is not numpy.fft)
+from scipy.fft import dct, fft, idct
+from scipy.optimize import least_squares
+from scipy.sparse.linalg import spsolve
 ```
 
-#### D. Tool-Integrated Reasoning (TIR) Sandbox for Math Models
+#### D. Convex / algebraic optimization (`cvxpy`, `scipy.optimize`)
+
+Use these when the model writes **constraints + objective**, not a closed-form `sympy.solve`. CPU solvers only on this Mac ([CVXPY intro](https://www.cvxpy.org/tutorial/intro/index.html), [Solver Max Python AMLs](https://www.solvermax.com/resources/links/optimization-modelling-in-python)):
+
+```python
+import cvxpy as cp
+from scipy.optimize import least_squares, root_scalar
+
+# Convex program (OSQP / SCS / ECOS on CPU — not CUDA)
+x_var = cp.Variable()
+y_var = cp.Variable()
+prob = cp.Problem(
+    cp.Minimize((x_var - y_var) ** 2),
+    [x_var + y_var == 1, x_var - y_var >= 1],
+)
+prob.solve()
+assert prob.status == "optimal"
+
+# Nonlinear least squares / scalar roots (SciPy wraps HiGHS for LP)
+lsq = least_squares(lambda v: [v[0] ** 2 - 2], x0=[1.0])
+root = root_scalar(lambda t: t**3 - 2 * t - 5, bracket=[2, 3], method="brentq")
+```
+
+Heavier AMLs (same CPU class, optional): `import pulp`, `from pyomo.environ import ConcreteModel`, `from gekko import GEKKO`, `from casadi import SX, nlpsol`. Prefer Pyomo/PuLP for MIP; CVXPY for convex; CasADi for optimal control.
+
+#### E. Vector acceleration (this host: AVX2 CPU + OpenCL + Vulkan)
+
+**There is no CuPy / Numba-CUDA / JAX-GPU / MLX path on the Radeon 5300M.** Split:
+
+| Import | What it accelerates | This Intel Mac + 5300M |
+| :--- | :--- | :--- |
+| `import math`, `cmath`, `decimal`, `fractions`, `statistics` | Stdlib scalars | **Yes** |
+| `import numpy as np` | ufuncs + BLAS (Apple Accelerate / AVX2, **no AVX-512**) | **Yes** — Swarm core |
+| `import scipy.linalg as la` | LAPACK via the same BLAS | **Yes** (pulled with sklearn) |
+| `from numba import njit, prange, vectorize` | LLVM JIT + SIMD + OpenMP threads | **Yes, CPU only.** `numba.cuda` is NVIDIA |
+| `import pyopencl as cl` | OpenCL kernels on the 5300M | **Yes** — Swarm `gpu/opencl_math.py` |
+| `import kp` | Vulkan compute tensors | **Yes** — MoltenVK (`pip install kp`) |
+| `from usearch.index import Index` | AVX2 FP16 ANN | **Yes** |
+| `import polars as pl` | CPU DataFrames (Rust) | **Yes** — Swarm core |
+| `from sklearn.metrics.pairwise import cosine_similarity` | CPU pairwise metrics | **Yes** — Swarm core |
+| `import cupy`, `from numba import cuda`, `import mlx.core` | CUDA / Apple Silicon Metal | **No** |
+
+```python
+import numpy as np
+from numba import njit, prange, vectorize
+
+# NumPy ufuncs are already vectorized (AVX2 on this i7). Prefer them over Python loops.
+a = np.arange(6, dtype=np.float32).reshape(3, 2)
+elem = np.add(a, a)          # element-wise ufunc
+mat = np.matmul(a, a.T)      # generalized ufunc (gufunc)
+
+@njit(parallel=True, fastmath=True)
+def l2_rows(M):
+    n, d = M.shape
+    out = np.empty(n, dtype=np.float32)
+    for i in prange(n):
+        acc = np.float32(0.0)
+        for j in range(d):
+            v = M[i, j]
+            acc += v * v
+        out[i] = np.sqrt(acc)
+    return out
+
+@vectorize(["float32(float32, float32)"], target="cpu")
+def fused_mul_add(x, y):
+    return x * y + np.float32(1.0)
+```
+
+OpenCL on the discrete GPU (same pattern as Swarm; [PyOpenCL 2026.1 demo](https://documen.tician.de/pyopencl/)):
+
+```python
+import numpy as np
+import pyopencl as cl
+
+ctx = cl.create_some_context()  # pick the AMD Radeon Pro 5300M, not the CPU device
+queue = cl.CommandQueue(ctx)
+mf = cl.mem_flags
+a_np = np.random.default_rng().random(50_000, dtype=np.float32)
+a_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=a_np)
+# Kernel + enqueue: see src/swarm_sdk/gpu/opencl_math.py
+```
+
+Vulkan path stays `import kp` / `import vulkan as vk` (section 3). Do not set Numba `target="cuda"`.
+
+#### F. Tool-Integrated Reasoning (TIR) Sandbox for Math Models
 Math LLMs generate Python code inside Markdown blocks (````python ... ````) to compute intermediate steps. Here is the standard execution wrapper used to safely execute generated code:
 
 ```python
@@ -690,11 +794,21 @@ def execute_math_code(code_str: str, timeout_sec: int = 5) -> str:
         "__builtins__": __builtins__,
         "sp": sp,
         "sympy": sp,
+        "Eq": sp.Eq,
         "np": np,
         "numpy": np,
         "mp": mp,
-        "math": __import__("math")
+        "math": __import__("math"),
+        "cmath": __import__("cmath"),
+        "la": la,
+        "opt": opt,
     }
+    try:
+        import cvxpy as cp
+
+        exec_globals["cp"] = cp
+    except ImportError:
+        pass
     try:
         with contextlib.redirect_stdout(stdout_buffer):
             exec(code_str, exec_globals)
@@ -705,8 +819,10 @@ def execute_math_code(code_str: str, timeout_sec: int = 5) -> str:
 
 ### 11.2 C / C++ High-Performance Math Libraries
 When building native Vulkan compute shaders or preprocessing pipelines:
-* **Apple Accelerate Framework** (`#include <Accelerate/Accelerate.h>`): BLAS, LAPACK, vDSP (FFT, convolution), and vecLib (vectorized transcendentals via Intel AVX2).
+* **Apple Accelerate Framework** (`#include <Accelerate/Accelerate.h>`): BLAS, LAPACK, vDSP (FFT, convolution), and vecLib (vectorized transcendentals via Intel **AVX2**, not AVX-512). NumPy/SciPy on this Mac link here.
 * **Eigen 3** (`#include <Eigen/Dense>`): C++ template library for linear algebra, matrices, and geometry.
+* **OpenCL C** (`__kernel void …` via PyOpenCL): vector/matrix kernels on the 5300M — same path as Swarm `opencl_math.py`.
+* **Do not** pull Intel MKL-only or CUDA headers (`cublas`, `cupy`) for this laptop.
 
 ---
 
@@ -769,9 +885,13 @@ By pairing our discrete **AMD Radeon Pro 5300M (Vulkan0)** running **BGE-M3** wi
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **USearch** | Search Library | In-memory / Mmap | **Native AVX2 + FP16** | **Semantic caching & fast in-memory similarity** | **< 0.5 ms** |
 | **LanceDB** | Embedded Database | Disk-based (Lance) | **Native via Rust** | **Persistent codebase indexing (>100k chunks)** | **~ 2.5 ms** |
-| **Faiss** | Search Library | In-memory | Native AVX2 / BLAS | Massive vector clusters, IVF, Product Quantization | **~ 1.0 ms** |
+| **sqlite-vec** | SQLite extension | Disk SQLite, int8 columns + FTS5 | CPU int8 | **Swarm default** persistent memory + keyword hybrid | **~ 1–3 ms** |
+| **DuckDB VSS** | SQL extension | In-process DuckDB, HNSW on `FLOAT[n]` | CPU HNSW | SQL over vectors (`INSTALL vss`); SQLAlchemy can sit on DuckDB | **~ 1–4 ms** |
+| **pgvector** | Postgres extension | PostgreSQL heap + HNSW/IVFFlat | CPU | Durable SQL + SQLAlchemy; not a GPU index | **~ 2–8 ms** |
+| **Faiss (CPU)** | Search Library | In-memory | Native AVX2 / BLAS | Massive vector clusters, IVF, Product Quantization | **~ 1.0 ms** |
 | **HNSWLib** | Search Library | In-memory | Native AVX2 | Fast, lightweight HNSW graph indexing | **~ 0.8 ms** |
-| **ChromaDB** | Embedded Database | SQLite + HNSW | Standard | Rapid Python prototyping and LangChain integration | **~ 5.0 ms** |
+| **ChromaDB** | Embedded Database | SQLite + hnswlib in RAM | Standard | Rapid Python prototyping; **no GPU ANN index** | **~ 5.0 ms** |
+| **OpenClVecStore** | Swarm brute-force | Host RAM, OpenCL top-k | OpenCL on 5300M | GPU search without an ANN database (small N) | **depends on N** |
 
 ---
 
@@ -900,6 +1020,49 @@ To expand this capability across all development workflows on this Mac:
 
 ---
 
+### 12.5 GPU Vector Databases vs MoltenVK (this host)
+
+**There is no shipped ANN database that keeps HNSW/CAGRA on the Radeon 5300M via MoltenVK.** Molten accelerates **embeddings** (Vulkan / llama.cpp) and **brute-force top-k** (OpenCL in Swarm). The graph index stays on the CPU.
+
+Split that is known to work here:
+
+1. **Embed on Vulkan0** — BGE-M3 / llama.cpp on the 5300M (4 GB GDDR6).
+2. **Index on CPU** — USearch (AVX2 + FP16), LanceDB, sqlite-vec, DuckDB VSS, or pgvector.
+3. **Optional GPU search** — Swarm `OpenClVecStore` (`vectorstore.backend: opencl`): OpenCL inner-product top-k, not an ANN product.
+
+Swarm default: `vectorstore.backend: sqlite-vec` (int8 + FTS5 hybrid). Do not set Qdrant/Milvus/Faiss **GPU** flags on this Mac.
+
+#### Products that look like “GPU vector DB” and fail on this machine
+
+| Product | What “GPU” actually is | This Intel Mac + MoltenVK |
+| :--- | :--- | :--- |
+| **Milvus GPU** (`GPU_CAGRA`, `GPU_IVF_FLAT`, `GPU_IVF_PQ`, `GPU_BRUTE_FORCE`) | NVIDIA **CUDA** / RAPIDS CAGRA; Linux; NVIDIA driver; compute capability 6.0–9.0 | **No.** [GPU prereqs](https://milvus.io/docs/prerequisite-gpu.md), [GPU index overview](https://milvus.io/docs/gpu-index-overview.md) |
+| **Qdrant GPU** (v1.13+) | Vulkan inside **Linux Docker**: `gpu-nvidia-latest` or `gpu-amd-latest` (**ROCm**, `/dev/kfd` + `/dev/dri`) | **No.** Not MoltenVK, not Docker Desktop AMD. [Running with GPU](https://qdrant.tech/documentation/ops-configuration/running-with-gpu) |
+| **Qdrant (embedded / CPU)** | `QdrantClient(path=…)` in Swarm; optional **scalar int8** | **Yes, CPU only.** Swarm comment: GPU indexing is a CUDA/ROCm server build, not this client |
+| **Faiss GPU** (`index_cpu_to_gpu`) | NVIDIA **CUDA** (`faiss-gpu`) | **No.** Swarm `vectorstore.gpu` is ignored on Radeon / MoltenVK / OpenCL |
+| **Chroma “GPU”** | No GPU index. Local executor = **hnswlib in RAM** + SQLite | **CPU only.** A GPU embedder you pass in does not put HNSW on the 5300M |
+| **DuckDB VSS** | CPU **HNSW** on fixed-size `ARRAY` / `FLOAT[n]` | **Yes, CPU SQL.** [`INSTALL vss`](https://duckdb.org/docs/stable/core_extensions/vss.html) |
+| **duckdb-gpudb** | GPU **SQL** (GROUP BY, joins, top-k aggregations), not ANN | **No here.** Apple Silicon **Metal** or NVIDIA **CUDA** only. [gpudb](https://duckdb.org/community_extensions/extensions/gpudb) |
+| **SQLAlchemy + DuckDB** | ORM + in-process SQL | **Yes** for tables. Vectors = DuckDB VSS on CPU. Adds no GPU ANN |
+| **pgvector** | CPU HNSW / IVFFlat in PostgreSQL | **Yes, CPU.** SQLAlchemy talks to it |
+| **pg_cuvs / PGPU** | NVIDIA **cuVS / CUDA** sidecar on top of pgvector | **No.** Linux + NVIDIA ([pg_cuvs](https://github.com/pg-cuvs/pg_cuvs)) |
+| **RasterDB** (research) | DuckDB + **Vulkan SQL** (scan/join/agg), CUDA-free | **Not a vector DB.** Linux + RasterDF; not a macOS MoltenVK ANN store |
+
+Qdrant’s GPU path uses Vulkan, but only through those Linux images. MoltenVK on macOS is a different stack (Metal translation for llama.cpp / NCNN / FFmpeg), not Qdrant’s `gpu-amd` ROCm container.
+
+#### Decision for Swarm on this Mac
+
+| Goal | Backend |
+| :--- | :--- |
+| Persistent memory + keyword hybrid | `sqlite-vec` (default) |
+| GPU brute-force search | `opencl` (`OpenClVecStore`) |
+| Fast in-memory semantic cache | USearch (CPU AVX2) + Vulkan embeddings |
+| Disk RAG over the repo | LanceDB (CPU) + Vulkan embeddings |
+| SQL over vectors | DuckDB VSS or pgvector (CPU); SQLAlchemy optional |
+| Cloud / NVIDIA box | Milvus GPU, Qdrant GPU, Faiss-GPU, pg_cuvs — **not this laptop** |
+
+---
+
 
 ## 13. Extended MoltenVK Utilizations (Beyond LLM Text)
 
@@ -997,5 +1160,13 @@ ffmpeg -init_hw_device vulkan=vk:0 -hwaccel vulkan \
 | **CoT Reasoning** | Serve DeepSeek-R1-1.5B | `./build-vulkan/bin/llama-server -m DeepSeek-R1-Distill-Qwen-1.5B-Q5_K_M.gguf --device Vulkan0 -ngl 99 --port 8082 -c 4096` |
 | **Speech-to-Text** | Whisper.cpp on Vulkan | `./whisper.cpp/build/bin/whisper-cli -m models/ggml-medium.en-q5_0.bin -f audio.wav` |
 | **Diffusion** | Stable Diffusion Vulkan | `./stable-diffusion.cpp/build/bin/sd -m sd-v1-5.q4_0.gguf -p "prompt" -o out.png` |
-| **Vector DB** | Ultra-Fast Similarity Search | `from usearch.index import Index; idx = Index(ndim=1024, metric='cos')` |
-| **Symbolic Math** | Solve Equations & Proofs | `import sympy as sp; sp.solve(...)` |
+| **Vector DB (CPU ANN)** | USearch / sqlite-vec / LanceDB / DuckDB VSS | `from usearch.index import Index; idx = Index(ndim=1024, metric='cos')` |
+| **Vector search (OpenCL)** | Swarm brute-force on 5300M | `vectorstore.backend: opencl` — not Milvus/Qdrant/Chroma GPU |
+| **Do not use here** | Milvus GPU, Qdrant GPU, Faiss-GPU, pg_cuvs | NVIDIA CUDA or Linux ROCm Docker; **not MoltenVK** |
+| **Symbolic Math** | Solve / ODE / numeric | `from sympy import Eq, dsolve, linsolve, nsolve, lambdify` |
+| **Convex equations** | CPU QP / LP | `import cvxpy as cp; x = cp.Variable(); cp.Problem(...).solve()` |
+| **SciPy FFT** | DCT / FFT (explicit submodule) | `from scipy.fft import fft, dct, idct` |
+| **NumPy ufuncs** | AVX2 vector math | `import numpy as np; np.add(a, b); np.matmul(A, B)` |
+| **Numba JIT** | CPU SIMD + `prange` | `from numba import njit, prange` — **not** `numba.cuda` |
+| **PyOpenCL** | Vector kernels on 5300M | `import pyopencl as cl; ctx = cl.create_some_context()` |
+| **Kompute** | Vulkan tensors | `import kp; mgr = kp.Manager(0)` |

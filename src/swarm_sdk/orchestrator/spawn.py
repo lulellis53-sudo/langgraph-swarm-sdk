@@ -47,10 +47,14 @@ Available agents (name — role):
 
 Reply with JSON only, shaped like:
 {{"steps": [{{"id": "S1", "title": "...", "description": "...", "agent": "<AgentName>",
-"depends_on": [], "inputs": []}}]}}
+"task": "", "files": [], "depends_on": [], "inputs": []}}]}}
 
 Rules: small parallel steps; declare only real dependencies in depends_on; inputs lists
-the step ids whose outputs this step needs; use only the agent names above."""
+the step ids whose outputs this step needs; use only the agent names above.
+task is an agent.yaml task id for that agent (empty if any). files are exclusive
+relative write-paths. Split Coder work into sibling steps with disjoint files so
+they share a wave; never claim the same write-path in parallel; keep a module's
+tests in the same Coder step as its production files."""
 
 
 def _model_name(manifest: AgentManifest) -> str:
@@ -131,7 +135,7 @@ async def spawn(
             last_error = exc
             continue
         try:
-            _validate_agents(plan, manifests)
+            _validate_plan(plan, manifests)
         except ValueError as exc:
             last_error = exc
             continue
@@ -140,18 +144,17 @@ async def spawn(
     return _fallback_plan(goal, manifests)
 
 
-def _validate_agents(plan: Plan, manifests: dict[str, AgentManifest]) -> None:
-    """Cross-check a parsed plan against the loaded manifests and dep ordering.
+def _validate_plan(plan: Plan, manifests: dict[str, AgentManifest]) -> None:
+    """Cross-check a parsed plan against manifests, deps, tasks, and files.
 
     Args:
         plan: The parsed candidate plan.
-        manifests: Allowed agent names.
+        manifests: Allowed agent names and their task ids.
 
     Raises:
-        ValueError: When a step references an unknown agent, or a dependency
-            points forward (to a step not yet defined) — plans must list steps
-            in an order where every dependency appears before its dependents,
-            which :meth:`Plan.waves` relies on.
+        ValueError: Unknown agent, unknown task id, a dependency that points
+            forward (to a step not yet defined), a cycle, overlapping claimed
+            files in a wave, or unscoped parallel Coder steps.
     """
     unknown = [s.agent for s in plan.steps if s.agent not in manifests]
     if unknown:
@@ -162,6 +165,13 @@ def _validate_agents(plan: Plan, manifests: dict[str, AgentManifest]) -> None:
         if missing:
             raise ValueError(f"step {step.id} depends on unknown or later step {missing}")
         known.add(step.id)
+        if step.task:
+            task_ids = {spec.id for spec in manifests[step.agent].tasks}
+            if task_ids and step.task not in task_ids:
+                raise ValueError(
+                    f"step {step.id} task {step.task!r} is not in {step.agent} agent.yaml"
+                )
+    plan.assert_file_partition()
 
 
 def make_factory(

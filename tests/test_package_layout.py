@@ -65,6 +65,16 @@ def test_import_execution_and_gpu() -> None:
     assert acceleration_report is not None
 
 
+def test_import_numpy_polars_sklearn() -> None:
+    import numpy as np
+    import polars as pl
+    import sklearn
+
+    assert np.__version__
+    assert pl.__version__
+    assert sklearn.__version__
+
+
 def test_import_core_domain() -> None:
     from swarm_sdk.core.swarm import SwarmSDK
 

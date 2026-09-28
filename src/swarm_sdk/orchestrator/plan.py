@@ -7,11 +7,41 @@ interdependencies and run in parallel (see :mod:`swarm_sdk.orchestrator.graph`).
 
 Token-saving note: a step receives only the outputs of the step ids listed in
 ``inputs`` (defaulting to ``depends_on``), never the full transcript.
+
+Coder parallelism: sibling Coder steps in the same wave must claim disjoint
+``files`` so two workers never write the same path concurrently.
 """
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pathlib import PurePosixPath
+
+from pydantic import BaseModel, Field, field_validator
+
+#: Agent name that owns write-scoped implementation steps.
+CODER_AGENT = "Coder"
+
+
+def normalize_claimed_file(path: str) -> str:
+    """Normalize a step's write-path to a relative POSIX path.
+
+    Args:
+        path: Claimed file path from the plan JSON (any OS separator).
+
+    Returns:
+        A relative POSIX path with ``.`` collapsed and duplicates left to the
+        caller to unique.
+
+    Raises:
+        ValueError: When the path is empty, absolute, or contains ``..``.
+    """
+    raw = path.strip().replace("\\", "/")
+    if not raw:
+        raise ValueError("claimed file path must be non-empty")
+    parsed = PurePosixPath(raw)
+    if parsed.is_absolute() or any(part == ".." for part in parsed.parts):
+        raise ValueError(f"claimed file must be a relative path without '..': {path}")
+    return str(parsed)
 
 
 class PlanStep(BaseModel):
@@ -26,6 +56,10 @@ class PlanStep(BaseModel):
             beyond its declared ``inputs``.
         agent: Name of the agent that owns this step. Must exist in the loaded
             ``Agents/{Name}/agent.yaml`` manifests.
+        task: Optional ``agent.yaml`` task id (e.g. ``"implement_in_files"``).
+            Empty means "any task that agent accepts".
+        files: Exclusive relative write-paths this step may change. Required
+            and disjoint when two or more Coder steps share a wave.
         depends_on: Step ids that must complete (with status ``ok``) before this
             step may start. Defines the wave barrier structure.
         inputs: Step ids whose outputs are injected into this step's prompt.
@@ -37,8 +71,21 @@ class PlanStep(BaseModel):
     title: str
     description: str
     agent: str
+    task: str = ""
+    files: list[str] = Field(default_factory=list)
     depends_on: list[str] = Field(default_factory=list)
     inputs: list[str] = Field(default_factory=list)
+
+    @field_validator("files")
+    @classmethod
+    def _normalize_files(cls, value: list[str]) -> list[str]:
+        """Collapse separators, reject escapes, and unique while preserving order."""
+        seen: list[str] = []
+        for item in value:
+            path = normalize_claimed_file(item)
+            if path not in seen:
+                seen.append(path)
+        return seen
 
 
 class Plan(BaseModel):
@@ -102,6 +149,44 @@ class Plan(BaseModel):
             levels.append(level)
             done.update(s.id for s in level)
         return levels
+
+    def assert_file_partition(self) -> None:
+        """Reject overlapping write-paths and unscoped parallel Coder steps.
+
+        Call before executing a plan so two workers cannot race on the same
+        file. Topology is still :meth:`waves`; this is a write-set check.
+
+        Raises:
+            ValueError: When two steps in the same wave claim the same path, a
+                claimed path is invalid, or two or more Coder steps share a
+                wave without each declaring a non-empty ``files`` list.
+        """
+        for wave in self.waves():
+            _assert_wave_files(wave)
+
+
+def _assert_wave_files(wave: list[PlanStep]) -> None:
+    """Check one wave's claimed files for overlap and Coder scoping.
+
+    Args:
+        wave: Mutually independent steps (one topological level).
+
+    Raises:
+        ValueError: Overlapping claims, or parallel Coder steps with no files.
+    """
+    claimed: dict[str, str] = {}
+    for step in wave:
+        for path in step.files:
+            owner = claimed.get(path)
+            if owner is not None:
+                raise ValueError(f"parallel steps {owner} and {step.id} both claim {path}")
+            claimed[path] = step.id
+    coders = [step for step in wave if step.agent == CODER_AGENT]
+    if len(coders) < 2:
+        return
+    missing = [step.id for step in coders if not step.files]
+    if missing:
+        raise ValueError(f"parallel Coder steps must declare disjoint files; unscoped: {missing}")
 
 
 class StepOutput(BaseModel):

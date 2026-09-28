@@ -97,3 +97,24 @@ def test_run_plan_without_plan_id_returns_pollable_id(
     status = servicer.PlanStatus(swarm_pb2.PlanHandle(plan_id=result.plan_id), None)
     assert status.status == "done"
     assert status.steps_done == 1
+
+
+def test_grpc_plan_handle_roundtrips_files_and_task() -> None:
+    from swarm_sdk.orchestrator.plan import Plan, PlanStep
+    from swarm_sdk.serving.grpc import _from_handle, _to_handle
+
+    plan = Plan(
+        steps=[
+            PlanStep(
+                id="S1",
+                title="t",
+                description="d",
+                agent="Coder",
+                task="implement_in_files",
+                files=["src/a.py", "tests/test_a.py"],
+            )
+        ]
+    )
+    restored = _from_handle(_to_handle(plan))
+    assert restored.steps[0].task == "implement_in_files"
+    assert restored.steps[0].files == ["src/a.py", "tests/test_a.py"]

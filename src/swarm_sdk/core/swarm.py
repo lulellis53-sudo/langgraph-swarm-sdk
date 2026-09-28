@@ -108,6 +108,10 @@ def open_store(settings: Settings) -> MemoryStore:
         from swarm_sdk.memory.opencl_store import OpenClVecStore
 
         return OpenClVecStore(settings.embed_dim)
+    if settings.memory_backend == "mem0":
+        from swarm_sdk.memory.mem0_store import Mem0Store
+
+        return Mem0Store.from_settings(settings)
     return SqliteVecStore(settings.memory_path, settings.embed_dim)
 
 
@@ -235,17 +239,21 @@ class SwarmSDK:
 
     def recall(self, query: str, top_k: int | None = None) -> list[MemoryHit]:
         limit = top_k or self.settings.rerank_k
-        vector = self.embedder.embed([query], query=True)[0]
         retrieve = max(limit, self.settings.retrieve_k)
-        if self.settings.hybrid_enabled and self.file_config.hybrid_search.enabled:
-            return hybrid_search(
-                query,
-                self.memory,
-                vector,
-                retrieve_k=retrieve,
-                config=self.file_config.hybrid_search.model_copy(update={"final_k": limit}),
-            )
-        hits = self.memory.search(vector, retrieve)
+        search_text = getattr(self.memory, "search_text", None)
+        if callable(search_text):
+            hits = list(search_text(query, retrieve))
+        else:
+            vector = self.embedder.embed([query], query=True)[0]
+            if self.settings.hybrid_enabled and self.file_config.hybrid_search.enabled:
+                return hybrid_search(
+                    query,
+                    self.memory,
+                    vector,
+                    retrieve_k=retrieve,
+                    config=self.file_config.hybrid_search.model_copy(update={"final_k": limit}),
+                )
+            hits = self.memory.search(vector, retrieve)
         if not hits:
             return []
         order = self.reranker.rerank(query, [hit.text for hit in hits])
@@ -369,6 +377,8 @@ class SwarmSDK:
                 [researcher, coder, reviewer],
                 default_active_agent="researcher",
             )
+            # Short-term: checkpointer (active_agent + messages per thread_id).
+            # Long-term recall is SwarmSDK.memory (sqlite-vec / mem0 / …), not this store.
             self._compiled = cast(CompiledGraph, workflow.compile(checkpointer=InMemorySaver()))
         if self._compiled is None:
             raise RuntimeError("swarm graph was not compiled")

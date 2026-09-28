@@ -17,3 +17,4 @@ Shared suite and runners: [`benchmark/`](../../../benchmark/) (see [`benchmark/R
 - Prefer pointing at existing `benchmark/Tasks/` or `benchmark/sql_pro/` cases over duplicating harnesses.
 - Document the exact command, seed, and environment for any number you record.
 - Hand measurement work to Optimizer / MLSpecialist when the task is pure perf or model eval; keep this folder for Coder-owned acceptance checks.
+- Parallel Coder waves: each step claims disjoint `files`; a module's tests stay in the same step as its production file. Engine rejects overlapping claims (`Plan.assert_file_partition`).

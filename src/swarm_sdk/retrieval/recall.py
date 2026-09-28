@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from swarm_sdk.memory.base import MemoryStore
+from swarm_sdk.memory.base import MemoryHit, MemoryStore
 from swarm_sdk.retrieval.embeddings import Embedder, dedupe_texts
 from swarm_sdk.retrieval.hybrid import HybridSearchConfig, hybrid_search
 from swarm_sdk.retrieval.rerank import Reranker
@@ -24,7 +24,7 @@ def recall_texts(
 
     Args:
         query: User / router query text.
-        store: Vector (and optional keyword) memory store.
+        store: Vector memory, or a store with ``search_text`` (Mem0).
         embedder: Embedder used for query and passage vectors.
         reranker: Cross-encoder or lexical reranker.
         retrieve_k: Candidate count from dense/hybrid search.
@@ -36,21 +36,26 @@ def recall_texts(
     Returns:
         Up to ``rerank_k`` passage texts, highest relevance first.
     """
-    vector = embedder.embed([query], query=True)[0]
-    if hybrid_enabled and hybrid is not None and hybrid.enabled:
-        hits = hybrid_search(
-            query,
-            store,
-            vector,
-            retrieve_k=retrieve_k,
-            config=hybrid,
-        )
-        texts = [hit.text for hit in hits]
+    search_text = getattr(store, "search_text", None)
+    if callable(search_text):
+        hits = list(search_text(query, retrieve_k))
+        texts = [hit.text for hit in hits if isinstance(hit, MemoryHit)]
     else:
-        hits = store.search(vector, retrieve_k)
-        if not hits:
-            return []
-        texts = [hit.text for hit in hits]
+        vector = embedder.embed([query], query=True)[0]
+        if hybrid_enabled and hybrid is not None and hybrid.enabled:
+            hits = hybrid_search(
+                query,
+                store,
+                vector,
+                retrieve_k=retrieve_k,
+                config=hybrid,
+            )
+            texts = [hit.text for hit in hits]
+        else:
+            hits = store.search(vector, retrieve_k)
+            if not hits:
+                return []
+            texts = [hit.text for hit in hits]
 
     if not texts:
         return []

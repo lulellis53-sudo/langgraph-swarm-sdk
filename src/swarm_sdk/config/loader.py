@@ -46,6 +46,15 @@ class QdrantStoreConfig(BaseModel):
     collection: str = "swarm_memory"
 
 
+class Mem0StoreConfig(BaseModel):
+    """Hosted Mem0 Platform adapter (``vectorstore.backend: mem0``)."""
+
+    api_key_env: str = "MEM0_API_KEY"
+    user_id: str = "swarm"
+    agent_id: str = "swarm-sdk"
+    infer: bool = False
+
+
 class VectorStoreConfig(BaseModel):
     backend: MemoryBackend = "sqlite-vec"
     path: str = "swarm.sqlite"
@@ -57,6 +66,7 @@ class VectorStoreConfig(BaseModel):
     # Allow disabling OpenCL offloading without uninstalling pyopencl.
     opencl_enabled: bool = True
     qdrant: QdrantStoreConfig = Field(default_factory=QdrantStoreConfig)
+    mem0: Mem0StoreConfig = Field(default_factory=Mem0StoreConfig)
 
 
 class RerankConfig(BaseModel):
@@ -196,6 +206,10 @@ def settings_from_file(file_cfg: SwarmFileConfig, env: Settings | None = None) -
         "rerank_model": file_cfg.rerank.model,
         "memory_backend": file_cfg.vectorstore.backend,
         "memory_path": file_cfg.vectorstore.path,
+        "mem0_api_key_env": file_cfg.vectorstore.mem0.api_key_env,
+        "mem0_user_id": file_cfg.vectorstore.mem0.user_id,
+        "mem0_agent_id": file_cfg.vectorstore.mem0.agent_id,
+        "mem0_infer": file_cfg.vectorstore.mem0.infer,
         "embed_batch_size": file_cfg.embedding.batch_size,
         "hybrid_enabled": file_cfg.hybrid_search.enabled,
         "vector_gpu": file_cfg.vectorstore.gpu,
@@ -225,6 +239,7 @@ __all__ = [
     "EmbeddingConfig",
     "ParallelismConfig",
     "ProviderEntry",
+    "Mem0StoreConfig",
     "QdrantStoreConfig",
     "RerankConfig",
     "RouterConfig",

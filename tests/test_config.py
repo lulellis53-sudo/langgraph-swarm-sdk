@@ -17,6 +17,8 @@ def test_load_swarm_config_defaults() -> None:
     assert cfg.embedding.quantization == "int8"
     assert cfg.vectorstore.quantization == "int8"
     assert cfg.embedding.model == "sentence-transformers/all-MiniLM-L6-v2"
+    assert cfg.vectorstore.mem0.api_key_env == "MEM0_API_KEY"
+    assert cfg.vectorstore.mem0.infer is False
 
 
 def test_env_overrides_file_defaults() -> None:
@@ -34,5 +36,11 @@ def test_agent_manifests_and_coordination() -> None:
     assert manifests["Refactor"].role == "safe_incremental_refactor"
     assert manifests["Coder"].role == "implement_changes"
     assert manifests["Coder"].name == "Coder"
+    assert {t.id for t in manifests["Coder"].tasks} >= {
+        "implement_feature",
+        "implement_in_files",
+        "fix_regression",
+        "add_tests",
+    }
     assert manifests["Researcher"].model == "openai:gpt-4o-mini"
     assert validate_coordination(root) == []

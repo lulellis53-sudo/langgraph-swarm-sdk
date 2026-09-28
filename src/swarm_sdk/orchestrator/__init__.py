@@ -1,7 +1,13 @@
 """Parallel multi-agent orchestration: plan → spawn → LangGraph execution."""
 
 from swarm_sdk.orchestrator.graph import build_graph, run_plan
-from swarm_sdk.orchestrator.plan import Plan, PlanResult, PlanStep, StepOutput, UsageTotals
+from swarm_sdk.orchestrator.plan import (
+    Plan,
+    PlanResult,
+    PlanStep,
+    StepOutput,
+    UsageTotals,
+)
 from swarm_sdk.orchestrator.spawn import make_factory, spawn
 from swarm_sdk.orchestrator.worker import WorkerAgent, role_contract
 

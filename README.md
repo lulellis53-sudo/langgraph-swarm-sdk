@@ -8,7 +8,7 @@ Parallel multi-LLM swarm on [LangGraph Swarm](https://github.com/langchain-ai/la
 - [uv](https://docs.astral.sh/uv/)
 
 ```bash
-uv sync --extra dev --extra faiss --extra qdrant
+uv sync --extra dev --extra faiss --extra qdrant --extra mem0
 ```
 
 Optional **Jupyter Notebook + Jupyter AI** (uses prebuilt `cryptography` wheels; see `[tool.uv]` in `pyproject.toml`):
@@ -19,7 +19,7 @@ uv run python -m ipykernel install --user --name=swarm --display-name="Python (S
 uv run jupyter lab    # or: uv run jupyter notebook
 ```
 
-FastEmbed is the default embedder and reranker. Its default model (`sentence-transformers/all-MiniLM-L6-v2`, MiniLM2) is ONNX INT8 on CPU. Token budgets use **tiktoken** (`cl100k_base`) by default, with optional Hugging Face `tokenizers.Tokenizer` packing. sqlite-vec stores int8 vectors; Qdrant can use scalar int8 when `vectorstore.quantization` is `int8`. FAISS GPU (`vectorstore.gpu: true`) needs a CUDA `faiss-gpu` build and falls back to CPU when that is missing.
+FastEmbed is the default embedder and reranker. Its default model (`sentence-transformers/all-MiniLM-L6-v2`, MiniLM2) is ONNX INT8 on CPU. Token budgets use **tiktoken** (`cl100k_base`) by default, with optional Hugging Face `tokenizers.Tokenizer` packing. sqlite-vec stores int8 vectors; Qdrant can use scalar int8 when `vectorstore.quantization` is `int8`. Set `vectorstore.backend: mem0` (optional extra `mem0`) to use [Mem0](https://docs.mem0.ai/) Platform `MemoryClient` for long-term recall (`MEM0_API_KEY`; env var *name* only in YAML). FAISS GPU (`vectorstore.gpu: true`) needs a CUDA `faiss-gpu` build and falls back to CPU when that is missing.
 
 ### GPU acceleration on Intel Mac + AMD Radeon Pro 5300M
 
@@ -48,6 +48,20 @@ vectorstore:
   opencl_enabled: true
 ```
 
+Mem0 Platform long-term memory (optional extra; does not replace the LangGraph checkpointer):
+
+```yaml
+vectorstore:
+  backend: mem0
+  mem0:
+    api_key_env: MEM0_API_KEY
+    user_id: swarm
+    agent_id: swarm-sdk
+    infer: false
+```
+
+`MEM0_API_KEY` lives in `~/.env`. YAML only names the env var.
+
 Inspect the host map and selected backends with:
 
 ```bash
@@ -70,8 +84,8 @@ uv run swarm-grpc
 `swarm_sdk.orchestrator` runs a goal as a parallel multi-agent plan:
 
 1. `spawn(goal, manifests)` — the Orchestrator agent decomposes the goal into a JSON plan (validated by pydantic; falls back to a single-step plan on malformed output).
-2. `run_plan(plan, factory)` — a LangGraph `StateGraph` executes the plan in dependency waves; steps in the same wave run concurrently via `asyncio.gather` (uvloop; the runtime thread pool widens automatically on free-threaded Python 3.14).
-3. Each step is a `WorkerAgent` bound to its `Agents/{Name}/agent.yaml` manifest: model, `think_level`, `effort`, and `token_budget` are pre-selected per agent; the system prompt is the role contract from that agent's `AGENTS.md`; the step prompt carries only its declared `inputs` (dependency outputs), never the whole transcript.
+2. `run_plan(plan, factory)` — a LangGraph `StateGraph` executes the plan in dependency waves; steps in the same wave run concurrently via `bounded_gather` (capped by `parallelism.max_concurrency`; uvloop; the runtime thread pool widens automatically on free-threaded Python 3.14). Sibling Coder steps must claim disjoint `files`.
+3. Each step is a `WorkerAgent` bound to its `Agents/{Name}/agent.yaml` manifest: model, `think_level`, `effort`, and `token_budget` are pre-selected per agent; the system prompt is the role contract from that agent's `AGENTS.md`; the step prompt carries `task`, claimed `files`, and only its declared `inputs` (dependency outputs), never the whole transcript.
 
 Token savings: shared role-contract prompt cached per process, exact + semantic step cache (`SemanticCache`), hard `max_prompt` packing, and per-step usage totals (`prompt_tokens`, `completion_tokens`, `llm_calls`, `cached_calls`) reported in `PlanResult.usage`.
 
@@ -84,7 +98,7 @@ Predefined providers and routes live in [`src/swarm_sdk/agents/config/swarm.yaml
 1. Exact SHA-256 cache, then a cosine semantic cache (default threshold `0.97`).
 2. Router on `think_level: low` with provider fallback and circuit breakers (`GET /v1/health` shows breaker state).
 3. Think-level token caps, then tokenizer budget (system prompt, memories, newest turns; tool text capped).
-4. Hybrid dense + BM25 recall (RRF), dedupe, rerank; only top-k snippets injected. sqlite-vec int8 + optional FTS5 side index.
+4. Hybrid dense + BM25 recall (RRF), or Mem0 `search_text` when `vectorstore.backend: mem0`; then dedupe, rerank; only top-k snippets injected.
 5. Near-duplicate memories dropped before the prompt.
 6. Parallel fan-out with bounded concurrency and JSON briefs; LangGraph handoffs for sequential specialist work.
 

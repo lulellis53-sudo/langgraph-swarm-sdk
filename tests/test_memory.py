@@ -102,6 +102,78 @@ def test_qdrant_roundtrip() -> None:
     _roundtrip(quantized)
 
 
+class FakeMem0:
+    """In-memory stand-in for ``mem0.MemoryClient`` (no network)."""
+
+    def __init__(self) -> None:
+        self.added: list[dict[str, object]] = []
+        self.memories: list[dict[str, object]] = []
+
+    def add(self, messages: object, **kwargs: object) -> object:
+        content = ""
+        if isinstance(messages, list) and messages:
+            first = messages[0]
+            if isinstance(first, dict):
+                raw = first.get("content", "")
+                content = raw if isinstance(raw, str) else str(raw)
+        item = {"id": str(len(self.memories) + 1), "memory": content, "score": 0.91}
+        self.memories.append(item)
+        self.added.append({"messages": messages, **kwargs})
+        return {"results": [item]}
+
+    def search(self, query: str, **kwargs: object) -> object:
+        del query
+        top_k = kwargs.get("top_k", 10)
+        limit = int(top_k) if isinstance(top_k, int) else 10
+        return {"results": self.memories[:limit]}
+
+
+def test_mem0_store_add_and_search_text() -> None:
+    from swarm_sdk.memory.mem0_store import Mem0Store
+
+    fake = FakeMem0()
+    store = Mem0Store(fake, user_id="alice", agent_id="coder", infer=False)
+    row_id = store.add("Q: hike?\nA: weekends", np.zeros(4, dtype=np.float32))
+    assert row_id == 1
+    assert fake.added[0]["user_id"] == "alice"
+    assert fake.added[0]["infer"] is False
+    assert store.search(np.zeros(4, dtype=np.float32), 3) == []
+    hits = store.search_text("hike", 5)
+    assert hits[0].text == "Q: hike?\nA: weekends"
+    assert hits[0].score == pytest.approx(0.91)
+
+
+def test_mem0_from_settings_requires_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    from swarm_sdk.config.settings import Settings
+    from swarm_sdk.memory.mem0_store import Mem0Store
+
+    monkeypatch.delenv("MEM0_API_KEY", raising=False)
+    with pytest.raises(RuntimeError, match="MEM0_API_KEY"):
+        Mem0Store.from_settings(Settings(memory_backend="mem0"))
+
+
+def test_recall_texts_uses_search_text() -> None:
+    from swarm_sdk.memory.mem0_store import Mem0Store
+    from swarm_sdk.retrieval.recall import recall_texts
+    from swarm_sdk.retrieval.rerank import KeywordReranker
+
+    fake = FakeMem0()
+    store = Mem0Store(fake)
+    store.add("Alice hikes on weekends", np.zeros(8, dtype=np.float32))
+    texts = recall_texts(
+        "hikes",
+        store,
+        HashEmbedder(8),
+        KeywordReranker(),
+        retrieve_k=4,
+        rerank_k=2,
+        dedup_threshold=0.98,
+        hybrid_enabled=True,
+    )
+    assert texts
+    assert "hikes" in texts[0]
+
+
 # --- hybrid / tokenize / RRF -------------------------------------------------
 
 

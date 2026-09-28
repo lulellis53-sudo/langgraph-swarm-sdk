@@ -63,7 +63,7 @@ embedding:
   quantization: int8
 
 vectorstore:
-  backend: sqlite-vec         # sqlite-vec | faiss | qdrant | opencl
+  backend: sqlite-vec         # sqlite-vec | faiss | qdrant | opencl | mem0
   path: swarm.sqlite
   retrieve_k: 20
   final_k: 10
@@ -75,6 +75,11 @@ vectorstore:
   qdrant:
     url_env: QDRANT_URL
     collection: swarm_memory
+  mem0:
+    api_key_env: MEM0_API_KEY   # env var *name* only; never a secret value
+    user_id: swarm
+    agent_id: swarm-sdk
+    infer: false                # false = store Q/A as-is (no extra Mem0 LLM extract)
 
 hybrid_search:
   enabled: true

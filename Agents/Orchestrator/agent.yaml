@@ -15,8 +15,9 @@ tasks:
   - id: decompose_goal
     description: >-
       Turn a free-text goal into a JSON plan of small parallel steps for the
-      swarm: each step names one agent, a description, and only the step ids
-      it depends on. Reply with JSON only.
+      swarm: each step names one agent, optional task id, exclusive files,
+      a description, and only the step ids it depends on. Sibling Coder
+      steps must claim disjoint files. Reply with JSON only.
     outputs:
       - plan_json
 

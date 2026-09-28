@@ -13,7 +13,7 @@ from dotenv import dotenv_values
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-MemoryBackend = Literal["sqlite-vec", "faiss", "qdrant", "opencl"]
+MemoryBackend = Literal["sqlite-vec", "faiss", "qdrant", "opencl", "mem0"]
 VectorQuantization = Literal["none", "int8"]
 EmbedBackend = Literal["fastembed", "llama-cpp", "hash"]
 
@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     rerank_model: str = "Xenova/ms-marco-MiniLM-L-6-v2"
     memory_backend: MemoryBackend = "sqlite-vec"
     memory_path: str = "swarm.sqlite"
+    # Mem0 Platform: env var *name* only. Value lives in ~/.env as MEM0_API_KEY.
+    mem0_api_key_env: str = "MEM0_API_KEY"
+    mem0_user_id: str = "swarm"
+    mem0_agent_id: str = "swarm-sdk"
+    mem0_infer: bool = False
     cache_path: str = "swarm-cache.sqlite"
     peer_url: str | None = None
     api_host: str = "127.0.0.1"

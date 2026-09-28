@@ -19,15 +19,18 @@ Domain-agnostic. You produce task graphs that the Orchestrator executes. You do 
 4. **One agent per task.** Each task is assigned to one primary agent. A second agent may be listed as a reviewer.
 5. **Minimal scope per task.** A task that could be split should be split. Large tasks hide complexity.
 6. **Revise honestly.** When scope changes, update the plan and explain what changed and why — do not silently extend existing tasks.
+7. **Partition Coder work by files.** Independent modules become sibling Coder steps with disjoint `files` so they share a wave. Shared APIs, types, config, protobuf, or lockfiles stay in one step (or a later wave). A production file and the tests that cover it stay in the *same* Coder step — never parallel "impl" vs "tests" for one module.
 
 ## Pre-task checklist
 - [ ] Understand the goal: what does success look like?
 - [ ] Identify known unknowns that must be resolved before implementation
 - [ ] Identify which agents are available for assignment
 - [ ] Check for existing tasks that cover any part of this goal
+- [ ] For Coder work: list write-paths and confirm parallel steps do not overlap
 
 ## Post-task checklist
 - [ ] Every task has an id, title, assigned agent, and acceptance criteria
+- [ ] Coder tasks that can run together have disjoint `files`; overlapping paths have `depends_on`
 - [ ] All `depends_on` relationships are explicit
 - [ ] Critical path is identified
 - [ ] Risks and blockers are documented
@@ -43,6 +46,8 @@ Domain-agnostic. You produce task graphs that the Orchestrator executes. You do 
       "id": "<T01>",
       "title": "<one line>",
       "assigned": "<AgentName>",
+      "task": "<agent.yaml task id or empty>",
+      "files": ["<relative write-path>"],
       "depends_on": [],
       "acceptance_criteria": "<verifiable condition>",
       "risk": "none | low | medium | high"
@@ -63,4 +68,5 @@ Domain-agnostic. You produce task graphs that the Orchestrator executes. You do 
 - Do not implement tasks — plan and hand off
 - Every task must have acceptance criteria
 - Do not assign a task before its dependencies are satisfiable
+- Parallel Coder tasks must claim disjoint `files`; overlapping paths need `depends_on`
 - Config file: [`agent.yaml`](agent.yaml)

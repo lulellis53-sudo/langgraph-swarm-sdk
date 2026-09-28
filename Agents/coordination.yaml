@@ -81,6 +81,7 @@ agents:
 
 # Task board — replace with tasks for the active project.
 # Each task must have: id, title, assigned agent(s), depends_on, and status.
+# Coder tasks that share a wave also need disjoint files (and usually task).
 # Example structure:
 #
 # tasks:
@@ -97,21 +98,31 @@ agents:
 #     status: todo
 #
 #   - id: T03
-#     title: "Implement: <feature or fix>"
+#     title: "Implement: module A (exclusive files)"
 #     assigned: [Coder]
+#     task: implement_in_files
+#     files: [src/a.py, tests/test_a.py]
 #     depends_on: [T02]
 #     status: todo
 #
 #   - id: T04
-#     title: "Test: write and run tests for T03"
-#     assigned: [Tester]
-#     depends_on: [T03]
+#     title: "Implement: module B (disjoint files, same wave as T03)"
+#     assigned: [Coder]
+#     task: implement_in_files
+#     files: [src/b.py, tests/test_b.py]
+#     depends_on: [T02]
 #     status: todo
 #
 #   - id: T05
-#     title: "Review: diff review for T03"
+#     title: "Test: write and run tests for T03+T04"
+#     assigned: [Tester]
+#     depends_on: [T03, T04]
+#     status: todo
+#
+#   - id: T06
+#     title: "Review: diff review for T03+T04"
 #     assigned: [Reviewer]
-#     depends_on: [T04]
+#     depends_on: [T05]
 #     status: todo
 
 tasks:

@@ -8,11 +8,13 @@ from pathlib import Path
 import hypothesis.strategies as st
 import pytest
 from hypothesis import assume, given, settings
+from pydantic import ValidationError
 from tests.fakes import Script, ScriptedModel, answer
 
 from swarm_sdk.agents.manifest import AgentManifest
 from swarm_sdk.orchestrator import Plan, PlanStep, make_factory, run_plan, spawn
 from swarm_sdk.orchestrator.graph import build_graph
+from swarm_sdk.orchestrator.plan import normalize_claimed_file
 from swarm_sdk.orchestrator.worker import WorkerAgent, role_contract
 
 
@@ -94,6 +96,8 @@ def test_cycle_via_self_edge_rejected(plan: Plan) -> None:
                 title=s.title,
                 description=s.description,
                 agent=s.agent,
+                task=s.task,
+                files=s.files,
                 depends_on=s.depends_on if s.id != plan.steps[0].id else [s.id],
             )
             for s in plan.steps
@@ -126,6 +130,77 @@ def test_plan_cycle_rejected() -> None:
         plan.waves()
 
 
+def test_normalize_claimed_file() -> None:
+    assert normalize_claimed_file(r"src\foo.py") == "src/foo.py"
+    assert normalize_claimed_file("./src/foo.py") == "src/foo.py"
+    with pytest.raises(ValueError):
+        normalize_claimed_file("/abs/foo.py")
+    with pytest.raises(ValueError):
+        normalize_claimed_file("../secret.py")
+    with pytest.raises(ValueError):
+        normalize_claimed_file("  ")
+
+
+def test_plan_step_files_normalized_and_unique() -> None:
+    step = PlanStep(
+        id="S1",
+        title="t",
+        description="d",
+        agent="Coder",
+        files=["src/a.py", r"src\a.py", "./src/b.py"],
+    )
+    assert step.files == ["src/a.py", "src/b.py"]
+    with pytest.raises(ValidationError):
+        PlanStep(id="S1", title="t", description="d", agent="Coder", files=["../x.py"])
+
+
+def test_file_partition_rejects_overlap() -> None:
+    plan = Plan(
+        steps=[
+            PlanStep(id="S1", title="a", description="a", agent="Coder", files=["src/a.py"]),
+            PlanStep(id="S2", title="b", description="b", agent="Coder", files=["src/a.py"]),
+        ]
+    )
+    with pytest.raises(ValueError, match="both claim"):
+        plan.assert_file_partition()
+
+
+def test_file_partition_rejects_unscoped_parallel_coders() -> None:
+    plan = Plan(
+        steps=[
+            PlanStep(id="S1", title="a", description="a", agent="Coder"),
+            PlanStep(id="S2", title="b", description="b", agent="Coder"),
+        ]
+    )
+    with pytest.raises(ValueError, match="unscoped"):
+        plan.assert_file_partition()
+
+
+def test_file_partition_allows_disjoint_coders() -> None:
+    plan = Plan(
+        steps=[
+            PlanStep(
+                id="S1",
+                title="a",
+                description="a",
+                agent="Coder",
+                task="implement_in_files",
+                files=["src/a.py", "tests/test_a.py"],
+            ),
+            PlanStep(
+                id="S2",
+                title="b",
+                description="b",
+                agent="Coder",
+                task="implement_in_files",
+                files=["src/b.py", "tests/test_b.py"],
+            ),
+        ]
+    )
+    plan.assert_file_partition()
+    assert [sorted(s.id for s in wave) for wave in plan.waves()] == [["S1", "S2"]]
+
+
 def test_manifest_new_fields() -> None:
     m = manifest(effort="high", api_key_env="SWARM_CODER_API_KEY")
     assert m.effort == "high"
@@ -155,6 +230,22 @@ async def test_worker_run_uses_role_and_counts_tokens(tmp_path: Path) -> None:
     assert "prior output" in script.seen[-1]
 
 
+async def test_worker_prompt_includes_task_and_files(tmp_path: Path) -> None:
+    script = Script([answer("done-ok")])
+    model = ScriptedModel(script=script)
+    agent = WorkerAgent(manifest("Coder"), agents_root=str(tmp_path), model_override=model)
+    await agent.run(
+        "S1",
+        "do the thing",
+        {},
+        files=["src/a.py"],
+        task="implement_in_files",
+    )
+    seen = script.seen[-1]
+    assert "task: implement_in_files" in seen
+    assert "- src/a.py" in seen
+
+
 async def test_spawn_validates_and_falls_back() -> None:
     manifests = {"Orchestrator": manifest("Orchestrator"), "Coder": manifest("Coder")}
     good_json = '{"steps": [{"id": "S1", "title": "t", "description": "d", "agent": "Coder"}]}'
@@ -172,6 +263,49 @@ async def test_spawn_validates_and_falls_back() -> None:
     )
     plan = await spawn("goal", manifests, model_override=ScriptedModel(script=unknown_agent))
     assert plan.steps[0].agent in manifests
+
+
+async def test_spawn_rejects_overlapping_coder_files() -> None:
+    manifests = {
+        "Orchestrator": manifest("Orchestrator"),
+        "Coder": manifest(
+            "Coder",
+            tasks=[{"id": "implement_in_files", "description": "scoped edit"}],
+        ),
+    }
+    overlap = (
+        '{"steps": ['
+        '{"id": "S1", "title": "a", "description": "a", "agent": "Coder",'
+        ' "task": "implement_in_files", "files": ["src/a.py"]},'
+        '{"id": "S2", "title": "b", "description": "b", "agent": "Coder",'
+        ' "task": "implement_in_files", "files": ["src/a.py"]}'
+        "]}"
+    )
+    script = Script([answer(overlap), answer(overlap)])
+    plan = await spawn("goal", manifests, model_override=ScriptedModel(script=script))
+    assert len(plan.steps) == 1
+
+
+async def test_spawn_accepts_disjoint_coder_files() -> None:
+    manifests = {
+        "Orchestrator": manifest("Orchestrator"),
+        "Coder": manifest(
+            "Coder",
+            tasks=[{"id": "implement_in_files", "description": "scoped edit"}],
+        ),
+    }
+    good = (
+        '{"steps": ['
+        '{"id": "S1", "title": "a", "description": "a", "agent": "Coder",'
+        ' "task": "implement_in_files", "files": ["src/a.py"]},'
+        '{"id": "S2", "title": "b", "description": "b", "agent": "Coder",'
+        ' "task": "implement_in_files", "files": ["src/b.py"]}'
+        "]}"
+    )
+    plan = await spawn("goal", manifests, model_override=ScriptedModel(script=Script([answer(good)])))
+    assert [s.id for s in plan.steps] == ["S1", "S2"]
+    assert plan.steps[0].files == ["src/a.py"]
+    assert plan.steps[0].task == "implement_in_files"
 
 
 async def test_run_plan_executes_waves_in_parallel() -> None:
@@ -202,6 +336,35 @@ async def test_run_plan_executes_waves_in_parallel() -> None:
     assert result.usage.llm_calls == 3
     assert result.usage.prompt_tokens > 0
     assert wall < 5
+
+
+async def test_run_plan_parallel_coders_with_disjoint_files() -> None:
+    manifests = {"Coder": manifest("Coder")}
+    script = Script([answer("ok-a"), answer("ok-b")])
+    model = ScriptedModel(script=script)
+    plan = Plan(
+        steps=[
+            PlanStep(
+                id="S1",
+                title="a",
+                description="a",
+                agent="Coder",
+                files=["src/a.py"],
+                task="implement_in_files",
+            ),
+            PlanStep(
+                id="S2",
+                title="b",
+                description="b",
+                agent="Coder",
+                files=["src/b.py"],
+                task="implement_in_files",
+            ),
+        ]
+    )
+    result = await run_plan(plan, make_factory(manifests, model_override=model), max_concurrency=1)
+    assert set(result.outputs) == {"S1", "S2"}
+    assert result.usage.llm_calls == 2
 
 
 def test_build_graph_compiles() -> None:
