@@ -69,6 +69,11 @@ agents:
     contract: Agents/Optimizer/AGENTS.md
     manifest: Agents/Optimizer/agent.yaml
 
+  - name: Refactor
+    role: safe incremental refactors
+    contract: Agents/Refactor/AGENTS.md
+    manifest: Agents/Refactor/agent.yaml
+
 # Task board — replace with tasks for the active project.
 # Each task must have: id, title, assigned agent(s), depends_on, and status.
 # Example structure:

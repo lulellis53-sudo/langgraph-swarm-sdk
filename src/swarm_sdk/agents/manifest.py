@@ -30,7 +30,17 @@ class AgentManifest(BaseModel):
     role: str
     langgraph_node: LangGraphNode = None
     think_level: ThinkLevel = "medium"
+    effort: str | None = Field(
+        default=None,
+        pattern="^(low|medium|high)$",
+        description="Reasoning effort hint passed to the provider when supported.",
+    )
     model: str | None = None
+    api_key_env: str | None = Field(
+        default=None,
+        description="Name of the environment variable holding the provider API key "
+        "(the secret value itself never lives in the manifest).",
+    )
     token_budget: TokenBudgetSpec = Field(default_factory=TokenBudgetSpec)
     tasks: list[AgentTaskSpec] = Field(default_factory=list)
     capabilities: list[str] = Field(default_factory=list)

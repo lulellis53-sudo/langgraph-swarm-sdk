@@ -4,6 +4,8 @@ role: implement_changes
 
 model: openai:gpt-4o
 think_level: high
+effort: high
+api_key_env: SWARM_CODER_API_KEY
 
 token_budget:
   max_prompt: 8192

@@ -30,6 +30,8 @@ Generated or sensitive: `src/swarm_sdk/pb/` (protobuf), `.env` (never commit).
 - **Run services:** `uv run swarm-api`, `uv run swarm-grpc`.
 - **Quality gate** (run before claiming work is done\
 
+
+
 ):
 
 ```bash

@@ -5,6 +5,59 @@ package swarm.v1;
 service SwarmService {
   rpc Run(RunRequest) returns (RunResponse);
   rpc Recall(RecallRequest) returns (RecallResponse);
+  rpc SpawnPlan(SpawnRequest) returns (PlanHandle);
+  rpc RunPlan(PlanHandle) returns (PlanResultMsg);
+  rpc PlanStatus(PlanHandle) returns (PlanStatusMsg);
+}
+
+message SpawnRequest {
+  string goal = 1;
+  repeated string agents = 2; // optional filter; empty = all manifests
+}
+
+message PlanStepMsg {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  string agent = 4;
+  repeated string depends_on = 5;
+  repeated string inputs = 6;
+}
+
+message PlanHandle {
+  string plan_id = 1;
+  repeated PlanStepMsg steps = 2;
+}
+
+message StepOutputMsg {
+  string step_id = 1;
+  string agent = 2;
+  string content = 3;
+  int32 prompt_tokens = 4;
+  int32 completion_tokens = 5;
+  bool cached = 6;
+  double wall_s = 7;
+  string status = 8;
+}
+
+message UsageMsg {
+  int32 prompt_tokens = 1;
+  int32 completion_tokens = 2;
+  int32 llm_calls = 3;
+  int32 cached_calls = 4;
+  double wall_s = 5;
+}
+
+message PlanResultMsg {
+  repeated StepOutputMsg outputs = 1;
+  UsageMsg usage = 2;
+}
+
+message PlanStatusMsg {
+  string plan_id = 1;
+  string status = 2; // running | done | failed
+  int32 steps_done = 3;
+  int32 steps_total = 4;
 }
 
 message RunRequest {

@@ -4,12 +4,22 @@ role: coordinate_swarm
 
 model: openai:gpt-4o-mini
 think_level: low
+effort: low
+api_key_env: SWARM_ORCHESTRATOR_API_KEY
 
 token_budget:
   max_prompt: 2048
   max_completion: 512
 
 tasks:
+  - id: decompose_goal
+    description: >-
+      Turn a free-text goal into a JSON plan of small parallel steps for the
+      swarm: each step names one agent, a description, and only the step ids
+      it depends on. Reply with JSON only.
+    outputs:
+      - plan_json
+
   - id: assign_tasks
     description: >-
       Route incoming goals to the correct agents based on the task graph

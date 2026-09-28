@@ -4,6 +4,8 @@ role: write_and_run_tests
 
 model: openai:gpt-4o-mini
 think_level: medium
+effort: medium
+api_key_env: SWARM_TESTER_API_KEY
 
 token_budget:
   max_prompt: 4096

@@ -7,7 +7,21 @@ import concurrent.futures
 import sys
 from collections.abc import Callable
 
-_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=8, thread_name_prefix="swarm")
+
+def _pool_workers() -> int:
+    """Free-threaded Python (3.14 no-GIL) can saturate many blocking calls at
+    once; the GIL build keeps a modest pool."""
+    try:
+        if sys._is_gil_enabled():
+            return 8
+    except AttributeError:
+        pass
+    return 32
+
+
+_POOL = concurrent.futures.ThreadPoolExecutor(
+    max_workers=_pool_workers(), thread_name_prefix="swarm"
+)
 
 
 def install_uvloop() -> None:
