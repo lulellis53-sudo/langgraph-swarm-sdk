@@ -18,3 +18,14 @@ uv run python -m benchmark.run --task token_cache_hit
 ```
 
 Results (optional): `benchmark/results/{task}/` (gitignored).
+
+## SQL Pro benchmarkable suite
+
+Skill-aligned SQLite cases under `sql_pro/` (correctness, join rewrites, index plans). No LLM required.
+
+```bash
+uv run python -m benchmark.sql_pro.run
+uv run pytest benchmark/Tasks/sql_pro -q
+```
+
+Case definitions: `benchmark/sql_pro/suite.yaml`. Cursor command: `/sql-pro`.
