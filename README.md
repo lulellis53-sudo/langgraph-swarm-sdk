@@ -11,6 +11,14 @@ Parallel multi-LLM swarm on [LangGraph Swarm](https://github.com/langchain-ai/la
 uv sync --extra dev --extra faiss --extra qdrant
 ```
 
+Optional **Jupyter Notebook + Jupyter AI** (uses prebuilt `cryptography` wheels; see `[tool.uv]` in `pyproject.toml`):
+
+```bash
+uv sync --extra jupyter --extra dev
+uv run python -m ipykernel install --user --name=swarm --display-name="Python (Swarm)"
+uv run jupyter lab    # or: uv run jupyter notebook
+```
+
 FastEmbed is the default embedder and reranker. Current `onnxruntime` wheels do not include macOS x86_64, so that extra is skipped on Intel Macs. Tests inject a local embedder and do not download models.
 
 ## Run

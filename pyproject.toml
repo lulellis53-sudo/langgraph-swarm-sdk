@@ -35,6 +35,9 @@ dependencies = [
 
 [tool.uv]
 python-preference = "managed"
+# Jupyter AI → cryptography; source builds fail with custom LLVM (missing assert.h). Wheels only.
+no-build-package = ["cryptography"]
+constraint-dependencies = ["cryptography==48.0.1"]
 
 [project.optional-dependencies]
 dev = [
@@ -55,6 +58,13 @@ ml = [
     "onnxruntime>=1.20; sys_platform != 'darwin' or platform_machine != 'x86_64'",
 ]
 qdrant = ["qdrant-client>=1.14"]
+jupyter = [
+    "cryptography==48.0.1",
+    "ipykernel>=6",
+    "jupyter-ai>=2",
+    "notebook>=7",
+    "pip>=25",
+]
 
 [project.scripts]
 swarm-api = "swarm_sdk.api:main"
