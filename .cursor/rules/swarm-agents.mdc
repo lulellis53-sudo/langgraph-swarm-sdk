@@ -1,0 +1,14 @@
+---
+description: Swarm specialist personas — AGENTS.md contracts, agent.yaml, Benchmarks folders
+globs: Agents/**
+alwaysApply: false
+---
+
+# Swarm Agents (`Agents/`)
+
+Orchestrated personas, not Cursor subagents.
+
+- Contract: each role’s `AGENTS.md` + `agent.yaml`.
+- Index: `Agents/SKILLS.md`. Task graph: `Agents/coordination.yaml`.
+- Role notes only in `Agents/*/Benchmarks/`; runners stay in `benchmark/`.
+- Emulating a role → obey that folder’s contract. General repo work → root `AGENTS.md` + Coder norms.

@@ -1,0 +1,12 @@
+---
+description: Security — no secrets in commits, logs, or agent output; no exfiltration
+alwaysApply: true
+---
+
+# Security
+
+- Never commit `.env`, API keys, tokens, or credentials.
+- Never paste secret values into chat, issues, or logs — report path/pattern only (see [`Agents/Security/AGENTS.md`](../../Agents/Security/AGENTS.md)).
+- Config may name env vars (`api_key_env`) but must not embed values.
+- Do not add network calls that exfiltrate repo data unless the user explicitly asks.
+- Treat generated protobuf and lockfiles as code — no smuggling secrets into comments.

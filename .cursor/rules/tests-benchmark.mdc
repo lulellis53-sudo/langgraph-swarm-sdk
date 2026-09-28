@@ -1,0 +1,13 @@
+---
+description: Tests and benchmarks — pytest layout, sql_pro, no committed results dumps
+globs: tests/**,benchmark/**
+alwaysApply: false
+---
+
+# Tests & benchmarks
+
+- `tests/` unit/integration; `benchmark/` shared harnesses (`benchmark/README.md`).
+- Run: `uv run --extra dev pytest tests benchmark -q` (or a focused path).
+- SQL Pro: `benchmark/sql_pro/`, `uv run python -m benchmark.sql_pro.run`, `.cursor/commands/sql-pro.md`.
+- Do not commit `benchmark/results/` (gitignored).
+- Failing test first for bugs; no skip/xfail to green the gate.
