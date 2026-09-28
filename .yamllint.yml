@@ -20,7 +20,7 @@ rules:
   comments:
     min-spaces-from-content: 1
 
-  document-start:
+  document-start:/
     present: false
 
 ignore: |
