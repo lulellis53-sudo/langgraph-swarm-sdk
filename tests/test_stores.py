@@ -19,7 +19,18 @@ def test_faiss_roundtrip() -> None:
     pytest.importorskip("faiss")
     from swarm_sdk.memory.faiss_store import FaissStore
 
-    _roundtrip(FaissStore(8))
+    store = FaissStore(8)
+    assert store.device == "cpu"
+    _roundtrip(store)
+
+
+def test_faiss_gpu_request_falls_back_without_cuda() -> None:
+    pytest.importorskip("faiss")
+    from swarm_sdk.memory.faiss_store import FaissStore
+
+    store = FaissStore(8, gpu=True)
+    assert store.device in {"cpu", "cuda"}
+    _roundtrip(store)
 
 
 def test_qdrant_roundtrip() -> None:
@@ -27,3 +38,12 @@ def test_qdrant_roundtrip() -> None:
     from swarm_sdk.memory.qdrant_store import QdrantStore
 
     _roundtrip(QdrantStore(":memory:", 8))
+
+
+def test_qdrant_int8_roundtrip() -> None:
+    pytest.importorskip("qdrant_client")
+    from swarm_sdk.memory.qdrant_store import QdrantStore
+
+    store = QdrantStore(":memory:", 8, quantization="int8")
+    assert store.quantization == "int8"
+    _roundtrip(store)

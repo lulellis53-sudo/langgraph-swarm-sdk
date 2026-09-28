@@ -1,4 +1,17 @@
-"""Main-agent entry: the Orchestrator decomposes a goal into a validated Plan."""
+"""Main-agent entry: the Orchestrator decomposes a goal into a validated Plan.
+
+The flow is deliberately simple and cheap in tokens:
+
+1. Build one prompt asking the Orchestrator agent (its model, think level, and
+   budget come from ``Agents/Orchestrator/agent.yaml``) for a JSON plan.
+2. Extract the first JSON object from the reply and validate it with pydantic
+   into a :class:`Plan`.
+3. On malformed JSON, unknown agents, or bad dependency references: retry once,
+   then fall back to a single-step plan so a confused orchestrator can never
+   block the swarm.
+
+No free-text re-planning loops — one compact JSON exchange per goal.
+"""
 
 from __future__ import annotations
 
@@ -20,8 +33,11 @@ if TYPE_CHECKING:
 
     from swarm_sdk.cache import SemanticCache
 
+# Greedy object match: robust to the model wrapping the JSON in prose or fences.
 _JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
 
+# The decomposition prompt. The JSON example is escaped ({{ }}) because the
+# template is rendered with str.format.
 PLAN_PROMPT = """Decompose the goal into a JSON plan for the available agents.
 
 Goal: {goal}
@@ -29,20 +45,38 @@ Goal: {goal}
 Available agents (name — role):
 {agents}
 
-Rules: small parallel steps; declare only real dependencies in depends_on; inputs lists
-the step ids whose outputs this step needs; use only the agent names above.
-The JSON shape:
+Reply with JSON only, shaped like:
 {{"steps": [{{"id": "S1", "title": "...", "description": "...", "agent": "<AgentName>",
-"depends_on": [], "inputs": []}}]}}"""
+"depends_on": [], "inputs": []}}]}}
+
+Rules: small parallel steps; declare only real dependencies in depends_on; inputs lists
+the step ids whose outputs this step needs; use only the agent names above."""
 
 
 def _model_name(manifest: AgentManifest) -> str:
+    """Manifest model string (LangChain init format), validated non-empty.
+
+    Raises:
+        RuntimeError: When the manifest declares no model.
+    """
     if not manifest.model:
         raise RuntimeError(f"agent {manifest.name} has no model in its manifest")
     return manifest.model
 
 
 def _fallback_plan(goal: str, manifests: dict[str, AgentManifest]) -> Plan:
+    """Single-step plan handed to the first available agent.
+
+    Used when the orchestrator's reply cannot be validated after the retry —
+    a partial result beats no result, and the worker still sees the full goal.
+
+    Args:
+        goal: The original user goal, becomes the step description.
+        manifests: Loaded agent manifests (must be non-empty).
+
+    Returns:
+        A one-step plan assigned to the first manifest in dict order.
+    """
     name = next(iter(manifests), "Orchestrator")
     return Plan(
         steps=[
@@ -62,10 +96,19 @@ async def spawn(
     *,
     model_override: BaseChatModel | None = None,
 ) -> Plan:
-    """Ask the Orchestrator agent for a JSON plan; validate into Plan.
+    """Ask the Orchestrator agent for a JSON plan; validate into a Plan.
 
-    Retries once on validation failure, then falls back to a single-step plan
-    so a malformed orchestrator answer never blocks the swarm.
+    Args:
+        goal: The free-text goal to decompose.
+        manifests: Loaded agent manifests; the Orchestrator entry (or the first
+            manifest when absent) makes the decomposition call, and step agents
+            are validated against these names.
+        model_override: Optional pre-built chat model (tests, scripted runs).
+            When ``None`` the orchestrator's manifest model is loaded.
+
+    Returns:
+        A validated plan. Guaranteed non-empty: malformed replies fall back to
+        a single-step plan after one retry.
     """
     orchestrator = manifests.get("Orchestrator") or next(iter(manifests.values()))
     roster = "\n".join(f"- {m.name}: {m.role}" for m in manifests.values())
@@ -98,6 +141,18 @@ async def spawn(
 
 
 def _validate_agents(plan: Plan, manifests: dict[str, AgentManifest]) -> None:
+    """Cross-check a parsed plan against the loaded manifests and dep ordering.
+
+    Args:
+        plan: The parsed candidate plan.
+        manifests: Allowed agent names.
+
+    Raises:
+        ValueError: When a step references an unknown agent, or a dependency
+            points forward (to a step not yet defined) — plans must list steps
+            in an order where every dependency appears before its dependents,
+            which :meth:`Plan.waves` relies on.
+    """
     unknown = [s.agent for s in plan.steps if s.agent not in manifests]
     if unknown:
         raise ValueError(f"plan references unknown agents: {unknown}")
@@ -115,6 +170,20 @@ def make_factory(
     cache: SemanticCache | None = None,
     model_override: BaseChatModel | None = None,
 ) -> WorkerFactory:
+    """Build the worker factory that :func:`run_plan` executes plans with.
+
+    Each factory call produces a fresh :class:`WorkerAgent` bound to the step's
+    agent manifest (fresh-agent-per-attempt contract); shared, immutable inputs
+    (manifests, agents root, cache, model override) are bound once here.
+
+    Args:
+        manifests: Loaded agent manifests, keyed by name.
+        cache: Optional semantic/exact cache passed to every worker.
+        model_override: Optional pre-built chat model for all workers (tests).
+
+    Returns:
+        A factory callable ``(PlanStep) -> WorkerAgent``.
+    """
     root = str(agents_root())
 
     def factory(step: PlanStep) -> WorkerAgent:

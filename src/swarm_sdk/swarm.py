@@ -44,6 +44,15 @@ REVIEWER_PROMPT = "You are the reviewer. Be brief."
 _JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
 
 
+def _handoff(agent_name: str, description: str):
+    """Keyword-only langgraph-swarm API: agent_name, optional name and description."""
+    return create_handoff_tool(
+        agent_name=agent_name,
+        name=f"transfer_to_{agent_name}",
+        description=description,
+    )
+
+
 class RunResult(BaseModel):
     text: str
     cached: bool
@@ -82,11 +91,15 @@ def open_store(settings: Settings) -> MemoryStore:
     if settings.memory_backend == "faiss":
         from swarm_sdk.memory.faiss_store import FaissStore
 
-        return FaissStore(settings.embed_dim)
+        return FaissStore(settings.embed_dim, gpu=settings.vector_gpu)
     if settings.memory_backend == "qdrant":
         from swarm_sdk.memory.qdrant_store import QdrantStore
 
-        return QdrantStore(settings.memory_path, settings.embed_dim)
+        return QdrantStore(
+            settings.memory_path,
+            settings.embed_dim,
+            quantization=settings.vector_quantization,
+        )
     return SqliteVecStore(settings.memory_path, settings.embed_dim)
 
 
@@ -319,8 +332,8 @@ class SwarmSDK:
             researcher = create_agent(
                 self._model_for_node("researcher"),
                 tools=[
-                    create_handoff_tool(agent_name="coder", description="Hand off coding."),
-                    create_handoff_tool(agent_name="reviewer", description="Hand off review."),
+                    _handoff("coder", "Hand off coding."),
+                    _handoff("reviewer", "Hand off review."),
                 ],
                 system_prompt=RESEARCHER_PROMPT,
                 name="researcher",
@@ -328,8 +341,8 @@ class SwarmSDK:
             coder = create_agent(
                 self._model_for_node("coder"),
                 tools=[
-                    create_handoff_tool(agent_name="researcher", description="Hand off research."),
-                    create_handoff_tool(agent_name="reviewer", description="Hand off review."),
+                    _handoff("researcher", "Hand off research."),
+                    _handoff("reviewer", "Hand off review."),
                 ],
                 system_prompt=CODER_PROMPT,
                 name="coder",
@@ -337,8 +350,8 @@ class SwarmSDK:
             reviewer = create_agent(
                 self._model_for_node("reviewer"),
                 tools=[
-                    create_handoff_tool(agent_name="researcher", description="Hand off research."),
-                    create_handoff_tool(agent_name="coder", description="Hand off coding."),
+                    _handoff("researcher", "Hand off research."),
+                    _handoff("coder", "Hand off coding."),
                 ],
                 system_prompt=REVIEWER_PROMPT,
                 name="reviewer",

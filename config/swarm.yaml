@@ -52,17 +52,21 @@ circuit_breaker:
   half_open_max_probes: 1     # one probe call before reopening/closing
 
 embedding:
-  model: BAAI/bge-small-en-v1.5
+  model: BAAI/bge-small-en-v1.5   # FastEmbed ONNX int8 weights (CPU)
   dim: 384
   batch_size: 64
   normalize: true
   dedup_threshold: 0.98
+  quantization: int8
 
 vectorstore:
   backend: sqlite-vec         # sqlite-vec | faiss | qdrant
   path: swarm.sqlite
   retrieve_k: 20
   final_k: 10
+  # FAISS GPU requires CUDA (faiss-gpu). Radeon 5300, MoltenVK, and OpenCL are not backends.
+  gpu: false
+  quantization: int8          # sqlite-vec int8 columns; Qdrant scalar int8 when backend=qdrant
   # backend-specific
   qdrant:
     url_env: QDRANT_URL

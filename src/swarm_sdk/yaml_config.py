@@ -9,7 +9,7 @@ from typing import cast
 import yaml
 from pydantic import BaseModel, Field
 
-from swarm_sdk.config import MemoryBackend, Settings
+from swarm_sdk.config import MemoryBackend, Settings, VectorQuantization
 from swarm_sdk.hybrid import HybridSearchConfig
 from swarm_sdk.model_select import ModelRoute, ModelSelectConfig, ThinkLevel
 from swarm_sdk.resilience import BreakerConfig
@@ -34,6 +34,8 @@ class EmbeddingConfig(BaseModel):
     batch_size: int = 64
     normalize: bool = True
     dedup_threshold: float = 0.98
+    # FastEmbed ships this model as ONNX int8. Not a GPU flag.
+    quantization: str = "int8"
 
 
 class QdrantStoreConfig(BaseModel):
@@ -46,6 +48,9 @@ class VectorStoreConfig(BaseModel):
     path: str = "swarm.sqlite"
     retrieve_k: int = 20
     final_k: int = 10
+    # CUDA FAISS only. Ignored on machines without faiss-gpu (including Radeon 5300).
+    gpu: bool = False
+    quantization: VectorQuantization = "int8"
     qdrant: QdrantStoreConfig = Field(default_factory=QdrantStoreConfig)
 
 
@@ -179,6 +184,8 @@ def settings_from_file(file_cfg: SwarmFileConfig, env: Settings | None = None) -
         "memory_path": file_cfg.vectorstore.path,
         "embed_batch_size": file_cfg.embedding.batch_size,
         "hybrid_enabled": file_cfg.hybrid_search.enabled,
+        "vector_gpu": file_cfg.vectorstore.gpu,
+        "vector_quantization": file_cfg.vectorstore.quantization,
     }
     if file_cfg.model_select.routes:
         strong = next(

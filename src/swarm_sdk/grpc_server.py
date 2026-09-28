@@ -1,4 +1,14 @@
-"""gRPC Run, Recall, and orchestration (SpawnPlan/RunPlan/PlanStatus) service."""
+"""gRPC Run, Recall, and orchestration (SpawnPlan/RunPlan/PlanStatus) service.
+
+Synchronous gRPC servicer methods drive the async engine with
+:func:`asyncio.run` per call (grpc handlers run on their own threads, so each
+call gets a fresh loop — no shared-loop hazards).
+
+Plan/result keep-alive is in-process and best-effort: ``_PLANS`` and
+``_RESULTS`` are module-level dicts keyed by plan id. That is enough for a
+single-node server and short-lived clients (SpawnPlan → RunPlan → PlanStatus);
+a multi-node deployment would swap these for a shared store.
+"""
 
 from __future__ import annotations
 
@@ -16,11 +26,22 @@ from swarm_sdk.pb import swarm_pb2, swarm_pb2_grpc
 from swarm_sdk.runtime import install_uvloop
 from swarm_sdk.swarm import SwarmSDK
 
+#: Spawned plans awaiting execution, keyed by plan id (see module docstring).
 _PLANS: dict[str, Plan] = {}
+#: Completed plan results, keyed by plan id; powers PlanStatus polling.
 _RESULTS: dict[str, swarm_pb2.PlanResultMsg] = {}
 
 
 def _to_handle(plan: Plan) -> swarm_pb2.PlanHandle:
+    """Serialize a plan into its wire form, assigning a fresh plan id.
+
+    Args:
+        plan: The validated plan returned by :func:`spawn`.
+
+    Returns:
+        A ``PlanHandle`` whose ``plan_id`` the client echoes back to
+        ``RunPlan``/``PlanStatus``.
+    """
     return swarm_pb2.PlanHandle(
         plan_id=uuid.uuid4().hex,
         steps=[
@@ -38,6 +59,17 @@ def _to_handle(plan: Plan) -> swarm_pb2.PlanHandle:
 
 
 def _from_handle(handle: swarm_pb2.PlanHandle) -> Plan:
+    """Rebuild a pydantic plan from its wire form.
+
+    Lets clients submit a hand-built plan to ``RunPlan`` without a prior
+    ``SpawnPlan`` call; pydantic coerces the plain dicts into ``PlanStep``.
+
+    Args:
+        handle: Wire form with at least ``steps`` populated.
+
+    Returns:
+        The validated plan (raises pydantic.ValidationError on bad input).
+    """
     return Plan(
         steps=[
             {
@@ -54,6 +86,15 @@ def _from_handle(handle: swarm_pb2.PlanHandle) -> Plan:
 
 
 def _to_result_msg(plan_id: str, result: PlanResult) -> swarm_pb2.PlanResultMsg:
+    """Serialize a plan result to wire form and record it for status polling.
+
+    Args:
+        plan_id: Id under which to remember the result.
+        result: The engine's plan result.
+
+    Returns:
+        The ``PlanResultMsg`` (also stored in ``_RESULTS``).
+    """
     _RESULTS[plan_id] = swarm_pb2.PlanResultMsg(
         outputs=[
             swarm_pb2.StepOutputMsg(
@@ -80,6 +121,9 @@ def _to_result_msg(plan_id: str, result: PlanResult) -> swarm_pb2.PlanResultMsg:
 
 
 class SwarmServicer(swarm_pb2_grpc.SwarmServiceServicer):
+    """Implements ``swarm.v1.SwarmService``: single-run, memory recall, and the
+    three orchestration RPCs (spawn a plan, execute it, poll its status)."""
+
     def __init__(self, sdk: SwarmSDK) -> None:
         self.sdk = sdk
 
@@ -88,6 +132,7 @@ class SwarmServicer(swarm_pb2_grpc.SwarmServiceServicer):
         request: swarm_pb2.RunRequest,
         context: grpc.ServicerContext | None,
     ) -> swarm_pb2.RunResponse:
+        """Single text run through the handoff swarm (existing behavior)."""
         del context
         result = asyncio.run(self.sdk.run(request.text, request.thread_id or "default"))
         return swarm_pb2.RunResponse(
@@ -103,6 +148,7 @@ class SwarmServicer(swarm_pb2_grpc.SwarmServiceServicer):
         request: swarm_pb2.RecallRequest,
         context: grpc.ServicerContext | None,
     ) -> swarm_pb2.RecallResponse:
+        """Hybrid memory recall over the store backing the SDK."""
         del context
         hits = self.sdk.recall(request.query, request.top_k or 4)
         return swarm_pb2.RecallResponse(
@@ -116,6 +162,17 @@ class SwarmServicer(swarm_pb2_grpc.SwarmServiceServicer):
         request: swarm_pb2.SpawnRequest,
         context: grpc.ServicerContext | None,
     ) -> swarm_pb2.PlanHandle:
+        """Decompose a goal into a plan via the Orchestrator agent.
+
+        Args:
+            request: The goal plus an optional agent-name filter.
+
+        Returns:
+            A plan handle (id + steps) to pass to ``RunPlan``.
+
+        Aborts:
+            INVALID_ARGUMENT: When the agent filter matches no manifests.
+        """
         manifests = load_all_agent_manifests()
         if request.agents:
             wanted = set(request.agents)
@@ -134,6 +191,16 @@ class SwarmServicer(swarm_pb2_grpc.SwarmServiceServicer):
         request: swarm_pb2.PlanHandle,
         context: grpc.ServicerContext | None,
     ) -> swarm_pb2.PlanResultMsg:
+        """Execute a plan through the LangGraph orchestration engine.
+
+        Accepts either a handle returned by ``SpawnPlan`` (looked up in
+        ``_PLANS``) or a client-built handle (parsed via :func:`_from_handle`),
+        so callers can run hand-authored plans without an orchestrator call.
+
+        Returns:
+            Per-step outputs plus aggregated usage totals; the result is also
+            recorded for subsequent ``PlanStatus`` polls.
+        """
         del context
         plan = _PLANS.get(request.plan_id) or _from_handle(request)
         manifests = load_all_agent_manifests()
@@ -145,6 +212,8 @@ class SwarmServicer(swarm_pb2_grpc.SwarmServiceServicer):
         request: swarm_pb2.PlanHandle,
         context: grpc.ServicerContext | None,
     ) -> swarm_pb2.PlanStatusMsg:
+        """Poll the status of a plan: done (result recorded), running (known
+        but not yet executed), or failed (unknown id and no steps)."""
         del context
         plan_id = request.plan_id
         result = _RESULTS.get(plan_id)
@@ -167,6 +236,16 @@ class SwarmServicer(swarm_pb2_grpc.SwarmServiceServicer):
 
 
 def serve(sdk: SwarmSDK, host: str = "127.0.0.1", port: int = 50051) -> grpc.Server:
+    """Start an insecure gRPC server with the swarm service registered.
+
+    Args:
+        sdk: Configured ``SwarmSDK`` instance for Run/Recall.
+        host: Bind address.
+        port: Bind port.
+
+    Returns:
+        The started ``grpc.Server`` (callers may ``wait_for_termination``).
+    """
     server = grpc.server(concurrent.futures.ThreadPoolExecutor(max_workers=8))
     swarm_pb2_grpc.add_SwarmServiceServicer_to_server(SwarmServicer(sdk), server)
     server.add_insecure_port(f"{host}:{port}")
@@ -175,6 +254,7 @@ def serve(sdk: SwarmSDK, host: str = "127.0.0.1", port: int = 50051) -> grpc.Ser
 
 
 def main() -> None:
+    """Entrypoint for the ``swarm-grpc`` script: uvloop + serve forever."""
     install_uvloop()
     settings = Settings()
     server = serve(SwarmSDK.from_settings(), settings.api_host, settings.grpc_port)

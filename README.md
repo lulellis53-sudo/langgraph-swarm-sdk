@@ -19,7 +19,7 @@ uv run python -m ipykernel install --user --name=swarm --display-name="Python (S
 uv run jupyter lab    # or: uv run jupyter notebook
 ```
 
-FastEmbed is the default embedder and reranker. Current `onnxruntime` wheels do not include macOS x86_64, so that extra is skipped on Intel Macs. Tests inject a local embedder and do not download models.
+FastEmbed is the default embedder and reranker. Its default model (`BAAI/bge-small-en-v1.5`) is ONNX int8 on CPU. sqlite-vec stores int8 vectors; Qdrant can use scalar int8 when `vectorstore.quantization` is `int8`. FAISS GPU (`vectorstore.gpu: true`) needs a CUDA `faiss-gpu` build and falls back to CPU when that is missing. A Radeon Pro 5300, MoltenVK, and OpenCL are not embedding or index backends. Current `onnxruntime` wheels do not include macOS x86_64, so that extra is skipped on Intel Macs. Tests inject a local embedder and do not download models.
 
 ## Run
 
@@ -29,6 +29,18 @@ uv run swarm-grpc
 ```
 
 `POST /v1/runs` with `{"text": "...", "thread_id": "t1"}`. `GET /v1/health`. gRPC `SwarmService.Run` and `SwarmService.Recall` call the same core.
+
+## Orchestration engine
+
+`swarm_sdk.orchestrator` runs a goal as a parallel multi-agent plan:
+
+1. `spawn(goal, manifests)` — the Orchestrator agent decomposes the goal into a JSON plan (validated by pydantic; falls back to a single-step plan on malformed output).
+2. `run_plan(plan, factory)` — a LangGraph `StateGraph` executes the plan in dependency waves; steps in the same wave run concurrently via `asyncio.gather` (uvloop; the runtime thread pool widens automatically on free-threaded Python 3.14).
+3. Each step is a `WorkerAgent` bound to its `Agents/{Name}/agent.yaml` manifest: model, `think_level`, `effort`, and `token_budget` are pre-selected per agent; the system prompt is the role contract from that agent's `AGENTS.md`; the step prompt carries only its declared `inputs` (dependency outputs), never the whole transcript.
+
+Token savings: shared role-contract prompt cached per process, exact + semantic step cache (`SemanticCache`), hard `max_prompt` packing, and per-step usage totals (`prompt_tokens`, `completion_tokens`, `llm_calls`, `cached_calls`) reported in `PlanResult.usage`.
+
+gRPC: `SwarmService.SpawnPlan` (goal → plan handle), `RunPlan` (handle → per-step outputs + usage), `PlanStatus` (poll for long plans). Manifests may set `api_key_env: SWARM_<NAME>_API_KEY` — the env var *name*, never the key value.
 
 Predefined providers and routes live in [`config/swarm.yaml`](config/swarm.yaml). Per-agent roles, models, and tasks live in [`Agents/{Name}/agent.yaml`](Agents/Tester/agent.yaml) (see [`Agents/SKILLS.md`](Agents/SKILLS.md)). `SWARM_*` env vars override file defaults. Open [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace) for a multi-root editor layout.
 

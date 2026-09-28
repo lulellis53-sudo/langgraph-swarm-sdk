@@ -13,6 +13,7 @@ Human-oriented overview: [`README.md`](README.md).
 | Path | Purpose |
 |------|---------|
 | [`src/swarm_sdk/`](src/swarm_sdk/) | Library: swarm runtime, cache, memory, routing, API/gRPC |
+| [`src/swarm_sdk/orchestrator/`](src/swarm_sdk/orchestrator/) | Parallel plan engine: `spawn` (goal → JSON plan) + `run_plan` (LangGraph dependency waves) |
 | [`config/swarm.yaml`](config/swarm.yaml) | Provider registry, routes, defaults (`SWARM_*` env overrides) |
 | [`Agents/`](Agents/) | Specialist **swarm personas** (`AGENTS.md` + `agent.yaml` per role) |
 | [`Agents/coordination.yaml`](Agents/coordination.yaml) | Task graph for multi-agent workflows |
@@ -57,7 +58,7 @@ For swarm coordination: start from [`Agents/SKILLS.md`](Agents/SKILLS.md) and [`
 3. **Match conventions** — Ruff (`line-length = 100`, py314), existing naming and patterns in `src/swarm_sdk/`.
 4. **Prove it** — failing test → fix → full gate above. Do not weaken lint/type checks without a named rule and reason.
 5. **Config** — prefer [`config/swarm.yaml`](config/swarm.yaml) and agent manifests under `Agents/*/agent.yaml`; document new env vars in README or agent docs.
-6. **Protobuf** — edit `.proto` and regenerate; do not hand-edit `src/swarm_sdk/pb/*` unless the task is explicitly codegen.
+6. **Protobuf** — edit `.proto` and regenerate (`uv run python -m grpc_tools.protoc -Iproto --python_out=src/swarm_sdk/pb --pyi_out=src/swarm_sdk/pb --grpc_python_out=src/swarm_sdk/pb proto/swarm.proto`); then re-apply the package-relative import fix: `sed -i '' 's/^import swarm_pb2 as swarm__pb2$/from swarm_sdk.pb import swarm_pb2 as swarm__pb2/' src/swarm_sdk/pb/swarm_pb2_grpc.py` (protoc emits a top-level import that cannot resolve inside the package). Do not otherwise hand-edit `src/swarm_sdk/pb/*`.
 
 ## Benchmarks and SQL Pro
 

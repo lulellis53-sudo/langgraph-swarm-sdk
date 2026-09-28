@@ -8,12 +8,22 @@ from swarm_sdk.embeddings import unit
 from swarm_sdk.memory.base import MemoryHit
 
 
+def _quantization(mode: str) -> object | None:
+    """Scalar int8. Qdrant GPU indexing is a CUDA server build, not this local client."""
+    if mode != "int8":
+        return None
+    from qdrant_client.models import ScalarQuantization, ScalarQuantizationConfig, ScalarType
+
+    return ScalarQuantization(scalar=ScalarQuantizationConfig(type=ScalarType.INT8))
+
+
 class QdrantStore:
-    def __init__(self, path: str, dim: int) -> None:
+    def __init__(self, path: str, dim: int, *, quantization: str = "none") -> None:
         from qdrant_client import QdrantClient
         from qdrant_client.models import Distance, VectorParams
 
         self.dim = dim
+        self.quantization = quantization
         self._collection = "memories"
         location = ":memory:" if path in {":memory:", ""} else path
         self._client = QdrantClient(path=location)
@@ -21,6 +31,7 @@ class QdrantStore:
             self._client.create_collection(
                 collection_name=self._collection,
                 vectors_config=VectorParams(size=dim, distance=Distance.COSINE),
+                quantization_config=_quantization(quantization),
             )
         self._next_id = 1
 

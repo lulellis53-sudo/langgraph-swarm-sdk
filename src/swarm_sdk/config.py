@@ -9,6 +9,7 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 MemoryBackend = Literal["sqlite-vec", "faiss", "qdrant"]
+VectorQuantization = Literal["none", "int8"]
 
 # API keys live OUTSIDE the repo in ~/.env (never committed). Real environment
 # variables always take precedence; empty entries are ignored. Downstream code
@@ -45,6 +46,9 @@ class Settings(BaseSettings):
     grpc_port: int = 50051
     embed_batch_size: int = Field(default=64, ge=1)
     hybrid_enabled: bool = True
+    # FAISS GPU is CUDA-only. AMD Radeon / MoltenVK / OpenCL cannot host this index.
+    vector_gpu: bool = False
+    vector_quantization: VectorQuantization = "none"
 
 
 def load_merged_settings(

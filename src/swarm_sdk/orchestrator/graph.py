@@ -1,9 +1,11 @@
 """LangGraph execution of a Plan: one node per wave, parallel steps inside a wave.
 
-Each wave is a node in a linear StateGraph (wave barriers are the dependency
-frontier). Steps inside a wave are dispatched with asyncio.gather, so they run
-concurrently — under uvloop with free-threaded Python 3.14 the blocking provider
-calls also parallelize across the runtime thread pool.
+Each wave is a node in a linear ``StateGraph`` (wave barriers are the dependency
+frontier computed by :meth:`Plan.waves`). Steps inside a wave are dispatched with
+:func:`asyncio.gather`, so they run concurrently — under uvloop the I/O
+interleaves, and on free-threaded Python 3.14 the blocking provider SDK calls
+also parallelize across the widened runtime thread pool (see
+:mod:`swarm_sdk.runtime`).
 """
 
 from __future__ import annotations
@@ -18,15 +20,36 @@ from typing_extensions import TypedDict
 from .plan import Plan, PlanResult, PlanStep, StepOutput, UsageTotals
 from .worker import WorkerAgent
 
+# Factory contract: the engine builds one fresh worker per step attempt.
 WorkerFactory = Callable[[PlanStep], WorkerAgent]
 
 
 class PlanState(TypedDict):
+    """LangGraph state threaded through the wave nodes.
+
+    Attributes:
+        outputs: Completed step outputs keyed by step id.
+        usage: Running token/call totals, accumulated wave by wave.
+    """
+
     outputs: dict[str, StepOutput]
     usage: UsageTotals
 
 
 def _dep_outputs(step: PlanStep, state: PlanState) -> dict[str, str]:
+    """Collect the dependency outputs a step declared as its inputs.
+
+    Falls back to ``depends_on`` when the step declared no explicit ``inputs``
+    (a step receives everything it waited for, and nothing else — token saving).
+
+    Args:
+        step: The step about to run.
+        state: Current plan state with completed outputs.
+
+    Returns:
+        Mapping of step id → output content, only for declared inputs that
+        completed successfully.
+    """
     wanted = step.inputs or step.depends_on
     return {
         dep: state["outputs"][dep].content
@@ -40,6 +63,14 @@ async def _run_wave(
     factory: WorkerFactory,
     state: PlanState,
 ) -> None:
+    """Execute all steps of one wave concurrently and fold results into state.
+
+    Args:
+        steps: The wave's steps (mutually independent by construction).
+        factory: Builds a fresh worker per step.
+        state: Plan state mutated in place; ``outputs`` gains one entry per
+            step and ``usage`` accumulates call/token totals.
+    """
     async def one(step: PlanStep) -> StepOutput:
         worker = factory(step)
         return await worker.run(step.id, step.description, _dep_outputs(step, state))
@@ -56,11 +87,29 @@ async def _run_wave(
 
 
 def build_graph(plan: Plan, factory: WorkerFactory) -> StateGraph:
-    graph = StateGraph(PlanState)  # ty: ignore[invalid-argument-type] -- ty cannot narrow typing.TypedDict to langgraph's TypedDictLike protocol (same limitation langgraph notes in its own typing module)
+    """Compile the plan's wave structure into a LangGraph ``StateGraph``.
+
+    The graph is linear: ``wave_0 → wave_1 → … → END``. Parallelism lives
+    *inside* each node (asyncio.gather over the wave's steps), so LangGraph
+    provides checkpointable, deterministic wave ordering while the steps within
+    a wave race.
+
+    Args:
+        plan: The validated plan to execute.
+        factory: Worker factory used by every wave node.
+
+    Returns:
+        The uncompiled ``StateGraph`` (callers may add checkpointers before
+        compiling; :func:`run_plan` compiles directly).
+    """
+    # ty cannot narrow typing.TypedDict to langgraph's TypedDictLike protocol —
+    # the same limitation langgraph documents in its own typing module.
+    graph = StateGraph(PlanState)  # ty: ignore[invalid-argument-type]
     waves = plan.waves()
     for index, steps in enumerate(waves):
 
         async def node(state: PlanState, _steps: list[PlanStep] = steps) -> PlanState:
+            # Default-arg binding: captures this wave's steps, not the loop variable.
             await _run_wave(_steps, factory, state)
             return state
 
@@ -76,7 +125,16 @@ def build_graph(plan: Plan, factory: WorkerFactory) -> StateGraph:
 
 
 async def run_plan(plan: Plan, factory: WorkerFactory) -> PlanResult:
-    """Execute the plan through LangGraph; returns per-step outputs + usage totals."""
+    """Execute the plan through LangGraph and collect outputs + usage totals.
+
+    Args:
+        plan: The validated plan to execute.
+        factory: Builds a worker per step attempt.
+
+    Returns:
+        The plan result: per-step outputs keyed by step id, and aggregated
+        usage (prompt/completion tokens, LLM vs cached calls, wall time).
+    """
     graph = build_graph(plan, factory)
     compiled = graph.compile()
     started = time.perf_counter()
