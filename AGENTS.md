@@ -28,7 +28,9 @@ Generated or sensitive: `src/swarm_sdk/pb/` (protobuf), `.env` (never commit).
 - **Python:** `>=3.14.5`, managed with **[uv](https://docs.astral.sh/uv/)**.
 - **Install:** `uv sync --extra dev` (add `--extra faiss`, `--extra qdrant`, `--extra jupyter` as needed).
 - **Run services:** `uv run swarm-api`, `uv run swarm-grpc`.
-- **Quality gate** (run before claiming work is done):
+- **Quality gate** (run before claiming work is done\
+
+):
 
 ```bash
 uv run --extra dev pytest tests benchmark -q
