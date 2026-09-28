@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from swarm_sdk.embeddings import Embedder, dedupe_texts
+from swarm_sdk.hybrid import HybridSearchConfig, hybrid_search
 from swarm_sdk.memory.base import MemoryStore
 from swarm_sdk.rerank import Reranker
 
@@ -16,11 +17,26 @@ def recall_texts(
     retrieve_k: int,
     rerank_k: int,
     dedup_threshold: float,
+    hybrid: HybridSearchConfig | None = None,
+    hybrid_enabled: bool = True,
 ) -> list[str]:
-    vector = embedder.embed([query])[0]
-    hits = store.search(vector, retrieve_k)
-    if not hits:
+    vector = embedder.embed([query], query=True)[0]
+    if hybrid_enabled and hybrid is not None and hybrid.enabled:
+        hits = hybrid_search(
+            query,
+            store,
+            vector,
+            retrieve_k=retrieve_k,
+            config=hybrid,
+        )
+        texts = [hit.text for hit in hits]
+    else:
+        hits = store.search(vector, retrieve_k)
+        if not hits:
+            return []
+        texts = [hit.text for hit in hits]
+
+    if not texts:
         return []
-    texts = [hit.text for hit in hits]
-    unique = dedupe_texts(texts, embedder.embed(texts), dedup_threshold)
+    unique = dedupe_texts(texts, embedder.embed(texts, query=False), dedup_threshold)
     return reranker.rerank(query, unique)[:rerank_k]

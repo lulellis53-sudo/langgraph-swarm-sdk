@@ -29,21 +29,21 @@ model_select:
     # fast daily-driver for cheap think levels
     - name: openai:gpt-4o-mini
       provider: openai
-      think_levels: [off, low, medium]
+      think_levels: ["off", "low", "medium"]
       priority: 10
     # heavy reasoning goes to the strong model
     - name: openai:gpt-4o
       provider: openai
-      think_levels: [medium, high, xhigh]
+      think_levels: ["medium", "high", "xhigh"]
       priority: 20
     # independent fallback route (different provider)
     - name: anthropic:claude-sonnet-4-5
       provider: anthropic
-      think_levels: [medium, high, xhigh]
+      think_levels: ["medium", "high", "xhigh"]
       priority: 30
     - name: groq:llama-3.3-70b-versatile
       provider: groq
-      think_levels: [off, low, medium]
+      think_levels: ["off", "low", "medium"]
       priority: 40
 
 circuit_breaker:
@@ -73,6 +73,7 @@ hybrid_search:
   dense_weight: 1.0           # RRF contribution of dense vector ranking
   keyword_weight: 1.0         # RRF contribution of BM25 ranking
   rrf_k: 60
+  final_k: 10
 
 rerank:
   model: Xenova/ms-marco-MiniLM-L-6-v2
@@ -80,5 +81,6 @@ rerank:
 
 router:
   router_model: openai:gpt-4o-mini
+  think_level: low
   max_tokens: 2048
   tool_cap: 128

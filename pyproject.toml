@@ -3,6 +3,8 @@ name = "langgraph-swarm-sdk"
 version = "0.1.0"
 description = "Parallel multi-LLM LangGraph swarm with memory, rerankers, tokenizers, and semantic caching."
 readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "dantenho", email = "dantenho@gmail.com" }]
 requires-python = ">=3.14.5"
 dependencies = [
     "aiohttp>=3.11",
@@ -18,6 +20,7 @@ dependencies = [
     "orjson>=3.10",
     "polars>=1.30",
     "protobuf>=6.31",
+    "pyyaml>=6.0",
     "pydantic-settings>=2.10",
     "pydantic>=2.11",
     "requests>=2.32",
@@ -74,8 +77,12 @@ select = ["E", "F", "I", "UP"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+testpaths = ["tests", "benchmark"]
 pythonpath = ["."]
 
 [tool.ty.src]
-exclude = ["src/swarm_sdk/pb/**"]
+exclude = [
+  "src/swarm_sdk/pb/**",
+  "src/swarm_sdk/memory/faiss_store.py",
+  "src/swarm_sdk/memory/qdrant_store.py",
+]

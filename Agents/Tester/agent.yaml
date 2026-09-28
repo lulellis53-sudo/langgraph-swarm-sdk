@@ -1,0 +1,17 @@
+version: 1
+name: Tester
+role: writes_and_runs_tests
+langgraph_node: null
+think_level: medium
+model: openai:gpt-4o-mini
+token_budget:
+  max_prompt: 2048
+  max_completion: 512
+tasks:
+  - id: pytest_gate
+    description: Primary task for Tester
+    outputs: [AGENTS.md output contract]
+  - id: hypothesis_properties
+    description: Secondary task for Tester
+    outputs: [coordination.yaml task id when assigned]
+capabilities: ['pytest', 'hypothesis']

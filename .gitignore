@@ -5,9 +5,12 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 .remember/
+.env
+.env.*
 dist/
 *.egg-info/
 *.db
 *.sqlite
+benchmark/results/
 .coverage
 htmlcov/

@@ -1,0 +1,17 @@
+version: 1
+name: Coder
+role: implements_code_changes
+langgraph_node: coder
+think_level: high
+model: openai:gpt-4o
+token_budget:
+  max_prompt: 2048
+  max_completion: 512
+tasks:
+  - id: implement_feature
+    description: Primary task for Coder
+    outputs: [AGENTS.md output contract]
+  - id: fix_regression
+    description: Secondary task for Coder
+    outputs: [coordination.yaml task id when assigned]
+capabilities: ['python', 'langgraph']

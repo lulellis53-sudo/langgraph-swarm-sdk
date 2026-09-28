@@ -1,24 +1,42 @@
 from pathlib import Path
 
+import numpy as np
 from langchain_core.messages import AIMessage
 from tests.fakes import Script, ScriptedModel, answer
 
 from swarm_sdk.cache import SemanticCache
 from swarm_sdk.config import Settings
-from swarm_sdk.embeddings import HashEmbedder
+from swarm_sdk.embeddings import HashEmbedder, unit
 from swarm_sdk.rerank import IdentityReranker
 from swarm_sdk.swarm import SwarmSDK
 
 
+class SemanticBucketEmbedder:
+    """Maps related prompts to the same unit vector for semantic-cache tests."""
+
+    dim = 32
+
+    def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:
+        del query
+        shared = unit(np.ones(self.dim, dtype=np.float32))
+        rows = []
+        for text in texts:
+            if text.strip().lower().startswith("topic"):
+                rows.append(shared)
+            else:
+                rows.append(HashEmbedder(self.dim).embed([text])[0])
+        return np.stack(rows)
+
+
 class SpyEmbedder:
-    def __init__(self, inner: HashEmbedder) -> None:
+    def __init__(self, inner: HashEmbedder | SemanticBucketEmbedder) -> None:
         self.inner = inner
         self.calls = 0
         self.dim = inner.dim
 
-    def embed(self, texts: list[str]):
+    def embed(self, texts: list[str], *, query: bool = False):
         self.calls += 1
-        return self.inner.embed(texts)
+        return self.inner.embed(texts, query=query)
 
 
 def _sdk(tmp_path: Path, script: Script, embedder: SpyEmbedder) -> tuple[SwarmSDK, ScriptedModel]:
@@ -62,7 +80,7 @@ async def test_exact_cache_hit_does_not_call_the_model(tmp_path: Path) -> None:
 
 
 async def test_semantic_cache_hit_does_not_call_the_model(tmp_path: Path) -> None:
-    embedder = SpyEmbedder(HashEmbedder(dim=32))
+    embedder = SpyEmbedder(SemanticBucketEmbedder())
     script = Script(
         [
             AIMessage(content='{"mode":"swarm","tasks":[]}'),

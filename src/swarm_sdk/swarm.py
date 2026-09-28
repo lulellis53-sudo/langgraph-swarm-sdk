@@ -13,11 +13,18 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph_swarm import create_handoff_tool, create_swarm
 from pydantic import BaseModel, Field, ValidationError
 
+from swarm_sdk.agents.manifest import langgraph_manifests, load_all_agent_manifests
 from swarm_sdk.cache import SemanticCache
-from swarm_sdk.config import Settings
+from swarm_sdk.config import Settings, load_merged_settings
 from swarm_sdk.embeddings import Embedder, FastEmbedder, HashEmbedder
 from swarm_sdk.memory.base import MemoryHit, MemoryStore
 from swarm_sdk.memory.sqlite_vec import SqliteVecStore
+from swarm_sdk.model_select import (
+    THINK_TOKEN_BUDGET,
+    FallbackChain,
+    ModelSelector,
+    ThinkLevel,
+)
 from swarm_sdk.parallel import fan_out
 from swarm_sdk.providers import complete, last_ai_text, load_chat_model
 from swarm_sdk.rerank import FastEmbedReranker, KeywordReranker, Reranker
@@ -26,6 +33,7 @@ from swarm_sdk.runtime import offload
 from swarm_sdk.tokens import PackedPrompt, TokenBudget
 from swarm_sdk.transport import async_post_json
 from swarm_sdk.usage import UsageLog
+from swarm_sdk.yaml_config import SwarmFileConfig, load_swarm_config
 
 ROUTER_SYSTEM = (
     'Route work. Reply with JSON only: {"mode":"parallel" or "swarm","tasks":[]}.'
@@ -58,9 +66,10 @@ def _fastembed_available() -> bool:
 
 
 def default_embedder(settings: Settings) -> Embedder:
+    batch = settings.embed_batch_size
     if not _fastembed_available():
-        return HashEmbedder(settings.embed_dim)
-    return FastEmbedder(settings.embed_model, settings.embed_dim)
+        return HashEmbedder(settings.embed_dim, batch, settings.embed_model)
+    return FastEmbedder(settings.embed_model, settings.embed_dim, batch)
 
 
 def default_reranker(settings: Settings) -> Reranker:
@@ -90,6 +99,7 @@ class SwarmSDK:
         self,
         settings: Settings | None = None,
         *,
+        file_config: SwarmFileConfig | None = None,
         router_model: BaseChatModel | None = None,
         specialist_model: BaseChatModel | None = None,
         embedder: Embedder | None = None,
@@ -98,7 +108,10 @@ class SwarmSDK:
         cache: SemanticCache | None = None,
         budget: TokenBudget | None = None,
     ) -> None:
+        if settings is None and file_config is None:
+            settings, file_config = load_merged_settings()
         self.settings = settings or Settings()
+        self.file_config = file_config or load_swarm_config()
         self._router_model = router_model
         self._specialist_model = specialist_model
         self.embedder = embedder or default_embedder(self.settings)
@@ -109,13 +122,25 @@ class SwarmSDK:
             max_tokens=self.settings.max_tokens,
             tool_cap=self.settings.tool_cap,
         )
+        self._fallback = FallbackChain(
+            self.file_config.model_select,
+            self.file_config.circuit_breaker,
+        )
+        self._selector = ModelSelector(self.file_config.model_select)
+        self._langgraph_manifests = langgraph_manifests(load_all_agent_manifests())
         self.usage = UsageLog()
         self._compiled: CompiledGraph | None = None
         self._threads: set[str] = set()
 
     @classmethod
     def from_settings(cls, settings: Settings | None = None) -> SwarmSDK:
-        return cls(settings or Settings())
+        if settings is None:
+            merged, file_cfg = load_merged_settings()
+            return cls(merged, file_config=file_cfg)
+        return cls(settings, file_config=load_swarm_config())
+
+    def provider_health(self) -> dict[str, str]:
+        return {name: breaker.state.value for name, breaker in self._fallback.breakers.items()}
 
     @property
     def memory(self) -> MemoryStore:
@@ -132,6 +157,11 @@ class SwarmSDK:
                 self.settings.semantic_threshold,
             )
         return self._cache
+
+    def _cap_tokens(self, think_level: ThinkLevel) -> None:
+        cap = THINK_TOKEN_BUDGET.get(think_level, self.settings.max_tokens)
+        if think_level != "off" and cap > 0:
+            self.budget.max_tokens = min(self.settings.max_tokens, cap)
 
     async def run(self, text: str, thread_id: str = "default") -> RunResult:
         if self.settings.peer_url:
@@ -152,11 +182,16 @@ class SwarmSDK:
                 mode="cache",
             )
 
+        self._cap_tokens(self.file_config.router.think_level)
         memories = await offload(self._recall, text)
         packed = self.budget.pack(system=ROUTER_SYSTEM, memories=memories, turns=[text])
         route = await self._route(packed)
         if route.mode == "parallel" and route.tasks:
-            answer, tokens = await fan_out(self._specialist(), route.tasks)
+            answer, tokens = await fan_out(
+                self._specialist(),
+                route.tasks,
+                max_concurrency=self.file_config.parallelism.max_concurrency,
+            )
             agent = "synthesizer"
             mode = "parallel"
         else:
@@ -165,6 +200,7 @@ class SwarmSDK:
         await offload(self.cache.store, text, answer)
         await offload(self._remember, text, answer)
         self.usage.add(agent, tokens, False)
+        self.budget.max_tokens = self.settings.max_tokens
         return RunResult(
             text=answer,
             cached=False,
@@ -175,8 +211,19 @@ class SwarmSDK:
 
     def recall(self, query: str, top_k: int | None = None) -> list[MemoryHit]:
         limit = top_k or self.settings.rerank_k
-        vector = self.embedder.embed([query])[0]
-        hits = self.memory.search(vector, max(limit, self.settings.retrieve_k))
+        vector = self.embedder.embed([query], query=True)[0]
+        retrieve = max(limit, self.settings.retrieve_k)
+        if self.settings.hybrid_enabled and self.file_config.hybrid_search.enabled:
+            from swarm_sdk.hybrid import hybrid_search
+
+            return hybrid_search(
+                query,
+                self.memory,
+                vector,
+                retrieve_k=retrieve,
+                config=self.file_config.hybrid_search.model_copy(update={"final_k": limit}),
+            )
+        hits = self.memory.search(vector, retrieve)
         if not hits:
             return []
         order = self.reranker.rerank(query, [hit.text for hit in hits])
@@ -193,15 +240,24 @@ class SwarmSDK:
             retrieve_k=self.settings.retrieve_k,
             rerank_k=self.settings.rerank_k,
             dedup_threshold=self.settings.dedup_threshold,
+            hybrid=self.file_config.hybrid_search,
+            hybrid_enabled=self.settings.hybrid_enabled,
         )
 
     def _remember(self, question: str, answer: str) -> None:
         record = f"Q: {question[:200]}\nA: {answer[:400]}"
-        vector = self.embedder.embed([record])[0]
+        vector = self.embedder.embed([record], query=False)[0]
         self.memory.add(record, vector)
 
     async def _route(self, packed: PackedPrompt) -> RouteDecision:
-        raw = await complete(self._router(), ROUTER_SYSTEM, packed.text)
+        if self._router_model is not None:
+            raw = await complete(self._router_model, ROUTER_SYSTEM, packed.text)
+        else:
+            raw = await self._fallback.complete(
+                ROUTER_SYSTEM,
+                packed.text,
+                think_level=self.file_config.router.think_level,
+            )
         match = _JSON_OBJECT.search(raw)
         if match is None:
             return RouteDecision()
@@ -247,11 +303,21 @@ class SwarmSDK:
             self._specialist_model = load_chat_model(self.settings.specialist_model)
         return self._specialist_model
 
+    def _model_for_node(self, node: str) -> BaseChatModel:
+        if self._specialist_model is not None:
+            return self._specialist_model
+        manifest = self._langgraph_manifests.get(node)
+        if manifest is None:
+            return self._specialist()
+        if manifest.model:
+            return load_chat_model(manifest.model)
+        route = self._selector.select(manifest.think_level)
+        return load_chat_model(route.name)
+
     def _graph(self) -> CompiledGraph:
         if self._compiled is None:
-            model = self._specialist()
             researcher = create_agent(
-                model,
+                self._model_for_node("researcher"),
                 tools=[
                     create_handoff_tool(agent_name="coder", description="Hand off coding."),
                     create_handoff_tool(agent_name="reviewer", description="Hand off review."),
@@ -260,7 +326,7 @@ class SwarmSDK:
                 name="researcher",
             )
             coder = create_agent(
-                model,
+                self._model_for_node("coder"),
                 tools=[
                     create_handoff_tool(agent_name="researcher", description="Hand off research."),
                     create_handoff_tool(agent_name="reviewer", description="Hand off review."),
@@ -269,7 +335,7 @@ class SwarmSDK:
                 name="coder",
             )
             reviewer = create_agent(
-                model,
+                self._model_for_node("reviewer"),
                 tools=[
                     create_handoff_tool(agent_name="researcher", description="Hand off research."),
                     create_handoff_tool(agent_name="coder", description="Hand off coding."),

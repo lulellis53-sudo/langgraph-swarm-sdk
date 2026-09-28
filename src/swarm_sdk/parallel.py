@@ -1,9 +1,8 @@
 """Fan out independent tasks so each specialist sees only its own brief."""
 
-import asyncio
-
 from pydantic import BaseModel, Field
 
+from swarm_sdk.model_select import bounded_gather
 from swarm_sdk.providers import complete
 from swarm_sdk.tokens import count_text
 
@@ -30,17 +29,13 @@ async def fan_out(
     *,
     max_concurrency: int = 8,
 ) -> tuple[str, int]:
-    """Run tasks in parallel, at most `max_concurrency` specialists in flight."""
     from langchain_core.language_models.chat_models import BaseChatModel
 
     if not isinstance(model, BaseChatModel):
         raise TypeError("fan_out requires a chat model")
 
-    semaphore = asyncio.Semaphore(max_concurrency)
-
     async def one(task: str) -> SpecialistResult:
-        async with semaphore:
-            answer = await complete(model, TASK_SYSTEM, task)
+        answer = await complete(model, TASK_SYSTEM, task)
         payload = HandoffPayload(
             summary=answer[:280],
             ask=task[:200],
@@ -48,7 +43,8 @@ async def fan_out(
         )
         return SpecialistResult(agent=agent, payload=payload, tokens=count_text(answer))
 
-    results = await asyncio.gather(*(one(task) for task in tasks))
+    factories = [lambda t=task: one(t) for task in tasks]
+    results = await bounded_gather(factories, max_concurrency=max_concurrency)
     brief = "\n".join(item.payload.model_dump_json() for item in results)
     merged = await complete(model, SYNTH_SYSTEM, brief)
     tokens = sum(item.tokens for item in results) + count_text(brief) + count_text(merged)

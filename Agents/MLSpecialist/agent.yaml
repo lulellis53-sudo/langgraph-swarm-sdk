@@ -1,0 +1,17 @@
+version: 1
+name: MLSpecialist
+role: embeddings_rerankers
+langgraph_node: null
+think_level: high
+model: openai:gpt-4o
+token_budget:
+  max_prompt: 2048
+  max_completion: 512
+tasks:
+  - id: embed_benchmark
+    description: Primary task for MLSpecialist
+    outputs: [AGENTS.md output contract]
+  - id: rerank_tune
+    description: Secondary task for MLSpecialist
+    outputs: [coordination.yaml task id when assigned]
+capabilities: ['fastembed', 'onnx']

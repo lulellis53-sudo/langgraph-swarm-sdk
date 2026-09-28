@@ -1,0 +1,17 @@
+version: 1
+name: Security
+role: security_review
+langgraph_node: null
+think_level: high
+model: openai:gpt-4o
+token_budget:
+  max_prompt: 2048
+  max_completion: 512
+tasks:
+  - id: secrets_audit
+    description: Primary task for Security
+    outputs: [AGENTS.md output contract]
+  - id: dependency_cve
+    description: Secondary task for Security
+    outputs: [coordination.yaml task id when assigned]
+capabilities: ['secrets', 'audit']

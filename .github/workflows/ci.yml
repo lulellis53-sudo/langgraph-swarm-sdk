@@ -21,12 +21,12 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.14"
+          python-version: "3.14.5"
           enable-cache: true
       - name: Install dev dependencies
         run: uv sync --extra dev --frozen
       - name: Ruff check
-        run: uv run ruff check src tests
+        run: uv run ruff check src tests benchmark
       - name: YAML lint
         run: uv run yamllint .
 
@@ -38,7 +38,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.14"
+          python-version: "3.14.5"
           enable-cache: true
       - name: Install dev dependencies
         run: uv sync --extra dev --frozen
@@ -53,12 +53,27 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.14"
+          python-version: "3.14.5"
           enable-cache: true
       - name: Install dev dependencies
         run: uv sync --extra dev --frozen
       - name: ty check
-        run: uv run ty check src tests
+        run: uv run ty check src tests benchmark
+
+  agents-schema:
+    name: Agent manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.14.5"
+          enable-cache: true
+      - name: Install dev dependencies
+        run: uv sync --extra dev --frozen
+      - name: Validate agent.yaml and coordination.yaml
+        run: uv run python -m swarm_sdk.agents.validate
 
   test:
     name: Tests (pytest, Python 3.14)
@@ -68,12 +83,27 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.14"
+          python-version: "3.14.5"
           enable-cache: true
       - name: Install dev dependencies
         run: uv sync --extra dev --frozen
       - name: Run tests
         run: uv run pytest tests -q
+
+  benchmark:
+    name: Benchmarks (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.14.5"
+          enable-cache: true
+      - name: Install dev dependencies
+        run: uv sync --extra dev --frozen
+      - name: Run benchmark tasks
+        run: uv run pytest benchmark/ -q
 
   build:
     name: Build wheel
@@ -83,7 +113,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
-          python-version: "3.14"
+          python-version: "3.14.5"
           enable-cache: true
       - name: Build distributions
         run: uv build

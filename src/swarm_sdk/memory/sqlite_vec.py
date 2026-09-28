@@ -1,4 +1,4 @@
-"""sqlite-vec memory with int8 scalar quantization."""
+"""sqlite-vec memory with int8 scalar quantization and FTS5 keyword index."""
 
 from __future__ import annotations
 
@@ -9,7 +9,16 @@ import threading
 import numpy as np
 
 from swarm_sdk.embeddings import unit
+from swarm_sdk.hybrid import tokenize
 from swarm_sdk.memory.base import MemoryHit
+
+
+def _fts_match_query(query: str) -> str:
+    """Build an FTS5 MATCH string (AND of quoted tokens; avoids column syntax)."""
+    terms = tokenize(query)
+    if not terms:
+        return '""'
+    return " ".join(f'"{term.replace(chr(34), chr(34) * 2)}"' for term in terms)
 
 
 class SqliteVecStore:
@@ -37,6 +46,13 @@ class SqliteVecStore:
             )
             """
         )
+        self._conn.execute(
+            """
+            CREATE VIRTUAL TABLE IF NOT EXISTS memory_fts USING fts5(
+                text
+            )
+            """
+        )
         self._conn.commit()
         self._next_id = int(
             self._conn.execute("SELECT COALESCE(MAX(rowid), 0) FROM memory_text").fetchone()[0]
@@ -56,6 +72,10 @@ class SqliteVecStore:
             )
             self._conn.execute(
                 "INSERT INTO memory_text(rowid, text) VALUES (?, ?)",
+                (row_id, text),
+            )
+            self._conn.execute(
+                "INSERT INTO memory_fts(rowid, text) VALUES (?, ?)",
                 (row_id, text),
             )
             self._conn.commit()
@@ -83,6 +103,26 @@ class SqliteVecStore:
                 MemoryHit(id=int(row_id), text=str(text), score=1.0 / (1.0 + float(distance)))
             )
         return hits
+
+    def keyword_search(self, query: str, k: int) -> list[MemoryHit]:
+        if k < 1 or not query.strip():
+            return []
+        with self._lock:
+            rows = self._conn.execute(
+                """
+                SELECT m.rowid, m.text, bm25(memory_fts) AS rank
+                FROM memory_fts
+                JOIN memory_text AS m ON m.rowid = memory_fts.rowid
+                WHERE memory_fts MATCH ?
+                ORDER BY rank
+                LIMIT ?
+                """,
+                (_fts_match_query(query), k),
+            ).fetchall()
+        return [
+            MemoryHit(id=int(row_id), text=str(text), score=abs(float(rank)))
+            for row_id, text, rank in rows
+        ]
 
     def close(self) -> None:
         self._conn.close()

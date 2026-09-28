@@ -1,0 +1,149 @@
+# Model registry: provider routes for the swarm.
+# `priority`: lower = better/preferred at the think levels listed in `think_levels`.
+# `effort`: provider-side reasoning effort hint (some APIs accept low/medium/high).
+# `evidence`: where the pick comes from - user (user-specified), web (searched Sep 2026),
+#             assumed (plausible ID, verify before relying on it).
+version: 1
+
+providers:
+  # ---- Tier S: primary "best model" routes ----
+  - name: zai:glm-5.3
+    provider: zai
+    api_key_env: ZAI_API_KEY
+    think_levels: [high, xhigh]
+    priority: 5
+    evidence: user + web (open coding leader, Terminal-Bench 3.0 = 28.3, CyberGym 84.5%)
+
+  - name: moonshot:kimi-k2.7-code
+    provider: moonshot
+    api_key_env: KIMI_CODE_PLAN_API_KEY
+    think_levels: [high, xhigh]
+    priority: 10
+    evidence: user (Kimi 2.7 Code Plan)
+
+  - name: google:gemini-3.8-flash
+    provider: google
+    api_key_env: GEMINI_API_KEY
+    effort: high
+    think_levels: [high, xhigh]
+    priority: 12
+    evidence: user (Gemini 3.8 Flash, high effort)
+
+  - name: xiaomi:mimo-v2.5-pro
+    provider: xiaomi
+    api_key_env: MIMO_API_KEY
+    effort: low
+    think_levels: ["off", low, medium]
+    priority: 15
+    evidence: user (MiMo 2.5 Pro, low effort)
+
+  - name: minimax:minimax-2.7-high-speed
+    provider: minimax
+    api_key_env: MINIMAX_API_KEY
+    effort: low
+    think_levels: ["off", low]
+    priority: 20
+    evidence: user (2.7 high speed); model ID assumed - verify in Minimax console
+
+  - name: openai:gpt-6-luna
+    provider: codex
+    api_key_env: CODEX_OAUTH_TOKEN
+    effort: low
+    think_levels: ["off", low, medium]
+    priority: 25
+    evidence: user (Codex OAuth, GPT 6 Luna low)
+
+  - name: anthropic:claude-sonnet-4.6
+    provider: claude-code
+    api_key_env: CLAUDE_CODE_API_KEY
+    effort: low
+    think_levels: [low, medium, high]
+    priority: 30
+    evidence: user (Claude Code API, Sonnet 4.6 low)
+
+  - name: nvidia:nemotron-3-ultra
+    provider: nvidia
+    api_key_env: NVIDIA_API_KEY
+    think_levels: [high, xhigh]
+    priority: 35
+    evidence: web (NVIDIA NIM has no MiMo yet - forum request open; Nemotron 3 Ultra = AA index 48, best NVIDIA-stack reasoner)
+
+  - name: openrouter:z-ai/glm-5.3-flash
+    provider: openrouter
+    api_key_env: OPENROUTER_API_KEY
+    effort: medium
+    think_levels: [low, medium, high]
+    priority: 40
+    evidence: web (#2 OpenRouter by usage, best coding value; alt = deepseek/deepseek-v4.1-flash #1)
+
+  # ---- Standard pool: Ollama x2, Cohere x2, Mistral x2, Groq x2 ----
+  - name: ollama:glm5.3
+    provider: ollama-1
+    base_url_env: OLLAMA_1_BASE_URL        # e.g. http://127.0.0.1:11434
+    think_levels: ["off", low, medium]
+    priority: 50
+    evidence: assumed (local Ollama instance #1)
+
+  - name: ollama:qwen3.8
+    provider: ollama-2
+    base_url_env: OLLAMA_2_BASE_URL        # e.g. http://127.0.0.1:11435
+    think_levels: ["off", low]
+    priority: 55
+    evidence: assumed (local Ollama instance #2)
+
+  - name: cohere:command-a
+    provider: cohere-1
+    api_key_env: COHERE_API_KEY_1
+    think_levels: [low, medium]
+    priority: 60
+    evidence: assumed (Cohere API #1)
+
+  - name: cohere:command-r7b
+    provider: cohere-2
+    api_key_env: COHERE_API_KEY_2
+    think_levels: ["off", low]
+    priority: 62
+    evidence: assumed (Cohere API #2)
+
+  - name: mistral:mistral-large-latest
+    provider: mistral-1
+    api_key_env: MISTRAL_API_KEY_1
+    think_levels: [medium, high]
+    priority: 65
+    evidence: assumed (Mistral API #1)
+
+  - name: mistral:ministral-3-8b-latest
+    provider: mistral-2
+    api_key_env: MISTRAL_API_KEY_2
+    think_levels: ["off"]
+    priority: 67
+    evidence: web (Ministral 3 8B 2512 listed on OpenRouter); assumed direct-API ID
+
+  - name: groq:moonshotai/kimi-k2.7
+    provider: groq-1
+    api_key_env: GROQ_API_KEY_1
+    think_levels: [low, medium]
+    priority: 70
+    evidence: assumed (Groq API #1)
+
+  - name: groq:llama-3.3-70b-versatile
+    provider: groq-2
+    api_key_env: GROQ_API_KEY_2
+    think_levels: ["off", low]
+    priority: 72
+    evidence: assumed (Groq API #2)
+
+  # ---- Last-resort fallbacks ----
+  - name: sambanova:Meta-Llama-3.3-70B-Instruct
+    provider: sambanova
+    api_key_env: SAMBANOVA_API_KEY
+    think_levels: ["off", low, medium, high]
+    priority: 80
+    evidence: assumed (fallback)
+
+  - name: fireworks:accounts/fireworks/models/kimi-k2.7
+    provider: fireworks
+    api_key_env: FIREWORKS_API_KEY
+    think_levels: ["off", low, medium, high]
+    priority: 85
+    evidence: assumed (fallback)

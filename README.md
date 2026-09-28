@@ -22,23 +22,24 @@ uv run swarm-grpc
 
 `POST /v1/runs` with `{"text": "...", "thread_id": "t1"}`. `GET /v1/health`. gRPC `SwarmService.Run` and `SwarmService.Recall` call the same core.
 
-Models come from `SWARM_ROUTER_MODEL` and `SWARM_SPECIALIST_MODEL` (LangChain `init_chat_model` ids). The router is the smaller model. Specialists run only after a cache miss.
+Predefined providers and routes live in [`config/swarm.yaml`](config/swarm.yaml). Per-agent roles, models, and tasks live in [`Agents/{Name}/agent.yaml`](Agents/Tester/agent.yaml) (see [`Agents/SKILLS.md`](Agents/SKILLS.md)). `SWARM_*` env vars override file defaults. Open [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace) for a multi-root editor layout.
 
 ## Token path
 
 1. Exact SHA-256 cache, then a cosine semantic cache (default threshold `0.97`).
-2. Tokenizer budget: stable system prompt first, then memories, then the newest turns. Tool text is capped.
-3. sqlite-vec recall on int8 vectors (`BAAI/bge-small-en-v1.5`, 384-d, FastEmbed ONNX int8). FAISS and Qdrant are optional backends.
-4. FastEmbed cross-encoder rerank (`Xenova/ms-marco-MiniLM-L-6-v2`); only top-k chunks are injected.
-5. Near-duplicate memories are dropped with NumPy before the prompt.
-6. Independent tasks fan out with `asyncio.gather` and `concurrent.futures`. Each specialist sees only its task. Handoffs inside the swarm use LangGraph. Parallel results are merged as short Pydantic JSON, not full transcripts.
+2. Router on `think_level: low` with provider fallback and circuit breakers (`GET /v1/health` shows breaker state).
+3. Think-level token caps, then tokenizer budget (system prompt, memories, newest turns; tool text capped).
+4. Hybrid dense + BM25 recall (RRF), dedupe, rerank; only top-k snippets injected. sqlite-vec int8 + optional FTS5 side index.
+5. Near-duplicate memories dropped before the prompt.
+6. Parallel fan-out with bounded concurrency and JSON briefs; LangGraph handoffs for sequential specialist work.
 
 HTTP peers use `httpx2` with HTTP/2 (`h2`). `aiohttp` and `requests` are the other clients.
 
 ## Checks
 
 ```bash
-uv run --extra dev pytest
-uv run --extra dev ruff check src tests
-uv run --extra dev ty check src tests
+uv run --extra dev pytest tests benchmark -q
+uv run --extra dev ruff check src tests benchmark
+uv run --extra dev ty check src tests benchmark
+uv run python -m swarm_sdk.agents.validate
 ```

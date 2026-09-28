@@ -1,0 +1,17 @@
+version: 1
+name: Reviewer
+role: reviews_diffs
+langgraph_node: reviewer
+think_level: medium
+model: openai:gpt-4o
+token_budget:
+  max_prompt: 2048
+  max_completion: 512
+tasks:
+  - id: diff_review
+    description: Primary task for Reviewer
+    outputs: [AGENTS.md output contract]
+  - id: security_smell_check
+    description: Secondary task for Reviewer
+    outputs: [coordination.yaml task id when assigned]
+capabilities: ['diff', 'ruff']

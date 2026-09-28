@@ -1,9 +1,23 @@
+"""Runtime settings. Environment variables use the `SWARM_` prefix."""
+
+import os
+from pathlib import Path
 from typing import Literal
 
+from dotenv import dotenv_values
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 MemoryBackend = Literal["sqlite-vec", "faiss", "qdrant"]
+
+# API keys live OUTSIDE the repo in ~/.env (never committed). Real environment
+# variables always take precedence; empty entries are ignored. Downstream code
+# reads provider keys via os.environ (api_key_env in config/model_registry.yaml).
+for _env_file in (Path.home() / ".env", Path.cwd() / ".env"):
+    if _env_file.is_file():
+        for _key, _value in dotenv_values(_env_file).items():
+            if _value and _key not in os.environ:
+                os.environ[_key] = _value
 
 
 class Settings(BaseSettings):
@@ -29,3 +43,13 @@ class Settings(BaseSettings):
     api_host: str = "127.0.0.1"
     api_port: int = 8000
     grpc_port: int = 50051
+    embed_batch_size: int = Field(default=64, ge=1)
+    hybrid_enabled: bool = True
+
+
+def load_merged_settings(
+    config_path: Path | None = None,
+):
+    from swarm_sdk.yaml_config import load_settings
+
+    return load_settings(config_path)

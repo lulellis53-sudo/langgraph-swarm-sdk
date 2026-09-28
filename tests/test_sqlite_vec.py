@@ -23,7 +23,8 @@ def test_sqlite_vec_int8_roundtrip(tmp_path: Path) -> None:
 
 def test_dedupe_drops_near_duplicates() -> None:
     embedder = HashEmbedder(dim=32)
-    vectors = embedder.embed(["topic: one", "topic: two", "other: three"])
-    kept = dedupe_texts(["topic: one", "topic: two", "other: three"], vectors, threshold=0.98)
-    assert kept == ["topic: one", "other: three"]
+    texts = ["alpha bravo", "alpha bravo", "totally different phrase"]
+    vectors = embedder.embed(texts)
+    kept = dedupe_texts(texts, vectors, threshold=0.98)
+    assert kept == ["alpha bravo", "totally different phrase"]
     assert float(np.dot(unit(vectors[0]), unit(vectors[1]))) > 0.98

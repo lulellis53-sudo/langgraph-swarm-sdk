@@ -1,0 +1,17 @@
+version: 1
+name: Documenter
+role: maintains_docs
+langgraph_node: null
+think_level: low
+model: openai:gpt-4o-mini
+token_budget:
+  max_prompt: 2048
+  max_completion: 512
+tasks:
+  - id: readme_sync
+    description: Primary task for Documenter
+    outputs: [AGENTS.md output contract]
+  - id: api_docs
+    description: Secondary task for Documenter
+    outputs: [coordination.yaml task id when assigned]
+capabilities: ['markdown', 'readme']

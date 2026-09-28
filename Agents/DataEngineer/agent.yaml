@@ -1,0 +1,17 @@
+version: 1
+name: DataEngineer
+role: memory_vector_stores
+langgraph_node: null
+think_level: medium
+model: openai:gpt-4o-mini
+token_budget:
+  max_prompt: 2048
+  max_completion: 512
+tasks:
+  - id: sqlite_vec_ops
+    description: Primary task for DataEngineer
+    outputs: [AGENTS.md output contract]
+  - id: store_migration
+    description: Secondary task for DataEngineer
+    outputs: [coordination.yaml task id when assigned]
+capabilities: ['sqlite-vec', 'qdrant']

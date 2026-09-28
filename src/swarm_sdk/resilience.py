@@ -7,7 +7,7 @@ A success in half_open closes the breaker; a failure reopens it.
 from __future__ import annotations
 
 import time
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
@@ -16,7 +16,7 @@ class CircuitOpenError(RuntimeError):
     """Raised when a call is attempted on an open circuit."""
 
 
-class BreakerState(str, Enum):
+class BreakerState(StrEnum):
     CLOSED = "closed"
     OPEN = "open"
     HALF_OPEN = "half_open"
@@ -41,9 +41,11 @@ class CircuitBreaker:
 
     @property
     def state(self) -> BreakerState:
-        if self._state is BreakerState.OPEN and (time.monotonic() - self._opened_at) >= self.config.reset_timeout_s:
-            self._state = BreakerState.HALF_OPEN
-            self._half_open_calls = 0
+        if self._state is BreakerState.OPEN:
+            elapsed = time.monotonic() - self._opened_at
+            if elapsed >= self.config.reset_timeout_s:
+                self._state = BreakerState.HALF_OPEN
+                self._half_open_calls = 0
         return self._state
 
     def before_call(self) -> None:

@@ -1,0 +1,17 @@
+version: 1
+name: Optimizer
+role: performance_tuning
+langgraph_node: null
+think_level: medium
+model: openai:gpt-4o-mini
+token_budget:
+  max_prompt: 2048
+  max_completion: 512
+tasks:
+  - id: profile_hotpath
+    description: Primary task for Optimizer
+    outputs: [AGENTS.md output contract]
+  - id: token_budget_tune
+    description: Secondary task for Optimizer
+    outputs: [coordination.yaml task id when assigned]
+capabilities: ['profiling', 'tokens']

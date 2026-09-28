@@ -1,0 +1,17 @@
+version: 1
+name: Planner
+role: breaks_goals_into_task_graphs
+langgraph_node: null
+think_level: medium
+model: openai:gpt-4o-mini
+token_budget:
+  max_prompt: 2048
+  max_completion: 512
+tasks:
+  - id: roadmap_decompose
+    description: Primary task for Planner
+    outputs: [AGENTS.md output contract]
+  - id: dependency_graph
+    description: Secondary task for Planner
+    outputs: [coordination.yaml task id when assigned]
+capabilities: ['planning', 'dependencies']

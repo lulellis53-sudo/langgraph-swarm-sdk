@@ -1,0 +1,17 @@
+version: 1
+name: Debugger
+role: root_cause_failures
+langgraph_node: null
+think_level: medium
+model: openai:gpt-4o-mini
+token_budget:
+  max_prompt: 2048
+  max_completion: 512
+tasks:
+  - id: reproduce_failure
+    description: Primary task for Debugger
+    outputs: [AGENTS.md output contract]
+  - id: minimal_fix
+    description: Secondary task for Debugger
+    outputs: [coordination.yaml task id when assigned]
+capabilities: ['stack_trace', 'logs']

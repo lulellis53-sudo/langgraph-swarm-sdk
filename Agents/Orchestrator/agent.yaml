@@ -1,0 +1,17 @@
+version: 1
+name: Orchestrator
+role: coordinates_the_swarm
+langgraph_node: null
+think_level: low
+model: openai:gpt-4o-mini
+token_budget:
+  max_prompt: 2048
+  max_completion: 512
+tasks:
+  - id: assign_tasks
+    description: Primary task for Orchestrator
+    outputs: [AGENTS.md output contract]
+  - id: merge_results
+    description: Secondary task for Orchestrator
+    outputs: [coordination.yaml task id when assigned]
+capabilities: ['coordination', 'task_routing']

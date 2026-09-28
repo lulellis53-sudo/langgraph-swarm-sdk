@@ -24,8 +24,9 @@ def create_app(sdk: SwarmSDK | None = None) -> FastAPI:
     application.state.sdk = sdk if sdk is not None else SwarmSDK.from_settings()
 
     @application.get("/v1/health")
-    async def health() -> dict[str, str]:
-        return {"status": "ok"}
+    async def health(request: Request) -> dict[str, object]:
+        sdk_obj: SwarmSDK = request.app.state.sdk
+        return {"status": "ok", "providers": sdk_obj.provider_health()}
 
     @application.post("/v1/runs", response_model=RunResult)
     async def runs(body: RunIn, request: Request) -> RunResult:
@@ -42,7 +43,11 @@ def create_app(sdk: SwarmSDK | None = None) -> FastAPI:
     return application
 
 
-app = create_app()
+def _default_app() -> FastAPI:
+    return create_app()
+
+
+app = _default_app()
 
 
 def main() -> None:

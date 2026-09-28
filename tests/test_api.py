@@ -33,7 +33,9 @@ def test_health_and_run(tmp_path: Path) -> None:
         reranker=IdentityReranker(),
     )
     client = TestClient(create_app(sdk))
-    assert client.get("/v1/health").json() == {"status": "ok"}
+    health = client.get("/v1/health").json()
+    assert health["status"] == "ok"
+    assert isinstance(health.get("providers"), dict)
     response = client.post("/v1/runs", json={"text": "hello api", "thread_id": "http"})
     assert response.status_code == 200
     assert response.json()["text"] == "api-answer"

@@ -1,4 +1,4 @@
-"""Hybrid retrieval: dense vector search + BM25 keyword search, merged with reciprocal rank fusion."""
+"""Hybrid retrieval: dense vectors + BM25 keywords, merged with reciprocal rank fusion."""
 
 from __future__ import annotations
 
@@ -43,11 +43,11 @@ def _bm25_scores(query: str, corpus: list[str], *, k1: float = 1.2, b: float = 0
 
 def rrf_merge(rankings: list[list[int]], *, k: int = 60) -> list[int]:
     """Reciprocal rank fusion. Returns candidate indices sorted by fused score."""
-    fused: Counter[int] = Counter()
+    fused: dict[int, float] = {}
     for ranking in rankings:
         for rank, idx in enumerate(ranking):
-            fused[idx] += 1.0 / (k + rank + 1)
-    return [idx for idx, _ in fused.most_common()]
+            fused[idx] = fused.get(idx, 0.0) + 1.0 / (k + rank + 1)
+    return sorted(fused, key=lambda i: fused[i], reverse=True)
 
 
 class HybridSearchConfig(BaseModel):
@@ -68,23 +68,30 @@ def hybrid_search(
 ) -> list[MemoryHit]:
     """Dense + BM25 hybrid over the store's top candidates, fused with RRF."""
     cfg = config or HybridSearchConfig()
-    hits = store.search(query_vector, retrieve_k)
+    hits = list(store.search(query_vector, retrieve_k))
+    keyword_search = getattr(store, "keyword_search", None)
+    if keyword_search is not None and cfg.keyword_weight > 0:
+        for hit in keyword_search(query, retrieve_k):
+            if not any(existing.id == hit.id for existing in hits):
+                hits.append(hit)
     if not hits:
         return []
     corpus = [hit.text for hit in hits]
 
     rankings: list[list[int]] = []
+    weights: list[float] = []
     if cfg.dense_weight > 0:
         dense_order = sorted(range(len(hits)), key=lambda i: hits[i].score, reverse=True)
         rankings.append(dense_order)
+        weights.append(cfg.dense_weight)
     if cfg.keyword_weight > 0:
         kw_scores = _bm25_scores(query, corpus)
         kw_order = sorted(range(len(corpus)), key=lambda i: kw_scores[i], reverse=True)
         rankings.append(kw_order)
+        weights.append(cfg.keyword_weight)
 
-    # Weighted RRF: scale each ranking's contribution by its weight.
     fused: dict[int, float] = {}
-    for ranking, weight in zip(rankings, [cfg.dense_weight, cfg.keyword_weight]):
+    for ranking, weight in zip(rankings, weights):
         for rank, idx in enumerate(ranking):
             fused[idx] = fused.get(idx, 0.0) + weight / (cfg.rrf_k + rank + 1)
     order = sorted(fused, key=lambda i: fused[i], reverse=True)[: cfg.final_k]

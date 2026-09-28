@@ -41,7 +41,11 @@ class ModelSelector:
     def __init__(self, config: ModelSelectConfig | None = None) -> None:
         self.config = config or ModelSelectConfig()
 
-    def select(self, think_level: ThinkLevel | None = None, provider: str | None = None) -> ModelRoute:
+    def select(
+        self,
+        think_level: ThinkLevel | None = None,
+        provider: str | None = None,
+    ) -> ModelRoute:
         level = think_level or self.config.default_level
         candidates = [r for r in self.config.routes if level in r.think_levels]
         if provider:
@@ -54,17 +58,25 @@ class ModelSelector:
 class FallbackChain:
     """Try models in priority order; skip providers whose circuit breaker is open."""
 
-    def __init__(self, config: ModelSelectConfig | None = None, breaker_config: BreakerConfig | None = None) -> None:
+    def __init__(
+        self,
+        config: ModelSelectConfig | None = None,
+        breaker_config: BreakerConfig | None = None,
+    ) -> None:
         self.config = config or ModelSelectConfig()
         self.breakers: dict[str, CircuitBreaker] = {
-            route.provider: CircuitBreaker(route.provider, breaker_config) for route in self.config.routes
+            route.provider: CircuitBreaker(route.provider, breaker_config)
+            for route in self.config.routes
         }
 
     async def complete(self, system: str, user: str, think_level: ThinkLevel | None = None) -> str:
         from swarm_sdk.providers import complete, load_chat_model
 
         level = think_level or self.config.default_level
-        ordered = sorted((r for r in self.config.routes if level in r.think_levels), key=lambda r: r.priority)
+        ordered = sorted(
+            (r for r in self.config.routes if level in r.think_levels),
+            key=lambda r: r.priority,
+        )
         if not ordered:
             raise ValueError(f"no route supports think_level={level!r}")
 

@@ -1,0 +1,17 @@
+version: 1
+name: Researcher
+role: read_only_codebase_research
+langgraph_node: researcher
+think_level: medium
+model: openai:gpt-4o-mini
+token_budget:
+  max_prompt: 2048
+  max_completion: 512
+tasks:
+  - id: code_search
+    description: Primary task for Researcher
+    outputs: [AGENTS.md output contract]
+  - id: summarize_findings
+    description: Secondary task for Researcher
+    outputs: [coordination.yaml task id when assigned]
+capabilities: ['grep', 'read_only']

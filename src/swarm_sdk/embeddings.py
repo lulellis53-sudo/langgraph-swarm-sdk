@@ -13,7 +13,7 @@ import numpy as np
 class Embedder(Protocol):
     dim: int
 
-    def embed(self, texts: list[str]) -> np.ndarray: ...
+    def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray: ...
 
 
 def unit(vector: np.ndarray) -> np.ndarray:
@@ -41,20 +41,42 @@ def dedupe_texts(texts: list[str], vectors: np.ndarray, threshold: float) -> lis
     return kept_text
 
 
+def _bge_style(model_name: str) -> bool:
+    return "bge" in model_name.lower()
+
+
+def _prepare_texts(texts: list[str], *, query: bool, bge_style: bool) -> list[str]:
+    if not bge_style:
+        return texts
+    if query:
+        return [f"query: {t}" for t in texts]
+    return [f"passage: {t}" for t in texts]
+
+
+def _batched(texts: list[str], batch_size: int) -> Iterable[list[str]]:
+    for start in range(0, len(texts), batch_size):
+        yield texts[start : start + batch_size]
+
+
 class HashEmbedder:
     """Deterministic unit vectors for tests and for machines without FastEmbed."""
 
-    def __init__(self, dim: int = 384) -> None:
+    def __init__(self, dim: int = 384, batch_size: int = 64, model_name: str = "") -> None:
         self.dim = dim
+        self.batch_size = batch_size
+        self._bge = _bge_style(model_name)
 
-    def embed(self, texts: list[str]) -> np.ndarray:
-        rows = [self._one(text) for text in texts]
+    def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:
+        prepared = _prepare_texts(texts, query=query, bge_style=self._bge)
+        rows: list[np.ndarray] = []
+        for batch in _batched(prepared, self.batch_size):
+            rows.extend(self._one(text) for text in batch)
         if not rows:
             return np.zeros((0, self.dim), dtype=np.float32)
         return np.stack(rows)
 
     def _one(self, text: str) -> np.ndarray:
-        seed = text.strip().lower().split(":", 1)[0].encode()
+        seed = text.strip().lower().encode()
         digest = hashlib.sha256(seed).digest()
         rng = np.random.default_rng(int.from_bytes(digest[:8], "little"))
         vector = rng.standard_normal(self.dim).astype(np.float32)
@@ -64,14 +86,24 @@ class HashEmbedder:
 class FastEmbedder:
     """FastEmbed ONNX embedder. Default model ships int8 weights."""
 
-    def __init__(self, model_name: str = "BAAI/bge-small-en-v1.5", dim: int = 384) -> None:
+    def __init__(
+        self,
+        model_name: str = "BAAI/bge-small-en-v1.5",
+        dim: int = 384,
+        batch_size: int = 64,
+    ) -> None:
         self.model_name = model_name
         self.dim = dim
+        self.batch_size = batch_size
+        self._bge = _bge_style(model_name)
         self._model: TextEmbeddingProto | None = None
 
-    def embed(self, texts: list[str]) -> np.ndarray:
+    def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:
+        prepared = _prepare_texts(texts, query=query, bge_style=self._bge)
         model = self._load()
-        rows = [np.asarray(vector, dtype=np.float32) for vector in model.embed(texts)]
+        rows: list[np.ndarray] = []
+        for batch in _batched(prepared, self.batch_size):
+            rows.extend(np.asarray(vector, dtype=np.float32) for vector in model.embed(batch))
         if not rows:
             return np.zeros((0, self.dim), dtype=np.float32)
         return np.vstack(rows)
