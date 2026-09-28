@@ -29,6 +29,14 @@ providers:
     priority: 12
     evidence: user (Gemini 3.8 Flash, high effort)
 
+  - name: google:gemini-3.8-pro
+    provider: google
+    api_key_env: GEMINI_API_KEY
+    effort: high
+    think_levels: [medium, high, xhigh]
+    priority: 16
+    evidence: user (Gemini 3.8 Pro, high effort)
+
   - name: xiaomi:mimo-v2.5-pro
     provider: xiaomi
     api_key_env: MIMO_API_KEY
@@ -36,6 +44,14 @@ providers:
     think_levels: ["off", low, medium]
     priority: 15
     evidence: user (MiMo 2.5 Pro, low effort)
+
+  - name: xai:grok-4.6
+    provider: xai
+    api_key_env: XAI_API_KEY
+    effort: high
+    think_levels: [high, xhigh]
+    priority: 18
+    evidence: user (Grok 4.6 / OATH, high effort)
 
   - name: minimax:minimax-2.7-high-speed
     provider: minimax
@@ -90,6 +106,13 @@ providers:
     think_levels: ["off", low]
     priority: 55
     evidence: assumed (local Ollama instance #2)
+
+  - name: alibaba:qwen-3.8
+    provider: alibaba
+    api_key_env: ALIBABA_API_KEY
+    think_levels: ["off", low, medium]
+    priority: 58
+    evidence: assumed (Alibaba Cloud Qwen 3.8 direct API)
 
   - name: cohere:command-a
     provider: cohere-1

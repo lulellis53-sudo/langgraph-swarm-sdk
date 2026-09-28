@@ -22,7 +22,7 @@ All delegation decisions live here. The actual execution is handled by `swarm_sd
 | MathWorker | mistral | `ministral-3-8b-latest` | Fast, low effort, good at structured numeric output |
 
 Extra providers available in the registry for fallback or specialization:
-Cohere `command-a`, Mistral `mistral-large-latest`, Minimax 2.7, Xiaomi MiMo 2.5 Pro, Claude 4.6 Sonnet, Codex GPT-6 Luna, Kimi K2.7, Groq Llama-3.3-70B, Fireworks Kimi K2.7.
+Cohere `command-a`, Mistral `mistral-large-latest`, Minimax 2.7, Xiaomi MiMo 2.5 Pro, Claude 4.6 Sonnet, Codex GPT-6 Luna, Google Gemini 3.8 Flash/Pro, Kimi K2.7, Groq Llama-3.3-70B, Qwen 3.8, Grok 4.6, Fireworks Kimi K2.7.
 
 ## Behavioral guidelines
 1. **Read the registry first.** `src/swarm_sdk/agents/config/model_registry.yaml` is the source of truth for routes, priorities, and API-key env vars.

@@ -96,6 +96,7 @@ def test_provider_hint_restricts(selector: ModelSelector) -> None:
 def test_all_requested_providers_present(registry_routes: list[ModelRoute]) -> None:
     providers = {r.provider for r in registry_routes}
     expected = {
+        "alibaba",
         "cohere-1",
         "cohere-2",
         "mistral-1",
@@ -104,12 +105,14 @@ def test_all_requested_providers_present(registry_routes: list[ModelRoute]) -> N
         "xiaomi",
         "claude-code",
         "codex",
-        "moonshot",
-        "openrouter",
+        "google",
         "groq-1",
         "groq-2",
+        "moonshot",
+        "openrouter",
         "sambanova",
         "fireworks",
+        "xai",
     }
     missing = expected - providers
     assert not missing, f"missing providers: {missing}"
