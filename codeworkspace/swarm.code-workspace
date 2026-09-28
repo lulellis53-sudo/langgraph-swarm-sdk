@@ -3,9 +3,33 @@
     { "name": "SDK (root)", "path": ".." },
     { "name": "Agents", "path": "../Agents" },
     { "name": "Config", "path": "../config" },
-    { "name": "Benchmark", "path": "../benchmark" }
+    { "name": "Benchmark", "path": "../benchmark" },
+    { "name": "Docs", "path": "../docs" }
   ],
   "settings": {
-    "python.defaultInterpreterPath": "${workspaceFolder:SDK (root)}/.venv/bin/python"
+    "python.defaultInterpreterPath": "${workspaceFolder:SDK (root)}/.venv/bin/python",
+    "python.analysis.extraPaths": ["${workspaceFolder:SDK (root)}/src"],
+    "python.testing.pytestEnabled": true,
+    "python.testing.pytestArgs": ["tests", "benchmark", "-q"],
+    "editor.rulers": [100],
+    "ruff.enable": true,
+    "ruff.lineLength": 100,
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/.pytest_cache": true,
+      "**/.ruff_cache": true
+    },
+    "search.exclude": {
+      "**/.venv": true,
+      "**/benchmark/results": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "charliermarsh.ruff",
+      "ms-python.python",
+      "redhat.vscode-yaml",
+      "tamasfe.even-better-toml"
+    ]
   }
 }
