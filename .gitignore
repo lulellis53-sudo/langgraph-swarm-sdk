@@ -12,6 +12,7 @@ dist/
 *.db
 *.sqlite
 benchmark/results/
+docs/
 .coverage
 htmlcov/
 *.profraw

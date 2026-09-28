@@ -1,6 +1,6 @@
 """Tokenizer budgets so prompts stay under a hard token cap.
 
-Default counting uses **tiktoken** (`cl100k_base`). Pass a Hugging Face
+Default counting uses **tiktoken** (``cl100k_base``). Pass a Hugging Face
 ``tokenizers.Tokenizer`` (or a tiktoken ``Encoding``) for an explicit backend.
 """
 
@@ -19,10 +19,21 @@ _ENCODING_MISSING: set[str] = set()
 
 
 class _HasEncode(Protocol):
+    """Anything with an ``encode`` method (HF Tokenizer or tiktoken Encoding)."""
+
     def encode(self, text: str, *args: Any, **kwargs: Any) -> Any: ...
 
 
 def _tiktoken_encoding(name: str = _DEFAULT_TIKTOKEN) -> Any | None:
+    """Load and cache a tiktoken encoding, or ``None`` if unavailable.
+
+    Args:
+        name: Encoding name (default ``cl100k_base``).
+
+    Returns:
+        A tiktoken ``Encoding``, or ``None`` when the package is missing or the
+        vocabulary file cannot be downloaded.
+    """
     if name in _ENCODING_CACHE:
         return _ENCODING_CACHE[name]
     if name in _ENCODING_MISSING:
@@ -42,6 +53,15 @@ def _tiktoken_encoding(name: str = _DEFAULT_TIKTOKEN) -> Any | None:
 
 
 def _count_with(tokenizer: _HasEncode, text: str) -> int:
+    """Count tokens using ``tokenizer.encode``.
+
+    Args:
+        tokenizer: HF Tokenizer or tiktoken Encoding.
+        text: Input text.
+
+    Returns:
+        Number of token ids.
+    """
     encoded = tokenizer.encode(text)
     ids = getattr(encoded, "ids", None)
     if ids is not None:
@@ -50,6 +70,18 @@ def _count_with(tokenizer: _HasEncode, text: str) -> int:
 
 
 def count_text(text: str, tokenizer: _HasEncode | None = None) -> int:
+    """Count tokens in ``text``.
+
+    Prefer ``tokenizer`` when given; otherwise tiktoken ``cl100k_base``; finally
+    whitespace pre-tokenization as a last-resort fallback.
+
+    Args:
+        text: Input text (empty string counts as 0).
+        tokenizer: Optional HF Tokenizer or tiktoken Encoding.
+
+    Returns:
+        Non-negative token count.
+    """
     if not text:
         return 0
     if tokenizer is not None:
@@ -62,18 +94,32 @@ def count_text(text: str, tokenizer: _HasEncode | None = None) -> int:
 
 @dataclass(frozen=True)
 class PackedPrompt:
+    """System + user prompt pair packed under a token budget.
+
+    Attributes:
+        system: Stable system prompt (always non-empty after packing).
+        user: Optional user/context body (may be empty).
+    """
+
     system: str
     user: str
 
     @property
     def text(self) -> str:
+        """Full prompt text (``system`` alone, or ``system\\nuser``)."""
         if self.user:
             return f"{self.system}\n{self.user}"
         return self.system
 
 
 class TokenBudget:
-    """Keep a stable system prompt, then fill remaining room with newest turns."""
+    """Keep a stable system prompt, then fill remaining room with newest turns.
+
+    Attributes:
+        max_tokens: Hard cap for the packed prompt.
+        tool_cap: Per-line cap for memory/turn lines.
+        tokenizer: Optional explicit tokenizer; default uses tiktoken.
+    """
 
     def __init__(
         self,
@@ -82,6 +128,16 @@ class TokenBudget:
         tool_cap: int = 128,
         tokenizer: Tokenizer | _HasEncode | None = None,
     ) -> None:
+        """Initialize a packing budget.
+
+        Args:
+            max_tokens: Maximum tokens for the packed prompt (must be >= 1).
+            tool_cap: Max tokens per memory/turn line.
+            tokenizer: Optional HF Tokenizer or tiktoken Encoding.
+
+        Raises:
+            ValueError: If ``max_tokens`` is less than 1.
+        """
         if max_tokens < 1:
             raise ValueError("max_tokens must be >= 1")
         self.max_tokens = max_tokens
@@ -89,9 +145,27 @@ class TokenBudget:
         self.tokenizer = tokenizer
 
     def count(self, text: str) -> int:
+        """Count tokens with this budget's tokenizer.
+
+        Args:
+            text: Input text.
+
+        Returns:
+            Token count.
+        """
         return count_text(text, self.tokenizer)
 
     def pack(self, *, system: str, memories: list[str], turns: list[str]) -> PackedPrompt:
+        """Pack system, memories, and newest turns under ``max_tokens``.
+
+        Args:
+            system: System prompt (stripped; falls back to ``"system"``).
+            memories: Context lines (oldest first).
+            turns: Conversation turns (newest preferred when space is tight).
+
+        Returns:
+            A ``PackedPrompt`` whose ``.text`` fits ``max_tokens``.
+        """
         system_text = self._fit_system(system)
         memories_fit = self._take(system_text, [], self._lines("memory: ", memories))
         turns_fit = self._take_newest(system_text, memories_fit, self._lines("turn: ", turns))
@@ -103,7 +177,14 @@ class TokenBudget:
         return packed
 
     def _fit_system(self, system: str) -> str:
-        """Always return a non-empty system that fits ``max_tokens``."""
+        """Always return a non-empty system that fits ``max_tokens``.
+
+        Args:
+            system: Raw system prompt.
+
+        Returns:
+            Truncated or fallback system text.
+        """
         text = system.strip() or "system"
         if self.count(text) <= self.max_tokens:
             return text

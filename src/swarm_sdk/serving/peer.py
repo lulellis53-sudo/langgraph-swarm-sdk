@@ -16,6 +16,21 @@ def post_json(
     client: str = "httpx2",
     transport: httpx2.BaseTransport | None = None,
 ) -> dict[str, Any]:
+    """POST JSON synchronously and return the decoded object body.
+
+    Args:
+        url: Absolute peer URL.
+        payload: JSON-serializable request body.
+        client: ``"httpx2"`` (default, HTTP/2) or ``"requests"``.
+        transport: Optional httpx2 transport (tests / custom stacks).
+
+    Returns:
+        Response JSON object.
+
+    Raises:
+        TypeError: If the response body is not a JSON object.
+        requests.HTTPError | httpx2.HTTPError: On non-success status.
+    """
     if client == "requests":
         response = requests.post(url, json=payload, timeout=30)
         response.raise_for_status()
@@ -31,6 +46,19 @@ def post_json(
 
 
 async def async_post_json(url: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """POST JSON asynchronously with aiohttp.
+
+    Args:
+        url: Absolute peer URL.
+        payload: JSON-serializable request body.
+
+    Returns:
+        Response JSON object.
+
+    Raises:
+        TypeError: If the response body is not a JSON object.
+        aiohttp.ClientResponseError: On non-success status.
+    """
     timeout = aiohttp.ClientTimeout(total=30)
     async with aiohttp.ClientSession(timeout=timeout) as session:
         async with session.post(url, json=payload) as response:

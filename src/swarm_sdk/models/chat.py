@@ -10,6 +10,14 @@ from swarm_sdk.execution.executor import offload
 
 
 def message_text(message: object) -> str:
+    """Extract plain text from a chat message or dict payload.
+
+    Args:
+        message: LangChain message, dict with ``content``, or other object.
+
+    Returns:
+        Concatenated text content, or ``str(message)`` as a last resort.
+    """
     if isinstance(message, dict):
         content = message.get("content", "")
     else:
@@ -28,6 +36,17 @@ def message_text(message: object) -> str:
 
 
 def load_chat_model(model_name: str) -> BaseChatModel:
+    """Initialize a LangChain chat model from a provider:name string.
+
+    Args:
+        model_name: e.g. ``"openai:gpt-4o-mini"``.
+
+    Returns:
+        A ``BaseChatModel`` instance.
+
+    Raises:
+        TypeError: If ``init_chat_model`` does not return a chat model.
+    """
     model = init_chat_model(model_name)
     if not isinstance(model, BaseChatModel):
         raise TypeError(f"expected a chat model, got {type(model).__name__}")
@@ -35,6 +54,17 @@ def load_chat_model(model_name: str) -> BaseChatModel:
 
 
 async def complete(model: BaseChatModel, system: str, user: str) -> str:
+    """Invoke ``model`` on a system+user pair via the shared thread pool.
+
+    Args:
+        model: Chat model to call.
+        system: System prompt.
+        user: User / packed prompt body.
+
+    Returns:
+        Model reply text.
+    """
+
     def _call() -> str:
         result = model.invoke(
             [SystemMessage(content=system), HumanMessage(content=user)],
@@ -45,6 +75,14 @@ async def complete(model: BaseChatModel, system: str, user: str) -> str:
 
 
 def last_ai_text(messages: list[object]) -> str:
+    """Return the last assistant/AI message text from a transcript.
+
+    Args:
+        messages: Chronological message list (dicts or LangChain messages).
+
+    Returns:
+        Last AI/assistant text, or the last message's text, or ``""``.
+    """
     for message in reversed(messages):
         if isinstance(message, dict):
             kind = message.get("role") or message.get("type")

@@ -20,6 +20,22 @@ def recall_texts(
     hybrid: HybridSearchConfig | None = None,
     hybrid_enabled: bool = True,
 ) -> list[str]:
+    """Recall, dedupe, and rerank memory texts for a query.
+
+    Args:
+        query: User / router query text.
+        store: Vector (and optional keyword) memory store.
+        embedder: Embedder used for query and passage vectors.
+        reranker: Cross-encoder or lexical reranker.
+        retrieve_k: Candidate count from dense/hybrid search.
+        rerank_k: Max texts returned after reranking.
+        dedup_threshold: Cosine similarity threshold for near-duplicate drop.
+        hybrid: Optional hybrid search config (dense + BM25 RRF).
+        hybrid_enabled: When False, force dense-only search.
+
+    Returns:
+        Up to ``rerank_k`` passage texts, highest relevance first.
+    """
     vector = embedder.embed([query], query=True)[0]
     if hybrid_enabled and hybrid is not None and hybrid.enabled:
         hits = hybrid_search(
