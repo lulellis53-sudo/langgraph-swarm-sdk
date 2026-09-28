@@ -78,6 +78,10 @@ jobs:
   test:
     name: Tests (pytest, Python 3.14)
     runs-on: ubuntu-latest
+    env:
+      # Fail loudly if the runner's Python cannot load sqlite_vec for real,
+      # instead of letting those tests skip silently.
+      SWARM_REQUIRE_SQLITE_EXT: "1"
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
@@ -85,10 +89,19 @@ jobs:
         with:
           python-version: "3.14.5"
           enable-cache: true
+      - name: Report sqlite3 capability
+        run: |
+          uv run python - <<'PY'
+          import sqlite3, sysconfig
+          conn = sqlite3.connect(":memory:")
+          print("enable_load_extension:", hasattr(conn, "enable_load_extension"))
+          print("sqlite_version:", sqlite3.sqlite_version)
+          print("configure_args:", sysconfig.get_config_var("CONFIG_ARGS") or "")
+          PY
       - name: Install dev dependencies
         run: uv sync --extra dev --frozen
       - name: Run tests
-        run: uv run pytest tests -q
+        run: uv run pytest tests -q -rs
 
   benchmark:
     name: Benchmarks (pytest)
