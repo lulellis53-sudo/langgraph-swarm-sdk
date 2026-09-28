@@ -5,12 +5,23 @@ Scoped instructions for Agent work under `.cursor/`. Complements the root [`AGEN
 ## Guidelines
 
 1. **Read first** — callers, tests, and config that touch the same behavior before editing.
-2. **Smallest correct diff** — no drive-by refactors, new abstractions, or dependencies unless required.
-3. **Match the stack** — Python `>=3.14.5`, `uv run …`, Ruff + ty (see root quality gate). New modules: copy [@templates/python_static_template.py](templates/python_static_template.py) (PEP 810–ready).
-4. **Prove it** — failing test → fix → gate (`pytest`, `ruff`, `ty`, `swarm_sdk.agents.validate`).
-5. **No secrets** — never commit or paste `.env`, keys, or tokens.
-6. **Docs after editing** — after substantive library/API edits, use **Context7** (preferred), then **Tavily** or **Exa**; tighten from current docs before claiming done.
-7. **Delegated work** — use Cursor subagents (`.cursor/agents/` when present) or Swarm personas (`Agents/*`) with clear prompts; parallelize independent multitasks.
+2. **Think and analyse before writing** — restate the goal, map the real call path, then code. Do not thrash: no edit–lint–edit loops, no speculative retries, no “try another file” churn.
+3. **One coherent place** — prefer **one module** (or the existing owner file) with clear, complete functions. Do **not** spawn many tiny files or 5-line stub helpers for the same concern.
+4. **Smallest correct diff** — no drive-by refactors, new abstractions, or dependencies unless required.
+5. **Match the stack** — Python `>=3.14.5`, `uv run …`, Ruff + ty (see root quality gate). New modules: copy [@templates/python_static_template.py](templates/python_static_template.py) (PEP 810–ready).
+6. **Prove it** — failing test → fix → gate (`pytest`, `ruff`, `ty`, `swarm_sdk.agents.validate`).
+7. **No secrets** — never commit or paste `.env`, keys, or tokens.
+8. **Docs after editing** — after substantive library/API edits, use **Context7** (preferred), then **Tavily** or **Exa**; tighten from current docs before claiming done.
+9. **Delegated work** — use Cursor subagents (`.cursor/agents/` when present) or Swarm personas (`Agents/*`) with clear prompts; parallelize independent multitasks only when they do not fragment the same feature across files.
+
+## STOP — anti-patterns
+
+| Stop | Do instead |
+|------|------------|
+| Looping the same edit / lint / retry without new evidence | Stop after one failure; analyse root cause; then one deliberate fix |
+| Creating 3–10 micro-files for one feature | Extend the natural owner module; keep roles in one file when they share state |
+| Writing 5-line stub functions that only forward or rename | Write real functions with the full logic, guards, and return contract |
+| Spreading one concern across many half-finished modules | Finish one well-structured file; extract later only when reuse is proven |
 
 ## Folder design
 
@@ -68,23 +79,28 @@ Think → Check → Plan (multitasks) → Act → Context7 (after edit) → Tigh
 - Restate the goal and success criteria in one or two sentences.
 - Identify constraints (scope, files off-limits, secrets, quality gate).
 - Prefer the existing pattern in-repo over inventing a new one.
+- Decide the **single target file** (or minimal set) before opening the editor.
 
 ### 2. Check
 
 - Locate callers, tests, and configs with search/read tools.
 - Note open questions or risks before writing code.
 - If the environment is blocked, report `blocked` with the exact command/error after one retry.
+- Do not start a second implementation path while the first is unfinished.
 
 ### 3. Plan (multitasks)
 
 - Split into independent vs dependent steps.
-- Run independent work in parallel (tool batches / subagents).
+- Run independent work in parallel (tool batches / subagents) only when files/concerns do not overlap.
 - Keep dependent steps sequential; name what each step must return.
+- Prefer one solid module with role-grouped functions over a shower of micro-files.
 
 ### 4. Act
 
-- Edit, run the relevant tests/gate for the change, and leave the tree reviewable.
+- Write complete functions (logic + edges + clear returns), not 5-line placeholders.
+- Edit the chosen file(s), run the relevant tests/gate, and leave the tree reviewable.
 - Update docs/commands only when behavior or install steps change.
+- If a fix fails once with a clear error, analyse — do not loop blindly.
 
 ### 5. Context7 (after editing)
 
@@ -114,12 +130,17 @@ Also linked from root [`../AGENTS.md`](../AGENTS.md) and every `Agents/*/AGENTS.
 
 ### Required shape
 
-1. Module docstring + `from __future__ import annotations`
+1. Module docstring + future-annotations import:
+
+   ```python
+   from __future__ import annotations
+   ```
+
 2. Stdlib / third-party / local imports (eager stdlib OK; heavy third-party deferred — see PEP 810 below)
 3. **`wrappers`** — `@wrappers.timed`, `@wrappers.logged`, `@wrappers.retry(n)` (always `@functools.wraps`)
 4. **Role classes** (order): `TypeRole` → `HintRole` → `VectRole` → `MathRole` → `DbRole` → `LoopRole`
 5. **Role functions**: `type_*`, `hint_*`, `vect_*`, `math_*`, `db_*`, `loop_*`
-6. Explicit `__all__` (+ optional `main` smoke only under `if __name__ == "__main__"`)
+6. Explicit export list named `__all__` (+ optional `main` smoke only under a `__main__` guard)
 
 ### Roles at a glance
 
@@ -142,8 +163,8 @@ Swarm targets Python **3.14.x** today; PEP 810 `lazy import` syntax lands in **3
 | Register plugins via explicit `register()` called by the app | Self-register into a global dict at import time |
 | Heavy deps: import inside the function that needs them (3.14) or `lazy import` (3.15+) | Eager `import torch` / `numpy` / `transformers` at top level unless always required |
 | Type-only names under `if TYPE_CHECKING:` | Force runtime import of typing-only modules |
-| Keep `__init_subclass__` / metaclass registries free of import-time I/O | Rely on import order for correctness |
-| Put smoke tests in `main()` behind `__main__` | Run asserts or network calls at import |
+| Keep `init_subclass` / metaclass registries free of import-time I/O | Rely on import order for correctness |
+| Put smoke tests in `main()` behind a `__main__` guard | Run asserts or network calls at import |
 
 Forward-compat sketch (when on 3.15+):
 
@@ -177,7 +198,7 @@ uv tool run lifeguard --help   # see ~/Documentos/Lifeguard.md
 wrappers.{timed, logged, retry}
 TypeRole / HintRole / VectRole / MathRole / DbRole / LoopRole
 type_is_mapping, hint_tag, vect_l2, math_safe_div, db_uri, loop_chunked
-__all__ + main() under __main__ only
+public __all__ list + main() only when run as __main__
 ```
 
 Smoke check:

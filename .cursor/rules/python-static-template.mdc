@@ -14,11 +14,16 @@ Full ops notes: @.cursor/AGENTS.md (Static Templates). Spec: [PEP 810](https://p
 
 ## Required shape
 
-1. `from __future__ import annotations`
+1. Future-annotations import (fenced so markdownlint does not treat dunders as strong):
+
+   ```python
+   from __future__ import annotations
+   ```
+
 2. **`wrappers`** — `@wrappers.timed` / `logged` / `retry` with `@functools.wraps`
 3. Role classes: `Type` → `Hint` → `Vect` → `Math` → `Db` → `Loop`
 4. Role functions: `type_`, `hint_`, `vect_`, `math_`, `db_`, `loop_`
-5. Explicit `__all__`; smoke only under `__main__`
+5. Explicit export list (`__all__`); smoke only under a `__main__` guard
 
 ## PEP 810 (lazy-import safety)
 
