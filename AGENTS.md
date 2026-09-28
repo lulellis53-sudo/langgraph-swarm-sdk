@@ -10,26 +10,39 @@ Human-oriented overview: [`README.md`](README.md).
 
 ## Repository map
 
+### Library
+
 | Path | Purpose |
 |------|---------|
-| [`src/swarm_sdk/`](src/swarm_sdk/) | Library: swarm runtime, cache, memory, routing, API/gRPC |
+| [`src/swarm_sdk/`](src/swarm_sdk/) | Swarm runtime, cache, memory, routing, API/gRPC |
 | [`src/swarm_sdk/orchestrator/`](src/swarm_sdk/orchestrator/) | Parallel plan engine: `spawn` (goal → JSON plan) + `run_plan` (LangGraph dependency waves) |
 | [`src/swarm_sdk/pb/`](src/swarm_sdk/pb/) | gRPC: `swarm.proto` + generated `swarm_pb2*` stubs |
-| [`config/swarm.yaml`](config/swarm.yaml) | Provider registry, routes, defaults (`SWARM_*` env overrides) |
+
+### Configuration and agents
+
+| Path | Purpose |
+|------|---------|
+| [`src/swarm_sdk/agents/config/swarm.yaml`](src/swarm_sdk/agents/config/swarm.yaml) | Runtime defaults: providers, routes, embeddings, vector store (`SWARM_*` env overrides) |
+| [`src/swarm_sdk/agents/config/model_registry.yaml`](src/swarm_sdk/agents/config/model_registry.yaml) | Provider/model registry for delegation and fallbacks |
 | [`Agents/`](Agents/) | Specialist **swarm personas** (`AGENTS.md` + `agent.yaml` per role) |
-| [`Agents/coordination.yaml`](Agents/coordination.yaml) | Task graph for multi-agent workflows |
 | [`Agents/README.md`](Agents/README.md) | Index of swarm agents and how to run them |
+| [`Agents/coordination.yaml`](Agents/coordination.yaml) | Task graph for multi-agent workflows |
+
+### Tests, benchmarks, tooling
+
+| Path | Purpose |
+|------|---------|
 | [`tests/`](tests/) | Unit and integration tests |
 | [`benchmark/`](benchmark/) | Token/retrieval/swarm benchmarks (incl. [`benchmark/sql_pro/`](benchmark/sql_pro/)) |
-| [`.cursor/commands/`](.cursor/commands/) | Cursor slash commands (e.g. `/sql-pro`) |
 | [`.cursor/AGENTS.md`](.cursor/AGENTS.md) | Cursor agent guidelines, folder design, modus operandi |
 | [`.cursor/rules/`](.cursor/rules/) | Project `.mdc` rules (core, Context7-after-edit, Python, protobuf, …) |
 | [`.cursor/templates/`](.cursor/templates/) | Static scaffolds — start with [`python_static_template.py`](.cursor/templates/python_static_template.py) |
+| [`.cursor/commands/`](.cursor/) | Cursor slash commands (when present) |
 | [`.vscode/`](.vscode/) | Workspace settings + extension recommendations (Cursor/VS Code) |
 | [`.cursor/extensions.txt`](.cursor/extensions.txt) | Install list mirroring recommended extensions |
-| [`.codex/config.toml`](.codex/config.toml) | Codex IDE/CLI defaults for this repo (`file_opener = cursor`) |
+| [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace) | Multi-root editor layout |
 
-Edit [`src/swarm_sdk/pb/swarm.proto`](src/swarm_sdk/pb/swarm.proto) then `uv run python -m swarm_sdk.pb` to regenerate stubs. Never commit `.env`.
+Edit [`src/swarm_sdk/pb/swarm.proto`](src/swarm_sdk/pb/swarm.proto), then `uv run python -m swarm_sdk.pb` to regenerate stubs. Never commit `.env`.
 
 ## Environment and commands
 
@@ -47,11 +60,11 @@ uv run python -m swarm_sdk.agents.validate
 
 Use `uv run …` so commands use the project virtualenv.
 
-### Colab and Codex (editor)
+### Editors
 
+- **Cursor/VS Code:** open [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace). Extensions install from [`.vscode/extensions.json`](.vscode/extensions.json), or run `xargs -n1 code --install-extension < .cursor/extensions.txt`.
+- **Codex** (`openai.chatgpt`): open the Codex sidebar and sign in with ChatGPT. For LangChain Codex routes, set `CODEX_OAUTH_TOKEN` in `.env` (see [`src/swarm_sdk/agents/config/model_registry.yaml`](src/swarm_sdk/agents/config/model_registry.yaml)).
 - **Colab** (`google.colab`): open a `.ipynb` → **Select Kernel** → **Colab** → sign in with Google. Requires `uv sync --extra jupyter` for local kernels; Colab runs remotely.
-- **Codex** (`openai.chatgpt`): open the Codex sidebar and sign in with ChatGPT. Repo defaults: [`.codex/config.toml`](.codex/config.toml). For LangChain Codex routes, set `CODEX_OAUTH_TOKEN` in `.env` (see [`config/model_registry.yaml`](config/model_registry.yaml)).
-- **Install extensions:** Cursor/VS Code will prompt from [`.vscode/extensions.json`](.vscode/extensions.json), or `xargs -n1 code --install-extension < .cursor/extensions.txt`.
 
 ## Two kinds of “agents”
 
@@ -66,14 +79,15 @@ For swarm coordination: start from [`Agents/README.md`](Agents/README.md) and [`
 2. **Smallest correct diff** — no drive-by refactors, new abstractions, or dependencies unless the task requires them.
 3. **Match conventions** — Ruff (`line-length = 100`, py314), existing naming and patterns in `src/swarm_sdk/`.
 4. **Prove it** — failing test → fix → full gate above. Do not weaken lint/type checks without a named rule and reason.
-5. **Config** — prefer [`config/swarm.yaml`](config/swarm.yaml) and agent manifests under `Agents/*/agent.yaml`; document new env vars in README or agent docs.
+5. **Config** — prefer [`src/swarm_sdk/agents/config/swarm.yaml`](src/swarm_sdk/agents/config/swarm.yaml) and agent manifests under `Agents/*/agent.yaml`; document new env vars in README or agent docs.
 6. **Protobuf** — edit [`src/swarm_sdk/pb/swarm.proto`](src/swarm_sdk/pb/swarm.proto), then regenerate with `uv run python -m swarm_sdk.pb`. Do not hand-edit `swarm_pb2*` stubs.
 7. **New Python modules** — copy from [@.cursor/templates/python_static_template.py](.cursor/templates/python_static_template.py); see **Static Templates** below.
 
 ## Benchmarks and SQL Pro
 
 - Benchmark tasks live under [`benchmark/Tasks/`](benchmark/Tasks/); results go to `benchmark/results/` (gitignored).
-- SQL Pro suite: [`benchmark/sql_pro/suite.yaml`](benchmark/sql_pro/suite.yaml), CLI `uv run python -m benchmark.sql_pro.run`, Cursor command [`.cursor/commands/sql-pro.md`](.cursor/commands/sql-pro.md).
+- SQL Pro suite: [`benchmark/sql_pro/suite.yaml`](benchmark/sql_pro/suite.yaml), CLI `uv run python -m benchmark.sql_pro.run`.
+- Model Delegation suite: [`benchmark/model_delegation/suite.yaml`](benchmark/model_delegation/suite.yaml), CLI `uv run python -m benchmark.run --task model_delegation`.
 
 ## Security and secrets
 
@@ -90,8 +104,8 @@ For swarm coordination: start from [`Agents/README.md`](Agents/README.md) and [`
 ## When stuck
 
 - Report `blocked` with the exact command output after one reasonable retry.
-- Prefer fixing the environment (uv sync, missing extra) over skipping tests.
-- For provider/model behavior, read [`config/swarm.yaml`](config/swarm.yaml) and [`src/swarm_sdk/model_select.py`](src/swarm_sdk/model_select.py).
+- Prefer fixing the environment (`uv sync`, missing extra) over skipping tests.
+- For provider/model behavior, read [`src/swarm_sdk/agents/config/model_registry.yaml`](src/swarm_sdk/agents/config/model_registry.yaml) and [`src/swarm_sdk/model_select.py`](src/swarm_sdk/model_select.py).
 
 ## Static Templates
 
