@@ -78,3 +78,44 @@ def test_import_serving_domain() -> None:
     assert create_app is not None
     assert post_json is not None
 
+
+def test_root_exports() -> None:
+    import swarm_sdk
+    from swarm_sdk import RunResult, Settings, SwarmSDK
+
+    assert SwarmSDK is not None
+    assert Settings is not None
+    assert RunResult is not None
+    assert hasattr(swarm_sdk, "SwarmSDK")
+    assert hasattr(swarm_sdk, "Settings")
+    assert hasattr(swarm_sdk, "RunResult")
+
+
+def test_former_flat_modules_fail_to_import() -> None:
+    former_flat = [
+        "swarm_sdk.swarm",
+        "swarm_sdk.api",
+        "swarm_sdk.grpc_server",
+        "swarm_sdk.tokens",
+        "swarm_sdk.usage",
+        "swarm_sdk.embeddings",
+        "swarm_sdk.hybrid",
+        "swarm_sdk.rerank",
+        "swarm_sdk.retrieval",
+        "swarm_sdk.cache",
+        "swarm_sdk.config",
+        "swarm_sdk.yaml_config",
+        "swarm_sdk.providers",
+        "swarm_sdk.model_select",
+        "swarm_sdk.registry",
+        "swarm_sdk.resilience",
+        "swarm_sdk.runtime",
+        "swarm_sdk.parallel",
+        "swarm_sdk.transport",
+        "swarm_sdk.accel",
+    ]
+    for mod in former_flat:
+        with pytest.raises(ModuleNotFoundError):
+            __import__(mod)
+
+
