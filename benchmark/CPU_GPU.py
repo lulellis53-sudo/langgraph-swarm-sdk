@@ -21,7 +21,7 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from benchmark.metrics import Timer
+from benchmark.metrics import Timer  # noqa: E402
 
 RESULTS_DIR = Path(__file__).resolve().parent / "results" / "cpu_gpu"
 DEFAULT_MODEL = "BAAI/bge-small-en-v1.5"
@@ -31,13 +31,15 @@ DEFAULT_SNIPPET = (
 
 
 def _require_fastembed() -> Any:
+    import importlib
+
     try:
-        from fastembed import TextEmbedding
+        module = importlib.import_module("fastembed")
     except ImportError as exc:
         raise SystemExit(
             "fastembed is not installed. Run: uv sync --extra jupyter"
         ) from exc
-    return TextEmbedding
+    return getattr(module, "TextEmbedding")
 
 
 def _sample_documents(count: int, snippet: str) -> list[str]:

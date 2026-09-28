@@ -7,29 +7,38 @@ license = { text = "MIT" }
 authors = [{ name = "dantenho", email = "dantenho@gmail.com" }]
 requires-python = ">=3.14.5"
 dependencies = [
-    "aiohttp>=3.11",
-    # HTTP API (swarm-api entrypoint)
-    "fastapi>=0.115",
-    "grpcio>=1.71",
-    "grpcio-tools>=1.71",
-    "h2>=4.2",
-    "httpx2>=2.13",
+    # ## Swarm / LangGraph
     "langchain>=1.0",
     "langgraph>=1.0",
     "langgraph-swarm>=0.1",
-    "numpy>=2.1",
-    "orjson>=3.10",
-    "polars>=1.30",
-    "protobuf>=6.31",
-    "pyyaml>=6.0",
-    "pydantic-settings>=2.10",
     "pydantic>=2.11",
-    "requests>=2.32",
-    "sqlite-vec>=0.1.6",
-    "tokenizers>=0.22",
+    "pydantic-settings>=2.10",
+    # ## Config & serialization
+    "pyyaml>=6.0",
+    "orjson>=3.10",
+    "protobuf>=6.31",
+    # ## HTTP API (swarm-api entrypoint)
+    "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "uvloop>=0.21; sys_platform != 'win32'",
-    # onnxruntime has no macOS x86_64 wheel, so FastEmbed cannot install there.
+    # ## HTTP clients
+    "httpx>=0.28",
+    "httpx2>=2.13",
+    "h2>=4.2",
+    "aiohttp>=3.11",
+    "requests>=2.32",
+    # ## gRPC (swarm-grpc)
+    "grpcio>=1.71",
+    "grpcio-tools>=1.71",
+    # ## Tokenization & token budgets
+    "tokenizers>=0.22",
+    "tiktoken>=0.9",
+    # ## Numerics & vector memory (CPU)
+    "numpy>=2.1",
+    "polars>=1.30",
+    "sqlite-vec>=0.1.6",
+    # ## Embeddings (FastEmbed default model = ONNX int8 on CPU)
+    # onnxruntime has no macOS x86_64 wheel; FastEmbed skips on Intel Mac unless ORT is installed elsewhere.
     "fastembed>=0.7; sys_platform != 'darwin' or platform_machine != 'x86_64'",
 ]
 
@@ -40,6 +49,7 @@ no-build-package = ["cryptography"]
 constraint-dependencies = ["cryptography==48.0.1"]
 
 [project.optional-dependencies]
+# ## Testing & property tests
 dev = [
     "hypothesis>=6.135",
     "pytest>=8.4",
@@ -49,9 +59,36 @@ dev = [
     "ty>=0.0.1a0",
     "yamllint>=1.35",
 ]
+# ## Observability (OTel traces for FastAPI / httpx)
+observability = [
+    "opentelemetry-api>=1.30",
+    "opentelemetry-sdk>=1.30",
+    "opentelemetry-exporter-otlp-proto-http>=1.30",
+    "opentelemetry-instrumentation-fastapi>=0.52b0",
+    "opentelemetry-instrumentation-httpx>=0.52b0",
+]
+# ## FAISS vector index (CPU wheels everywhere; GPU = CUDA only)
 faiss = ["faiss-cpu>=1.11"]
-# sympy/transformers/onnxruntime: local symbolic math + HF models for rerankers/embeddings.
-# onnxruntime has no macOS x86_64 wheel (same constraint as fastembed above).
+faiss-gpu = [
+    "faiss-gpu>=1.11; sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
+# ## FastEmbed + ONNX runtime (explicit install when not pulled by core deps)
+embed = [
+    "fastembed>=0.7",
+    "onnxruntime>=1.20; sys_platform != 'darwin' or platform_machine != 'x86_64'",
+]
+# ## ONNX Runtime GPU / CoreML execution providers (not Intel Mac x86_64)
+embed-gpu = [
+    "onnxruntime-gpu>=1.20; sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
+# ## MoltenVK / Vulkan + OpenCL (Intel Mac Radeon, llama.cpp GGUF embeddings)
+molten = [
+    "pyopencl>=2024.1",
+    "llama-cpp-python>=0.3.0",
+]
+opencl = ["pyopencl>=2024.1"]
+llama-cpp = ["llama-cpp-python>=0.3.0"]
+# ## ML rerankers / transformers (sympy + HF stack)
 ml = [
     "sympy>=1.13",
     "transformers>=4.51",
@@ -86,14 +123,24 @@ extend-exclude = ["src/swarm_sdk/pb"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
 
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-testpaths = ["tests", "benchmark"]
-pythonpath = ["."]
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ty.environment]
+python = "./.venv"
+python-version = "3.14"
 
 [tool.ty.src]
 exclude = [
   "src/swarm_sdk/pb/**",
   "src/swarm_sdk/memory/faiss_store.py",
   "src/swarm_sdk/memory/qdrant_store.py",
+  "src/swarm_sdk/gpu/opencl_math.py",
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests", "benchmark"]
+pythonpath = ["."]

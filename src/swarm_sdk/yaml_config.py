@@ -1,4 +1,4 @@
-"""Load config/swarm.yaml and merge with environment-backed Settings."""
+"""Load swarm.yaml and merge with environment-backed Settings."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import cast
 import yaml
 from pydantic import BaseModel, Field
 
-from swarm_sdk.config import MemoryBackend, Settings, VectorQuantization
+from swarm_sdk.config import EmbedBackend, MemoryBackend, Settings, VectorQuantization
 from swarm_sdk.hybrid import HybridSearchConfig
 from swarm_sdk.model_select import ModelRoute, ModelSelectConfig, ThinkLevel
 from swarm_sdk.resilience import BreakerConfig
@@ -36,6 +36,9 @@ class EmbeddingConfig(BaseModel):
     dedup_threshold: float = 0.98
     # FastEmbed ships this model as ONNX int8. Not a GPU flag.
     quantization: str = "int8"
+    # fastembed | llama-cpp | hash
+    backend: EmbedBackend = "fastembed"
+    llama_model: str | None = None
 
 
 class QdrantStoreConfig(BaseModel):
@@ -51,6 +54,8 @@ class VectorStoreConfig(BaseModel):
     # CUDA FAISS only. Ignored on machines without faiss-gpu (including Radeon 5300).
     gpu: bool = False
     quantization: VectorQuantization = "int8"
+    # Allow disabling OpenCL offloading without uninstalling pyopencl.
+    opencl_enabled: bool = True
     qdrant: QdrantStoreConfig = Field(default_factory=QdrantStoreConfig)
 
 
@@ -64,6 +69,10 @@ class RouterConfig(BaseModel):
     think_level: ThinkLevel = "low"
     max_tokens: int = 2048
     tool_cap: int = 128
+
+
+# Packaged default (also overridable via repo-root config/swarm.yaml or SWARM_CONFIG_PATH).
+_BUNDLED_SWARM_CONFIG = Path(__file__).resolve().parent / "agents" / "config" / "swarm.yaml"
 
 
 class SwarmFileConfig(BaseModel):
@@ -80,17 +89,20 @@ class SwarmFileConfig(BaseModel):
 
 
 def default_config_path() -> Path:
+    """Resolve swarm.yaml: env override, repo cwd, parent cwd, then packaged default."""
     env = os.environ.get("SWARM_CONFIG_PATH")
     if env:
         return Path(env)
     cwd = Path.cwd()
-    candidate = cwd / "config" / "swarm.yaml"
-    if candidate.is_file():
-        return candidate
-    parent = cwd / ".." / "config" / "swarm.yaml"
-    if parent.resolve().is_file():
-        return parent.resolve()
-    return candidate
+    candidates = [
+        cwd / "config" / "swarm.yaml",
+        (cwd / ".." / "config" / "swarm.yaml").resolve(),
+        _BUNDLED_SWARM_CONFIG,
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return _BUNDLED_SWARM_CONFIG
 
 
 def _parse_routes(raw: object) -> list[ModelRoute]:
@@ -179,6 +191,8 @@ def settings_from_file(file_cfg: SwarmFileConfig, env: Settings | None = None) -
         "rerank_k": file_cfg.rerank.top_k,
         "embed_dim": file_cfg.embedding.dim,
         "embed_model": file_cfg.embedding.model,
+        "embed_backend": file_cfg.embedding.backend,
+        "llama_embed_model": file_cfg.embedding.llama_model,
         "rerank_model": file_cfg.rerank.model,
         "memory_backend": file_cfg.vectorstore.backend,
         "memory_path": file_cfg.vectorstore.path,
@@ -186,6 +200,7 @@ def settings_from_file(file_cfg: SwarmFileConfig, env: Settings | None = None) -
         "hybrid_enabled": file_cfg.hybrid_search.enabled,
         "vector_gpu": file_cfg.vectorstore.gpu,
         "vector_quantization": file_cfg.vectorstore.quantization,
+        "opencl_enabled": file_cfg.vectorstore.opencl_enabled,
     }
     if file_cfg.model_select.routes:
         strong = next(

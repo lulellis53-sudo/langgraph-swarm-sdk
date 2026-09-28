@@ -73,12 +73,14 @@ class UsageMsg(_message.Message):
     def __init__(self, prompt_tokens: _Optional[int] = ..., completion_tokens: _Optional[int] = ..., llm_calls: _Optional[int] = ..., cached_calls: _Optional[int] = ..., wall_s: _Optional[float] = ...) -> None: ...
 
 class PlanResultMsg(_message.Message):
-    __slots__ = ("outputs", "usage")
+    __slots__ = ("outputs", "usage", "plan_id")
     OUTPUTS_FIELD_NUMBER: _ClassVar[int]
     USAGE_FIELD_NUMBER: _ClassVar[int]
+    PLAN_ID_FIELD_NUMBER: _ClassVar[int]
     outputs: _containers.RepeatedCompositeFieldContainer[StepOutputMsg]
     usage: UsageMsg
-    def __init__(self, outputs: _Optional[_Iterable[_Union[StepOutputMsg, _Mapping]]] = ..., usage: _Optional[_Union[UsageMsg, _Mapping]] = ...) -> None: ...
+    plan_id: str
+    def __init__(self, outputs: _Optional[_Iterable[_Union[StepOutputMsg, _Mapping]]] = ..., usage: _Optional[_Union[UsageMsg, _Mapping]] = ..., plan_id: _Optional[str] = ...) -> None: ...
 
 class PlanStatusMsg(_message.Message):
     __slots__ = ("plan_id", "status", "steps_done", "steps_total")

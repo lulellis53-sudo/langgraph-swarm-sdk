@@ -96,6 +96,7 @@ def _to_result_msg(plan_id: str, result: PlanResult) -> swarm_pb2.PlanResultMsg:
         The ``PlanResultMsg`` (also stored in ``_RESULTS``).
     """
     _RESULTS[plan_id] = swarm_pb2.PlanResultMsg(
+        plan_id=plan_id,
         outputs=[
             swarm_pb2.StepOutputMsg(
                 step_id=o.step_id,
@@ -202,10 +203,14 @@ class SwarmServicer(swarm_pb2_grpc.SwarmServiceServicer):
             recorded for subsequent ``PlanStatus`` polls.
         """
         del context
-        plan = _PLANS.get(request.plan_id) or _from_handle(request)
+        plan_id = request.plan_id or uuid.uuid4().hex
+        plan = _PLANS.get(plan_id)
+        if plan is None:
+            plan = _from_handle(request)
+            _PLANS[plan_id] = plan
         manifests = load_all_agent_manifests()
         result = asyncio.run(run_plan(plan, make_factory(manifests)))
-        return _to_result_msg(request.plan_id or uuid.uuid4().hex, result)
+        return _to_result_msg(plan_id, result)
 
     def PlanStatus(
         self,

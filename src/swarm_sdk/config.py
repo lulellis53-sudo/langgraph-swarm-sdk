@@ -8,8 +8,9 @@ from dotenv import dotenv_values
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-MemoryBackend = Literal["sqlite-vec", "faiss", "qdrant"]
+MemoryBackend = Literal["sqlite-vec", "faiss", "qdrant", "opencl"]
 VectorQuantization = Literal["none", "int8"]
+EmbedBackend = Literal["fastembed", "llama-cpp", "hash"]
 
 # API keys live OUTSIDE the repo in ~/.env (never committed). Real environment
 # variables always take precedence; empty entries are ignored. Downstream code
@@ -49,6 +50,10 @@ class Settings(BaseSettings):
     # FAISS GPU is CUDA-only. AMD Radeon / MoltenVK / OpenCL cannot host this index.
     vector_gpu: bool = False
     vector_quantization: VectorQuantization = "none"
+    # GPU acceleration options for Intel Mac + Radeon Pro 5300M
+    embed_backend: EmbedBackend = "fastembed"
+    llama_embed_model: str | None = None
+    opencl_enabled: bool = True
 
 
 def load_merged_settings(

@@ -9,7 +9,11 @@ from swarm_sdk.memory.base import MemoryHit
 
 
 def _try_cuda_index(faiss: object, index: object) -> tuple[object, str, object | None]:
-    """Move a CPU index to CUDA device 0. Radeon / OpenCL / MoltenVK are not supported."""
+    """Move a CPU index to CUDA device 0.
+
+    FAISS GPU is CUDA-only. On AMD Radeon Pro 5300M (MoltenVK/OpenCL/Metal) this
+    path is a no-op and the caller keeps a CPU IndexFlatIP.
+    """
     resources_cls = getattr(faiss, "StandardGpuResources", None)
     to_gpu = getattr(faiss, "index_cpu_to_gpu", None)
     if resources_cls is None or to_gpu is None:

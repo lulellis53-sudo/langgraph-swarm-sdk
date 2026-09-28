@@ -51,6 +51,7 @@ message UsageMsg {
 message PlanResultMsg {
   repeated StepOutputMsg outputs = 1;
   UsageMsg usage = 2;
+  string plan_id = 3; // assigned by server when the client omitted plan_id on RunPlan
 }
 
 message PlanStatusMsg {

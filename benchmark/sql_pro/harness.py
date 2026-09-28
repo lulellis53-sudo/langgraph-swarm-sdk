@@ -94,7 +94,9 @@ def _seed(conn: sqlite3.Connection, name: str) -> None:
     raise ValueError(f"unknown seed {name!r}")
 
 
-def _run_timed(conn: sqlite3.Connection, query: str) -> tuple[list[tuple[Any, ...]], float, list[str]]:
+def _run_timed(
+    conn: sqlite3.Connection, query: str
+) -> tuple[list[tuple[Any, ...]], float, list[str]]:
     start = time.perf_counter()
     cur = conn.execute(query)
     rows = cur.fetchall()
@@ -208,7 +210,9 @@ class SqlProSuite:
 
         if expect.get("fast_faster_than_slow") and fast_ms >= slow_ms * 0.99:
             passed = False
-            notes.append(f"expected fast faster than slow; slow_ms={slow_ms:.3f} fast_ms={fast_ms:.3f}")
+            notes.append(
+                f"expected fast faster than slow; slow_ms={slow_ms:.3f} fast_ms={fast_ms:.3f}"
+            )
 
         return CaseResult(
             case_id=case_id,

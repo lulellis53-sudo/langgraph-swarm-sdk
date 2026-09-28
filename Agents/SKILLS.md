@@ -25,6 +25,8 @@
 4. **Each agent** reads its `AGENTS.md` for behavioral rules, executes its task, and returns a structured output contract.
 5. **Orchestrator merges** results and updates task statuses.
 
+Each agent also has a [`Benchmarks/`](Coder/Benchmarks/) folder for role-scoped case notes and thresholds; shared runners live under [`benchmark/`](../benchmark/).
+
 ## Adding tasks
 
 Edit `coordination.yaml` → `tasks:`. Copy the example structure from the comments. Each task needs an `id`, `title`, `assigned` agent(s), `depends_on` list, and `status`.

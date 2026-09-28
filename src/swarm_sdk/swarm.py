@@ -16,7 +16,8 @@ from pydantic import BaseModel, Field, ValidationError
 from swarm_sdk.agents.manifest import langgraph_manifests, load_all_agent_manifests
 from swarm_sdk.cache import SemanticCache
 from swarm_sdk.config import Settings, load_merged_settings
-from swarm_sdk.embeddings import Embedder, FastEmbedder, HashEmbedder
+from swarm_sdk.embeddings import Embedder, FastEmbedder, HashEmbedder, LlamaCppEmbedder
+from swarm_sdk.gpu import set_enabled as set_opencl_enabled
 from swarm_sdk.memory.base import MemoryHit, MemoryStore
 from swarm_sdk.memory.sqlite_vec import SqliteVecStore
 from swarm_sdk.model_select import (
@@ -76,7 +77,10 @@ def _fastembed_available() -> bool:
 
 def default_embedder(settings: Settings) -> Embedder:
     batch = settings.embed_batch_size
-    if not _fastembed_available():
+    if settings.embed_backend == "llama-cpp":
+        model_path = settings.llama_embed_model or settings.embed_model
+        return LlamaCppEmbedder(model_path, settings.embed_dim, batch)
+    if settings.embed_backend == "hash" or not _fastembed_available():
         return HashEmbedder(settings.embed_dim, batch, settings.embed_model)
     return FastEmbedder(settings.embed_model, settings.embed_dim, batch)
 
@@ -100,6 +104,10 @@ def open_store(settings: Settings) -> MemoryStore:
             settings.embed_dim,
             quantization=settings.vector_quantization,
         )
+    if settings.memory_backend == "opencl":
+        from swarm_sdk.memory.opencl_store import OpenClVecStore
+
+        return OpenClVecStore(settings.embed_dim)
     return SqliteVecStore(settings.memory_path, settings.embed_dim)
 
 
@@ -125,6 +133,7 @@ class SwarmSDK:
             settings, file_config = load_merged_settings()
         self.settings = settings or Settings()
         self.file_config = file_config or load_swarm_config()
+        set_opencl_enabled(self.settings.opencl_enabled)
         self._router_model = router_model
         self._specialist_model = specialist_model
         self.embedder = embedder or default_embedder(self.settings)

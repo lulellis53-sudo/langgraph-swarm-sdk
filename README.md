@@ -19,7 +19,42 @@ uv run python -m ipykernel install --user --name=swarm --display-name="Python (S
 uv run jupyter lab    # or: uv run jupyter notebook
 ```
 
-FastEmbed is the default embedder and reranker. Its default model (`BAAI/bge-small-en-v1.5`) is ONNX int8 on CPU. sqlite-vec stores int8 vectors; Qdrant can use scalar int8 when `vectorstore.quantization` is `int8`. FAISS GPU (`vectorstore.gpu: true`) needs a CUDA `faiss-gpu` build and falls back to CPU when that is missing. A Radeon Pro 5300, MoltenVK, and OpenCL are not embedding or index backends. Current `onnxruntime` wheels do not include macOS x86_64, so that extra is skipped on Intel Macs. Tests inject a local embedder and do not download models.
+FastEmbed is the default embedder and reranker. Its default model (`BAAI/bge-small-en-v1.5`) is ONNX int8 on CPU. sqlite-vec stores int8 vectors; Qdrant can use scalar int8 when `vectorstore.quantization` is `int8`. FAISS GPU (`vectorstore.gpu: true`) needs a CUDA `faiss-gpu` build and falls back to CPU when that is missing.
+
+### GPU acceleration on Intel Mac + AMD Radeon Pro 5300M
+
+Swarm can now use **MoltenVK/Vulkan** for embeddings and **OpenCL** for vector math / search on a 2019 Intel Mac:
+
+- `LlamaCppEmbedder` runs a GGUF embedding model through `llama-cpp-python` with Vulkan/MoltenVK.
+- `OpenClVecStore` is a brute-force vector store that offloads inner-product search to the GPU.
+- The shared `swarm_sdk.gpu` dispatcher accelerates batch cosine/dot/norm for dedupe and the semantic cache.
+
+Install the optional extras and build `llama-cpp-python` with Vulkan:
+
+```bash
+uv sync --extra dev --extra opencl --extra llama-cpp
+CMAKE_ARGS='-DGGML_VULKAN=on' uv pip install --no-build-isolation llama-cpp-python
+```
+
+Configure in `src/swarm_sdk/agents/config/swarm.yaml` (or via `SWARM_*` env vars):
+
+```yaml
+embedding:
+  backend: llama-cpp
+  llama_model: /path/to/bge-small-en-v1.5-q4_0.gguf
+
+vectorstore:
+  backend: opencl
+  opencl_enabled: true
+```
+
+Inspect the host map and selected backends with:
+
+```bash
+uv run python -m swarm_sdk.accel
+```
+
+Current `onnxruntime` wheels do not include macOS x86_64, so FastEmbed is skipped on Intel Macs unless ORT is installed another way. Tests inject a local embedder and do not download models.
 
 ## Run
 
@@ -42,7 +77,7 @@ Token savings: shared role-contract prompt cached per process, exact + semantic 
 
 gRPC: `SwarmService.SpawnPlan` (goal → plan handle), `RunPlan` (handle → per-step outputs + usage), `PlanStatus` (poll for long plans). Manifests may set `api_key_env: SWARM_<NAME>_API_KEY` — the env var *name*, never the key value.
 
-Predefined providers and routes live in [`config/swarm.yaml`](config/swarm.yaml). Per-agent roles, models, and tasks live in [`Agents/{Name}/agent.yaml`](Agents/Tester/agent.yaml) (see [`Agents/SKILLS.md`](Agents/SKILLS.md)). `SWARM_*` env vars override file defaults. Open [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace) for a multi-root editor layout.
+Predefined providers and routes live in [`src/swarm_sdk/agents/config/swarm.yaml`](src/swarm_sdk/agents/config/swarm.yaml). Per-agent roles, models, and tasks live in [`Agents/{Name}/agent.yaml`](Agents/Tester/agent.yaml) (see [`Agents/SKILLS.md`](Agents/SKILLS.md)). `SWARM_*` env vars override file defaults. Open [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace) for a multi-root editor layout.
 
 ## Token path
 

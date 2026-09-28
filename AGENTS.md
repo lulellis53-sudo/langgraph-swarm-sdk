@@ -21,19 +21,18 @@ Human-oriented overview: [`README.md`](README.md).
 | [`tests/`](tests/) | Unit and integration tests |
 | [`benchmark/`](benchmark/) | Token/retrieval/swarm benchmarks (incl. [`benchmark/sql_pro/`](benchmark/sql_pro/)) |
 | [`.cursor/commands/`](.cursor/commands/) | Cursor slash commands (e.g. `/sql-pro`) |
+| [`.vscode/`](.vscode/) | Workspace settings + extension recommendations (Cursor/VS Code) |
+| [`.cursor/extensions.txt`](.cursor/extensions.txt) | Install list mirroring recommended extensions |
+| [`.codex/config.toml`](.codex/config.toml) | Codex IDE/CLI defaults for this repo (`file_opener = cursor`) |
 
 Generated or sensitive: `src/swarm_sdk/pb/` (protobuf), `.env` (never commit).
 
 ## Environment and commands
 
 - **Python:** `>=3.14.5`, managed with **[uv](https://docs.astral.sh/uv/)**.
-- **Install:** `uv sync --extra dev` (add `--extra faiss`, `--extra qdrant`, `--extra jupyter` as needed).
+- **Install:** `uv sync --extra dev` (add `--extra faiss`, `--extra faiss-gpu`, `--extra embed`, `--extra molten`, `--extra observability`, `--extra qdrant`, `--extra jupyter` as needed).
 - **Run services:** `uv run swarm-api`, `uv run swarm-grpc`.
-- **Quality gate** (run before claiming work is done\
-
-
-
-):
+- **Quality gate** (run before claiming work is done):
 
 ```bash
 uv run --extra dev pytest tests benchmark -q
@@ -43,6 +42,12 @@ uv run python -m swarm_sdk.agents.validate
 ```
 
 Use `uv run …` so commands use the project virtualenv.
+
+### Colab and Codex (editor)
+
+- **Colab** (`google.colab`): open a `.ipynb` → **Select Kernel** → **Colab** → sign in with Google. Requires `uv sync --extra jupyter` for local kernels; Colab runs remotely.
+- **Codex** (`openai.chatgpt`): open the Codex sidebar and sign in with ChatGPT. Repo defaults: [`.codex/config.toml`](.codex/config.toml). For LangChain Codex routes, set `CODEX_OAUTH_TOKEN` in `.env` (see [`config/model_registry.yaml`](config/model_registry.yaml)).
+- **Install extensions:** Cursor/VS Code will prompt from [`.vscode/extensions.json`](.vscode/extensions.json), or `xargs -n1 code --install-extension < .cursor/extensions.txt`.
 
 ## Two kinds of “agents”
 

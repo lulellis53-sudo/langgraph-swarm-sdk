@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import hashlib
 import importlib
+import logging
 from collections.abc import Iterable
 from typing import Protocol, cast
 
 import numpy as np
+
+from swarm_sdk.gpu import batch_cosine
+
+logger = logging.getLogger(__name__)
 
 
 class Embedder(Protocol):
@@ -34,8 +39,11 @@ def dedupe_texts(texts: list[str], vectors: np.ndarray, threshold: float) -> lis
     kept_vectors: list[np.ndarray] = []
     for text, vector in zip(texts, vectors, strict=True):
         current = unit(vector)
-        if any(float(np.dot(current, other)) >= threshold for other in kept_vectors):
-            continue
+        if kept_vectors:
+            kept_matrix = np.stack(kept_vectors)
+            similarities = batch_cosine(current, kept_matrix)
+            if float(similarities.max()) >= threshold:
+                continue
         kept_text.append(text)
         kept_vectors.append(current)
     return kept_text
@@ -119,6 +127,65 @@ class FastEmbedder:
                 ) from exc
             embedding_cls = getattr(module, "TextEmbedding")
             self._model = cast(TextEmbeddingProto, embedding_cls(model_name=self.model_name))
+        return self._model
+
+
+class _LlamaEmbedProto(Protocol):
+    def embed(self, input: list[str], normalize: bool = True) -> Iterable[list[float]]: ...
+
+
+class LlamaCppEmbedder:
+    """llama.cpp embedder using a local GGUF model (Vulkan/Metal/CPU via llama-cpp-python)."""
+
+    def __init__(
+        self,
+        model_path: str,
+        dim: int = 384,
+        batch_size: int = 64,
+        n_ctx: int = 8192,
+        **kwargs: object,
+    ) -> None:
+        self.model_path = model_path
+        self.dim = dim
+        self.batch_size = batch_size
+        self.n_ctx = n_ctx
+        self._kwargs = kwargs
+        self._model: _LlamaEmbedProto | None = None
+
+    def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:
+        del query  # llama.cpp embedding models do not use query/passage prefixes
+        if not texts:
+            return np.zeros((0, self.dim), dtype=np.float32)
+        model = self._load()
+        rows: list[np.ndarray] = []
+        for batch in _batched(texts, self.batch_size):
+            embeddings = model.embed(input=batch, normalize=True)
+            rows.extend(np.asarray(vector, dtype=np.float32) for vector in embeddings)
+        if not rows:
+            return np.zeros((0, self.dim), dtype=np.float32)
+        return np.vstack(rows)
+
+    def _load(self) -> _LlamaEmbedProto:
+        if self._model is None:
+            try:
+                module = importlib.import_module("llama_cpp")
+            except ImportError as exc:
+                raise ImportError(
+                    "llama-cpp-python is not installed. Install it with Vulkan support, e.g.:\n"
+                    "CMAKE_ARGS='-DGGML_VULKAN=on' uv pip install llama-cpp-python"
+                ) from exc
+            llama_cls = getattr(module, "Llama")
+            self._model = cast(
+                _LlamaEmbedProto,
+                llama_cls(
+                    model_path=self.model_path,
+                    embedding=True,
+                    verbose=False,
+                    n_ctx=self.n_ctx,
+                    **self._kwargs,
+                ),
+            )
+            logger.debug("Loaded llama.cpp embedder from %s", self.model_path)
         return self._model
 
 

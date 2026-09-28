@@ -6,6 +6,61 @@
     { "name": "Benchmark", "path": "../benchmark" }
   ],
   "settings": {
-    "python.defaultInterpreterPath": "${workspaceFolder:SDK (root)}/.venv/bin/python"
+    "python.defaultInterpreterPath": "${workspaceFolder:SDK (root)}/.venv/bin/python",
+    "python.languageServer": "None",
+    "python.analysis.typeCheckingMode": "off",
+    "[python]": {
+      "editor.defaultFormatter": "charliermarsh.ruff",
+      "editor.formatOnSave": true,
+      "editor.codeActionsOnSave": {
+        "source.organizeImports.ruff": "explicit",
+        "source.fixAll.ruff": "explicit"
+      }
+    },
+    "ruff.enable": true,
+    "ruff.nativeServer": "on",
+    "ruff.configuration": "pyproject.toml",
+    "ruff.configurationPreference": "filesystemFirst",
+    "ruff.importStrategy": "fromEnvironment",
+    "ruff.interpreter": ["${workspaceFolder:SDK (root)}/.venv/bin/python"],
+    "ty.importStrategy": "fromEnvironment",
+    "ty.interpreter": "${workspaceFolder:SDK (root)}/.venv/bin/python",
+    "ty.diagnosticMode": "workspace",
+    "ty.experimental.useUv": "on",
+    "ty.disableLanguageServices": false,
+    "ty.showSyntaxErrors": true,
+    "ty.completions.autoImport": true,
+    "ty.completions.completeFunctionParentheses": true,
+    "ty.inlayHints.variableTypes": true,
+    "ty.inlayHints.callArgumentNames": true,
+    "editor.suggestOnTriggerCharacters": true,
+    "editor.inlineSuggest.enabled": true,
+    "editor.parameterHints.enabled": true,
+    "editor.wordBasedSuggestions": "off",
+    "jupyter.askForKernelRestart": false,
+    "notebook.formatOnSave.enabled": true,
+    "colab.logging.level": "info",
+    "colab.uploading": true,
+    "chatgpt.openOnStartup": false,
+    "chatgpt.composerEnterBehavior": "cmdIfMultiline",
+    "chatgpt.followUpQueueMode": "queue",
+    "chatgpt.reviewDelivery": "inline",
+    "chatgpt.commentCodeLensEnabled": true
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-python.python",
+      "ms-toolsai.jupyter",
+      "ms-toolsai.jupyter-renderers",
+      "google.colab",
+      "openai.chatgpt",
+      "charliermarsh.ruff",
+      "astral-sh.ty",
+      "redhat.vscode-yaml",
+      "tamasfe.even-better-toml",
+      "eamodio.gitlens",
+      "davidanson.vscode-markdownlint",
+      "ms-azuretools.vscode-docker"
+    ]
   }
 }
