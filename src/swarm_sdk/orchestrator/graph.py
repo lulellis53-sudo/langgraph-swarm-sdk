@@ -12,9 +12,8 @@ import asyncio
 import time
 from collections.abc import Callable
 
-from typing_extensions import TypedDict
-
 from langgraph.graph import END, StateGraph
+from typing_extensions import TypedDict
 
 from .plan import Plan, PlanResult, PlanStep, StepOutput, UsageTotals
 from .worker import WorkerAgent
@@ -57,7 +56,7 @@ async def _run_wave(
 
 
 def build_graph(plan: Plan, factory: WorkerFactory) -> StateGraph:
-    graph = StateGraph(PlanState)
+    graph = StateGraph(PlanState)  # ty: ignore[invalid-argument-type] -- ty cannot narrow typing.TypedDict to langgraph's TypedDictLike protocol (same limitation langgraph notes in its own typing module)
     waves = plan.waves()
     for index, steps in enumerate(waves):
 

@@ -5,12 +5,11 @@ from pathlib import Path
 
 import pytest
 
+from fakes import Script, ScriptedModel, answer
 from swarm_sdk.agents.manifest import AgentManifest
 from swarm_sdk.orchestrator import Plan, PlanStep, make_factory, run_plan, spawn
-from swarm_sdk.orchestrator.worker import WorkerAgent, role_contract
 from swarm_sdk.orchestrator.graph import build_graph
-
-from fakes import Script, ScriptedModel, answer
+from swarm_sdk.orchestrator.worker import WorkerAgent, role_contract
 
 
 def manifest(name: str = "Coder", **overrides: object) -> AgentManifest:
@@ -79,7 +78,8 @@ async def test_worker_run_uses_role_and_counts_tokens(tmp_path: Path) -> None:
 
 async def test_spawn_validates_and_falls_back() -> None:
     manifests = {"Orchestrator": manifest("Orchestrator"), "Coder": manifest("Coder")}
-    good = Script([answer('{"steps": [{"id": "S1", "title": "t", "description": "d", "agent": "Coder"}]}')])
+    good_json = '{"steps": [{"id": "S1", "title": "t", "description": "d", "agent": "Coder"}]}'
+    good = Script([answer(good_json)])
     plan = await spawn("goal", manifests, model_override=ScriptedModel(script=good))
     assert [s.id for s in plan.steps] == ["S1"]
     assert plan.steps[0].agent == "Coder"
