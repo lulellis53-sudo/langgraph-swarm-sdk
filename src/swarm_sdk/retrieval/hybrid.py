@@ -4,11 +4,15 @@ from __future__ import annotations
 
 import math
 from collections import Counter
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
 from swarm_sdk.memory.base import MemoryHit, MemoryStore
 from swarm_sdk.retrieval.text import tokenize
+
+if TYPE_CHECKING:
+    import numpy as np
 
 
 def _bm25_scores(query: str, corpus: list[str], *, k1: float = 1.2, b: float = 0.75) -> list[float]:
@@ -36,7 +40,15 @@ def _bm25_scores(query: str, corpus: list[str], *, k1: float = 1.2, b: float = 0
 
 
 def rrf_merge(rankings: list[list[int]], *, k: int = 60) -> list[int]:
-    """Reciprocal rank fusion. Returns candidate indices sorted by fused score."""
+    """Reciprocal rank fusion over ranked candidate index lists.
+
+    Args:
+        rankings: Each list is candidate indices ordered best-first.
+        k: RRF constant (larger → flatter scores).
+
+    Returns:
+        Candidate indices sorted by fused score descending.
+    """
     fused: dict[int, float] = {}
     for ranking in rankings:
         for rank, idx in enumerate(ranking):
@@ -45,6 +57,16 @@ def rrf_merge(rankings: list[list[int]], *, k: int = 60) -> list[int]:
 
 
 class HybridSearchConfig(BaseModel):
+    """Weights and caps for dense + keyword hybrid search.
+
+    Attributes:
+        enabled: When False, callers should skip hybrid fusion.
+        dense_weight: RRF weight for dense vector ranking.
+        keyword_weight: RRF weight for BM25 / keyword ranking.
+        rrf_k: Reciprocal-rank fusion constant.
+        final_k: Max hits returned after fusion.
+    """
+
     enabled: bool = True
     dense_weight: float = Field(default=1.0, ge=0)
     keyword_weight: float = Field(default=1.0, ge=0)
@@ -55,12 +77,23 @@ class HybridSearchConfig(BaseModel):
 def hybrid_search(
     query: str,
     store: MemoryStore,
-    query_vector,
+    query_vector: np.ndarray,
     *,
     retrieve_k: int,
     config: HybridSearchConfig | None = None,
 ) -> list[MemoryHit]:
-    """Dense + BM25 hybrid over the store's top candidates, fused with RRF."""
+    """Dense + BM25 hybrid over the store's top candidates, fused with RRF.
+
+    Args:
+        query: Natural-language query (for BM25 / keyword_search).
+        store: Memory store implementing ``search`` (and optionally ``keyword_search``).
+        query_vector: Dense query embedding compatible with ``store.search``.
+        retrieve_k: Candidate pool size before fusion.
+        config: Hybrid weights; defaults to ``HybridSearchConfig()``.
+
+    Returns:
+        Up to ``config.final_k`` ``MemoryHit`` rows ordered by fused score.
+    """
     cfg = config or HybridSearchConfig()
     hits = list(store.search(query_vector, retrieve_k))
     keyword_search = getattr(store, "keyword_search", None)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable, Sequence
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -40,6 +41,11 @@ class ModelSelector:
     """Pick the highest-priority route that supports the requested think level."""
 
     def __init__(self, config: ModelSelectConfig | None = None) -> None:
+        """Initialize with an optional route table.
+
+        Args:
+            config: Route config; defaults to an empty ``ModelSelectConfig``.
+        """
         self.config = config or ModelSelectConfig()
 
     def select(
@@ -47,6 +53,18 @@ class ModelSelector:
         think_level: ThinkLevel | None = None,
         provider: str | None = None,
     ) -> ModelRoute:
+        """Select the best route for a think level (and optional provider).
+
+        Args:
+            think_level: Desired think level; defaults to ``config.default_level``.
+            provider: Optional provider filter (e.g. ``"openai"``).
+
+        Returns:
+            The lowest-priority-number matching ``ModelRoute``.
+
+        Raises:
+            ValueError: If no route supports the requested level/provider.
+        """
         level = think_level or self.config.default_level
         candidates = [r for r in self.config.routes if level in r.think_levels]
         if provider:
@@ -64,6 +82,12 @@ class FallbackChain:
         config: ModelSelectConfig | None = None,
         breaker_config: BreakerConfig | None = None,
     ) -> None:
+        """Build per-provider breakers from the route table.
+
+        Args:
+            config: Model routes to try.
+            breaker_config: Shared breaker thresholds for each provider.
+        """
         self.config = config or ModelSelectConfig()
         self.breakers: dict[str, CircuitBreaker] = {
             route.provider: CircuitBreaker(route.provider, breaker_config)
@@ -71,6 +95,20 @@ class FallbackChain:
         }
 
     async def complete(self, system: str, user: str, think_level: ThinkLevel | None = None) -> str:
+        """Complete a prompt via the first healthy route that supports ``think_level``.
+
+        Args:
+            system: System prompt.
+            user: User / packed prompt body.
+            think_level: Optional think level filter.
+
+        Returns:
+            Model reply text from the first successful provider.
+
+        Raises:
+            ValueError: If no route supports the think level.
+            RuntimeError: If every candidate provider fails or is open.
+        """
         level = think_level or self.config.default_level
         ordered = sorted(
             (r for r in self.config.routes if level in r.think_levels),
@@ -100,15 +138,26 @@ class FallbackChain:
         raise RuntimeError(f"all providers failed for think_level={level!r}") from last_error
 
 
-async def bounded_gather(coro_factories: list, max_concurrency: int = 8) -> list:
-    """Gather with a concurrency cap (swarm parallelism limit)."""
+async def bounded_gather[T](
+    coro_factories: Sequence[Callable[[], Awaitable[T]]],
+    max_concurrency: int = 8,
+) -> list[T]:
+    """Gather async factories with a concurrency cap.
+
+    Args:
+        coro_factories: Zero-arg callables that return awaitables.
+        max_concurrency: Max concurrent tasks (swarm parallelism limit).
+
+    Returns:
+        Results in the same order as ``coro_factories``.
+    """
     semaphore = asyncio.Semaphore(max_concurrency)
 
-    async def run(factory):
+    async def run(factory: Callable[[], Awaitable[T]]) -> T:
         async with semaphore:
             return await factory()
 
-    return await asyncio.gather(*(run(f) for f in coro_factories))
+    return list(await asyncio.gather(*(run(f) for f in coro_factories)))
 
 
 __all__ = [

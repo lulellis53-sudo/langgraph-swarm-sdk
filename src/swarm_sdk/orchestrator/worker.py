@@ -10,7 +10,7 @@ A :class:`WorkerAgent` is the runtime half of an ``Agents/{Name}/`` persona:
 * the **model, think level, effort, and token budget** come pre-selected from
   the agent's ``agent.yaml`` manifest.
 
-Optionally a :class:`~swarm_sdk.cache.SemanticCache` is consulted per step on
+Optionally a :class:`~swarm_sdk.retrieval.cache.SemanticCache` is consulted per step on
 the ``(agent, system, user)`` triple: a hit skips the LLM call entirely.
 """
 
@@ -104,18 +104,32 @@ class WorkerAgent:
         packed = self.tokens.pack(system=contract or self.manifest.role, memories=[], turns=[])
         return packed.system
 
-    def _user_prompt(self, description: str, dep_outputs: dict[str, str]) -> str:
-        """Build the user prompt: step description + declared inputs only.
+    def _user_prompt(
+        self,
+        description: str,
+        dep_outputs: dict[str, str],
+        *,
+        files: list[str] | None = None,
+        task: str = "",
+    ) -> str:
+        """Build the user prompt: step description + task/files + declared inputs.
 
         Args:
             description: The step instruction (from the plan).
             dep_outputs: Outputs of the steps this step declared in ``inputs``.
+            files: Exclusive write-paths claimed by this step (Coder partition).
+            task: Optional ``agent.yaml`` task id.
 
         Returns:
             The packed user prompt, truncated so ``system + user`` fits the
             manifest's ``max_prompt`` budget.
         """
         parts = [description.strip()]
+        if task:
+            parts.append(f"task: {task}")
+        if files:
+            parts.append("files:")
+            parts.extend(f"- {path}" for path in files)
         if dep_outputs:
             parts.append("inputs:")
             parts.extend(f"- {k}: {v}" for k, v in dep_outputs.items())
@@ -159,7 +173,15 @@ class WorkerAgent:
         provider = self._model_name().split(":", 1)[0].upper()
         os.environ.setdefault(f"{provider}_API_KEY", value)
 
-    async def run(self, step_id: str, description: str, dep_outputs: dict[str, str]) -> StepOutput:
+    async def run(
+        self,
+        step_id: str,
+        description: str,
+        dep_outputs: dict[str, str],
+        *,
+        files: list[str] | None = None,
+        task: str = "",
+    ) -> StepOutput:
         """Execute one plan step.
 
         Order of operations: build prompts → consult cache → (on miss) resolve
@@ -170,6 +192,8 @@ class WorkerAgent:
             step_id: Id of the plan step being executed.
             description: Step instruction used as the user prompt body.
             dep_outputs: Declared inputs (dependency outputs) to inject.
+            files: Exclusive write-paths claimed by this step.
+            task: Optional ``agent.yaml`` task id.
 
         Returns:
             The step output. Cache hits carry ``cached=True`` and zero token
@@ -177,7 +201,7 @@ class WorkerAgent:
             tokenizer.
         """
         system = self._system_prompt()
-        user = self._user_prompt(description, dep_outputs)
+        user = self._user_prompt(description, dep_outputs, files=files, task=task)
         # Cache identity is the full (agent, system, user) triple: same role,
         # same question → same answer is a safe assumption at threshold 0.97.
         cache_key = f"{self.name}\n{system}\n{user}"
