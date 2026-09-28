@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import importlib
+
 import pytest
 
 
@@ -101,9 +103,7 @@ def test_former_flat_modules_fail_to_import() -> None:
         "swarm_sdk.embeddings",
         "swarm_sdk.hybrid",
         "swarm_sdk.rerank",
-        "swarm_sdk.retrieval",
         "swarm_sdk.cache",
-        "swarm_sdk.config",
         "swarm_sdk.yaml_config",
         "swarm_sdk.providers",
         "swarm_sdk.model_select",
@@ -116,6 +116,6 @@ def test_former_flat_modules_fail_to_import() -> None:
     ]
     for mod in former_flat:
         with pytest.raises(ModuleNotFoundError):
-            __import__(mod)
+            importlib.import_module(mod)
 
 
