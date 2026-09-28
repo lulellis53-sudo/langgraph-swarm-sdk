@@ -47,9 +47,9 @@ def test_run_plan_without_plan_id_returns_pollable_id(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
-    from swarm_sdk import grpc_server
-    from swarm_sdk.serving.grpc import SwarmServicer
     from swarm_sdk.orchestrator.plan import PlanResult, StepOutput, UsageTotals
+    from swarm_sdk.serving import grpc as grpc_server
+    from swarm_sdk.serving.grpc import SwarmServicer
 
     async def fake_run_plan(plan, factory):  # noqa: ANN001, ARG001
         step = plan.steps[0]

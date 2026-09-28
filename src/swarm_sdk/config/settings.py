@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from swarm_sdk.config.loader import SwarmFileConfig
 
 from dotenv import dotenv_values
 from pydantic import Field

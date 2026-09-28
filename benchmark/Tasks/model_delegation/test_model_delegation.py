@@ -109,10 +109,13 @@ def test_all_requested_providers_present(registry_routes: list[ModelRoute]) -> N
         "groq-1",
         "groq-2",
         "moonshot",
+        "nvidia",
+        "ollama-cloud",
         "openrouter",
         "sambanova",
         "fireworks",
         "xai",
+        "zai",
     }
     missing = expected - providers
     assert not missing, f"missing providers: {missing}"

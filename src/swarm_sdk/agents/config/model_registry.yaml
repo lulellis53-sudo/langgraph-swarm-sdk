@@ -14,6 +14,14 @@ providers:
     priority: 5
     evidence: user + web (open coding leader, Terminal-Bench 3.0 = 28.3, CyberGym 84.5%)
 
+  - name: zai:glm-5.3-flash
+    provider: zai
+    api_key_env: ZAI_API_KEY
+    effort: low
+    think_levels: [high, xhigh]
+    priority: 8
+    evidence: user (z.ai GLM 5.3 Flash, low effort)
+
   - name: moonshot:kimi-k2.7-code
     provider: moonshot
     api_key_env: KIMI_CODE_PLAN_API_KEY
@@ -84,6 +92,20 @@ providers:
     priority: 35
     evidence: web (NVIDIA NIM has no MiMo yet - forum request open; Nemotron 3 Ultra = AA index 48, best NVIDIA-stack reasoner)
 
+  - name: nvidia:dim-3.0
+    provider: nvidia
+    api_key_env: NVIDIA_API_KEY
+    think_levels: [high, xhigh]
+    priority: 36
+    evidence: assumed (NVIDIA DIM 3.0 reasoning model)
+
+  - name: nvidia:llama-3.1-nemotron-70b-instruct
+    provider: nvidia
+    api_key_env: NVIDIA_API_KEY
+    think_levels: [low, medium, high]
+    priority: 38
+    evidence: assumed (NVIDIA Llama 3.1 Nemotron 70B instruct)
+
   - name: openrouter:z-ai/glm-5.3-flash
     provider: openrouter
     api_key_env: OPENROUTER_API_KEY
@@ -106,6 +128,14 @@ providers:
     think_levels: ["off", low]
     priority: 55
     evidence: assumed (local Ollama instance #2)
+
+  - name: ollama-cloud:llama-3.3
+    provider: ollama-cloud
+    api_key_env: OLLAMA_CLOUD_API_KEY
+    base_url_env: OLLAMA_CLOUD_BASE_URL    # e.g. https://ollama.com/v1
+    think_levels: ["off", low, medium]
+    priority: 52
+    evidence: assumed (Ollama Cloud hosted endpoint)
 
   - name: alibaba:qwen-3.8
     provider: alibaba

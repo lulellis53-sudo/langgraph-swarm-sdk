@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from swarm_sdk.config.loader import load_swarm_config
+from swarm_sdk.memory.sqlite_vec import SqliteVecStore
 from swarm_sdk.retrieval.embeddings import HashEmbedder
 from swarm_sdk.retrieval.recall import recall_texts
 from swarm_sdk.retrieval.rerank import KeywordReranker
