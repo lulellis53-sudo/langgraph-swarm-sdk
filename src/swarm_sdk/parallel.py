@@ -23,14 +23,24 @@ class SpecialistResult(BaseModel):
     tokens: int
 
 
-async def fan_out(model: object, tasks: list[str], agent: str = "specialist") -> tuple[str, int]:
+async def fan_out(
+    model: object,
+    tasks: list[str],
+    agent: str = "specialist",
+    *,
+    max_concurrency: int = 8,
+) -> tuple[str, int]:
+    """Run tasks in parallel, at most `max_concurrency` specialists in flight."""
     from langchain_core.language_models.chat_models import BaseChatModel
 
     if not isinstance(model, BaseChatModel):
         raise TypeError("fan_out requires a chat model")
 
+    semaphore = asyncio.Semaphore(max_concurrency)
+
     async def one(task: str) -> SpecialistResult:
-        answer = await complete(model, TASK_SYSTEM, task)
+        async with semaphore:
+            answer = await complete(model, TASK_SYSTEM, task)
         payload = HandoffPayload(
             summary=answer[:280],
             ask=task[:200],

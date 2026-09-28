@@ -1,0 +1,16 @@
+# Taplo configuration for TOML formatting and validation.
+# Formats pyproject.toml and other TOML files.
+# Run: taplo format --check
+
+include = ["**/*.toml"]
+exclude = [".venv/**", "dist/**"]
+
+[formatting]
+align_entries = false
+align_comments = true
+column_width = 100
+indent_tables = false
+indent_string = "    "
+reorder_keys = false
+allowed_blank_lines = 2
+crlf = false

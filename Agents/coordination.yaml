@@ -1,0 +1,111 @@
+# Swarm task coordination
+# Agents and the tasks they own. Update `status` as work progresses.
+version: 1
+
+agents:
+  - name: Orchestrator
+    role: coordinates the swarm
+    contract: Agents/Orchestrator/AGENTS.md
+  - name: Planner
+    role: breaks goals into task graphs
+    contract: Agents/Planner/AGENTS.md
+  - name: Researcher
+    role: read-only codebase research
+    contract: Agents/Researcher/AGENTS.md
+  - name: Coder
+    role: implements code changes
+    contract: Agents/Coder/AGENTS.md
+  - name: Reviewer
+    role: reviews diffs
+    contract: Agents/Reviewer/AGENTS.md
+  - name: Tester
+    role: writes and runs tests
+    contract: Agents/Tester/AGENTS.md
+  - name: Debugger
+    role: root-cause failures
+    contract: Agents/Debugger/AGENTS.md
+  - name: Documenter
+    role: maintains docs
+    contract: Agents/Documenter/AGENTS.md
+  - name: DevOps
+    role: ci/cd and environments
+    contract: Agents/DevOps/AGENTS.md
+  - name: Security
+    role: security review
+    contract: Agents/Security/AGENTS.md
+  - name: DataEngineer
+    role: memory/vector stores
+    contract: Agents/DataEngineer/AGENTS.md
+  - name: MLSpecialist
+    role: embeddings/rerankers
+    contract: Agents/MLSpecialist/AGENTS.md
+  - name: Optimizer
+    role: performance tuning
+    contract: Agents/Optimizer/AGENTS.md
+
+tasks:
+  - id: T01
+    title: "Audit src/ module structure"
+    assigned: [Researcher]
+    depends_on: []
+    status: todo
+  - id: T02
+    title: "Decompose v0.2 roadmap"
+    assigned: [Planner]
+    depends_on: [T01]
+    status: todo
+  - id: T03
+    title: "Fix 7 failing pytest cases"
+    assigned: [Debugger, Tester]
+    depends_on: [T01]
+    status: todo
+  - id: T04
+    title: "Review all open diffs"
+    assigned: [Reviewer]
+    depends_on: [T03]
+    status: blocked
+  - id: T05
+    title: "Security audit of secrets handling"
+    assigned: [Security]
+    depends_on: []
+    status: todo
+  - id: T06
+    title: "sqlite-vec int8 roundtrip bug"
+    assigned: [DataEngineer, Debugger]
+    depends_on: [T01]
+    status: todo
+  - id: T07
+    title: "Handoff state bug (test_swarm)"
+    assigned: [Coder, Debugger]
+    depends_on: [T01]
+    status: todo
+  - id: T08
+    title: "ML extra: torch decision for rerankers"
+    assigned: [MLSpecialist]
+    depends_on: []
+    status: todo
+  - id: T09
+    title: "Profile swarm orchestration hot paths"
+    assigned: [Optimizer]
+    depends_on: [T03]
+    status: blocked
+  - id: T10
+    title: "Update README and FRAMEWORK docs"
+    assigned: [Documenter]
+    depends_on: [T03]
+    status: blocked
+  - id: T11
+    title: "CI: keep strict pytest gate green"
+    assigned: [DevOps, Tester]
+    depends_on: [T03]
+    status: blocked
+  - id: T12
+    title: "Implement roadmap items from T02"
+    assigned: [Coder]
+    depends_on: [T02]
+    status: blocked
+  - id: T13
+    title: "Final review and release v0.2"
+    assigned: [Orchestrator, Reviewer]
+    depends_on: [T03, T04, T05, T06, T07, T08, T09, T10, T11, T12]
+    status: blocked
