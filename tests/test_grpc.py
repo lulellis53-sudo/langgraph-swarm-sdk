@@ -3,15 +3,15 @@ from pathlib import Path
 from langchain_core.messages import AIMessage
 from tests.fakes import Script, ScriptedModel, answer
 
-from swarm_sdk.config import Settings
-from swarm_sdk.embeddings import HashEmbedder
+from swarm_sdk.config.settings import Settings
+from swarm_sdk.core.swarm import SwarmSDK
 from swarm_sdk.pb import swarm_pb2
-from swarm_sdk.rerank import IdentityReranker
-from swarm_sdk.swarm import SwarmSDK
+from swarm_sdk.retrieval.embeddings import HashEmbedder
+from swarm_sdk.retrieval.rerank import IdentityReranker
 
 
 def test_grpc_run_and_recall(tmp_path: Path) -> None:
-    from swarm_sdk.grpc_server import SwarmServicer
+    from swarm_sdk.serving.grpc import SwarmServicer
 
     model = ScriptedModel(
         script=Script(
@@ -48,7 +48,7 @@ def test_run_plan_without_plan_id_returns_pollable_id(
     monkeypatch,
 ) -> None:
     from swarm_sdk import grpc_server
-    from swarm_sdk.grpc_server import SwarmServicer
+    from swarm_sdk.serving.grpc import SwarmServicer
     from swarm_sdk.orchestrator.plan import PlanResult, StepOutput, UsageTotals
 
     async def fake_run_plan(plan, factory):  # noqa: ANN001, ARG001

@@ -105,8 +105,8 @@ jupyter = [
 ]
 
 [project.scripts]
-swarm-api = "swarm_sdk.api:main"
-swarm-grpc = "swarm_sdk.grpc_server:main"
+swarm-api = "swarm_sdk.serving.http:main"
+swarm-grpc = "swarm_sdk.serving.grpc:main"
 
 [build-system]
 requires = ["hatchling"]

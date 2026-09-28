@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING
 from pydantic import ValidationError
 
 from swarm_sdk.agents.manifest import AgentManifest, agents_root
-from swarm_sdk.providers import complete, load_chat_model
+from swarm_sdk.models.chat import complete, load_chat_model
 
 from .graph import WorkerFactory
 from .plan import Plan, PlanStep
@@ -31,7 +31,7 @@ from .worker import WorkerAgent
 if TYPE_CHECKING:
     from langchain_core.language_models.chat_models import BaseChatModel
 
-    from swarm_sdk.cache import SemanticCache
+    from swarm_sdk.retrieval.cache import SemanticCache
 
 # Greedy object match: robust to the model wrapping the JSON in prose or fences.
 _JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)

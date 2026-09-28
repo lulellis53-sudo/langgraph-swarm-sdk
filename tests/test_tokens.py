@@ -5,8 +5,8 @@ from __future__ import annotations
 import hypothesis.strategies as st
 from hypothesis import assume, given, settings
 
-from swarm_sdk.tokens import TokenBudget, count_text
-from swarm_sdk.usage import UsageLog
+from swarm_sdk.observability.usage import UsageLog
+from swarm_sdk.prompting.budget import TokenBudget, count_text
 
 _TEXT = st.text(alphabet=st.characters(blacklist_categories=("Cs", "Cc")), max_size=64)
 _NONEMPTY = _TEXT.filter(lambda s: bool(s.strip()))

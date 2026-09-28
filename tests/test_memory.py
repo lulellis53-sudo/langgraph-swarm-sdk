@@ -9,8 +9,9 @@ import numpy as np
 import pytest
 from hypothesis import given, settings
 
-from swarm_sdk.embeddings import HashEmbedder, dedupe_texts, unit
-from swarm_sdk.hybrid import HybridSearchConfig, hybrid_search, rrf_merge, tokenize
+from swarm_sdk.retrieval.embeddings import HashEmbedder, dedupe_texts, unit
+from swarm_sdk.retrieval.hybrid import HybridSearchConfig, hybrid_search, rrf_merge
+from swarm_sdk.retrieval.text import tokenize
 from swarm_sdk.memory.base import MemoryHit, MemoryStore
 from swarm_sdk.memory.opencl_store import OpenClVecStore
 

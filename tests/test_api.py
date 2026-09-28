@@ -4,11 +4,11 @@ from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage
 from tests.fakes import Script, ScriptedModel, answer
 
-from swarm_sdk.api import create_app
-from swarm_sdk.config import Settings
-from swarm_sdk.embeddings import HashEmbedder
-from swarm_sdk.rerank import IdentityReranker
-from swarm_sdk.swarm import SwarmSDK
+from swarm_sdk.config.settings import Settings
+from swarm_sdk.core.swarm import SwarmSDK
+from swarm_sdk.retrieval.embeddings import HashEmbedder
+from swarm_sdk.retrieval.rerank import IdentityReranker
+from swarm_sdk.serving.http import create_app
 
 
 def test_health_and_run(tmp_path: Path) -> None:

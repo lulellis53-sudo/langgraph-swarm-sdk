@@ -3,11 +3,11 @@ from pathlib import Path
 import pytest
 from tests.fakes import Script, ScriptedModel, answer
 
-from swarm_sdk.config import Settings
-from swarm_sdk.embeddings import HashEmbedder
-from swarm_sdk.rerank import IdentityReranker
-from swarm_sdk.swarm import SwarmSDK
-from swarm_sdk.yaml_config import load_swarm_config
+from swarm_sdk.config.loader import load_swarm_config
+from swarm_sdk.config.settings import Settings
+from swarm_sdk.core.swarm import SwarmSDK
+from swarm_sdk.retrieval.embeddings import HashEmbedder
+from swarm_sdk.retrieval.rerank import IdentityReranker
 
 
 @pytest.fixture

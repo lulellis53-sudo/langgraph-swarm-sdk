@@ -2,7 +2,7 @@ import socket
 
 import httpx2
 
-from swarm_sdk.transport import async_post_json, post_json
+from swarm_sdk.serving.peer import async_post_json, post_json
 
 
 def test_httpx2_post_uses_http2() -> None:

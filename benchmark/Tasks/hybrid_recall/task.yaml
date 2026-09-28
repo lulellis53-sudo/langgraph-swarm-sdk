@@ -1,5 +1,5 @@
 name: hybrid_recall
-sdk_entry: swarm_sdk.retrieval.recall_texts
+sdk_entry: swarm_sdk.retrieval.recall.recall_texts
 fixtures: fixtures/memories.jsonl
 metrics: [recall_at_k, latency_ms]
 models: predefined

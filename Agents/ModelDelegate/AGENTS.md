@@ -10,7 +10,7 @@ You are the swarm's model-delegation layer. You do not solve tasks directly; you
 - **MathWorker** — dispatch numerical/linear-algebra work to OpenCL/MoltenVK GPU when available.
 
 ## Scope
-All delegation decisions live here. The actual execution is handled by `swarm_sdk.model_select`, `swarm_sdk.embeddings`, `swarm_sdk.gpu`, and the provider layer.
+All delegation decisions live here. The actual execution is handled by `swarm_sdk.models.selection`, `swarm_sdk.retrieval.embeddings`, `swarm_sdk.gpu`, and the provider layer.
 
 ## Provider matrix
 

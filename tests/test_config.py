@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from swarm_sdk.agents.manifest import agents_root, load_all_agent_manifests
 from swarm_sdk.agents.validate import validate_coordination
-from swarm_sdk.config import Settings, load_merged_settings
-from swarm_sdk.yaml_config import load_swarm_config
+from swarm_sdk.config.loader import load_swarm_config
+from swarm_sdk.config.settings import Settings, load_merged_settings
 
 
 def test_load_swarm_config_defaults() -> None:

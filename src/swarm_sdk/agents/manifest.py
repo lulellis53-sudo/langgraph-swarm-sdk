@@ -15,7 +15,7 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, Field
 
-from swarm_sdk.model_select import ThinkLevel
+from swarm_sdk.models.selection import ThinkLevel
 
 #: Nodes of the fixed handoff swarm in swarm_sdk.swarm; ``None`` means the agent
 #: participates only through the orchestration engine, not the handoff graph.

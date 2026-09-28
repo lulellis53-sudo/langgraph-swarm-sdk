@@ -1,5 +1,5 @@
-from swarm_sdk.model_select import FallbackChain
-from swarm_sdk.yaml_config import load_swarm_config
+from swarm_sdk.config.loader import load_swarm_config
+from swarm_sdk.models.selection import FallbackChain
 
 
 def test_model_routes_predefined() -> None:

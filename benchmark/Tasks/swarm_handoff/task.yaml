@@ -1,5 +1,5 @@
 name: swarm_handoff
-sdk_entry: swarm_sdk.swarm.SwarmSDK.run
+sdk_entry: swarm_sdk.core.swarm.SwarmSDK.run
 metrics: [tokens, active_agent]
 models: predefined
 pass:

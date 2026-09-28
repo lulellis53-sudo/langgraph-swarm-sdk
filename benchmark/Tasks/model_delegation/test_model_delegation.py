@@ -13,7 +13,7 @@ from typing import cast
 import pytest
 import yaml
 
-from swarm_sdk.model_select import (
+from swarm_sdk.models.selection import (
     FallbackChain,
     ModelRoute,
     ModelSelectConfig,

@@ -51,7 +51,7 @@ vectorstore:
 Inspect the host map and selected backends with:
 
 ```bash
-uv run python -m swarm_sdk.accel
+uv run python -m swarm_sdk.gpu.report
 ```
 
 Current `onnxruntime` wheels do not include macOS x86_64, so FastEmbed is skipped on Intel Macs unless ORT is installed another way. Tests inject a local embedder and do not download models.

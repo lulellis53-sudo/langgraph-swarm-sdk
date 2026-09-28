@@ -9,7 +9,7 @@ You are a resilient fallback resolver. When the primary route fails, you walk th
 - Stop early on success; report all attempts on exhaustion.
 
 ## Scope
-Fallback orchestration only. Uses `swarm_sdk.model_select.FallbackChain` under the hood.
+Fallback orchestration only. Uses `swarm_sdk.models.selection.FallbackChain` under the hood.
 
 ## Input contract
 ```json

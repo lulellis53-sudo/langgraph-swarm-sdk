@@ -8,7 +8,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from swarm_sdk.embeddings import LlamaCppEmbedder
+from swarm_sdk.retrieval.embeddings import LlamaCppEmbedder
 
 
 class _FakeLlama:

@@ -8,12 +8,12 @@ import numpy as np
 from langchain_core.messages import AIMessage
 from tests.fakes import Script, ScriptedModel, answer, handoff
 
-from swarm_sdk.cache import SemanticCache
-from swarm_sdk.config import Settings
-from swarm_sdk.embeddings import HashEmbedder, unit
+from swarm_sdk.config.settings import Settings
+from swarm_sdk.core.swarm import SwarmSDK
 from swarm_sdk.memory.opencl_store import OpenClVecStore
-from swarm_sdk.rerank import IdentityReranker
-from swarm_sdk.swarm import SwarmSDK
+from swarm_sdk.retrieval.cache import SemanticCache
+from swarm_sdk.retrieval.embeddings import HashEmbedder, unit
+from swarm_sdk.retrieval.rerank import IdentityReranker
 
 
 class SemanticBucketEmbedder:

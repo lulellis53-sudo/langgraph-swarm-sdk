@@ -1,5 +1,5 @@
 name: token_cache_hit
-sdk_entry: swarm_sdk.swarm.SwarmSDK.run
+sdk_entry: swarm_sdk.core.swarm.SwarmSDK.run
 metrics: [tokens, latency_ms, cache_hit_rate]
 models: predefined
 pass:
