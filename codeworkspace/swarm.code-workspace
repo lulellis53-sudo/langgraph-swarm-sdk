@@ -2,8 +2,10 @@
   "folders": [
     { "name": "SDK (root)", "path": ".." },
     { "name": "Agents", "path": "../Agents" },
-    { "name": "Config", "path": "../config" },
-    { "name": "Benchmark", "path": "../benchmark" }
+    { "name": "Main", "path": "../Main" },
+    { "name": "Config", "path": "../Main/config" },
+    { "name": "Benchmark", "path": "../Agents/benchmark" },
+    { "name": "WebSearch", "path": "../WebSearch" }
   ],
   "settings": {
     "python.defaultInterpreterPath": "${workspaceFolder:SDK (root)}/.venv/bin/python",

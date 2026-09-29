@@ -22,7 +22,7 @@ def bench_settings(tmp_path: Path) -> Settings:
 
 @pytest.fixture
 def file_config():
-    return load_swarm_config(Path("config/swarm.yaml"))
+    return load_swarm_config(Path("Main/config/swarm.yaml"))
 
 
 @pytest.fixture

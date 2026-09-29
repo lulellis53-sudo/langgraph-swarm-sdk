@@ -29,10 +29,27 @@ def test_env_overrides_file_defaults() -> None:
     assert overridden.max_tokens == 4096
 
 
+def test_bge_radeon_profile_sets_int8_sqlite_and_llama_gpu() -> None:
+    from pathlib import Path
+
+    from swarm_sdk.config.loader import settings_from_file
+
+    profile = Path(__file__).resolve().parents[2] / "Main" / "config" / "swarm-bge-m3-radeon.yaml"
+    cfg = load_swarm_config(profile)
+    settings = settings_from_file(cfg)
+    assert settings.embed_backend == "llama-cpp"
+    assert settings.embed_dim == 1024
+    assert settings.llama_gpu_layers == 99
+    assert settings.llama_n_batch == 8
+    assert settings.memory_backend == "sqlite-vec"
+    assert settings.vector_quantization == "int8"
+
+
 def test_agent_manifests_and_coordination() -> None:
     root = agents_root()
     manifests = load_all_agent_manifests(root)
-    assert len(manifests) == 15
+    assert len(manifests) == 16
+    assert manifests["WebSearch"].role == "live_web_research"
     assert manifests["Refactor"].role == "safe_incremental_refactor"
     assert manifests["Coder"].role == "implement_changes"
     assert manifests["Coder"].name == "Coder"

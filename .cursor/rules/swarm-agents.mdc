@@ -10,6 +10,6 @@ Orchestrated personas, not Cursor subagents.
 
 - Contract: each role’s `AGENTS.md` + `agent.yaml`.
 - Index: `Agents/README.md`. Task graph: `Agents/coordination.yaml`.
-- Role notes only in `Agents/*/Benchmarks/`; runners stay in `benchmark/`.
+- Role notes only in `Agents/*/Benchmarks/`; runners stay in `Agents/benchmark/`.
 - New Python modules: `.cursor/templates/python_static_template.py` (see each `AGENTS.md` → Static Templates).
 - Emulating a role → obey that folder’s contract. General repo work → root `AGENTS.md` + Coder norms.

@@ -22,7 +22,7 @@ from swarm_sdk.models.selection import (
 )
 
 _REGISTRY = (
-    Path(__file__).resolve().parents[3]
+    Path(__file__).resolve().parents[4]
     / "src"
     / "swarm_sdk"
     / "agents"

@@ -125,7 +125,7 @@ packages = ["src/swarm_sdk"]
 [tool.ruff]
 line-length = 100
 target-version = "py314"
-src = ["src", "tests"]
+src = ["src", "Agents/tests", "Agents/benchmark"]
 extend-exclude = ["src/swarm_sdk/pb"]
 
 [tool.ruff.lint]
@@ -150,5 +150,5 @@ exclude = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests", "benchmark"]
-pythonpath = ["."]
+testpaths = ["Agents/tests", "Agents/benchmark"]
+pythonpath = [".", "Agents"]

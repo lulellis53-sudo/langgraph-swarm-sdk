@@ -43,12 +43,13 @@ For swarm coordination: start from `[Agents/SKILLS.md](Agents/SKILLS.md)` and `[
 | `[src/swarm_sdk/](src/swarm_sdk/)`                           | Library: swarm runtime, cache, memory, routing, API/gRPC                                                 |
 | `[src/swarm_sdk/orchestrator/](src/swarm_sdk/orchestrator/)` | Parallel plan engine: `spawn` (goal → JSON plan) + `run_plan` (LangGraph dependency waves)               |
 | `[src/swarm_sdk/pb/](src/swarm_sdk/pb/)`                     | gRPC: `swarm.proto` + generated `swarm_pb2*` stubs                                                       |
-| `[config/swarm.yaml](config/swarm.yaml)`                     | Provider registry, routes, defaults (`SWARM_*` env overrides)                                            |
+| `[Main/config/swarm.yaml](Main/config/swarm.yaml)`           | Provider registry, routes, defaults (`SWARM_*` env overrides)                                            |
+| `[Main/](Main/)`                                             | Embeddings/vectorstore re-exports, YAML, Essentials                                                      |
+| `[WebSearch/](WebSearch/)`                                   | Live-web research feature (`AGENTS.md` + `search.py`)                                                    |
 | `[Agents/](Agents/)`                                         | Specialist **swarm personas** (`AGENTS.md` + `agent.yaml` per role)                                      |
 | `[Agents/coordination.yaml](Agents/coordination.yaml)`       | Task graph for multi-agent workflows                                                                     |
-| `[Agents/SKILLS.md](Agents/SKILLS.md)`                       | Index of swarm agents and how to run them                                                                |
-| `[tests/](tests/)`                                           | Unit and integration tests                                                                               |
-| `[benchmark/](benchmark/)`                                   | Token/retrieval/swarm benchmarks (incl. `[benchmark/sql_pro/](benchmark/sql_pro/)`)                      |
+| `[Agents/tests/](Agents/tests/)`                             | Unit and integration tests                                                                               |
+| `[Agents/benchmark/](Agents/benchmark/)`                     | Token/retrieval/swarm benchmarks (incl. `[Agents/benchmark/sql_pro/](Agents/benchmark/sql_pro/)`)        |
 | `[.cursor/commands/](.cursor/commands/)`                     | Cursor slash commands (e.g. `/sql-pro`)                                                                  |
 | `[.cursor/AGENTS.md](.cursor/AGENTS.md)`                     | Cursor agent guidelines, folder design, modus operandi                                                   |
 | `[.cursor/rules/](.cursor/rules/)`                           | Project `.mdc` rules (core, Context7-after-edit, Python, protobuf, …)                                    |
@@ -63,7 +64,7 @@ Edit `[src/swarm_sdk/pb/swarm.proto](src/swarm_sdk/pb/swarm.proto)` then `uv run
 
 - Agent index: `[Agents/SKILLS.md](Agents/SKILLS.md)`
 - Workspace layout: `[codeworkspace/swarm.code-workspace](codeworkspace/swarm.code-workspace)`
-- Benchmarks: `[benchmark/README.md](benchmark/README.md)`
+- Benchmarks: `[Agents/benchmark/README.md](Agents/benchmark/README.md)`
 - Static template: [@.cursor/templates/python_static_template.py](.cursor/templates/python_static_template.py)
 
 ---
@@ -86,16 +87,16 @@ Use `uv run …` so commands use the project virtualenv.
 Run before claiming work is done:
 
 ```bash
-uv run --extra dev pytest tests benchmark -q
-uv run --extra dev ruff check src tests benchmark
-uv run --extra dev ty check src tests benchmark
+uv run --extra dev pytest Agents/tests Agents/benchmark -q
+uv run --extra dev ruff check src Agents/tests Agents/benchmark Main WebSearch
+uv run --extra dev ty check src Agents/tests Agents/benchmark Main WebSearch
 uv run python -m swarm_sdk.agents.validate
 ```
 
 ### Subtopic: Colab and Codex
 
 - **Colab** (`google.colab`): open a `.ipynb` → **Select Kernel** → **Colab** → sign in with Google. Requires `uv sync --extra jupyter` for local kernels; Colab runs remotely.
-- **Codex** (`openai.chatgpt`): open the Codex sidebar and sign in with ChatGPT. Repo defaults: `[.codex/config.toml](.codex/config.toml)`. For LangChain Codex routes, set `CODEX_OAUTH_TOKEN` in `.env` (see `[config/model_registry.yaml](config/model_registry.yaml)`).
+- **Codex** (`openai.chatgpt`): open the Codex sidebar and sign in with ChatGPT. Repo defaults: `[.codex/config.toml](.codex/config.toml)`. For LangChain Codex routes, set `CODEX_OAUTH_TOKEN` in `.env` (see `[Main/config/model_registry.yaml](Main/config/model_registry.yaml)`).
 
 ### Subtopic: Editor extensions
 
@@ -111,7 +112,7 @@ uv run python -m swarm_sdk.agents.validate
 2. **Smallest correct diff** — no drive-by refactors, new abstractions, or dependencies unless the task requires them.
 3. **Match conventions** — Ruff (`line-length = 100`, py314), existing naming and patterns in `src/swarm_sdk/`.
 4. **Prove it** — failing test → fix → full [quality gate](#subtopic-quality-gate). Do not weaken lint/type checks without a named rule and reason.
-5. **Config** — prefer `[config/swarm.yaml](config/swarm.yaml)` and agent manifests under `Agents/*/agent.yaml`; document new env vars in README or agent docs.
+5. **Config** — prefer `[Main/config/swarm.yaml](Main/config/swarm.yaml)` and agent manifests under `Agents/*/agent.yaml`; document new env vars in README or agent docs.
 6. **Protobuf** — edit `[src/swarm_sdk/pb/swarm.proto](src/swarm_sdk/pb/swarm.proto)`, then regenerate with `uv run python -m swarm_sdk.pb`. Do not hand-edit `swarm_pb2`* stubs.
 7. **New Python modules** — lite or full template (see [Python Static Template](#topic-python-static-template)); always `from __future__ import annotations` first.
 
@@ -119,7 +120,7 @@ uv run python -m swarm_sdk.agents.validate
 
 - Report `blocked` with the exact command output after one reasonable retry.
 - Prefer fixing the environment (uv sync, missing extra) over skipping tests.
-- For provider/model behavior, read `[config/swarm.yaml](config/swarm.yaml)` and `[src/swarm_sdk/model_select.py](src/swarm_sdk/model_select.py)`.
+- For provider/model behavior, read `[Main/config/swarm.yaml](Main/config/swarm.yaml)` and `[src/swarm_sdk/model_select.py](src/swarm_sdk/model_select.py)`.
 
 ---
 
@@ -127,11 +128,11 @@ uv run python -m swarm_sdk.agents.validate
 
 ### Subtopic: Benchmark layout
 
-- Benchmark tasks live under `[benchmark/Tasks/](benchmark/Tasks/)`; results go to `benchmark/results/` (gitignored).
+- Benchmark tasks live under `[Agents/benchmark/Tasks/](Agents/benchmark/Tasks/)`; results go to `Agents/benchmark/results/` (gitignored).
 
 ### Subtopic: SQL Pro
 
-- SQL Pro suite: `[benchmark/sql_pro/suite.yaml](benchmark/sql_pro/suite.yaml)`, CLI `uv run python -m benchmark.sql_pro.run`, Cursor command `[.cursor/commands/sql-pro.md](.cursor/commands/sql-pro.md)`.
+- SQL Pro suite: `[Agents/benchmark/sql_pro/suite.yaml](Agents/benchmark/sql_pro/suite.yaml)`, CLI `uv run python -m benchmark.sql_pro.run`, Cursor command `[.cursor/commands/sql-pro.md](.cursor/commands/sql-pro.md)`.
 
 ---
 

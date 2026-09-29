@@ -16,8 +16,8 @@ alwaysApply: false
 ## Quality gate (before claiming done)
 
 ```bash
-uv run --extra dev pytest tests benchmark -q
-uv run --extra dev ruff check src tests benchmark
-uv run --extra dev ty check src tests benchmark
+uv run --extra dev pytest Agents/tests Agents/benchmark -q
+uv run --extra dev ruff check src Agents/tests Agents/benchmark Main WebSearch
+uv run --extra dev ty check src Agents/tests Agents/benchmark Main WebSearch
 uv run python -m swarm_sdk.agents.validate
 ```

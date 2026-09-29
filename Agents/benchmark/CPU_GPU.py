@@ -3,8 +3,8 @@
 Requires the jupyter extra (fastembed + onnxruntime on supported platforms):
 
     uv sync --extra jupyter
-    uv run python benchmark/CPU_GPU.py
-    uv run python benchmark/CPU_GPU.py --write-results --json
+    uv run python Agents/benchmark/CPU_GPU.py
+    uv run python Agents/benchmark/CPU_GPU.py --write-results --json
 """
 
 from __future__ import annotations

@@ -39,6 +39,9 @@ class EmbeddingConfig(BaseModel):
     # fastembed | llama-cpp | hash
     backend: EmbedBackend = "fastembed"
     llama_model: str | None = None
+    llama_gpu_layers: int = Field(default=0, ge=0)
+    llama_n_ctx: int = Field(default=2048, ge=1)
+    llama_n_batch: int = Field(default=8, ge=1)
 
 
 class QdrantStoreConfig(BaseModel):
@@ -81,7 +84,7 @@ class RouterConfig(BaseModel):
     tool_cap: int = 128
 
 
-# Packaged default (also overridable via repo-root config/swarm.yaml or SWARM_CONFIG_PATH).
+# Packaged default (also overridable via Main/config/swarm.yaml or SWARM_CONFIG_PATH).
 _BUNDLED_SWARM_CONFIG = Path(__file__).resolve().parent.parent / "agents" / "config" / "swarm.yaml"
 
 
@@ -99,12 +102,14 @@ class SwarmFileConfig(BaseModel):
 
 
 def default_config_path() -> Path:
-    """Resolve swarm.yaml: env override, repo cwd, parent cwd, then packaged default."""
+    """Resolve swarm.yaml: env override, Main/config, repo cwd, parent cwd, then packaged default."""
     env = os.environ.get("SWARM_CONFIG_PATH")
     if env:
         return Path(env)
     cwd = Path.cwd()
     candidates = [
+        cwd / "Main" / "config" / "swarm.yaml",
+        (cwd / ".." / "Main" / "config" / "swarm.yaml").resolve(),
         cwd / "config" / "swarm.yaml",
         (cwd / ".." / "config" / "swarm.yaml").resolve(),
         _BUNDLED_SWARM_CONFIG,
@@ -203,6 +208,9 @@ def settings_from_file(file_cfg: SwarmFileConfig, env: Settings | None = None) -
         "embed_model": file_cfg.embedding.model,
         "embed_backend": file_cfg.embedding.backend,
         "llama_embed_model": file_cfg.embedding.llama_model,
+        "llama_gpu_layers": file_cfg.embedding.llama_gpu_layers,
+        "llama_n_ctx": file_cfg.embedding.llama_n_ctx,
+        "llama_n_batch": file_cfg.embedding.llama_n_batch,
         "rerank_model": file_cfg.rerank.model,
         "memory_backend": file_cfg.vectorstore.backend,
         "memory_path": file_cfg.vectorstore.path,

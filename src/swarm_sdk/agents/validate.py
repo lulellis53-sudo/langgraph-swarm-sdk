@@ -36,7 +36,7 @@ def validate_coordination(agents_dir: Path) -> list[str]:
         if isinstance(manifest_path, str) and not (repo_root / manifest_path).is_file():
             errors.append(f"{name}: manifest not found: {manifest_path}")
         if name not in manifests:
-            errors.append(f"{name}: missing Agents/{name}/agent.yaml")
+            errors.append(f"{name}: missing agent.yaml")
         elif manifests[name].name != name:
             errors.append(f"{name}: manifest name mismatch ({manifests[name].name})")
     return errors

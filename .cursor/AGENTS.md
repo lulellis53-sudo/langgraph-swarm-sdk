@@ -50,11 +50,11 @@ Repo (outside .cursor/) that agents must respect:
 
 ```text
 ├── AGENTS.md           # Project-wide coding / Swarm map
-├── Agents/             # Swarm personas + per-role Benchmarks/
+├── Agents/             # Swarm personas, tests/, shared benchmark/
+├── Main/               # Embeddings/vectorstore re-exports, YAML, Essentials
+├── WebSearch/          # Live-web research feature
 ├── src/swarm_sdk/      # Library (pb/, orchestrator/, …)
-├── config/             # swarm.yaml, model registry
-├── tests/              # Unit / integration
-└── benchmark/          # Shared harnesses (sql_pro, Tasks/, …)
+└── pyproject.toml      # Project metadata (stays at repo root)
 ```
 
 | Path | Put here |
@@ -64,7 +64,7 @@ Repo (outside .cursor/) that agents must respect:
 | `.cursor/skills/` | On-demand skill packs |
 | `.cursor/rules/` | Scoped `.mdc` rules (not plain `.md`) |
 | `.cursor/templates/` | Static scaffolds (Python module layout, …) |
-| `Agents/*/Benchmarks/` | Role-scoped notes only; runners stay in `benchmark/` |
+| `Agents/*/Benchmarks/` | Role-scoped notes only; runners stay in `Agents/benchmark/` |
 
 ## Modus operandi
 

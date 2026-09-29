@@ -17,6 +17,7 @@
 | [MLSpecialist](MLSpecialist/AGENTS.md) | model evaluation and integration | gpt-4o | high | [agent.yaml](MLSpecialist/agent.yaml) |
 | [Optimizer](Optimizer/AGENTS.md) | performance tuning | gpt-4o-mini | medium | [agent.yaml](Optimizer/agent.yaml) |
 | [Refactor](Refactor/AGENTS.md) | safe incremental refactors | gpt-4o | high | [agent.yaml](Refactor/agent.yaml) |
+| [WebSearch](../WebSearch/AGENTS.md) | live web research | gpt-4o-mini | medium | [agent.yaml](../WebSearch/agent.yaml) |
 
 ## How to use this swarm
 
@@ -27,7 +28,7 @@
 5. **Each agent** reads its `AGENTS.md` for behavioral rules, executes its task, and returns a structured output contract.
 6. **Orchestrator merges** results and updates task statuses.
 
-Each agent also has a [`Benchmarks/`](Coder/Benchmarks/) folder for role-scoped case notes and thresholds; shared runners live under [`benchmark/`](../benchmark/).
+Each agent also has a [`Benchmarks/`](Coder/Benchmarks/) folder for role-scoped case notes and thresholds; shared runners live under [`benchmark/`](benchmark/).
 
 Static Templates (all personas): [`.cursor/templates/python_static_template.py`](../.cursor/templates/python_static_template.py) — see each `AGENTS.md` → **Static Templates**.
 
@@ -37,4 +38,4 @@ Edit `coordination.yaml` → `tasks:`. Copy the example structure from the comme
 
 ## Runtime config
 
-Provider registry and model fallback routes: [`config/swarm.yaml`](../config/swarm.yaml).
+Provider registry and model fallback routes: [`Main/config/swarm.yaml`](../Main/config/swarm.yaml).

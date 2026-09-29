@@ -1,4 +1,4 @@
-"""Load config/model_registry.yaml and rank routes to select the best model per think level."""
+"""Load Main/config/model_registry.yaml and rank routes to select the best model per think level."""
 
 from __future__ import annotations
 
@@ -9,8 +9,10 @@ from pydantic import BaseModel, Field
 
 from swarm_sdk.models.selection import ModelRoute, ModelSelectConfig, ThinkLevel
 
-DEFAULT_REGISTRY_PATH = Path(__file__).resolve().parents[3] / "config" / "model_registry.yaml"
-_FALLBACK_REGISTRY_PATH = Path("config/model_registry.yaml")
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+DEFAULT_REGISTRY_PATH = _REPO_ROOT / "Main" / "config" / "model_registry.yaml"
+_PACKAGED_REGISTRY_PATH = Path(__file__).resolve().parent.parent / "agents" / "config" / "model_registry.yaml"
+_FALLBACK_REGISTRY_PATH = Path("Main/config/model_registry.yaml")
 
 
 class RegistryEntry(BaseModel):
@@ -62,7 +64,11 @@ class Registry(BaseModel):
 
 
 def load_registry(path: str | Path | None = None) -> Registry:
-    candidates = [Path(path)] if path else [DEFAULT_REGISTRY_PATH, _FALLBACK_REGISTRY_PATH]
+    candidates = (
+        [Path(path)]
+        if path
+        else [DEFAULT_REGISTRY_PATH, _PACKAGED_REGISTRY_PATH, _FALLBACK_REGISTRY_PATH]
+    )
     for candidate in candidates:
         if candidate.is_file():
             data = yaml.safe_load(candidate.read_text())

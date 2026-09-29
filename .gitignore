@@ -11,11 +11,12 @@ dist/
 *.egg-info/
 *.db
 *.sqlite
-benchmark/results/
+Agents/benchmark/results/
+WebSearch/research/
 docs/
 .coverage
 htmlcov/
 *.profraw
 *.profdata
 .idea/
-Essentials/
+Main/Essentials/
