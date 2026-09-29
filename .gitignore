@@ -17,3 +17,5 @@ docs/
 htmlcov/
 *.profraw
 *.profdata
+.idea/
+Essentials/
