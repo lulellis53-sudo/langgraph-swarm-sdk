@@ -5,7 +5,7 @@ Delete unused role sections. Keep roles grouped; do not interleave unrelated hel
 
 Layout:
 
-1. Module docstring + future annotations
+1. Module docstring, then **always** ``from __future__ import annotations`` (first statement)
 2. Stdlib / third-party / local imports (no import-time side effects)
 3. ``@wrappers`` — reusable decorators
 4. Role classes — ``Type``, ``Hint``, ``Vect``, ``Math``, ``Db``, ``Loop``, …
@@ -17,13 +17,19 @@ import-time side effects so it stays ``lazy import``–eligible. On 3.14,
 defer heavy optional deps inside the functions that need them; use
 ``TYPE_CHECKING`` for type-only imports.
 
-See ``.cursor/AGENTS.md`` → Static Templates. Do not import this file from
-runtime package code — copy and trim.
+Free-threaded Python 3.14 (PEP 703): use :class:`CoworkRole` caps so parallel swarm
+agents (disjoint files per wave) scale on no-GIL builds without oversubscribing
+on GIL builds. Matches ``swarm_sdk.execution.executor`` pool sizing.
+
+Canonical copy also lives in root ``AGENTS.md`` → Topic: Python Static Template.
+Do not import this file from runtime package code — copy and trim.
 """
 
+# ALWAYS: first statement after the module docstring — before any other import.
 from __future__ import annotations
 
 import functools
+import sys
 import time
 from collections.abc import Awaitable, Callable, Iterable, Sequence
 from dataclasses import dataclass, field
@@ -33,9 +39,21 @@ if TYPE_CHECKING:
     # Type-only imports stay here (PEP 649/749 + PEP 810–friendly).
     pass
 
-# ---------------------------------------------------------------------------
-# Type aliases & typevars (shared by roles) — Python 3.12+ ``type`` statement
-# ---------------------------------------------------------------------------
+# =============================================================================
+# Python Static Template
+# =============================================================================
+# Topic map (root ``AGENTS.md`` → Topic: Python Static Template):
+#   Subtopic: type aliases & typevars
+#   Subtopic: wrappers
+#   Subtopic: role classes (Type → Hint → Vect → Math → Db → Loop → Cowork)
+#   Subtopic: role functions (same order)
+#   Subtopic: free-threading & agent cowork (CoworkRole / cowork_*)
+#   Subtopic: public surface (+ ``main`` smoke under ``__main__`` only)
+# =============================================================================
+
+# --- Python Static Template — type aliases & typevars -----------------------
+# Python 3.12+ ``type`` statement; shared by roles
+# -----------------------------------------------------------------------------
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -46,9 +64,9 @@ type Matrix = Sequence[Sequence[float]]
 type RowId = Annotated[int, "primary key"]
 
 
-# ###########################################################################
-# @wrappers — decorators (apply with @wrappers.timed, @wrappers.logged, …)
-# ###########################################################################
+# --- Python Static Template — wrappers --------------------------------------
+# Decorators: @wrappers.timed, @wrappers.logged, @wrappers.retry(n)
+# -----------------------------------------------------------------------------
 
 
 class wrappers:
@@ -99,9 +117,9 @@ class wrappers:
         return _decorate
 
 
-# ###########################################################################
-# Role classes — one concern per class; keep methods thin
-# ###########################################################################
+# --- Python Static Template — role classes ----------------------------------
+# One concern per class; keep methods thin
+# -----------------------------------------------------------------------------
 
 
 # --- type -------------------------------------------------------------------
@@ -200,6 +218,26 @@ class DbRole:
         return None
 
 
+# --- cowork (free-threading) ------------------------------------------------
+
+
+class CoworkRole:
+    """Parallel agent / step caps for GIL vs free-threaded Python 3.14+ (PEP 703)."""
+
+    @staticmethod
+    def gil_enabled() -> bool:
+        """Return whether the GIL is enabled (``True`` on normal 3.14 builds)."""
+        try:
+            return sys._is_gil_enabled()
+        except AttributeError:
+            return True
+
+    @staticmethod
+    def parallel_cap() -> int:
+        """Default concurrency cap: conservative on GIL, wider on free-threaded builds."""
+        return 8 if CoworkRole.gil_enabled() else 32
+
+
 # --- loop -------------------------------------------------------------------
 
 
@@ -210,12 +248,13 @@ class LoopRole:
     async def gather_limited[T](
         coros: Sequence[Awaitable[T]],
         *,
-        limit: int = 8,
+        limit: int | None = None,
     ) -> list[T]:
-        """Run awaitables with a simple concurrency cap (template sketch)."""
+        """Run awaitables with a concurrency cap (defaults to :meth:`CoworkRole.parallel_cap`)."""
         import asyncio  # deferred: only needed when this helper runs
 
-        sem = asyncio.Semaphore(max(limit, 1))
+        cap = limit if limit is not None else CoworkRole.parallel_cap()
+        sem = asyncio.Semaphore(max(cap, 1))
         results: list[T] = []
 
         async def _one(aw: Awaitable[T]) -> None:
@@ -228,9 +267,9 @@ class LoopRole:
         return results
 
 
-# ###########################################################################
-# Role functions — free functions, same role order as classes
-# ###########################################################################
+# --- Python Static Template — role functions --------------------------------
+# Free functions; same role order as classes
+# -----------------------------------------------------------------------------
 
 
 # --- type -------------------------------------------------------------------
@@ -283,9 +322,20 @@ def loop_chunked[T](items: Sequence[T], size: int) -> list[Sequence[T]]:
     return [items[i : i + size] for i in range(0, len(items), size)]
 
 
-# ---------------------------------------------------------------------------
-# Public surface
-# ---------------------------------------------------------------------------
+# --- cowork -----------------------------------------------------------------
+
+
+def cowork_gil_enabled() -> bool:
+    return CoworkRole.gil_enabled()
+
+
+def cowork_parallel_cap() -> int:
+    return CoworkRole.parallel_cap()
+
+
+# --- Python Static Template — public surface --------------------------------
+# Explicit ``__all__``; smoke via ``main()`` only when run as ``__main__``
+# -----------------------------------------------------------------------------
 
 __all__ = [
     "wrappers",
@@ -295,12 +345,15 @@ __all__ = [
     "MathRole",
     "DbRole",
     "LoopRole",
+    "CoworkRole",
     "type_is_mapping",
     "hint_tag",
     "vect_l2",
     "math_safe_div",
     "db_uri",
     "loop_chunked",
+    "cowork_gil_enabled",
+    "cowork_parallel_cap",
 ]
 
 

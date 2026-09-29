@@ -130,7 +130,7 @@ Also linked from root [`../AGENTS.md`](../AGENTS.md) and every `Agents/*/AGENTS.
 
 ### Required shape
 
-1. Module docstring + future-annotations import:
+1. **Always initiate with future annotations** — first statement after the module docstring:
 
    ```python
    from __future__ import annotations
@@ -138,8 +138,8 @@ Also linked from root [`../AGENTS.md`](../AGENTS.md) and every `Agents/*/AGENTS.
 
 2. Stdlib / third-party / local imports (eager stdlib OK; heavy third-party deferred — see PEP 810 below)
 3. **`wrappers`** — `@wrappers.timed`, `@wrappers.logged`, `@wrappers.retry(n)` (always `@functools.wraps`)
-4. **Role classes** (order): `TypeRole` → `HintRole` → `VectRole` → `MathRole` → `DbRole` → `LoopRole`
-5. **Role functions**: `type_*`, `hint_*`, `vect_*`, `math_*`, `db_*`, `loop_*`
+4. **Role classes** (order): `TypeRole` → `HintRole` → `VectRole` → `MathRole` → `DbRole` → `LoopRole` → `CoworkRole`
+5. **Role functions**: `type_*`, `hint_*`, `vect_*`, `math_*`, `db_*`, `loop_*`, `cowork_*`
 6. Explicit export list named `__all__` (+ optional `main` smoke only under a `__main__` guard)
 
 ### Roles at a glance
@@ -152,6 +152,12 @@ Also linked from root [`../AGENTS.md`](../AGENTS.md) and every `Agents/*/AGENTS.
 | math | `MathRole` | `math_*` | Scalar / reductions (no I/O) |
 | db | `DbRole` | `db_*` | Store / connection façade |
 | loop | `LoopRole` | `loop_*` | Async / batch iteration |
+| cowork | `CoworkRole` | `cowork_*` | Free-threading caps for parallel agents (PEP 703) |
+
+### Free-threading and agent cowork (PEP 703)
+
+- `CoworkRole.parallel_cap()` / `cowork_parallel_cap()`: `8` on GIL builds, `32` on free-threaded Python 3.14 (`sys._is_gil_enabled()`), aligned with `swarm_sdk.execution.executor`.
+- `LoopRole.gather_limited(..., limit=None)` uses that default; orchestrator siblings claim disjoint `files` per wave.
 
 ### PEP 810 — keep the template lazy-import safe
 

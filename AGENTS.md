@@ -1,14 +1,42 @@
 # Agent guidelines — LangGraph Swarm SDK
 
+## Summary
+
 Instructions for humans and AI assistants working in this repository. Read this first; drill into specialist docs only when your task requires them.
 
-## What this project is
-
-**LangGraph Swarm SDK** — a Python library and runtime for parallel multi-LLM swarms: LangGraph handoffs, semantic cache, hybrid retrieval, reranking, token budgets, and optional HTTP/gRPC APIs. The design goal is **fewer tokens** and **more relevant context**, not maximal model verbosity.
+| Topic | What you will find |
+| ----- | ------------------ |
+| [Project overview](#topic-project-overview) | What LangGraph Swarm SDK is; coding assistant vs swarm specialists |
+| [Repository layout](#topic-repository-layout) | Path map; protobuf note; quick links |
+| [Development environment](#topic-development-environment) | Python/uv, services, quality gate, Colab/Codex, extensions |
+| [Workflow](#topic-workflow) | How to change code; when stuck |
+| [Benchmarks](#topic-benchmarks) | Task layout; SQL Pro suite |
+| [Security and compliance](#topic-security-and-compliance) | Secrets; network exfiltration |
+| [Git and documentation](#topic-git-and-documentation) | Commits, README, dependencies |
+| [Python Static Template](#topic-python-static-template) | Full scaffold source (merged with `.cursor/templates/python_static_template.py`) |
 
 Human-oriented overview: [`README.md`](README.md).
 
-## Repository map
+---
+
+## Topic: Project overview
+
+### Subtopic: What this project is
+
+**LangGraph Swarm SDK** — a Python library and runtime for parallel multi-LLM swarms: LangGraph handoffs, semantic cache, hybrid retrieval, reranking, token budgets, and optional HTTP/gRPC APIs. The design goal is **fewer tokens** and **more relevant context**, not maximal model verbosity.
+
+### Subtopic: Two kinds of “agents”
+
+1. **Coding assistant (you in Cursor)** — edits this repo, runs tests, opens PRs. Follow the sections below.
+2. **Swarm specialists (`Agents/*`)** — fictional roles (Coder, Tester, Security, …) with JSON output contracts for orchestrated tasks. When emulating a role, read that folder’s [`AGENTS.md`](Agents/Coder/AGENTS.md) and obey its contract. When doing general repo work, use this file and the Coder-style norms (minimal diff, tests, no secrets).
+
+For swarm coordination: start from [`Agents/SKILLS.md`](Agents/SKILLS.md) and [`Agents/coordination.yaml`](Agents/coordination.yaml).
+
+---
+
+## Topic: Repository layout
+
+### Subtopic: Repository map
 
 | Path | Purpose |
 | ------ | --------- |
@@ -31,12 +59,31 @@ Human-oriented overview: [`README.md`](README.md).
 
 Edit [`src/swarm_sdk/pb/swarm.proto`](src/swarm_sdk/pb/swarm.proto) then `uv run python -m swarm_sdk.pb` to regenerate stubs. Never commit `.env`.
 
-## Environment and commands
+### Subtopic: Quick links
+
+- Agent index: [`Agents/SKILLS.md`](Agents/SKILLS.md)
+- Workspace layout: [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace)
+- Benchmarks: [`benchmark/README.md`](benchmark/README.md)
+- Static template: [@.cursor/templates/python_static_template.py](.cursor/templates/python_static_template.py)
+
+---
+
+## Topic: Development environment
+
+### Subtopic: Python and uv
 
 - **Python:** `>=3.14.5`, managed with **[uv](https://docs.astral.sh/uv/)**.
 - **Install:** `uv sync --extra dev` (add `--extra faiss`, `--extra faiss-gpu`, `--extra embed`, `--extra molten`, `--extra observability`, `--extra qdrant`, `--extra mem0`, `--extra jupyter` as needed).
+
+Use `uv run …` so commands use the project virtualenv.
+
+### Subtopic: Services
+
 - **Run services:** `uv run swarm-api`, `uv run swarm-grpc`.
-- **Quality gate** (run before claiming work is done):
+
+### Subtopic: Quality gate
+
+Run before claiming work is done:
 
 ```bash
 uv run --extra dev pytest tests benchmark -q
@@ -45,76 +92,91 @@ uv run --extra dev ty check src tests benchmark
 uv run python -m swarm_sdk.agents.validate
 ```
 
-Use `uv run …` so commands use the project virtualenv.
-
-### Colab and Codex (editor)
+### Subtopic: Colab and Codex
 
 - **Colab** (`google.colab`): open a `.ipynb` → **Select Kernel** → **Colab** → sign in with Google. Requires `uv sync --extra jupyter` for local kernels; Colab runs remotely.
 - **Codex** (`openai.chatgpt`): open the Codex sidebar and sign in with ChatGPT. Repo defaults: [`.codex/config.toml`](.codex/config.toml). For LangChain Codex routes, set `CODEX_OAUTH_TOKEN` in `.env` (see [`config/model_registry.yaml`](config/model_registry.yaml)).
-- **Install extensions:** Cursor/VS Code will prompt from [`.vscode/extensions.json`](.vscode/extensions.json), or `xargs -n1 code --install-extension < .cursor/extensions.txt`.
 
-## Two kinds of “agents”
+### Subtopic: Editor extensions
 
-1. **Coding assistant (you in Cursor)** — edits this repo, runs tests, opens PRs. Follow the sections below.
-2. **Swarm specialists (`Agents/*`)** — fictional roles (Coder, Tester, Security, …) with JSON output contracts for orchestrated tasks. When emulating a role, read that folder’s [`AGENTS.md`](Agents/Coder/AGENTS.md) and obey its contract. When doing general repo work, use this file and the Coder-style norms (minimal diff, tests, no secrets).
+- Cursor/VS Code will prompt from [`.vscode/extensions.json`](.vscode/extensions.json), or `xargs -n1 code --install-extension < .cursor/extensions.txt`.
 
-For swarm coordination: start from [`Agents/SKILLS.md`](Agents/SKILLS.md) and [`Agents/coordination.yaml`](Agents/coordination.yaml).
+---
 
-## How to change code
+## Topic: Workflow
+
+### Subtopic: How to change code
 
 1. **Read first** — callers, tests, and config that touch the same behavior.
 2. **Smallest correct diff** — no drive-by refactors, new abstractions, or dependencies unless the task requires them.
 3. **Match conventions** — Ruff (`line-length = 100`, py314), existing naming and patterns in `src/swarm_sdk/`.
-4. **Prove it** — failing test → fix → full gate above. Do not weaken lint/type checks without a named rule and reason.
+4. **Prove it** — failing test → fix → full [quality gate](#subtopic-quality-gate). Do not weaken lint/type checks without a named rule and reason.
 5. **Config** — prefer [`config/swarm.yaml`](config/swarm.yaml) and agent manifests under `Agents/*/agent.yaml`; document new env vars in README or agent docs.
 6. **Protobuf** — edit [`src/swarm_sdk/pb/swarm.proto`](src/swarm_sdk/pb/swarm.proto), then regenerate with `uv run python -m swarm_sdk.pb`. Do not hand-edit `swarm_pb2*` stubs.
-7. **New Python modules** — copy from [@.cursor/templates/python_static_template.py](.cursor/templates/python_static_template.py); see **Static Templates** below.
+7. **New Python modules** — copy from [@.cursor/templates/python_static_template.py](.cursor/templates/python_static_template.py); see [Python Static Template](#topic-python-static-template).
 
-## Benchmarks and SQL Pro
-
-- Benchmark tasks live under [`benchmark/Tasks/`](benchmark/Tasks/); results go to `benchmark/results/` (gitignored).
-- SQL Pro suite: [`benchmark/sql_pro/suite.yaml`](benchmark/sql_pro/suite.yaml), CLI `uv run python -m benchmark.sql_pro.run`, Cursor command [`.cursor/commands/sql-pro.md`](.cursor/commands/sql-pro.md).
-
-## Security and secrets
-
-- Never commit `.env`, API keys, tokens, or credentials.
-- Never paste secret values into issues, logs, or agent output (report path/pattern only — see [`Agents/Security/AGENTS.md`](Agents/Security/AGENTS.md)).
-- Do not add network calls that exfiltrate repo data unless the user explicitly asks.
-
-## Git and docs
-
-- **Commits:** only when the user asks; do not force-push `main`.
-- **Docs:** update [`README.md`](README.md) when behavior or install steps change; keep agent-specific rules in `Agents/*/AGENTS.md`.
-- **Dependencies:** add via `pyproject.toml` / `uv lock`; respect `[tool.uv]` constraints (e.g. `cryptography` wheel-only for Jupyter extra).
-
-## When stuck
+### Subtopic: When stuck
 
 - Report `blocked` with the exact command output after one reasonable retry.
 - Prefer fixing the environment (uv sync, missing extra) over skipping tests.
 - For provider/model behavior, read [`config/swarm.yaml`](config/swarm.yaml) and [`src/swarm_sdk/model_select.py`](src/swarm_sdk/model_select.py).
 
-## Static Templates
+---
 
-Canonical scaffold (Cursor `@` attach): [@.cursor/templates/python_static_template.py](.cursor/templates/python_static_template.py)
+## Topic: Benchmarks
+
+### Subtopic: Benchmark layout
+
+- Benchmark tasks live under [`benchmark/Tasks/`](benchmark/Tasks/); results go to `benchmark/results/` (gitignored).
+
+### Subtopic: SQL Pro
+
+- SQL Pro suite: [`benchmark/sql_pro/suite.yaml`](benchmark/sql_pro/suite.yaml), CLI `uv run python -m benchmark.sql_pro.run`, Cursor command [`.cursor/commands/sql-pro.md`](.cursor/commands/sql-pro.md).
+
+---
+
+## Topic: Security and compliance
+
+### Subtopic: Secrets
+
+- Never commit `.env`, API keys, tokens, or credentials.
+- Never paste secret values into issues, logs, or agent output (report path/pattern only — see [`Agents/Security/AGENTS.md`](Agents/Security/AGENTS.md)).
+
+### Subtopic: Network
+
+- Do not add network calls that exfiltrate repo data unless the user explicitly asks.
+
+---
+
+## Topic: Git and documentation
+
+### Subtopic: Commits
+
+- **Commits:** only when the user asks; do not force-push `main`.
+
+### Subtopic: Documentation
+
+- **Docs:** update [`README.md`](README.md) when behavior or install steps change; keep agent-specific rules in `Agents/*/AGENTS.md`.
+
+### Subtopic: Dependencies
+
+- **Dependencies:** add via `pyproject.toml` / `uv lock`; respect `[tool.uv]` constraints (e.g. `cryptography` wheel-only for Jupyter extra).
+
+---
+
+## Topic: Python Static Template
+
+Runnable file (Cursor `@` attach): [@.cursor/templates/python_static_template.py](.cursor/templates/python_static_template.py). **This topic merges that file in full** — keep the block below and the `.py` file in sync when you change the scaffold.
 
 Rule: [`.cursor/rules/python-static-template.mdc`](.cursor/rules/python-static-template.mdc). Ops: [`.cursor/AGENTS.md`](.cursor/AGENTS.md). Every `Agents/*/AGENTS.md` links here too.
 
-### When to use
+### Subtopic: When to use
 
 - Creating a **new** module under `src/swarm_sdk/` (not drive-by edits).
-- Copy the file, rename it, **delete unused role sections**, keep remaining roles contiguous.
+- Copy from the merged source below (or the `.py` file), rename it, **delete unused role sections**, keep remaining roles contiguous.
 - Do **not** import the template from runtime package code.
 
-### Required shape (merged from the template)
-
-1. Module docstring + `from __future__ import annotations`
-2. Stdlib / third-party / local imports
-3. **`wrappers`** — decorator namespace; use `@wrappers.timed`, `@wrappers.logged`, `@wrappers.retry(n)` (always `@functools.wraps`)
-4. **Role classes** (order): `Type` → `Hint` → `Vect` → `Math` → `Db` → `Loop` (add only what you need)
-5. **Role functions** with the same prefixes: `type_`, `hint_`, `vect_`, `math_`, `db_`, `loop_`
-6. Explicit `__all__` (+ optional `main` smoke)
-
-### Roles at a glance
+### Subtopic: Roles at a glance
 
 | Role | Class | Functions | Concern |
 | ------ | -------- | ----------- | --------- |
@@ -124,38 +186,83 @@ Rule: [`.cursor/rules/python-static-template.mdc`](.cursor/rules/python-static-t
 | math | `MathRole` | `math_*` | Scalar / reductions (no I/O) |
 | db | `DbRole` | `db_*` | Store / connection façade |
 | loop | `LoopRole` | `loop_*` | Async / batch iteration |
+| cowork | `CoworkRole` | `cowork_*` | Free-threading caps for parallel agents (PEP 703) |
 
-Smoke check after copying:
-"""Python Static Template — Swarm.
+### Subtopic: Mandatory first import
+
+Every new module under `src/swarm_sdk/`: **module docstring**, then immediately (before any other import or code):
+
+```python
+from __future__ import annotations
+```
+
+### Subtopic: Free-threading and agent cowork
+
+- **PEP 703** free-threaded Python 3.14: `CoworkRole.parallel_cap()` returns `8` (GIL) or `32` (no GIL), matching [`swarm_sdk/execution/executor.py`](src/swarm_sdk/execution/executor.py).
+- Parallel swarm steps: cap concurrency with `LoopRole.gather_limited(..., limit=None)`; sibling agents claim **disjoint `files`** per orchestrator wave (see root [`README.md`](README.md)).
+- Role helpers: `cowork_gil_enabled()`, `cowork_parallel_cap()`.
+
+### Subtopic: Full template source
+
+Section comments use `# Python Static Template — …` (type aliases, wrappers, role classes, role functions, public surface).
+
+```python
+"""Python Static Template — Swarm (PEP 810–ready).
 
 Copy this skeleton when starting a new module under ``src/swarm_sdk/``.
 Delete unused role sections. Keep roles grouped; do not interleave unrelated helpers.
 
 Layout:
 
-1. Module docstring + future annotations
-2. Stdlib / third-party / local imports
+1. Module docstring, then **always** ``from __future__ import annotations`` (first statement)
+2. Stdlib / third-party / local imports (no import-time side effects)
 3. ``@wrappers`` — reusable decorators
 4. Role classes — ``Type``, ``Hint``, ``Vect``, ``Math``, ``Db``, ``Loop``, …
 5. Role functions — same order as classes
-6. ``__all__`` + optional ``main``
+6. ``__all__`` + optional ``main`` under ``__main__`` only
 
-Regenerate or fork; do not import this file from runtime code.
+PEP 810 (Explicit lazy imports, Python 3.15+): keep this module free of
+import-time side effects so it stays ``lazy import``–eligible. On 3.14,
+defer heavy optional deps inside the functions that need them; use
+``TYPE_CHECKING`` for type-only imports.
+
+Free-threaded Python 3.14 (PEP 703): use :class:`CoworkRole` caps so parallel swarm
+agents (disjoint files per wave) scale on no-GIL builds without oversubscribing
+on GIL builds. Matches ``swarm_sdk.execution.executor`` pool sizing.
+
+Canonical copy also lives in root ``AGENTS.md`` → Topic: Python Static Template.
+Do not import this file from runtime package code — copy and trim.
 """
 
-from **future** import annotations
+# ALWAYS: first statement after the module docstring — before any other import.
+from __future__ import annotations
 
 import functools
+import sys
 import time
 from collections.abc import Awaitable, Callable, Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Annotated, Any, ParamSpec, Protocol, TypeVar
+from typing import TYPE_CHECKING, Annotated, Any, ParamSpec, Protocol, TypeVar
 
-# ---------------------------------------------------------------------------
+if TYPE_CHECKING:
+    # Type-only imports stay here (PEP 649/749 + PEP 810–friendly).
+    pass
 
-# Type aliases & typevars (shared by roles) — Python 3.12+ ``type`` statement
+# =============================================================================
+# Python Static Template
+# =============================================================================
+# Topic map (root ``AGENTS.md`` → Topic: Python Static Template):
+#   Subtopic: type aliases & typevars
+#   Subtopic: wrappers
+#   Subtopic: role classes (Type → Hint → Vect → Math → Db → Loop → Cowork)
+#   Subtopic: role functions (same order)
+#   Subtopic: free-threading & agent cowork (CoworkRole / cowork_*)
+#   Subtopic: public surface (+ ``main`` smoke under ``__main__`` only)
+# =============================================================================
 
-# ---------------------------------------------------------------------------
+# --- Python Static Template — type aliases & typevars -----------------------
+# Python 3.12+ ``type`` statement; shared by roles
+# -----------------------------------------------------------------------------
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -165,18 +272,18 @@ type Vec = Sequence[float]
 type Matrix = Sequence[Sequence[float]]
 type RowId = Annotated[int, "primary key"]
 
-# ###########################################################################
 
-# @wrappers — decorators (apply with @wrappers.timed, @wrappers.logged, …)
+# --- Python Static Template — wrappers --------------------------------------
+# Decorators: @wrappers.timed, @wrappers.logged, @wrappers.retry(n)
+# -----------------------------------------------------------------------------
 
-# ###########################################################################
 
 class wrappers:
     """Static namespace for decorator factories. Prefer `@wrappers.name`."""
 
     @staticmethod
     def timed(fn: Callable[P, R]) -> Callable[P, R]:
-        """Record wall time on ``fn.__name__`` (prints in debug builds)."""
+        """Record wall time on ``fn.__name__`` (no I/O at decoration time)."""
 
         @functools.wraps(fn)
         def _inner(*args: P.args, **kwargs: P.kwargs) -> R:
@@ -218,13 +325,14 @@ class wrappers:
 
         return _decorate
 
-# ###########################################################################
 
-# Role classes — one concern per class; keep methods thin
+# --- Python Static Template — role classes ----------------------------------
+# One concern per class; keep methods thin
+# -----------------------------------------------------------------------------
 
-# ###########################################################################
 
 # --- type -------------------------------------------------------------------
+
 
 class TypeRole:
     """Structural typing helpers (Protocols, narrowers)."""
@@ -238,7 +346,9 @@ class TypeRole:
             raise TypeError(f"expected str, got {type(value).__name__}")
         return value
 
+
 # --- hint -------------------------------------------------------------------
+
 
 @dataclass(frozen=True, slots=True)
 class HintRole:
@@ -251,7 +361,9 @@ class HintRole:
     def as_annotated(self) -> Any:
         return Annotated[str, self]
 
+
 # --- vect -------------------------------------------------------------------
+
 
 @dataclass(slots=True)
 class VectRole:
@@ -267,7 +379,9 @@ class VectRole:
             raise ValueError("vector length mismatch")
         return sum(x * y for x, y in zip(a, b, strict=True))
 
+
 # --- math -------------------------------------------------------------------
+
 
 class MathRole:
     """Scalar / reduction math (no I/O)."""
@@ -287,16 +401,19 @@ class MathRole:
             raise ValueError("empty sequence")
         return total / n
 
+
 # --- db ---------------------------------------------------------------------
+
 
 @dataclass(slots=True)
 class DbRole:
-    """DB / store façade — replace with sqlite/qdrant/opencl store wiring."""
+    """DB / store façade — connect explicitly; never open at import time."""
 
     path: str
     _open: bool = False
 
     def connect(self) -> None:
+        """Eager open — call from app startup, not at import (PEP 810)."""
         self._open = True
 
     def close(self) -> None:
@@ -309,7 +426,29 @@ class DbRole:
         _ = key
         return None
 
+
+# --- cowork (free-threading) ------------------------------------------------
+
+
+class CoworkRole:
+    """Parallel agent / step caps for GIL vs free-threaded Python 3.14+ (PEP 703)."""
+
+    @staticmethod
+    def gil_enabled() -> bool:
+        """Return whether the GIL is enabled (``True`` on normal 3.14 builds)."""
+        try:
+            return sys._is_gil_enabled()
+        except AttributeError:
+            return True
+
+    @staticmethod
+    def parallel_cap() -> int:
+        """Default concurrency cap: conservative on GIL, wider on free-threaded builds."""
+        return 8 if CoworkRole.gil_enabled() else 32
+
+
 # --- loop -------------------------------------------------------------------
+
 
 class LoopRole:
     """Async / batch loop helpers."""
@@ -318,12 +457,13 @@ class LoopRole:
     async def gather_limited[T](
         coros: Sequence[Awaitable[T]],
         *,
-        limit: int = 8,
+        limit: int | None = None,
     ) -> list[T]:
-        """Run awaitables with a simple concurrency cap (template sketch)."""
-        import asyncio
+        """Run awaitables with a concurrency cap (defaults to :meth:`CoworkRole.parallel_cap`)."""
+        import asyncio  # deferred: only needed when this helper runs
 
-        sem = asyncio.Semaphore(max(limit, 1))
+        cap = limit if limit is not None else CoworkRole.parallel_cap()
+        sem = asyncio.Semaphore(max(cap, 1))
         results: list[T] = []
 
         async def _one(aw: Awaitable[T]) -> None:
@@ -335,57 +475,78 @@ class LoopRole:
                 tg.create_task(_one(aw))
         return results
 
-# ###########################################################################
 
-# Role functions — free functions, same role order as classes
+# --- Python Static Template — role functions --------------------------------
+# Free functions; same role order as classes
+# -----------------------------------------------------------------------------
 
-# ###########################################################################
 
 # --- type -------------------------------------------------------------------
+
 
 def type_is_mapping(value: object) -> bool:
     return isinstance(value, dict)
 
+
 # --- hint -------------------------------------------------------------------
+
 
 def hint_tag(*tags: str) -> HintRole:
     return HintRole(name="tag", tags=tags)
 
+
 # --- vect -------------------------------------------------------------------
+
 
 @wrappers.timed
 def vect_l2(a: Vec, b: Vec) -> float:
     if len(a) != len(b):
         raise ValueError("vector length mismatch")
-    return sum((x - y) **2 for x, y in zip(a, b, strict=True))** 0.5
+    return sum((x - y) ** 2 for x, y in zip(a, b, strict=True)) ** 0.5
+
 
 # --- math -------------------------------------------------------------------
+
 
 def math_safe_div(num: float, den: float, default: float = 0.0) -> float:
     if den == 0.0:
         return default
     return num / den
 
+
 # --- db ---------------------------------------------------------------------
+
 
 def db_uri(path: str, *, read_only: bool = False) -> str:
     mode = "mode=ro" if read_only else "mode=rwc"
     return f"file:{path}?{mode}"
 
+
 # --- loop -------------------------------------------------------------------
+
 
 def loop_chunked[T](items: Sequence[T], size: int) -> list[Sequence[T]]:
     if size < 1:
         raise ValueError("size must be >= 1")
     return [items[i : i + size] for i in range(0, len(items), size)]
 
-# ---------------------------------------------------------------------------
 
-# Public surface
+# --- cowork -----------------------------------------------------------------
 
-# ---------------------------------------------------------------------------
 
-**all** = [
+def cowork_gil_enabled() -> bool:
+    return CoworkRole.gil_enabled()
+
+
+def cowork_parallel_cap() -> int:
+    return CoworkRole.parallel_cap()
+
+
+# --- Python Static Template — public surface --------------------------------
+# Explicit ``__all__``; smoke via ``main()`` only when run as ``__main__``
+# -----------------------------------------------------------------------------
+
+__all__ = [
     "wrappers",
     "TypeRole",
     "HintRole",
@@ -393,13 +554,17 @@ def loop_chunked[T](items: Sequence[T], size: int) -> list[Sequence[T]]:
     "MathRole",
     "DbRole",
     "LoopRole",
+    "CoworkRole",
     "type_is_mapping",
     "hint_tag",
     "vect_l2",
     "math_safe_div",
     "db_uri",
     "loop_chunked",
+    "cowork_gil_enabled",
+    "cowork_parallel_cap",
 ]
+
 
 def main() -> int:
     """Smoke the template locally: ``uv run python .cursor/templates/python_static_template.py``."""
@@ -408,16 +573,13 @@ def main() -> int:
     assert loop_chunked([1, 2, 3, 4], 2) == [[1, 2], [3, 4]]
     return 0
 
-if **name** == "**main**":
+
+if __name__ == "__main__":
     raise SystemExit(main())
+```
+
+### Subtopic: Smoke check
 
 ```bash
 uv run python .cursor/templates/python_static_template.py
 ```
-
-## Quick links
-
-- Agent index: [`Agents/SKILLS.md`](Agents/SKILLS.md)
-- Workspace layout: [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace)
-- Benchmarks: [`benchmark/README.md`](benchmark/README.md)
-- Static template: [@.cursor/templates/python_static_template.py](.cursor/templates/python_static_template.py)
