@@ -51,3 +51,34 @@ def test_llama_embedder_missing_dependency():
         embedder = LlamaCppEmbedder("/tmp/model.gguf", dim=384)
         with pytest.raises(ImportError):
             embedder.embed(["hello"])
+
+
+def test_bge_uses_query_and_passage_prefixes_and_gpu_settings():
+    seen: list[str] = []
+
+    class BgeLlama(_FakeLlama):
+        def __init__(self, model_path: str, **kwargs: object) -> None:
+            super().__init__(model_path, **kwargs)
+            assert kwargs["n_gpu_layers"] == 99
+            assert kwargs["n_ctx"] == 2048
+            assert kwargs["n_batch"] == 8
+
+        def embed(self, input: list[str], normalize: bool = True) -> list[list[float]]:
+            del normalize
+            seen.extend(input)
+            return [np.ones(1024, dtype=np.float32).tolist() for _ in input]
+
+    fake = types.ModuleType("llama_cpp")
+    setattr(fake, "Llama", BgeLlama)
+    with patch.dict("sys.modules", {"llama_cpp": fake}):
+        embedder = LlamaCppEmbedder(
+            "/models/bge-m3-q8_0.gguf",
+            dim=1024,
+            n_ctx=2048,
+            n_gpu_layers=99,
+            n_batch=8,
+        )
+        assert embedder.embed(["find similar"], query=True).shape == (1, 1024)
+        assert embedder.embed(["memory passage"], query=False).shape == (1, 1024)
+
+    assert seen == ["query: find similar", "passage: memory passage"]

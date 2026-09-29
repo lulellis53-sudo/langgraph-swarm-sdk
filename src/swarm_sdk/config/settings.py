@@ -63,6 +63,9 @@ class Settings(BaseSettings):
     # GPU acceleration options for Intel Mac + Radeon Pro 5300M
     embed_backend: EmbedBackend = "fastembed"
     llama_embed_model: str | None = None
+    llama_gpu_layers: int = Field(default=0, ge=0)
+    llama_n_ctx: int = Field(default=2048, ge=1)
+    llama_n_batch: int = Field(default=8, ge=1)
     opencl_enabled: bool = True
 
 

@@ -1,0 +1,18 @@
+name: codeagent_bencheval
+sdk_entry: swarm_sdk.agents.manifest.AgentManifest
+metrics:
+  - task_score
+  - token_usage
+  - latency_ms
+  - think_level
+  - effort
+  - pass_rate
+  - tests_passed
+  - tests_total
+  - files_changed
+  - lines_changed
+models: predefined
+pass:
+  mean_task_score: 0.85
+  pass_rate: 0.95
+  max_total_tokens: 20000

@@ -2,7 +2,7 @@
 
 Role-specific benchmark notes, case IDs, and expected deltas for **Reviewer**.
 
-Shared suite and runners: [`benchmark/`](../../../benchmark/) (see [`benchmark/README.md`](../../../benchmark/README.md)).
+Shared suite and runners: [`benchmark/`](../../benchmark/) (see [`benchmark/README.md`](../../benchmark/README.md)).
 
 ## Layout
 

@@ -197,8 +197,8 @@ class StepOutput(BaseModel):
         agent: Name of the agent that produced the output.
         content: The worker's response text (verbatim; the orchestrator merges,
             it does not reinterpret).
-        prompt_tokens: Approximate tokens sent (system contract + user prompt).
-            Counted with the whitespace tokenizer; ``0`` for cache hits.
+        prompt_tokens: Prompt tokens counted by the worker's configured tokenizer
+            (tiktoken by default); ``0`` for cache hits.
         completion_tokens: Approximate tokens received from the model.
         cached: ``True`` when the answer came from the semantic/exact cache and
             no LLM call was made (zero token cost).

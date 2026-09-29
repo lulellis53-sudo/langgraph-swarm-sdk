@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -32,7 +32,7 @@ __kernel void l2_norm(__global const float *matrix,
     out[r] = sqrt(sum);
 }
 
-__kernel void normalize(__global const float *matrix,
+__kernel void normalize_rows(__global const float *matrix,
                         __global float *out,
                         const uint rows,
                         const uint cols) {
@@ -73,6 +73,10 @@ class _ClState:
         self.ctx: cl.Context | None = None
         self.queue: cl.CommandQueue | None = None
         self.program: cl.Program | None = None
+        self._kernels: dict[str, Any] = {}
+        self._matrix_cache_key: object | None = None
+        self._matrix_cache_shape: tuple[int, ...] = ()
+        self._matrix_cache_buffer: Any = None
         self._device_name = ""
         self._error: str | None = None
         self._try_init()
@@ -85,11 +89,23 @@ class _ClState:
             return
 
         try:
-            for platform in cl.get_platforms():
-                gpus = platform.get_devices(device_type=cl.device_type.GPU)
-                if gpus:
-                    self.ctx = cl.Context(gpus)
-                    break
+            preferred = os.environ.get("SWARM_OPENCL_DEVICE", "").strip().lower()
+            gpu_devices = [
+                device
+                for platform in cl.get_platforms()
+                for device in platform.get_devices(device_type=cl.device_type.GPU)
+            ]
+            if preferred:
+                selected = next(
+                    (device for device in gpu_devices if preferred in device.name.lower()),
+                    None,
+                )
+                if selected is None:
+                    self._error = f"no OpenCL GPU matched SWARM_OPENCL_DEVICE={preferred!r}"
+                    return
+                self.ctx = cl.Context([selected])
+            elif gpu_devices:
+                self.ctx = cl.Context([gpu_devices[0]])
             if self.ctx is None:
                 for platform in cl.get_platforms():
                     cpus = platform.get_devices(device_type=cl.device_type.CPU)
@@ -102,6 +118,10 @@ class _ClState:
 
             self.queue = cl.CommandQueue(self.ctx)
             self.program = cl.Program(self.ctx, _SOURCE).build()
+            self._kernels = {
+                name: cl.Kernel(self.program, name)
+                for name in ("l2_norm", "normalize_rows", "batch_dot")
+            }
             self._device_name = self.ctx.devices[0].name.strip()
             logger.debug("OpenCL ready on %s", self._device_name)
         except Exception as exc:  # noqa: BLE001
@@ -116,6 +136,10 @@ class _ClState:
         import pyopencl as cl
 
         return cl
+
+    def kernel(self, name: str) -> Any:
+        """Return the cached kernel object (repeated program lookup is expensive)."""
+        return self._kernels[name]
 
 
 _STATE = _ClState()
@@ -171,7 +195,7 @@ def l2_norm(vectors: np.ndarray) -> np.ndarray:
     mf = cl.mem_flags
     buf_m = cl.Buffer(_STATE.ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=matrix)
     buf_o = cl.Buffer(_STATE.ctx, mf.WRITE_ONLY, out.nbytes)
-    _STATE.program.l2_norm(
+    _STATE.kernel("l2_norm")(
         _STATE.queue, (rows,), None, buf_m, buf_o, np.uint32(rows), np.uint32(cols)
     )
     cl.enqueue_copy(_STATE.queue, out, buf_o)
@@ -193,7 +217,7 @@ def normalize(vectors: np.ndarray) -> np.ndarray:
     mf = cl.mem_flags
     buf_m = cl.Buffer(_STATE.ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=matrix)
     buf_o = cl.Buffer(_STATE.ctx, mf.WRITE_ONLY, out.nbytes)
-    _STATE.program.normalize(
+    _STATE.kernel("normalize_rows")(
         _STATE.queue, (rows,), None, buf_m, buf_o, np.uint32(rows), np.uint32(cols)
     )
     cl.enqueue_copy(_STATE.queue, out, buf_o)
@@ -201,7 +225,12 @@ def normalize(vectors: np.ndarray) -> np.ndarray:
     return out
 
 
-def batch_dot(query: np.ndarray, vectors: np.ndarray) -> np.ndarray:
+def batch_dot(
+    query: np.ndarray,
+    vectors: np.ndarray,
+    *,
+    cache_key: object | None = None,
+) -> np.ndarray:
     """Dot product of `query` with every row of `vectors`. Falls back to NumPy."""
     query = _ensure_f32_contiguous(query, "query").reshape(-1)
     matrix = _ensure_f32_contiguous(vectors, "vectors").reshape(-1, query.shape[0])
@@ -214,10 +243,22 @@ def batch_dot(query: np.ndarray, vectors: np.ndarray) -> np.ndarray:
     rows, cols = matrix.shape
     out = np.empty(rows, dtype=np.float32)
     mf = cl.mem_flags
-    buf_m = cl.Buffer(_STATE.ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=matrix)
+    if (
+        cache_key is not None
+        and cache_key == _STATE._matrix_cache_key
+        and matrix.shape == _STATE._matrix_cache_shape
+        and _STATE._matrix_cache_buffer is not None
+    ):
+        buf_m = _STATE._matrix_cache_buffer
+    else:
+        buf_m = cl.Buffer(_STATE.ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=matrix)
+        if cache_key is not None:
+            _STATE._matrix_cache_key = cache_key
+            _STATE._matrix_cache_shape = matrix.shape
+            _STATE._matrix_cache_buffer = buf_m
     buf_q = cl.Buffer(_STATE.ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=query)
     buf_o = cl.Buffer(_STATE.ctx, mf.WRITE_ONLY, out.nbytes)
-    _STATE.program.batch_dot(
+    _STATE.kernel("batch_dot")(
         _STATE.queue, (rows,), None, buf_m, buf_q, buf_o, np.uint32(rows), np.uint32(cols)
     )
     cl.enqueue_copy(_STATE.queue, out, buf_o)
@@ -244,11 +285,17 @@ def batch_cosine(query: np.ndarray, vectors: np.ndarray) -> np.ndarray:
     return batch_dot(normalized_query, normalized_matrix)
 
 
-def topk_ip(query: np.ndarray, vectors: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
+def topk_ip(
+    query: np.ndarray,
+    vectors: np.ndarray,
+    k: int,
+    *,
+    cache_key: object | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
     """Return top-k indices and inner-product scores. Falls back to NumPy."""
     if k < 1:
         return np.array([], dtype=np.int64), np.array([], dtype=np.float32)
-    scores = batch_dot(query, vectors)
+    scores = batch_dot(query, vectors, cache_key=cache_key)
     k = min(k, scores.shape[0])
     idx = np.argpartition(scores, -k)[-k:]
     idx = idx[np.argsort(-scores[idx])]
@@ -258,9 +305,11 @@ def topk_ip(query: np.ndarray, vectors: np.ndarray, k: int) -> tuple[np.ndarray,
 def _gpu_threshold() -> int:
     """Minimum row count before GPU offload is worth the transfer overhead."""
     try:
-        return int(os.environ.get("SWARM_OPENCL_MIN_ROWS", "64"))
+        # Measured on the Radeon Pro 5300M: OpenCL transfers dominate through
+        # 4096 x 1024 vectors, so leave smaller searches on NumPy by default.
+        return int(os.environ.get("SWARM_OPENCL_MIN_ROWS", "8192"))
     except Exception:  # noqa: BLE001
-        return 64
+        return 8192
 
 
 def _use_gpu(n_rows: int) -> bool:

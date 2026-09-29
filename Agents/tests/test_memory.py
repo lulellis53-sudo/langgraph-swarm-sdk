@@ -55,6 +55,21 @@ def test_sqlite_vec_int8_roundtrip(tmp_path: Path) -> None:
     store.close()
 
 
+def test_sqlite_int8_fallback_when_extension_loading_is_disabled(tmp_path: Path) -> None:
+    from swarm_sdk.memory.sqlite_vec import SqliteVecStore
+
+    store = SqliteVecStore(str(tmp_path / "fallback.db"), dim=8)
+    _roundtrip(store)
+    hits = store.search(_one_hot(8, 1), 2)
+    assert hits[0].text == "beta"
+    assert hits[0].id == 2
+    store.close()
+
+    reopened = SqliteVecStore(str(tmp_path / "fallback.db"), dim=8)
+    assert reopened.search(_one_hot(8, 1), 1)[0].text == "beta"
+    reopened.close()
+
+
 def test_opencl_store_roundtrip_and_guards() -> None:
     store = OpenClVecStore(dim=8)
     assert store.search(_one_hot(8, 0), 5) == []
@@ -77,6 +92,18 @@ def test_opencl_store_roundtrip_and_guards() -> None:
     hits = scaled.search(unit(raw), 1)
     assert hits[0].text == "scaled"
     assert pytest.approx(hits[0].score, rel=1e-5) == 1.0
+
+
+def test_opencl_store_bounds_resident_vectors_and_preserves_ids() -> None:
+    store = OpenClVecStore(dim=8, max_vectors=2, chunk_rows=1)
+    assert store.resident_bytes == 0
+    for index, label in enumerate(("first", "second", "third")):
+        store.add(label, _one_hot(8, index))
+
+    hits = store.search(_one_hot(8, 2), 2)
+    assert [hit.text for hit in hits] == ["third", "second"]
+    assert [hit.id for hit in hits] == [2, 1]
+    assert store.resident_bytes == 2 * 8 * np.dtype(np.float32).itemsize
 
 
 def test_faiss_roundtrip() -> None:

@@ -2,7 +2,7 @@
 
 Role-specific benchmark notes, case IDs, and expected deltas for **Coder**.
 
-Shared suite and runners: [`benchmark/`](../../../benchmark/) (see [`benchmark/README.md`](../../../benchmark/README.md)).
+Shared suite and runners: [`benchmark/`](../../benchmark/) (see [`benchmark/README.md`](../../benchmark/README.md)).
 
 ## Layout
 
@@ -11,6 +11,12 @@ Shared suite and runners: [`benchmark/`](../../../benchmark/) (see [`benchmark/R
 | `cases/` | Optional case IDs or fixtures scoped to this agent's tasks |
 | `notes.md` | Methodology, commands, and acceptance thresholds |
 | `results/` | Local run output only — do not commit (gitignored at repo root) |
+
+## Available Coder benchmark suite
+
+- [`codeagent_bencheval`](../../benchmark/Tasks/codeagent_bencheval/): 20
+deterministic coding tasks with per-case score, token, latency, think-level,
+and effort metrics.
 
 ## Conventions
 

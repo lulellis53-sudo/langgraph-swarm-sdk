@@ -20,13 +20,22 @@ def main(argv: list[str] | None = None) -> int:
         print(f"missing {module_path}", file=sys.stderr)
         return 1
 
+    task_dir_str = str(task_dir)
+    if task_dir_str not in sys.path:
+        sys.path.insert(0, task_dir_str)
+
     spec = importlib.util.spec_from_file_location(f"bench_{args.task}", module_path)
     if spec is None or spec.loader is None:
         return 1
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    if hasattr(module, "run"):
-        module.run()
+    try:
+        spec.loader.exec_module(module)
+        if hasattr(module, "run"):
+            module.run()
+    finally:
+        if sys.path and sys.path[0] == task_dir_str:
+            sys.path.pop(0)
+
     print(f"OK: {args.task}")
     return 0
 

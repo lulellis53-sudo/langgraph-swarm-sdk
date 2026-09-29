@@ -153,12 +153,12 @@ class LlamaCppEmbedder:
         self._model: _LlamaEmbedProto | None = None
 
     def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:
-        del query
         if not texts:
             return np.zeros((0, self.dim), dtype=np.float32)
         model = self._load()
+        prepared = _prepare_texts(texts, query=query, bge_style=_bge_style(self.model_path))
         rows: list[np.ndarray] = []
-        for batch in _batched(texts, self.batch_size):
+        for batch in _batched(prepared, self.batch_size):
             raw = model.embed(batch, normalize=True)
             for vec in raw:
                 rows.append(np.asarray(vec, dtype=np.float32))

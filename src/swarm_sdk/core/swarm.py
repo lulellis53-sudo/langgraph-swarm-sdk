@@ -79,7 +79,14 @@ def default_embedder(settings: Settings) -> Embedder:
     batch = settings.embed_batch_size
     if settings.embed_backend == "llama-cpp":
         model_path = settings.llama_embed_model or settings.embed_model
-        return LlamaCppEmbedder(model_path, settings.embed_dim, batch)
+        return LlamaCppEmbedder(
+            model_path,
+            settings.embed_dim,
+            batch,
+            n_ctx=settings.llama_n_ctx,
+            n_gpu_layers=settings.llama_gpu_layers,
+            n_batch=settings.llama_n_batch,
+        )
     if settings.embed_backend == "hash" or not _fastembed_available():
         return HashEmbedder(settings.embed_dim, batch, settings.embed_model)
     return FastEmbedder(settings.embed_model, settings.embed_dim, batch)
