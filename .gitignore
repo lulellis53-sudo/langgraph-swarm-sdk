@@ -12,10 +12,16 @@ dist/
 *.db
 *.sqlite
 Agents/benchmark/results/
-docs/
+docs/*
+!docs/superpowers/
+docs/superpowers/*
+!docs/superpowers/specs/
 .coverage
 htmlcov/
 *.profraw
 *.profdata
 .idea/
 Main/Essentials/
+
+# Local standalone CPython path and environments
+.runtime/
