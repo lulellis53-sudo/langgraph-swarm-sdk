@@ -1,5 +1,13 @@
 """Python Static Template — Swarm (PEP 810–ready).
 
+Agent contract (coding assistants):
+  Read callers, tests, and config before editing.
+  One failed attempt → analyse root cause → one deliberate fix (no retry loops).
+  Profile before optimizing hot paths; measure before/after (Optimizer norms).
+  Delete unused role sections when copying; no import-time side effects.
+  Parallel swarm steps: disjoint ``files`` per sibling agent; cap via ``CoworkRole``.
+  In ``src/swarm_sdk/``: use ``swarm_sdk.execution.concurrency`` for caps.
+
 Copy this skeleton when starting a new module under ``src/swarm_sdk/``.
 Delete unused role sections. Keep roles grouped; do not interleave unrelated helpers.
 
@@ -8,27 +16,23 @@ Layout:
 1. Module docstring, then **always** ``from __future__ import annotations`` (first statement)
 2. Stdlib / third-party / local imports (no import-time side effects)
 3. ``@wrappers`` — reusable decorators
-4. Role classes — ``Type``, ``Hint``, ``Vect``, ``Math``, ``Db``, ``Loop``, …
-5. Role functions — same order as classes
+4. Role classes — ``Type``, ``Hint``, ``Vect``, ``Math``, ``Db``, ``Batch``, ``Cowork``, …
+5. Role functions — same order as classes (``loop_*`` aliases for ``batch_*``)
 6. ``__all__`` + optional ``main`` under ``__main__`` only
 
-PEP 810 (Explicit lazy imports, Python 3.15+): keep this module free of
-import-time side effects so it stays ``lazy import``–eligible. On 3.14,
-defer heavy optional deps inside the functions that need them; use
-``TYPE_CHECKING`` for type-only imports.
+PEP 810 (Explicit lazy imports, Python 3.15+): defer heavy deps; ``TYPE_CHECKING`` for types.
+PEP 703 free-threaded 3.14: ``CoworkRole`` / ``swarm_sdk.execution.concurrency.parallel_cap``.
 
-Free-threaded Python 3.14 (PEP 703): use :class:`CoworkRole` caps so parallel swarm
-agents (disjoint files per wave) scale on no-GIL builds without oversubscribing
-on GIL builds. Matches ``swarm_sdk.execution.executor`` pool sizing.
-
-Canonical copy also lives in root ``AGENTS.md`` → Topic: Python Static Template.
-Do not import this file from runtime package code — copy and trim.
+Canonical source: ``.cursor/templates/python_static_template.py``.
+Lite: ``python_static_template_lite.py``.
+Ops: root ``AGENTS.md`` → Topic: Python Static Template. Do not import this file from runtime code.
 """
 
 # ALWAYS: first statement after the module docstring — before any other import.
 from __future__ import annotations
 
 import functools
+import os
 import sys
 import time
 from collections.abc import Awaitable, Callable, Iterable, Sequence
@@ -36,24 +40,11 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Annotated, Any, ParamSpec, Protocol, TypeVar
 
 if TYPE_CHECKING:
-    # Type-only imports stay here (PEP 649/749 + PEP 810–friendly).
     pass
 
 # =============================================================================
 # Python Static Template
 # =============================================================================
-# Topic map (root ``AGENTS.md`` → Topic: Python Static Template):
-#   Subtopic: type aliases & typevars
-#   Subtopic: wrappers
-#   Subtopic: role classes (Type → Hint → Vect → Math → Db → Loop → Cowork)
-#   Subtopic: role functions (same order)
-#   Subtopic: free-threading & agent cowork (CoworkRole / cowork_*)
-#   Subtopic: public surface (+ ``main`` smoke under ``__main__`` only)
-# =============================================================================
-
-# --- Python Static Template — type aliases & typevars -----------------------
-# Python 3.12+ ``type`` statement; shared by roles
-# -----------------------------------------------------------------------------
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -63,10 +54,11 @@ type Vec = Sequence[float]
 type Matrix = Sequence[Sequence[float]]
 type RowId = Annotated[int, "primary key"]
 
-
-# --- Python Static Template — wrappers --------------------------------------
-# Decorators: @wrappers.timed, @wrappers.logged, @wrappers.retry(n)
-# -----------------------------------------------------------------------------
+_DEFAULT_TRANSIENT: tuple[type[BaseException], ...] = (
+    TimeoutError,
+    OSError,
+    ConnectionError,
+)
 
 
 class wrappers:
@@ -74,7 +66,9 @@ class wrappers:
 
     @staticmethod
     def timed(fn: Callable[P, R]) -> Callable[P, R]:
-        """Record wall time on ``fn.__name__`` (no I/O at decoration time)."""
+        """Record wall time only when ``SWARM_PROFILE`` is set (not for hot paths)."""
+        if not os.environ.get("SWARM_PROFILE"):
+            return fn
 
         @functools.wraps(fn)
         def _inner(*args: P.args, **kwargs: P.kwargs) -> R:
@@ -88,8 +82,6 @@ class wrappers:
 
     @staticmethod
     def logged(fn: Callable[P, R]) -> Callable[P, R]:
-        """Preserve signature; hook for structured logging later."""
-
         @functools.wraps(fn)
         def _inner(*args: P.args, **kwargs: P.kwargs) -> R:
             return fn(*args, **kwargs)
@@ -97,37 +89,37 @@ class wrappers:
         return _inner
 
     @staticmethod
-    def retry(times: int = 1) -> Callable[[Callable[P, R]], Callable[P, R]]:
-        """Retry sync call ``times`` times on any Exception."""
+    def retry_transient(
+        times: int = 2,
+        on: tuple[type[BaseException], ...] = _DEFAULT_TRANSIENT,
+    ) -> Callable[[Callable[P, R]], Callable[P, R]]:
+        """Retry only on transient errors — never on validation or logic bugs."""
 
         def _decorate(fn: Callable[P, R]) -> Callable[P, R]:
             @functools.wraps(fn)
             def _inner(*args: P.args, **kwargs: P.kwargs) -> R:
-                last: Exception | None = None
-                for _ in range(max(times, 1)):
+                last: BaseException | None = None
+                attempts = max(times, 1)
+                for _ in range(attempts):
                     try:
                         return fn(*args, **kwargs)
-                    except Exception as exc:  # noqa: BLE001 — template boundary
+                    except on as exc:
                         last = exc
-                assert last is not None
-                raise last
+                if last is not None:
+                    raise last
+                return fn(*args, **kwargs)
 
             return _inner
 
         return _decorate
 
-
-# --- Python Static Template — role classes ----------------------------------
-# One concern per class; keep methods thin
-# -----------------------------------------------------------------------------
-
-
-# --- type -------------------------------------------------------------------
+    @staticmethod
+    def retry(times: int = 1) -> Callable[[Callable[P, R]], Callable[P, R]]:
+        """Alias for :meth:`retry_transient` (prefer ``retry_transient`` explicitly)."""
+        return wrappers.retry_transient(times=times)
 
 
 class TypeRole:
-    """Structural typing helpers (Protocols, narrowers)."""
-
     class SupportsClose(Protocol):
         def close(self) -> None: ...
 
@@ -138,13 +130,8 @@ class TypeRole:
         return value
 
 
-# --- hint -------------------------------------------------------------------
-
-
 @dataclass(frozen=True, slots=True)
 class HintRole:
-    """Annotation / metadata carriers for APIs and schemas."""
-
     name: str
     description: str = ""
     tags: tuple[str, ...] = field(default_factory=tuple)
@@ -153,13 +140,8 @@ class HintRole:
         return Annotated[str, self]
 
 
-# --- vect -------------------------------------------------------------------
-
-
 @dataclass(slots=True)
 class VectRole:
-    """Vector ops surface (CPU path; swap for GPU backends in real modules)."""
-
     dim: int
 
     def zeros(self) -> list[float]:
@@ -171,12 +153,7 @@ class VectRole:
         return sum(x * y for x, y in zip(a, b, strict=True))
 
 
-# --- math -------------------------------------------------------------------
-
-
 class MathRole:
-    """Scalar / reduction math (no I/O)."""
-
     @staticmethod
     def clamp(x: float, lo: float, hi: float) -> float:
         return max(lo, min(hi, x))
@@ -193,18 +170,12 @@ class MathRole:
         return total / n
 
 
-# --- db ---------------------------------------------------------------------
-
-
 @dataclass(slots=True)
 class DbRole:
-    """DB / store façade — connect explicitly; never open at import time."""
-
     path: str
     _open: bool = False
 
     def connect(self) -> None:
-        """Eager open — call from app startup, not at import (PEP 810)."""
         self._open = True
 
     def close(self) -> None:
@@ -218,15 +189,11 @@ class DbRole:
         return None
 
 
-# --- cowork (free-threading) ------------------------------------------------
-
-
 class CoworkRole:
-    """Parallel agent / step caps for GIL vs free-threaded Python 3.14+ (PEP 703)."""
+    """Sketch — in ``src/swarm_sdk`` import ``swarm_sdk.execution.concurrency`` instead."""
 
     @staticmethod
     def gil_enabled() -> bool:
-        """Return whether the GIL is enabled (``True`` on normal 3.14 builds)."""
         try:
             return sys._is_gil_enabled()
         except AttributeError:
@@ -234,15 +201,11 @@ class CoworkRole:
 
     @staticmethod
     def parallel_cap() -> int:
-        """Default concurrency cap: conservative on GIL, wider on free-threaded builds."""
         return 8 if CoworkRole.gil_enabled() else 32
 
 
-# --- loop -------------------------------------------------------------------
-
-
-class LoopRole:
-    """Async / batch loop helpers."""
+class BatchRole:
+    """Bounded batch / async helpers (not unbounded loops)."""
 
     @staticmethod
     async def gather_limited[T](
@@ -250,8 +213,7 @@ class LoopRole:
         *,
         limit: int | None = None,
     ) -> list[T]:
-        """Run awaitables with a concurrency cap (defaults to :meth:`CoworkRole.parallel_cap`)."""
-        import asyncio  # deferred: only needed when this helper runs
+        import asyncio
 
         cap = limit if limit is not None else CoworkRole.parallel_cap()
         sem = asyncio.Semaphore(max(cap, 1))
@@ -267,26 +229,15 @@ class LoopRole:
         return results
 
 
-# --- Python Static Template — role functions --------------------------------
-# Free functions; same role order as classes
-# -----------------------------------------------------------------------------
-
-
-# --- type -------------------------------------------------------------------
+LoopRole = BatchRole
 
 
 def type_is_mapping(value: object) -> bool:
     return isinstance(value, dict)
 
 
-# --- hint -------------------------------------------------------------------
-
-
 def hint_tag(*tags: str) -> HintRole:
     return HintRole(name="tag", tags=tags)
-
-
-# --- vect -------------------------------------------------------------------
 
 
 @wrappers.timed
@@ -296,16 +247,10 @@ def vect_l2(a: Vec, b: Vec) -> float:
     return sum((x - y) ** 2 for x, y in zip(a, b, strict=True)) ** 0.5
 
 
-# --- math -------------------------------------------------------------------
-
-
 def math_safe_div(num: float, den: float, default: float = 0.0) -> float:
     if den == 0.0:
         return default
     return num / den
-
-
-# --- db ---------------------------------------------------------------------
 
 
 def db_uri(path: str, *, read_only: bool = False) -> str:
@@ -313,29 +258,33 @@ def db_uri(path: str, *, read_only: bool = False) -> str:
     return f"file:{path}?{mode}"
 
 
-# --- loop -------------------------------------------------------------------
-
-
-def loop_chunked[T](items: Sequence[T], size: int) -> list[Sequence[T]]:
+def batch_chunked[T](items: Sequence[T], size: int) -> list[Sequence[T]]:
     if size < 1:
         raise ValueError("size must be >= 1")
     return [items[i : i + size] for i in range(0, len(items), size)]
 
 
-# --- cowork -----------------------------------------------------------------
+def loop_chunked[T](items: Sequence[T], size: int) -> list[Sequence[T]]:
+    return batch_chunked(items, size)
 
 
 def cowork_gil_enabled() -> bool:
-    return CoworkRole.gil_enabled()
+    try:
+        from swarm_sdk.execution.concurrency import gil_enabled as sdk_gil
+
+        return sdk_gil()
+    except ImportError:
+        return CoworkRole.gil_enabled()
 
 
 def cowork_parallel_cap() -> int:
-    return CoworkRole.parallel_cap()
+    try:
+        from swarm_sdk.execution.concurrency import parallel_cap as sdk_cap
 
+        return sdk_cap()
+    except ImportError:
+        return CoworkRole.parallel_cap()
 
-# --- Python Static Template — public surface --------------------------------
-# Explicit ``__all__``; smoke via ``main()`` only when run as ``__main__``
-# -----------------------------------------------------------------------------
 
 __all__ = [
     "wrappers",
@@ -344,6 +293,7 @@ __all__ = [
     "VectRole",
     "MathRole",
     "DbRole",
+    "BatchRole",
     "LoopRole",
     "CoworkRole",
     "type_is_mapping",
@@ -351,6 +301,7 @@ __all__ = [
     "vect_l2",
     "math_safe_div",
     "db_uri",
+    "batch_chunked",
     "loop_chunked",
     "cowork_gil_enabled",
     "cowork_parallel_cap",
@@ -358,10 +309,15 @@ __all__ = [
 
 
 def main() -> int:
-    """Smoke the template locally: ``uv run python .cursor/templates/python_static_template.py``."""
+    """Smoke + Optimizer-style cap check (profile hot paths with ``SWARM_PROFILE=1``)."""
     v = VectRole(dim=3)
     assert MathRole.clamp(v.dot([1, 0, 0], [1, 0, 0]), 0.0, 1.0) == 1.0
     assert loop_chunked([1, 2, 3, 4], 2) == [[1, 2], [3, 4]]
+    cap = cowork_parallel_cap()
+    assert cap in (8, 32)
+    from swarm_sdk.execution.concurrency import parallel_cap as sdk_cap
+
+    assert cap == sdk_cap()
     return 0
 
 

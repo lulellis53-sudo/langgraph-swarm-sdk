@@ -137,9 +137,9 @@ Also linked from root [`../AGENTS.md`](../AGENTS.md) and every `Agents/*/AGENTS.
    ```
 
 2. Stdlib / third-party / local imports (eager stdlib OK; heavy third-party deferred — see PEP 810 below)
-3. **`wrappers`** — `@wrappers.timed`, `@wrappers.logged`, `@wrappers.retry(n)` (always `@functools.wraps`)
-4. **Role classes** (order): `TypeRole` → `HintRole` → `VectRole` → `MathRole` → `DbRole` → `LoopRole` → `CoworkRole`
-5. **Role functions**: `type_*`, `hint_*`, `vect_*`, `math_*`, `db_*`, `loop_*`, `cowork_*`
+3. **`wrappers`** — `retry_transient` (transient errors only), `timed` (when `SWARM_PROFILE`), `logged`
+4. **Role classes**: `TypeRole` → … → `BatchRole` → `CoworkRole` (`LoopRole` = `BatchRole`); **lite** template for small modules
+5. **Role functions**: `type_*`, …, `batch_*` / `loop_*`, `cowork_*`; runtime caps: `swarm_sdk.execution.concurrency`
 6. Explicit export list named `__all__` (+ optional `main` smoke only under a `__main__` guard)
 
 ### Roles at a glance
@@ -151,13 +151,13 @@ Also linked from root [`../AGENTS.md`](../AGENTS.md) and every `Agents/*/AGENTS.
 | vect | `VectRole` | `vect_*` | Vectors / embeddings math |
 | math | `MathRole` | `math_*` | Scalar / reductions (no I/O) |
 | db | `DbRole` | `db_*` | Store / connection façade |
-| loop | `LoopRole` | `loop_*` | Async / batch iteration |
-| cowork | `CoworkRole` | `cowork_*` | Free-threading caps for parallel agents (PEP 703) |
+| batch | `BatchRole` | `batch_*`, `loop_*` | Bounded batch/async (`LoopRole` alias) |
+| cowork | `CoworkRole` | `cowork_*` | PEP 703; use `swarm_sdk.execution.concurrency` in runtime |
 
 ### Free-threading and agent cowork (PEP 703)
 
-- `CoworkRole.parallel_cap()` / `cowork_parallel_cap()`: `8` on GIL builds, `32` on free-threaded Python 3.14 (`sys._is_gil_enabled()`), aligned with `swarm_sdk.execution.executor`.
-- `LoopRole.gather_limited(..., limit=None)` uses that default; orchestrator siblings claim disjoint `files` per wave.
+- `swarm_sdk.execution.concurrency.parallel_cap()` — shared with `executor` thread pool.
+- `BatchRole.gather_limited(..., limit=None)`; orchestrator siblings claim disjoint `files` per wave.
 
 ### PEP 810 — keep the template lazy-import safe
 
@@ -201,9 +201,9 @@ uv tool run lifeguard --help   # see ~/Documentos/Lifeguard.md
 ### Skeleton outline (do not paste wholesale into runtime)
 
 ```text
-wrappers.{timed, logged, retry}
-TypeRole / HintRole / VectRole / MathRole / DbRole / LoopRole
-type_is_mapping, hint_tag, vect_l2, math_safe_div, db_uri, loop_chunked
+wrappers.{retry_transient, timed, logged}
+TypeRole / … / BatchRole / CoworkRole
+type_is_mapping, …, batch_chunked, cowork_parallel_cap
 public __all__ list + main() only when run as __main__
 ```
 
@@ -211,6 +211,7 @@ Smoke check:
 
 ```bash
 uv run python .cursor/templates/python_static_template.py
+uv run python .cursor/templates/python_static_template_lite.py
 ```
 
 ## Quick references

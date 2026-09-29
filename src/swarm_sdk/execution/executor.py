@@ -17,20 +17,12 @@ import concurrent.futures
 import sys
 from collections.abc import Callable
 
+from swarm_sdk.execution.concurrency import parallel_cap
+
 
 def _pool_workers() -> int:
-    """Worker count for the shared thread pool, matched to the interpreter build.
-
-    Returns:
-        ``8`` on GIL builds (default conservative), ``32`` on free-threaded
-        Python 3.14 (``sys._is_gil_enabled()`` exists and returns ``False``).
-    """
-    try:
-        if sys._is_gil_enabled():
-            return 8
-    except AttributeError:
-        pass
-    return 32
+    """Worker count for the shared thread pool, matched to the interpreter build."""
+    return parallel_cap()
 
 
 _POOL = concurrent.futures.ThreadPoolExecutor(

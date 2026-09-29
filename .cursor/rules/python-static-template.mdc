@@ -8,32 +8,31 @@ alwaysApply: false
 
 When creating a **new** Python module, start from:
 
-@.cursor/templates/python_static_template.py
+- Small module: @.cursor/templates/python_static_template_lite.py
+- Full module: @.cursor/templates/python_static_template.py
 
-Full ops notes: @.cursor/AGENTS.md (Static Templates). Spec: [PEP 810](https://peps.python.org/pep-0810/) (no PEP 850 exists).
+Full ops notes: @.cursor/AGENTS.md (Static Templates). Root: @AGENTS.md (Topic: Python Static Template). Spec: [PEP 810](https://peps.python.org/pep-0810/).
 
 ## Required shape
 
-1. **Always initiate with future annotations** — first statement after the module docstring, before any other import:
+1. **Always initiate with future annotations** — first statement after the module docstring:
 
    ```python
    from __future__ import annotations
    ```
 
-2. **`wrappers`** — `@wrappers.timed` / `logged` / `retry` with `@functools.wraps`
-3. Role classes: `Type` → `Hint` → `Vect` → `Math` → `Db` → `Loop` → `Cowork`
-4. Role functions: `type_`, `hint_`, `vect_`, `math_`, `db_`, `loop_`, `cowork_`
-5. Explicit export list (`__all__`); smoke only under a `__main__` guard
+2. **`wrappers`** — `@wrappers.retry_transient` (transient errors only), `@wrappers.timed` (only when `SWARM_PROFILE` is set), `@wrappers.logged`
+3. Role classes: `Type` → `Hint` → `Vect` → `Math` → `Db` → `Batch` → `Cowork` (`LoopRole` = `BatchRole` alias)
+4. Role functions: `type_*`, `hint_*`, `vect_*`, `math_*`, `db_*`, `batch_*` / `loop_*`, `cowork_*`
+5. Explicit `__all__`; smoke only under `__main__`
 
 ## Free-threading and agent cowork (PEP 703)
 
-- Use `CoworkRole.parallel_cap()` / `cowork_parallel_cap()` for default wave concurrency (8 GIL, 32 free-threaded 3.14).
-- `LoopRole.gather_limited(..., limit=None)` uses that cap; orchestrator steps should claim **disjoint files** per sibling agent.
-- Align with `swarm_sdk.execution.executor` when wiring real pools — do not open DB connections at import time.
+- In `src/swarm_sdk/`: `from swarm_sdk.execution.concurrency import gil_enabled, parallel_cap`
+- Template sketch: `CoworkRole` / `cowork_parallel_cap()`; default `BatchRole.gather_limited(..., limit=None)` uses the cap
+- Orchestrator siblings claim **disjoint files** per wave
 
 ## PEP 810 (lazy-import safety)
 
-- No import-time side effects (DB connect, threads, registry self-register).
-- Heavy deps: import inside the using function (3.14) or `lazy import` (3.15+).
-- Type-only: `if TYPE_CHECKING:`.
-- Do not import this template into the runtime package — copy and trim.
+- No import-time side effects; heavy deps inside functions; `TYPE_CHECKING` for types
+- Do not import template files from runtime — copy and trim
