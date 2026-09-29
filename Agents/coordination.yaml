@@ -24,11 +24,6 @@ agents:
     contract: Agents/Researcher/AGENTS.md
     manifest: Agents/Researcher/agent.yaml
 
-  - name: WebSearch
-    role: live web research
-    contract: WebSearch/AGENTS.md
-    manifest: WebSearch/agent.yaml
-
   - name: Coder
     role: implement code changes
     contract: Agents/Coder/AGENTS.md

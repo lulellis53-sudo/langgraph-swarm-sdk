@@ -131,7 +131,7 @@ def load_agent_manifest(path: Path) -> AgentManifest:
 
 
 def load_all_agent_manifests(agents_dir: Path | None = None) -> dict[str, AgentManifest]:
-    """Load every ``Agents/{Name}/agent.yaml`` plus ``WebSearch/agent.yaml``.
+    """Load every ``Agents/{Name}/agent.yaml`` manifest.
 
     Args:
         agents_dir: Directory containing the per-agent folders; defaults to
@@ -139,7 +139,7 @@ def load_all_agent_manifests(agents_dir: Path | None = None) -> dict[str, AgentM
 
     Returns:
         Manifests keyed by agent name, sorted by directory name for
-        deterministic ordering. ``WebSearch`` is appended when present.
+        deterministic ordering.
     """
     base = agents_dir or agents_root()
     skip = {"tests", "benchmark"}
@@ -148,10 +148,6 @@ def load_all_agent_manifests(agents_dir: Path | None = None) -> dict[str, AgentM
         if path.parent.name in skip:
             continue
         manifest = load_agent_manifest(path)
-        out[manifest.name] = manifest
-    extra = base.parent / "WebSearch" / "agent.yaml"
-    if extra.is_file():
-        manifest = load_agent_manifest(extra)
         out[manifest.name] = manifest
     return out
 

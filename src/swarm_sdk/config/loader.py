@@ -102,7 +102,7 @@ class SwarmFileConfig(BaseModel):
 
 
 def default_config_path() -> Path:
-    """Resolve swarm.yaml: env override, Main/config, repo cwd, parent cwd, then packaged default."""
+    """Resolve config by env override, Main/config, cwd, parent, then package default."""
     env = os.environ.get("SWARM_CONFIG_PATH")
     if env:
         return Path(env)

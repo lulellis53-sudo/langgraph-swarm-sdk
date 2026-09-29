@@ -17,7 +17,7 @@ alwaysApply: false
 
 ```bash
 uv run --extra dev pytest Agents/tests Agents/benchmark -q
-uv run --extra dev ruff check src Agents/tests Agents/benchmark Main WebSearch
-uv run --extra dev ty check src Agents/tests Agents/benchmark Main WebSearch
+uv run --extra dev ruff check src Agents/tests Agents/benchmark Main
+uv run --extra dev ty check src Agents/tests Agents/benchmark Main
 uv run python -m swarm_sdk.agents.validate
 ```

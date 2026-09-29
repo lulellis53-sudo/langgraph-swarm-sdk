@@ -11,7 +11,9 @@ from swarm_sdk.models.selection import ModelRoute, ModelSelectConfig, ThinkLevel
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_REGISTRY_PATH = _REPO_ROOT / "Main" / "config" / "model_registry.yaml"
-_PACKAGED_REGISTRY_PATH = Path(__file__).resolve().parent.parent / "agents" / "config" / "model_registry.yaml"
+_PACKAGED_REGISTRY_PATH = (
+    Path(__file__).resolve().parent.parent / "agents" / "config" / "model_registry.yaml"
+)
 _FALLBACK_REGISTRY_PATH = Path("Main/config/model_registry.yaml")
 
 

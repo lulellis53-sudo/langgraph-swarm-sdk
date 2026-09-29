@@ -91,7 +91,7 @@ Token savings: shared role-contract prompt cached per process, exact + semantic 
 
 gRPC: `SwarmService.SpawnPlan` (goal → plan handle), `RunPlan` (handle → per-step outputs + usage), `PlanStatus` (poll for long plans). Manifests may set `api_key_env: SWARM_<NAME>_API_KEY` — the env var *name*, never the key value.
 
-Predefined providers and routes live in [`src/swarm_sdk/agents/config/swarm.yaml`](src/swarm_sdk/agents/config/swarm.yaml) (human-facing symlinks under [`Main/config/`](Main/config/)). Per-agent roles, models, and tasks live in [`Agents/{Name}/agent.yaml`](Agents/Tester/agent.yaml) (see [`Agents/README.md`](Agents/README.md)). Live-web research is [`WebSearch/`](WebSearch/). `SWARM_*` env vars override file defaults. Open [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace) for a multi-root editor layout.
+Predefined providers and routes live in [`src/swarm_sdk/agents/config/swarm.yaml`](src/swarm_sdk/agents/config/swarm.yaml) (human-facing symlinks under [`Main/config/`](Main/config/)). Per-agent roles, models, and tasks live in [`Agents/{Name}/agent.yaml`](Agents/Tester/agent.yaml) (see [`Agents/README.md`](Agents/README.md)). [`WebSearch/`](WebSearch/) is reserved for a new feature. `SWARM_*` env vars override file defaults. Open [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace) for a multi-root editor layout.
 
 ## Token path
 
@@ -108,7 +108,7 @@ HTTP peers use `httpx2` with HTTP/2 (`h2`). `aiohttp` and `requests` are the oth
 
 ```bash
 uv run --extra dev pytest Agents/tests Agents/benchmark -q
-uv run --extra dev ruff check src Agents/tests Agents/benchmark Main WebSearch
-uv run --extra dev ty check src Agents/tests Agents/benchmark Main WebSearch
+uv run --extra dev ruff check src Agents/tests Agents/benchmark Main
+uv run --extra dev ty check src Agents/tests Agents/benchmark Main
 uv run python -m swarm_sdk.agents.validate
 ```

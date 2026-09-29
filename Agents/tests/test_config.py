@@ -48,8 +48,7 @@ def test_bge_radeon_profile_sets_int8_sqlite_and_llama_gpu() -> None:
 def test_agent_manifests_and_coordination() -> None:
     root = agents_root()
     manifests = load_all_agent_manifests(root)
-    assert len(manifests) == 16
-    assert manifests["WebSearch"].role == "live_web_research"
+    assert len(manifests) == 15
     assert manifests["Refactor"].role == "safe_incremental_refactor"
     assert manifests["Coder"].role == "implement_changes"
     assert manifests["Coder"].name == "Coder"

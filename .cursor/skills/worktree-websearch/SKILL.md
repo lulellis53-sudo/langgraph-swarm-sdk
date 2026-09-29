@@ -26,8 +26,6 @@ git worktree add ../Swarm-worktree-websearch -b worktree/websearch
 
 Open that folder in a second window if the user will keep coding in the main checkout.
 
-The in-repo feature lives at `WebSearch/` (persona + `search.py` contract). Optional `/worktree` is only for isolating installs and scratch notes.
-
 After Cursor creates a worktree, it runs `.cursor/worktrees.json` setup (`uv sync --extra dev`). Wait for setup to finish before heavy commands.
 
 ## 2. Clarify the research goal
@@ -69,7 +67,7 @@ Default response shape:
 <only if useful>
 ```
 
-If the user wants a saved artifact, write under **`WebSearch/research/<slug>.md`** (gitignored) and do not touch unrelated product code.
+If the user wants a saved artifact, write under the **worktree** only, e.g. `research/<slug>.md`, and do not touch unrelated product code.
 
 ## 5. Finish
 

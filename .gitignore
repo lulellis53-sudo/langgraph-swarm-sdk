@@ -12,7 +12,6 @@ dist/
 *.db
 *.sqlite
 Agents/benchmark/results/
-WebSearch/research/
 docs/
 .coverage
 htmlcov/

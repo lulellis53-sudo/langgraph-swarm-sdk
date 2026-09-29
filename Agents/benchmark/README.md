@@ -24,9 +24,9 @@ Results (optional): `Agents/benchmark/results/{task}/` (gitignored).
 Compare ONNX Runtime providers for FastEmbed (requires `uv sync --extra jupyter`):
 
 ```bash
-uv run python benchmark/CPU_GPU.py
-uv run python benchmark/CPU_GPU.py --write-results --json
-uv run python benchmark/CPU_GPU.py --cuda   # include CUDA when available
+uv run python Agents/benchmark/CPU_GPU.py
+uv run python Agents/benchmark/CPU_GPU.py --write-results --json
+uv run python Agents/benchmark/CPU_GPU.py --cuda   # include CUDA when available
 ```
 
 ## Bounded vector retrieval (OpenCL or NumPy fallback)
@@ -51,10 +51,10 @@ SWARM_OPENCL_DEVICE="AMD Radeon Pro 5300M" uv run --extra opencl \
 ```
 
 The BGE-M3 + SQLite INT8 runtime profile is
-[`config/swarm-bge-m3-radeon.yaml`](../../Main/config/swarm-bge-m3-radeon.yaml). Activate
-it with `SWARM_CONFIG_PATH=config/swarm-bge-m3-radeon.yaml` and install the
+[`Main/config/swarm-bge-m3-radeon.yaml`](../../Main/config/swarm-bge-m3-radeon.yaml). Activate
+it with `SWARM_CONFIG_PATH=Main/config/swarm-bge-m3-radeon.yaml` and install the
 `molten` extra. It creates a separate 1024-dimension database under
-`Essentials/llama/`, preserving existing 384-dimension memory data.
+`Main/Essentials/llama/`, preserving existing 384-dimension memory data.
 
 Use a small workload for a quick smoke measurement with `--rows 512 --dim 384
 --queries 10`. The report includes the actual OpenCL availability/device state;
@@ -68,7 +68,7 @@ on for comparison, then reports the fastest measured backend and chunk size.
 Provider-routing and GPU-dispatch cases under `Tasks/model_delegation/`. No API keys required.
 
 ```bash
-uv run pytest benchmark/Tasks/model_delegation -q
+uv run pytest Agents/benchmark/Tasks/model_delegation -q
 uv run python -m benchmark.run --task model_delegation
 ```
 
@@ -78,13 +78,26 @@ Case definitions: `benchmark/model_delegation/suite.yaml`.
 
 Skill-aligned SQLite cases under `sql_pro/` (correctness, join rewrites, index plans). No LLM required.
 
-Both `pytest benchmark/Tasks/sql_pro` and `python -m benchmark.run --task sql_pro` execute the full suite (the task module delegates to `benchmark.sql_pro.run`).
+Both `pytest Agents/benchmark/Tasks/sql_pro` and `python -m benchmark.run --task sql_pro` execute the full suite (the task module delegates to `benchmark.sql_pro.run`).
 
 ```bash
 uv run python -m benchmark.sql_pro.run
 uv run python -m benchmark.sql_pro.run --write-results
-uv run pytest benchmark/Tasks/sql_pro -q
+uv run pytest Agents/benchmark/Tasks/sql_pro -q
 uv run python -m benchmark.run --task sql_pro
 ```
 
 Case definitions: `benchmark/sql_pro/suite.yaml`. Cursor command: `/sql-pro`.
+
+## Code Agent benchmark suite (20 tasks)
+
+Deterministic coding-evaluation cases for the **Coder** agent. Each case
+measures task score, token usage, latency, think level, effort, pass rate,
+files changed, and lines changed. No API keys required.
+
+```bash
+uv run pytest Agents/benchmark/Tasks/codeagent_bencheval -q
+uv run python -m benchmark.run --task codeagent_bencheval
+```
+
+Case definitions: `benchmark/Tasks/codeagent_bencheval/cases.py`.

@@ -45,7 +45,7 @@ For swarm coordination: start from `[Agents/SKILLS.md](Agents/SKILLS.md)` and `[
 | `[src/swarm_sdk/pb/](src/swarm_sdk/pb/)`                     | gRPC: `swarm.proto` + generated `swarm_pb2*` stubs                                                       |
 | `[Main/config/swarm.yaml](Main/config/swarm.yaml)`           | Provider registry, routes, defaults (`SWARM_*` env overrides)                                            |
 | `[Main/](Main/)`                                             | Embeddings/vectorstore re-exports, YAML, Essentials                                                      |
-| `[WebSearch/](WebSearch/)`                                   | Live-web research feature (`AGENTS.md` + `search.py`)                                                    |
+| `[WebSearch/](WebSearch/)`                                   | Reserved empty folder for a new feature                                                                  |
 | `[Agents/](Agents/)`                                         | Specialist **swarm personas** (`AGENTS.md` + `agent.yaml` per role)                                      |
 | `[Agents/coordination.yaml](Agents/coordination.yaml)`       | Task graph for multi-agent workflows                                                                     |
 | `[Agents/tests/](Agents/tests/)`                             | Unit and integration tests                                                                               |
@@ -88,8 +88,8 @@ Run before claiming work is done:
 
 ```bash
 uv run --extra dev pytest Agents/tests Agents/benchmark -q
-uv run --extra dev ruff check src Agents/tests Agents/benchmark Main WebSearch
-uv run --extra dev ty check src Agents/tests Agents/benchmark Main WebSearch
+uv run --extra dev ruff check src Agents/tests Agents/benchmark Main
+uv run --extra dev ty check src Agents/tests Agents/benchmark Main
 uv run python -m swarm_sdk.agents.validate
 ```
 
