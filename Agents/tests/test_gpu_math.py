@@ -11,9 +11,12 @@ from hypothesis.extra.numpy import arrays
 from swarm_sdk.gpu import (
     batch_cosine,
     batch_dot,
+    dequant_dot,  # type: ignore[attr-defined]
     l2_norm,
     normalize,
+    normalize_dot,  # type: ignore[attr-defined]
     opencl_available,
+    quantize_int8,  # type: ignore[attr-defined]
     reset_opencl,
     set_enabled,
     topk_ip,
@@ -132,3 +135,51 @@ def test_opencl_and_numpy_outputs_agree() -> None:
     np.testing.assert_allclose(gpu_cos, cpu_cos, rtol=1e-4)
     np.testing.assert_array_equal(gpu_idx, cpu_idx)
     np.testing.assert_allclose(gpu_scores, cpu_scores, rtol=1e-4)
+
+
+def test_normalize_dot_matches_cosine() -> None:
+    m = _random_matrix(20, 16)
+    q = _random_matrix(1, 16)[0]
+    np.testing.assert_allclose(normalize_dot(q, m), batch_cosine(q, m), rtol=1e-5, atol=1e-6)
+
+
+def test_normalize_dot_zero_row_scores_zero() -> None:
+    m = np.zeros((2, 4), dtype=np.float32)
+    m[1] = [1, 0, 0, 0]
+    q = np.array([1, 0, 0, 0], dtype=np.float32)
+    scores = normalize_dot(q, m)
+    assert scores[0] == 0.0
+    assert scores[1] == pytest.approx(1.0)
+
+
+def test_quantize_int8_roundtrip_error_is_small() -> None:
+    m = _random_matrix(30, 32)
+    codes, scales = quantize_int8(m)
+    assert codes.dtype == np.int8 and scales.dtype == np.float32
+    assert codes.shape == m.shape and scales.shape == (30,)
+    restored = codes.astype(np.float32) * scales[:, None]
+    assert np.max(np.abs(restored - m)) <= np.max(np.abs(m)) / 127.0 + 1e-6
+
+
+def test_quantize_int8_zero_row() -> None:
+    codes, scales = quantize_int8(np.zeros((1, 8), dtype=np.float32))
+    assert not codes.any()
+    assert scales[0] == 1.0
+
+
+def test_dequant_dot_close_to_float_dot() -> None:
+    m = _random_matrix(40, 24)
+    q = _random_matrix(1, 24)[0]
+    codes, scales = quantize_int8(m)
+    assert np.max(np.abs(dequant_dot(codes, scales, q) - m @ q)) < 0.15
+
+
+def test_dequant_dot_single_row() -> None:
+    m = _random_matrix(1, 5)
+    codes, scales = quantize_int8(m)
+    assert dequant_dot(codes, scales, m[0]).shape == (1,)
+
+
+def test_normalize_dot_zero_query_scores_zero() -> None:
+    m = _random_matrix(3, 4)
+    assert not normalize_dot(np.zeros(4, dtype=np.float32), m).any()

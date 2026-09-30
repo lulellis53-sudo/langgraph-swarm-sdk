@@ -63,6 +63,36 @@ __kernel void batch_dot(__global const float *matrix,
     }
     out[r] = sum;
 }
+
+__kernel void normalize_dot(__global const float *matrix,
+                            __global const float *query,
+                            __global float *out,
+                            const uint rows,
+                            const uint cols) {
+    uint r = get_global_id(0);
+    if (r >= rows) return;
+    float dot = 0.0f;
+    float sq = 0.0f;
+    for (uint c = 0; c < cols; c++) {
+        float v = matrix[r * cols + c];
+        dot += v * query[c];
+        sq += v * v;
+    }
+    out[r] = sq > 0.0f ? dot * rsqrt(sq) : 0.0f;
+}
+
+__kernel void dequant_dot(__global const char *codes,
+                          __global const float *scales,
+                          __global const float *query,
+                          __global float *out,
+                          const uint rows,
+                          const uint cols) {
+    uint r = get_global_id(0);
+    if (r >= rows) return;
+    float sum = 0.0f;
+    for (uint c = 0; c < cols; c++) sum += (float)codes[r * cols + c] * query[c];
+    out[r] = sum * scales[r];
+}
 """
 
 
@@ -120,7 +150,13 @@ class _ClState:
             self.program = cl.Program(self.ctx, _SOURCE).build()
             self._kernels = {
                 name: cl.Kernel(self.program, name)
-                for name in ("l2_norm", "normalize_rows", "batch_dot")
+                for name in (
+                    "l2_norm",
+                    "normalize_rows",
+                    "batch_dot",
+                    "normalize_dot",
+                    "dequant_dot",
+                )
             }
             self._device_name = self.ctx.devices[0].name.strip()
             logger.debug("OpenCL ready on %s", self._device_name)
@@ -283,6 +319,57 @@ def batch_cosine(query: np.ndarray, vectors: np.ndarray) -> np.ndarray:
     normalized_query = query / q_norm
     normalized_matrix = normalize(matrix)
     return batch_dot(normalized_query, normalized_matrix)
+
+
+def _launch(name: str, inputs: list[np.ndarray], rows: int, *scalars: int) -> np.ndarray:
+    """Run a one-work-item-per-row kernel and return its float32 output."""
+    cl = _STATE._cl()
+    mf = cl.mem_flags
+    out = np.empty(rows, dtype=np.float32)
+    buffers = [cl.Buffer(_STATE.ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=a) for a in inputs]
+    buf_o = cl.Buffer(_STATE.ctx, mf.WRITE_ONLY, out.nbytes)
+    _STATE.kernel(name)(
+        _STATE.queue, (rows,), None, *buffers, buf_o, *(np.uint32(v) for v in scalars)
+    )
+    cl.enqueue_copy(_STATE.queue, out, buf_o)
+    _STATE.queue.finish()
+    return out
+
+
+def normalize_dot(query: np.ndarray, vectors: np.ndarray) -> np.ndarray:
+    """Cosine of ``query`` with every row in one pass; zero-norm rows score 0."""
+    query = _ensure_f32_contiguous(query, "query").reshape(-1)
+    matrix = _ensure_f32_contiguous(vectors, "vectors").reshape(-1, query.shape[0])
+    query_norm = float(np.linalg.norm(query))
+    if query_norm == 0.0:
+        return np.zeros(matrix.shape[0], dtype=np.float32)
+    query = np.ascontiguousarray(query / query_norm, dtype=np.float32)
+    if not _use_gpu(matrix.shape[0]):
+        norms = np.linalg.norm(matrix, axis=1)
+        dots = matrix @ query
+        return np.where(norms > 0, dots / np.where(norms > 0, norms, 1.0), 0.0).astype(np.float32)
+    return _launch("normalize_dot", [matrix, query], matrix.shape[0], *matrix.shape)
+
+
+def quantize_int8(matrix: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Symmetric per-row INT8 quantization: ``scale = max(|row|) / 127``."""
+    m = _ensure_f32_contiguous(matrix, "matrix")
+    if m.ndim == 1:
+        m = m.reshape(1, -1)
+    peak = np.abs(m).max(axis=1)
+    scales = np.where(peak > 0, peak / 127.0, 1.0).astype(np.float32)
+    codes = np.clip(np.rint(m / scales[:, None]), -127, 127).astype(np.int8)
+    return codes, scales
+
+
+def dequant_dot(int8_matrix: np.ndarray, scales: np.ndarray, query: np.ndarray) -> np.ndarray:
+    """Scores of ``query`` against INT8 rows without materializing a float32 matrix on the GPU."""
+    query = _ensure_f32_contiguous(query, "query").reshape(-1)
+    codes = np.ascontiguousarray(int8_matrix, dtype=np.int8).reshape(-1, query.shape[0])
+    scale = np.ascontiguousarray(scales, dtype=np.float32).reshape(-1)
+    if not _use_gpu(codes.shape[0]):
+        return ((codes.astype(np.float32) @ query) * scale).astype(np.float32)
+    return _launch("dequant_dot", [codes, scale, query], codes.shape[0], *codes.shape)
 
 
 def topk_ip(
