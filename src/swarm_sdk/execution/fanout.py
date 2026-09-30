@@ -70,7 +70,9 @@ async def fan_out(
         payload = HandoffPayload(
             summary=answer[:280],
             ask=task[:200],
-            facts=[answer[:120]] if answer else [],
+            # Only the overflow beyond the summary goes into facts: repeating
+            # the summary head would just buy the synthesizer duplicate tokens.
+            facts=[answer[280:400]] if len(answer) > 280 else [],
         )
         return SpecialistResult(agent=agent, payload=payload, tokens=answer_tokens)
 

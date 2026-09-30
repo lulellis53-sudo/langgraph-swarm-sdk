@@ -25,7 +25,7 @@ _COUNT_LOCK = threading.Lock()
 class _HasEncode(Protocol):
     """Anything with an ``encode`` method (HF Tokenizer or tiktoken Encoding)."""
 
-    def encode(self, text: str, *args: Any, **kwargs: Any) -> Any: ...
+    def encode(self, text: str, /, *args: Any, **kwargs: Any) -> Any: ...
 
 
 def _tiktoken_encoding(name: str = _DEFAULT_TIKTOKEN) -> Any | None:
@@ -214,7 +214,7 @@ class TokenBudget:
         text = system.strip() or "system"
         if self.count(text) <= self.max_tokens:
             return text
-        truncated = self._truncate(text, self.max_tokens)
+        truncated = self.truncate(text, self.max_tokens)
         if truncated:
             return truncated
         for fallback in ("s", ".", "x"):
@@ -228,7 +228,7 @@ class TokenBudget:
             body = item.strip()
             if not body:
                 continue
-            lines.append(self._truncate(f"{prefix}{body}", self.tool_cap))
+            lines.append(self.truncate(f"{prefix}{body}", self.tool_cap))
         return lines
 
     def _take(self, system_text: str, prior: list[str], lines: list[str]) -> list[str]:
@@ -267,7 +267,21 @@ class TokenBudget:
                 hi = mid - 1
         return best
 
-    def _truncate(self, text: str, limit: int) -> str:
+    def truncate(self, text: str, limit: int) -> str:
+        """Longest prefix of ``text`` that fits ``limit`` tokens.
+
+        Binary search over prefix lengths; whitespace at the cut is stripped.
+        Public because prompt builders outside this class (e.g. workers) fit
+        user text into the room the system prompt leaves over.
+
+        Args:
+            text: Input text.
+            limit: Token ceiling for the returned prefix.
+
+        Returns:
+            The longest prefix whose token count is ``<= limit`` (``""`` when
+            ``limit`` is non-positive).
+        """
         if limit <= 0:
             return ""
         if self.count(text) <= limit:

@@ -138,7 +138,7 @@ class WorkerAgent:
         system = self._system_prompt()
         if budget.count(f"{system}\n{user}") > budget.max_tokens:
             # Leave whatever room the system prompt does not consume.
-            user = budget._truncate(user, max(1, budget.max_tokens - budget.count(system)))
+            user = budget.truncate(user, max(1, budget.max_tokens - budget.count(system)))
         return user
 
     def _model_name(self) -> str:
@@ -223,7 +223,9 @@ class WorkerAgent:
         content = await complete(model, system, user)
         wall = time.perf_counter() - started
 
-        if self.cache is not None:
+        # Empty replies must not poison the cache: a later near-identical step
+        # would be answered with nothing instead of calling the model.
+        if self.cache is not None and content.strip():
             self.cache.store(cache_key, content)
 
         return StepOutput(

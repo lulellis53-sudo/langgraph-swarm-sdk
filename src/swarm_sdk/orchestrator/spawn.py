@@ -122,24 +122,31 @@ async def spawn(
         model = model_override
     else:
         model = load_chat_model(_model_name(orchestrator))
+    attempt_prompt = prompt
     last_error: Exception | None = None
     for _ in range(2):
-        raw = await complete(model, orchestrator.role, prompt)
+        raw = await complete(model, orchestrator.role, attempt_prompt)
         match = _JSON_OBJECT.search(raw)
         if match is None:
             last_error = ValueError(f"orchestrator returned no JSON: {raw[:120]!r}")
-            continue
-        try:
-            plan = Plan.model_validate(json.loads(match.group(0)))
-        except (ValidationError, json.JSONDecodeError) as exc:
-            last_error = exc
-            continue
-        try:
-            _validate_plan(plan, manifests)
-        except ValueError as exc:
-            last_error = exc
-            continue
-        return plan
+        else:
+            try:
+                plan = Plan.model_validate(json.loads(match.group(0)))
+            except (ValidationError, json.JSONDecodeError) as exc:
+                last_error = exc
+            else:
+                try:
+                    _validate_plan(plan, manifests)
+                except ValueError as exc:
+                    last_error = exc
+                else:
+                    return plan
+        # Self-correction: the retry sees why the first reply was rejected, so
+        # one retry fixes most malformations instead of repeating them.
+        attempt_prompt = (
+            f"{prompt}\n\nYour previous reply was rejected: {last_error}. "
+            "Reply again with the corrected JSON only."
+        )
     del last_error  # the fallback plan stands on its own
     return _fallback_plan(goal, manifests)
 

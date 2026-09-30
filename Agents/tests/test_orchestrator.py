@@ -302,7 +302,8 @@ async def test_spawn_accepts_disjoint_coder_files() -> None:
         ' "task": "implement_in_files", "files": ["src/b.py"]}'
         "]}"
     )
-    plan = await spawn("goal", manifests, model_override=ScriptedModel(script=Script([answer(good)])))
+    scripted = ScriptedModel(script=Script([answer(good)]))
+    plan = await spawn("goal", manifests, model_override=scripted)
     assert [s.id for s in plan.steps] == ["S1", "S2"]
     assert plan.steps[0].files == ["src/a.py"]
     assert plan.steps[0].task == "implement_in_files"
