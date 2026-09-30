@@ -91,7 +91,7 @@ def test_open_store_passes_quantize_to_opencl_store() -> None:
     from swarm_sdk.core.swarm import open_store
 
     store = open_store(Settings(memory_backend="opencl", embed_dim=64, opencl_quantize="binary"))
-    assert store._mode == "binary"
+    assert getattr(store, "_mode") == "binary"
 
 
 def test_bundled_yaml_still_loads_and_defaults_unchanged() -> None:

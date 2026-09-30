@@ -3,7 +3,7 @@
 from swarm_sdk.retrieval.cache import SemanticCache
 from swarm_sdk.retrieval.embeddings import Embedder, FastEmbedder, HashEmbedder, LlamaCppEmbedder
 from swarm_sdk.retrieval.hybrid import HybridSearchConfig, hybrid_search
-from swarm_sdk.retrieval.recall import recall_texts
+from swarm_sdk.retrieval.recall import recall_hits, recall_texts
 from swarm_sdk.retrieval.rerank import (
     FastEmbedReranker,
     IdentityReranker,
@@ -24,6 +24,7 @@ __all__ = [
     "Reranker",
     "SemanticCache",
     "hybrid_search",
+    "recall_hits",
     "recall_texts",
     "tokenize",
 ]

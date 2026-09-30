@@ -264,7 +264,7 @@ def test_message_tokens_reads_total_and_falls_back_to_sum() -> None:
 
 
 def test_usage_tokens_counts_only_current_turn() -> None:
-    history = [
+    history: list[object] = [
         HumanMessage(content="old"),
         _ai("old-a", 100),
         HumanMessage(content="new"),
