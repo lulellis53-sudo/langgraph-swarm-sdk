@@ -5,8 +5,9 @@ from __future__ import annotations
 from WebSearch import run_pipeline
 from WebSearch.backend import extract_and_normalize, normalize_text
 from WebSearch.frontend.apis import search_brave, search_tavily
+from WebSearch.frontend.models import SearchHit
 from WebSearch.frontend.providers import SearcherSpec, get_searcher, load_providers
-from WebSearch.frontend.websearchers import SearchHit, registry_search, searcher_ids
+from WebSearch.frontend.websearchers import registry_search, searcher_ids
 from WebSearch.midend import crawl_then_scrape
 from WebSearch.repeater import repeater
 
@@ -29,6 +30,7 @@ def test_load_providers_yaml() -> None:
         "apify",
         "exa",
         "searxng",
+        "google_ground",
     )
     assert get_searcher(cfg, "tavily").api_key_env == "TAVILY_API_KEY"
     assert get_searcher(cfg, "searxng").engine == "duckduckgo,bing"
@@ -146,3 +148,104 @@ def test_run_pipeline_end_to_end() -> None:
     )
     assert hits and pages and docs
     assert docs[0].text == "Alpha beta"
+
+
+def test_parallel_search_merges_and_dedupes() -> None:
+    from WebSearch import parallel_search
+
+    def a(query: str, spec: SearcherSpec) -> list[SearchHit]:
+        return [SearchHit("A", "https://www.Example.com/p/?utm_source=x#frag", "", spec.id)]
+
+    def b(query: str, spec: SearcherSpec) -> list[SearchHit]:
+        return [
+            SearchHit("B", "https://example.com/p", "", spec.id),
+            SearchHit("B2", "https://example.com/q", "", spec.id),
+        ]
+
+    def boom(query: str, spec: SearcherSpec) -> list[SearchHit]:
+        raise TimeoutError
+
+    hits = parallel_search("q", backends={"brave": a, "tavily": b, "exa": boom})
+    assert [h.title for h in hits] == ["A", "B2"]
+    assert hits[0].searcher_id == "brave"
+
+
+def test_parallel_search_runs_concurrently() -> None:
+    import threading
+
+    from WebSearch import parallel_search
+
+    barrier = threading.Barrier(2, timeout=5)
+
+    def waits(query: str, spec: SearcherSpec) -> list[SearchHit]:
+        barrier.wait()  # only passes if both searchers run at the same time
+        return [SearchHit("t", f"https://example.com/{spec.id}", "", spec.id)]
+
+    hits = parallel_search("q", backends={"brave": waits, "tavily": waits})
+    assert len(hits) == 2
+
+
+def test_dork_builder() -> None:
+    import pytest
+    from WebSearch.frontend.dorks import DorkError, any_of, dork
+
+    assert any_of("a", "two words") == '(a|"two words")'
+    assert (
+        dork(["api", "token"], ["leak", "exposed"], after="2026-01-15", filetype="pdf")
+        == "(api|token) AND (leak|exposed) filetype:pdf after:2026-01-15"
+    )
+    with pytest.raises(DorkError):
+        dork(["a"], after="2026-13-01")
+    with pytest.raises(DorkError):
+        dork(["a|b"])
+    with pytest.raises(DorkError):
+        dork(["a"], after="2026-05-02", before="2026-05-01")
+
+
+def test_google_ground_parses_chunks_and_tokens(monkeypatch) -> None:
+    from WebSearch.frontend import apis, http
+
+    payload = {
+        "candidates": [
+            {
+                "groundingMetadata": {
+                    "groundingChunks": [
+                        {"web": {"uri": "https://r.example/a", "title": "a.com"}},
+                        {"web": {"uri": "https://r.example/b", "title": "b.com"}},
+                    ],
+                    "groundingSupports": [
+                        {"segment": {"text": "claim"}, "groundingChunkIndices": [1]}
+                    ],
+                }
+            }
+        ],
+        "usageMetadata": {"totalTokenCount": 42},
+    }
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    monkeypatch.setattr(http, "request_json", lambda *a, **k: payload)
+    spec = SearcherSpec(id="google_ground", kind="websearcher", api_key_env="GEMINI_API_KEY")
+    hits = apis.search_google_ground("q", spec)
+    assert [h.title for h in hits] == ["a.com", "b.com"]
+    assert hits[1].snippet == "claim"
+    assert (hits[0].api_tokens, hits[1].api_tokens) == (42, 0)
+    monkeypatch.delenv("GEMINI_API_KEY")
+    assert apis.search_google_ground("q", spec) == []
+
+
+def test_normalize_dedupes_lines_and_entities() -> None:
+    from WebSearch.backend import ExtractedDoc, dedupe_docs
+
+    assert normalize_text("Menu\nHome\nmenu\nA&amp;B​\nCafé x") == "Menu Home A&B Café x"
+    a = ExtractedDoc("Same text", "regex", "https://a")
+    b = ExtractedDoc("same TEXT", "regex", "https://b")
+    assert dedupe_docs([a, b, ExtractedDoc("", "regex")]) == [a]
+
+
+def test_midend_dedupes_urls_before_cap() -> None:
+    hits = [
+        SearchHit("a", "https://example.com/x?utm_source=t", "", "s"),
+        SearchHit("b", "https://www.example.com/x/", "", "s"),
+        SearchHit("c", "https://example.com/y", "", "s"),
+    ]
+    pages = crawl_then_scrape(hits, fetch=lambda u: b"<p>hi</p>")
+    assert [p.url for p in pages] == [hits[0].url, hits[2].url]
