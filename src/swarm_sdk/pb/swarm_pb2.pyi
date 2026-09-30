@@ -15,20 +15,24 @@ class SpawnRequest(_message.Message):
     def __init__(self, goal: _Optional[str] = ..., agents: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class PlanStepMsg(_message.Message):
-    __slots__ = ("id", "title", "description", "agent", "depends_on", "inputs")
+    __slots__ = ("id", "title", "description", "agent", "depends_on", "inputs", "task", "files")
     ID_FIELD_NUMBER: _ClassVar[int]
     TITLE_FIELD_NUMBER: _ClassVar[int]
     DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
     AGENT_FIELD_NUMBER: _ClassVar[int]
     DEPENDS_ON_FIELD_NUMBER: _ClassVar[int]
     INPUTS_FIELD_NUMBER: _ClassVar[int]
+    TASK_FIELD_NUMBER: _ClassVar[int]
+    FILES_FIELD_NUMBER: _ClassVar[int]
     id: str
     title: str
     description: str
     agent: str
     depends_on: _containers.RepeatedScalarFieldContainer[str]
     inputs: _containers.RepeatedScalarFieldContainer[str]
-    def __init__(self, id: _Optional[str] = ..., title: _Optional[str] = ..., description: _Optional[str] = ..., agent: _Optional[str] = ..., depends_on: _Optional[_Iterable[str]] = ..., inputs: _Optional[_Iterable[str]] = ...) -> None: ...
+    task: str
+    files: _containers.RepeatedScalarFieldContainer[str]
+    def __init__(self, id: _Optional[str] = ..., title: _Optional[str] = ..., description: _Optional[str] = ..., agent: _Optional[str] = ..., depends_on: _Optional[_Iterable[str]] = ..., inputs: _Optional[_Iterable[str]] = ..., task: _Optional[str] = ..., files: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class PlanHandle(_message.Message):
     __slots__ = ("plan_id", "steps")
