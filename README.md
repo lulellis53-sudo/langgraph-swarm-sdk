@@ -1,6 +1,12 @@
 # WebSearch
 
-In-repo search/scrape pipeline. HTTP searchers fail closed (empty hits) without keys.
+This directory is a **git worktree** of branch `worktree/websearch` (package files at the worktree root). From the SDK checkout:
+
+```bash
+git worktree add WebSearch worktree/websearch
+```
+
+Search/scrape pipeline. HTTP searchers fail closed (empty hits) without keys.
 
 | Layer | Path | Role |
 | ----- | ---- | ---- |
