@@ -121,6 +121,16 @@ class PackedPrompt:
     user: str
 
     @property
+    def prefix(self) -> str:
+        """Stable, cache-friendly part of the prompt."""
+        return self.system
+
+    @property
+    def suffix(self) -> str:
+        """Variable part of the prompt (may be empty)."""
+        return self.user
+
+    @property
     def text(self) -> str:
         """Full prompt text (``system`` alone, or ``system\\nuser``)."""
         if self.user:

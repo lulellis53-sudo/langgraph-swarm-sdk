@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+from typing import cast
 
 import hypothesis.strategies as st
 from hypothesis import assume, given, settings
@@ -176,9 +177,17 @@ def test_usage_summary_sums_latency_and_cost() -> None:
     (row,) = log.summary()
     assert row["tokens"] == 2000
     assert row["latency_ms_total"] == 20.0
-    assert row["cost_estimate_usd"] > 0.0
+    assert cast(float, row["cost_estimate_usd"]) > 0.0
 
 
 def test_estimate_cost_unknown_model_is_zero() -> None:
     assert estimate_cost_usd("nope:model", 5000) == 0.0
     assert estimate_cost_usd("", 5000) == 0.0
+
+
+def test_packed_prompt_prefix_suffix() -> None:
+    from swarm_sdk.prompting.budget import PackedPrompt
+
+    p = PackedPrompt(system="sys", user="body")
+    assert (p.prefix, p.suffix) == ("sys", "body")
+    assert p.text == "sys\nbody"

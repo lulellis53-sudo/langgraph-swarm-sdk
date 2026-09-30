@@ -348,3 +348,23 @@ async def test_route_requests_json_mode_only_when_enabled(tmp_path, structured: 
     sdk = sdk_with_router(tmp_path, "", structured=structured, router=spy)
     await sdk._route(sdk.budget.pack(system="s", memories=[], turns=["q"]))
     assert _FORMAT_SEEN == [structured]
+
+
+async def test_route_does_not_repeat_the_system_prompt(tmp_path: Path) -> None:
+    from swarm_sdk.core.swarm import ROUTER_SYSTEM
+
+    script = Script([answer('{"mode":"swarm","tasks":[]}')])
+    sdk = sdk_with_router(tmp_path, "", router=ScriptedModel(script=script))
+    packed = sdk.budget.pack(system=ROUTER_SYSTEM, memories=[], turns=["what is 2+2"])
+    await sdk._route(packed)
+    assert ROUTER_SYSTEM not in script.seen[0]
+    assert "what is 2+2" in script.seen[0]
+
+
+async def test_route_with_empty_suffix_still_sends_a_user_message(tmp_path: Path) -> None:
+    from swarm_sdk.prompting.budget import PackedPrompt
+
+    script = Script([answer('{"mode":"swarm","tasks":[]}')])
+    sdk = sdk_with_router(tmp_path, "", router=ScriptedModel(script=script))
+    await sdk._route(PackedPrompt(system="only-system", user=""))
+    assert script.seen == ["only-system"]

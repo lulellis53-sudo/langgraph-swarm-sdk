@@ -302,12 +302,15 @@ class SwarmSDK:
         json_mode = self.settings.router_structured_output
         if self._router_model is not None:
             raw, tokens = await complete_with_usage(
-                self._router_model, ROUTER_SYSTEM, packed.text, json_mode=json_mode
+                self._router_model,
+                ROUTER_SYSTEM,
+                packed.suffix or packed.prefix,
+                json_mode=json_mode,
             )
         else:
             raw, tokens = await self._fallback.complete_with_usage(
                 ROUTER_SYSTEM,
-                packed.text,
+                packed.suffix or packed.prefix,
                 think_level=self.file_config.router.think_level,
                 json_mode=json_mode,
             )
