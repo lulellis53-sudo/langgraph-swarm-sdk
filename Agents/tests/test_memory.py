@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
+from typing import cast
 
 import hypothesis.strategies as st
 import numpy as np
@@ -10,7 +12,7 @@ import pytest
 from hypothesis import given, settings
 
 from swarm_sdk.memory.base import MemoryHit, MemoryStore
-from swarm_sdk.memory.opencl_store import OpenClVecStore
+from swarm_sdk.memory.opencl_store import OpenClVecStore, Quantize
 from swarm_sdk.retrieval.embeddings import HashEmbedder, dedupe_texts, unit
 from swarm_sdk.retrieval.hybrid import HybridSearchConfig, hybrid_search, rrf_merge
 from swarm_sdk.retrieval.text import tokenize
@@ -55,14 +57,20 @@ def test_sqlite_vec_int8_roundtrip(tmp_path: Path) -> None:
     store.close()
 
 
-def test_sqlite_int8_fallback_when_extension_loading_is_disabled(tmp_path: Path) -> None:
+def test_sqlite_int8_fallback_when_extension_loading_is_disabled(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setitem(sys.modules, "sqlite_vec", None)
     from swarm_sdk.memory.sqlite_vec import SqliteVecStore
 
     store = SqliteVecStore(str(tmp_path / "fallback.db"), dim=8)
+    assert not store._sqlite_vec
     _roundtrip(store)
     hits = store.search(_one_hot(8, 1), 2)
     assert hits[0].text == "beta"
     assert hits[0].id == 2
+    keyword_hits = store.keyword_search("beta", 2)
+    assert keyword_hits[0].text == "beta"
     store.close()
 
     reopened = SqliteVecStore(str(tmp_path / "fallback.db"), dim=8)
@@ -144,7 +152,7 @@ class FakeMem0:
                 raw = first.get("content", "")
                 content = raw if isinstance(raw, str) else str(raw)
         item = {"id": str(len(self.memories) + 1), "memory": content, "score": 0.91}
-        self.memories.append(item)
+        self.memories.append(cast(dict[str, object], item))
         self.added.append({"messages": messages, **kwargs})
         return {"results": [item]}
 
@@ -303,11 +311,11 @@ def test_sqlite_store_uses_wal(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("mode", ["none", "int8", "binary"])
 def test_quantized_store_finds_exact_neighbor(mode: str) -> None:
-    store = OpenClVecStore(dim=64, quantize=mode)
+    store = OpenClVecStore(dim=64, quantize=cast(Quantize, mode))
     rng = np.random.default_rng(1)
     vectors = rng.standard_normal((50, 64)).astype(np.float32)
     for i, v in enumerate(vectors):
-        store.add(f"t{i}", v)
+        store.add(f"t{i}", np.asarray(v, dtype=np.float32))
     hit = store.search(vectors[7], 1)[0]
     assert hit.text == "t7"
     assert hit.score == pytest.approx(1.0, abs=0.02)
@@ -315,7 +323,7 @@ def test_quantized_store_finds_exact_neighbor(mode: str) -> None:
 
 def test_quantized_store_uses_less_memory() -> None:
     def filled(mode: str) -> int:
-        s = OpenClVecStore(dim=256, quantize=mode)
+        s = OpenClVecStore(dim=256, quantize=cast(Quantize, mode))
         for i in range(64):
             s.add(str(i), np.random.default_rng(i).standard_normal(256).astype(np.float32))
         return s.resident_bytes
@@ -337,4 +345,4 @@ def test_binary_store_ring_buffer_keeps_ids_and_texts_aligned() -> None:
 
 def test_store_rejects_unknown_quantize_mode() -> None:
     with pytest.raises(ValueError):
-        OpenClVecStore(dim=4, quantize="fp4")  # type: ignore[arg-type]
+        OpenClVecStore(dim=4, quantize=cast(Quantize, "fp4"))

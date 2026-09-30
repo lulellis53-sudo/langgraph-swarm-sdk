@@ -71,13 +71,20 @@ class SqliteVecStore:
             )
             """
         )
-        self._conn.execute(
-            """
-            CREATE VIRTUAL TABLE IF NOT EXISTS memory_fts USING fts5(
-                text
+        self._fts = False
+        try:
+            self._conn.execute(
+                """
+                CREATE VIRTUAL TABLE IF NOT EXISTS memory_fts USING fts5(
+                    text
+                )
+                """
             )
-            """
-        )
+            self._fts = True
+        except sqlite3.Error:
+            # SQLite builds without FTS5 still get vector search; keyword search
+            # degrades to a token LIKE scan over memory_text.
+            self._fts = False
         if not self._sqlite_vec:
             self._conn.execute(
                 """
@@ -118,10 +125,11 @@ class SqliteVecStore:
                 "INSERT INTO memory_text(rowid, text) VALUES (?, ?)",
                 (row_id, text),
             )
-            self._conn.execute(
-                "INSERT INTO memory_fts(rowid, text) VALUES (?, ?)",
-                (row_id, text),
-            )
+            if self._fts:
+                self._conn.execute(
+                    "INSERT INTO memory_fts(rowid, text) VALUES (?, ?)",
+                    (row_id, text),
+                )
             self._conn.commit()
         return row_id
 
@@ -187,6 +195,8 @@ class SqliteVecStore:
     def keyword_search(self, query: str, k: int) -> list[MemoryHit]:
         if k < 1 or not query.strip():
             return []
+        if not self._fts:
+            return self._keyword_scan(query, k)
         with self._lock:
             rows = self._conn.execute(
                 """
@@ -203,6 +213,24 @@ class SqliteVecStore:
             MemoryHit(id=int(row_id), text=str(text), score=abs(float(rank)))
             for row_id, text, rank in rows
         ]
+
+    def _keyword_scan(self, query: str, k: int) -> list[MemoryHit]:
+        """LIKE-based keyword fallback for SQLite builds without FTS5."""
+        terms = tokenize(query)
+        if not terms:
+            return []
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT rowid, text FROM memory_text ORDER BY rowid DESC LIMIT 4096"
+            ).fetchall()
+        scored: list[MemoryHit] = []
+        lowered = [(str(text)).lower() for _, text in rows]
+        for (row_id, text), haystack in zip(rows, lowered, strict=True):
+            score = sum(1.0 for term in terms if term.lower() in haystack)
+            if score:
+                scored.append(MemoryHit(id=int(row_id), text=str(text), score=score))
+        scored.sort(key=lambda hit: hit.score, reverse=True)
+        return scored[:k]
 
     def close(self) -> None:
         self._conn.close()
