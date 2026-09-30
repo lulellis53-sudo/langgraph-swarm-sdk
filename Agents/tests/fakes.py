@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any
 
 from langchain_core.callbacks import CallbackManagerForLLMRun
@@ -5,6 +6,12 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 from pydantic import ConfigDict
+
+from swarm_sdk.config.settings import Settings
+from swarm_sdk.core.swarm import SwarmSDK
+from swarm_sdk.memory.opencl_store import OpenClVecStore
+from swarm_sdk.retrieval.embeddings import HashEmbedder
+from swarm_sdk.retrieval.rerank import IdentityReranker
 
 
 class Script:
@@ -62,4 +69,43 @@ def handoff(agent_name: str) -> AIMessage:
                 "type": "tool_call",
             }
         ],
+    )
+
+
+ROUTER_OUTPUTS: list[tuple[str, str, list[str]]] = [
+    ('{"mode":"parallel","tasks":["a","b"]}', "parallel", ["a", "b"]),
+    ('Sure! Here you go: {"mode":"parallel","tasks":["a"]} hope that helps', "parallel", ["a"]),
+    ('```json\n{"mode":"swarm","tasks":[]}\n```', "swarm", []),
+    ('{"mode":"parallel","tasks":["a"', "swarm", []),
+    ("", "swarm", []),
+    ("no json at all", "swarm", []),
+    ('{"mode":"banana","tasks":[]}', "swarm", []),
+    ('{"mode":"parallel","tasks":"not-a-list"}', "swarm", []),
+]
+
+
+def sdk_with_router(
+    tmp_path: Path,
+    raw: str,
+    *,
+    structured: bool = True,
+    router: ScriptedModel | None = None,
+) -> SwarmSDK:
+    """Build a SwarmSDK whose router model replies with ``raw`` (or uses ``router``)."""
+    model = router or ScriptedModel(script=Script([answer(raw)]))
+    settings = Settings(
+        memory_path=str(tmp_path / "mem.db"),
+        cache_path=str(tmp_path / "cache.db"),
+        embed_dim=32,
+        max_tokens=512,
+        memory_backend="opencl",
+        router_structured_output=structured,
+    )
+    return SwarmSDK(
+        settings,
+        router_model=model,
+        specialist_model=model,
+        embedder=HashEmbedder(32),
+        reranker=IdentityReranker(),
+        memory=OpenClVecStore(32),
     )

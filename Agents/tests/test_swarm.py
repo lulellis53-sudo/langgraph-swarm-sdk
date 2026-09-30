@@ -7,8 +7,9 @@ import time
 from pathlib import Path
 
 import numpy as np
+import pytest
 from langchain_core.messages import AIMessage, HumanMessage
-from tests.fakes import Script, ScriptedModel, answer, handoff
+from tests.fakes import ROUTER_OUTPUTS, Script, ScriptedModel, answer, handoff, sdk_with_router
 
 from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import SwarmSDK
@@ -322,3 +323,28 @@ async def test_run_tokens_are_provider_reported_parallel(tmp_path: Path) -> None
     result = await sdk.run("please answer", "thread")
     assert result.mode == "parallel"
     assert result.tokens == 10 + 3 * 5
+
+
+@pytest.mark.parametrize(("raw", "mode", "tasks"), ROUTER_OUTPUTS)
+async def test_route_survives_adversarial_router_output(tmp_path, raw, mode, tasks) -> None:
+    sdk = sdk_with_router(tmp_path, raw)
+    decision, _ = await sdk._route(sdk.budget.pack(system="s", memories=[], turns=["q"]))
+    assert (decision.mode, decision.tasks) == (mode, tasks)
+
+
+_FORMAT_SEEN: list[bool] = []
+
+
+class _FormatSpyModel(ScriptedModel):
+    def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+        _FORMAT_SEEN.append("response_format" in kwargs)
+        return super()._generate(messages, stop, run_manager, **kwargs)
+
+
+@pytest.mark.parametrize("structured", [True, False])
+async def test_route_requests_json_mode_only_when_enabled(tmp_path, structured: bool) -> None:
+    _FORMAT_SEEN.clear()
+    spy = _FormatSpyModel(script=Script([answer('{"mode":"swarm","tasks":[]}')]))
+    sdk = sdk_with_router(tmp_path, "", structured=structured, router=spy)
+    await sdk._route(sdk.budget.pack(system="s", memories=[], turns=["q"]))
+    assert _FORMAT_SEEN == [structured]
