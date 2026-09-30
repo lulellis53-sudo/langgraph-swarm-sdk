@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import cast
+from typing import Literal, cast
 
 import yaml
 from pydantic import BaseModel, Field
@@ -68,6 +68,8 @@ class VectorStoreConfig(BaseModel):
     quantization: VectorQuantization = "int8"
     # Allow disabling OpenCL offloading without uninstalling pyopencl.
     opencl_enabled: bool = True
+    # OpenClVecStore precision: float32, per-row INT8, or 1-bit signs.
+    quantize: Literal["none", "int8", "binary"] = "none"
     qdrant: QdrantStoreConfig = Field(default_factory=QdrantStoreConfig)
     mem0: Mem0StoreConfig = Field(default_factory=Mem0StoreConfig)
 
@@ -82,6 +84,8 @@ class RouterConfig(BaseModel):
     think_level: ThinkLevel = "low"
     max_tokens: int = 2048
     tool_cap: int = 128
+    # Ask the provider for JSON output; parsing still falls back to regex.
+    structured_output: bool = True
 
 
 # Packaged default (also overridable via Main/config/swarm.yaml or SWARM_CONFIG_PATH).
@@ -223,6 +227,8 @@ def settings_from_file(file_cfg: SwarmFileConfig, env: Settings | None = None) -
         "vector_gpu": file_cfg.vectorstore.gpu,
         "vector_quantization": file_cfg.vectorstore.quantization,
         "opencl_enabled": file_cfg.vectorstore.opencl_enabled,
+        "opencl_quantize": file_cfg.vectorstore.quantize,
+        "router_structured_output": file_cfg.router.structured_output,
     }
     if file_cfg.model_select.routes:
         strong = next(

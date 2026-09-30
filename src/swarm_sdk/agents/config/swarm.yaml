@@ -71,6 +71,7 @@ vectorstore:
   gpu: false
   quantization: int8          # sqlite-vec int8 columns; Qdrant scalar int8 when backend=qdrant
   opencl_enabled: true        # allow OpenCL offloading for math/vector search
+  quantize: none              # OpenClVecStore precision: none | int8 | binary
   # backend-specific
   qdrant:
     url_env: QDRANT_URL
@@ -97,3 +98,4 @@ router:
   think_level: low
   max_tokens: 2048
   tool_cap: 128
+  structured_output: true     # ask the provider for JSON; falls back to regex parsing

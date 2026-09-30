@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from swarm_sdk.agents.manifest import agents_root, load_all_agent_manifests
 from swarm_sdk.agents.validate import validate_coordination
 from swarm_sdk.config.loader import load_swarm_config
@@ -68,3 +70,31 @@ def test_new_settings_defaults_preserve_behavior() -> None:
     assert s.semantic_cache_on_gpu is False
     assert s.cache_ttl_days is None
     assert s.router_structured_output is True
+
+
+def test_file_config_maps_quantize_and_structured_output(tmp_path: Path) -> None:
+    from swarm_sdk.config.loader import load_settings
+
+    cfg = tmp_path / "s.yaml"
+    cfg.write_text(
+        "version: 1\nvectorstore:\n  backend: opencl\n  quantize: int8\n"
+        "router:\n  structured_output: false\n",
+        encoding="utf-8",
+    )
+    settings, file_cfg = load_settings(cfg)
+    assert file_cfg.vectorstore.quantize == "int8"
+    assert settings.opencl_quantize == "int8"
+    assert settings.router_structured_output is False
+
+
+def test_open_store_passes_quantize_to_opencl_store() -> None:
+    from swarm_sdk.core.swarm import open_store
+
+    store = open_store(Settings(memory_backend="opencl", embed_dim=64, opencl_quantize="binary"))
+    assert store._mode == "binary"
+
+
+def test_bundled_yaml_still_loads_and_defaults_unchanged() -> None:
+    cfg = load_swarm_config()
+    assert cfg.vectorstore.quantize == "none"
+    assert cfg.router.structured_output is True

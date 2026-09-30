@@ -114,7 +114,7 @@ def open_store(settings: Settings) -> MemoryStore:
     if settings.memory_backend == "opencl":
         from swarm_sdk.memory.opencl_store import OpenClVecStore
 
-        return OpenClVecStore(settings.embed_dim)
+        return OpenClVecStore(settings.embed_dim, quantize=settings.opencl_quantize)
     if settings.memory_backend == "mem0":
         from swarm_sdk.memory.mem0_store import Mem0Store
 
