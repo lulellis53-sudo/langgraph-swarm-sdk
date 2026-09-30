@@ -24,5 +24,8 @@ htmlcov/
 .idea/
 Main/Essentials/
 
+# Nested git worktree (branch worktree/websearch)
+/WebSearch/
+
 # Local standalone CPython path and environments
 .runtime/

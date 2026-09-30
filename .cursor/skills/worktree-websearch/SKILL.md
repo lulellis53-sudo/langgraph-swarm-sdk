@@ -21,8 +21,11 @@ Pick one path:
 | Agent setup missing | Create a sibling worktree manually, then work only inside it: |
 
 ```bash
-git worktree add ../Swarm-worktree-websearch -b worktree/websearch
+git worktree add ../Swarm-WebSearch worktree/websearch
+ln -sfn ../Swarm-WebSearch WebSearch
 ```
+
+`WebSearch/` in the main checkout is a symlink to that sibling worktree (do not nest a worktree inside the SDK tree).
 
 Open that folder in a second window if the user will keep coding in the main checkout.
 
@@ -73,7 +76,7 @@ If the user wants a saved artifact, write under the **worktree** only, e.g. `res
 
 - **Main checkout unchanged**: leave research commits on `worktree/websearch` or discard the worktree.
 - Merge notes into main only when the user asks (`/apply-worktree` in IDE, or cherry-pick / copy the file).
-- Remove the worktree when done: `/delete-worktree` or `git worktree remove ../Swarm-worktree-websearch`.
+- Remove the worktree when done: `/delete-worktree` or `git worktree remove ../Swarm-WebSearch` (then delete the `WebSearch` symlink).
 
 ## Hard limits
 
