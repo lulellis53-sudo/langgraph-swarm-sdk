@@ -1,0 +1,58 @@
+# WebSearch provider registry. Env var *names* only — never secret values.
+# HTTP searchers fail closed (empty hits) when the key/URL is missing.
+version: 1
+
+searchers:
+  - id: context7
+    kind: docs
+    description: Library and API docs (Context7 MCP).
+  - id: bright_data
+    kind: websearcher
+    engine: google
+    api_key_env: BRIGHT_DATA_API_TOKEN
+    description: Live SERP via Bright Data search_engine.
+  - id: brave
+    kind: websearcher
+    api_key_env: BRAVE_API_KEY
+    description: Brave Search API (web).
+  - id: tavily
+    kind: websearcher
+    api_key_env: TAVILY_API_KEY
+    description: Tavily Search API.
+  - id: apify
+    kind: websearcher
+    api_key_env: APIFY_TOKEN
+    base_url: https://api.apify.com/v2
+    description: Apify API (fails without token / actor config).
+  - id: exa
+    kind: websearcher
+    api_key_env: EXA_API_KEY
+    description: Exa Search API.
+  - id: searxng
+    kind: websearcher
+    engine: duckduckgo,bing
+    base_url_env: SEARXNG_URL
+    description: Self-hosted SearXNG JSON (DuckDuckGo + Bing engines).
+
+extractors:
+  order:
+    - selectolax
+    - selectolax_regex
+    - regex
+    - trafilatura
+    - bs4
+
+crawlers:
+  order:
+    - httpx
+    - scrapy
+    - playwright
+    - crawlee
+
+crawl:
+  timeout_s: 20
+  max_bytes: 1048576
+  max_urls: 8
+  schemes:
+    - http
+    - https
