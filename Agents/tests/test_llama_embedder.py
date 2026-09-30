@@ -53,7 +53,7 @@ def test_llama_embedder_missing_dependency():
             embedder.embed(["hello"])
 
 
-def test_bge_uses_query_and_passage_prefixes_and_gpu_settings():
+def test_bge_m3_skips_prefixes_and_keeps_gpu_settings():
     seen: list[str] = []
 
     class BgeLlama(_FakeLlama):
@@ -80,5 +80,24 @@ def test_bge_uses_query_and_passage_prefixes_and_gpu_settings():
         )
         assert embedder.embed(["find similar"], query=True).shape == (1, 1024)
         assert embedder.embed(["memory passage"], query=False).shape == (1, 1024)
+
+    assert seen == ["find similar", "memory passage"]
+
+
+def test_bge_non_m3_uses_query_and_passage_prefixes():
+    seen: list[str] = []
+
+    class BgeLlama(_FakeLlama):
+        def embed(self, input: list[str], normalize: bool = True) -> list[list[float]]:
+            del normalize
+            seen.extend(input)
+            return [np.ones(384, dtype=np.float32).tolist() for _ in input]
+
+    fake = types.ModuleType("llama_cpp")
+    setattr(fake, "Llama", BgeLlama)
+    with patch.dict("sys.modules", {"llama_cpp": fake}):
+        embedder = LlamaCppEmbedder("/models/bge-large-en-v1.5.gguf", dim=384)
+        embedder.embed(["find similar"], query=True)
+        embedder.embed(["memory passage"], query=False)
 
     assert seen == ["query: find similar", "passage: memory passage"]

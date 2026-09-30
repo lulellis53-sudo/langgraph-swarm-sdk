@@ -50,7 +50,13 @@ def dedupe_texts(texts: list[str], vectors: np.ndarray, threshold: float) -> lis
 
 
 def _bge_style(model_name: str) -> bool:
-    return "bge" in model_name.lower()
+    """True when the model expects ``query:``/``passage:`` prefixes.
+
+    BGE v1.x wants the prefixes; BGE-M3 is trained without them, so its name
+    is excluded even though it contains "bge".
+    """
+    lowered = model_name.lower()
+    return "bge" in lowered and "m3" not in lowered
 
 
 def _prepare_texts(texts: list[str], *, query: bool, bge_style: bool) -> list[str]:
