@@ -1,4 +1,4 @@
-"""Measure bounded vector-search latency, CPU cost, memory, and Recall@K."""
+"""Compare float32, INT8, and 1-bit OpenClVecStore modes: latency, memory, Recall@K."""
 
 from __future__ import annotations
 
@@ -7,13 +7,14 @@ import json
 import os
 import resource
 import statistics
+import sys
 import time
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import numpy as np
 
-from swarm_sdk.gpu import opencl_status, set_enabled
+from swarm_sdk.gpu import opencl_available, opencl_status, set_enabled
 from swarm_sdk.memory.opencl_store import OpenClVecStore
 
 
@@ -24,10 +25,10 @@ def _percentile(values: list[float], percentile: float) -> float:
 def _peak_rss_bytes() -> int:
     value = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     # macOS reports bytes; Linux reports KiB.
-    return int(value if __import__("sys").platform == "darwin" else value * 1024)
+    return int(value if sys.platform == "darwin" else value * 1024)
 
 
-def run(rows: int, dim: int, queries: int, k: int, seed: int = 7) -> dict[str, object]:
+def run(rows: int, dim: int, queries: int, k: int, seed: int = 7) -> dict[str, Any]:
     rng = np.random.default_rng(seed)
     vectors = rng.standard_normal((rows, dim), dtype=np.float32)
     vectors /= np.maximum(np.linalg.norm(vectors, axis=1, keepdims=True), 1e-12)
@@ -38,10 +39,14 @@ def run(rows: int, dim: int, queries: int, k: int, seed: int = 7) -> dict[str, o
     # Measure the real OpenCL backend independent of its conservative runtime threshold.
     os.environ["SWARM_OPENCL_MIN_ROWS"] = "1"
 
-    for backend, enabled in (("numpy", False), ("opencl", True)):
+    backends: list[tuple[str, bool]] = [("numpy", False)]
+    if opencl_available():
+        backends.append(("opencl", True))
+
+    for backend, enabled in backends:
         set_enabled(enabled)
-        for chunk_rows in (64, 128, 256, 512, 1024, 2048, 4096):
-            store = OpenClVecStore(dim, max_vectors=rows, chunk_rows=chunk_rows)
+        for mode in ("none", "int8", "binary"):
+            store = OpenClVecStore(dim, max_vectors=rows, quantize=mode)  # type: ignore[arg-type]
             for index, vector in enumerate(vectors):
                 store.add(str(index), np.asarray(vector))
 
@@ -53,14 +58,14 @@ def run(rows: int, dim: int, queries: int, k: int, seed: int = 7) -> dict[str, o
                 hits = store.search(query, k)
                 latencies_ms.append((time.perf_counter() - started) * 1000)
                 actual = {hit.id for hit in hits}
-                exact_scores = vectors @ query
-                expected_indexes = np.argpartition(exact_scores, -min(k, rows))[-min(k, rows) :]
+                expected_scores = vectors @ query
+                expected_indexes = np.argpartition(expected_scores, -min(k, rows))[-min(k, rows) :]
                 expected = set(expected_indexes.tolist())
                 recall.append(len(actual & expected) / len(expected) if expected else 1.0)
             profiles.append(
                 {
                     "backend": backend,
-                    "chunk_rows": chunk_rows,
+                    "quantize": mode,
                     "p50_ms": statistics.median(latencies_ms),
                     "p95_ms": _percentile(latencies_ms, 95),
                     "cpu_ms": (time.process_time() - cpu_start) * 1000,
@@ -75,22 +80,25 @@ def run(rows: int, dim: int, queries: int, k: int, seed: int = 7) -> dict[str, o
     else:
         os.environ["SWARM_OPENCL_MIN_ROWS"] = prior_threshold
 
-    eligible = [item for item in profiles if cast(float, item["recall_at_k"]) >= 0.999]
-    best = min(eligible or profiles, key=lambda item: cast(float, item["p95_ms"]))
+    qualifying = [item for item in profiles if cast(float, item["recall_at_k"]) >= 0.9]
+    best_by_recall = (
+        min(qualifying, key=lambda item: cast(int, item["resident_vector_bytes"]))
+        if qualifying
+        else None
+    )
     return {
         "backend": opencl_status(),
         "workload": {"rows": rows, "dim": dim, "queries": queries, "k": k, "seed": seed},
         "profiles": profiles,
-        "recommended_backend": best["backend"],
-        "recommended_chunk_rows": best["chunk_rows"],
-        "selection": "lowest p95 among profiles with Recall@K >= 0.999",
+        "best_by_recall": dict(best_by_recall) if best_by_recall else None,
+        "selection": "smallest resident footprint among modes with Recall@K >= 0.9",
     }
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--rows", type=int, default=4096)
-    parser.add_argument("--dim", type=int, default=1024)
+    parser.add_argument("--rows", type=int, default=20000)
+    parser.add_argument("--dim", type=int, default=384)
     parser.add_argument("--queries", type=int, default=50)
     parser.add_argument("--k", type=int, default=10)
     parser.add_argument("--write-results", action="store_true")
@@ -98,7 +106,7 @@ def main() -> None:
     report = run(args.rows, args.dim, args.queries, args.k)
     output = json.dumps(report, indent=2)
     if args.write_results:
-        path = Path(__file__).resolve().parents[2] / "results" / "gpu_retrieval"
+        path = Path(__file__).resolve().parents[2] / "results" / "gpu_quantization"
         path.mkdir(parents=True, exist_ok=True)
         target = path / "latest.json"
         target.write_text(output + "\n", encoding="utf-8")

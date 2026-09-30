@@ -237,3 +237,67 @@ def test_batch_softmax_sums_to_one_and_is_stable() -> None:
 def test_batch_softmax_single_and_empty() -> None:
     assert batch_softmax(np.array([3.0], dtype=np.float32))[0] == pytest.approx(1.0)
     assert batch_softmax(np.array([], dtype=np.float32)).size == 0
+
+
+@pytest.fixture()
+def _opencl_all_rows(monkeypatch: pytest.MonkeyPatch):
+    """Route every row count to the GPU so the 2D kernels are exercised."""
+    monkeypatch.setenv("SWARM_OPENCL_MIN_ROWS", "1")
+    if not opencl_available():
+        pytest.skip("OpenCL not available")
+    set_enabled(True)
+    yield
+    set_enabled(False)
+
+
+@pytest.mark.usefixtures("_opencl_all_rows")
+def test_opencl_batch_dot_matches_numpy_odd_and_padded_columns() -> None:
+    for rows, cols in ((97, 30), (5, 2), (64, 4), (33, 128)):
+        matrix = _random_matrix(rows, cols)
+        query = _random_matrix(1, cols).reshape(-1)
+        np.testing.assert_allclose(batch_dot(query, matrix), matrix @ query, rtol=1e-4, atol=1e-5)
+
+
+@pytest.mark.usefixtures("_opencl_all_rows")
+def test_opencl_normalize_and_cosine_match_numpy() -> None:
+    matrix = _random_matrix(70, 44)
+    query = _random_matrix(1, 44).reshape(-1)
+    expected_norms = np.linalg.norm(matrix, axis=1).astype(np.float32)
+    np.testing.assert_allclose(l2_norm(matrix), expected_norms, rtol=1e-4)
+    cosine = batch_cosine(query, matrix)
+    np.testing.assert_allclose(normalize_dot(query, matrix), cosine, rtol=1e-4, atol=1e-5)
+    norms = np.linalg.norm(normalize(matrix), axis=1)
+    np.testing.assert_allclose(norms, np.ones(70), rtol=1e-4)
+
+
+@pytest.mark.usefixtures("_opencl_all_rows")
+def test_opencl_int8_and_binary_match_numpy() -> None:
+    matrix = _random_matrix(129, 64)
+    query = _random_matrix(1, 64).reshape(-1)
+    codes, scales = quantize_int8(matrix)
+    expected = (codes.astype(np.float32) @ query) * scales
+    np.testing.assert_allclose(dequant_dot(codes, scales, query), expected, rtol=1e-3, atol=1e-4)
+
+    bits = binary_quantize(matrix)
+    query_bits = binary_quantize(query)[0]
+    xor = np.bitwise_xor(bits, query_bits[None, :])
+    distance = np.unpackbits(xor.view(np.uint8), axis=1).sum(axis=1)
+    np.testing.assert_allclose(
+        binary_dot(bits, query_bits, dim=64), (64 - distance).astype(np.float32)
+    )
+
+
+@pytest.mark.usefixtures("_opencl_all_rows")
+def test_opencl_cached_buffers_track_generation_changes() -> None:
+    from swarm_sdk.memory.opencl_store import OpenClVecStore
+
+    store = OpenClVecStore(8, max_vectors=4, chunk_rows=4)
+    for i in range(4):
+        row = np.zeros(8, dtype=np.float32)
+        row[i] = 1.0
+        store.add(f"v{i}", row)
+    hits = store.search(np.eye(8, dtype=np.float32)[0], 1)
+    assert hits[0].id == 0
+    store.add("newer", np.eye(8, dtype=np.float32)[1])
+    hits = store.search(np.eye(8, dtype=np.float32)[1], 1)
+    assert hits[0].id == 4

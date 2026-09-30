@@ -13,6 +13,10 @@ from swarm_sdk.retrieval.embeddings import unit
 
 Quantize = Literal["none", "int8", "binary"]
 
+# Above this many resident rows a search falls back to chunked scoring even when
+# the ring buffer is unwrapped, so one query cannot pin an unbounded device buffer.
+_SINGLE_SLAB_MAX_ROWS = 32768
+
 
 def _topk(scores: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
     k = min(k, scores.shape[0])
@@ -137,10 +141,17 @@ class OpenClVecStore:
         cache_key: object,
     ) -> tuple[np.ndarray, np.ndarray]:
         if self._mode == "int8":
-            scores = dequant_dot(self._chunk("_codes", slots), self._chunk("_scales", slots), query)
+            scores = dequant_dot(
+                self._chunk("_codes", slots),
+                self._chunk("_scales", slots),
+                query,
+                cache_key=cache_key,
+            )
             return _topk(scores, k)
         if self._mode == "binary":
-            scores = binary_dot(self._chunk("_bits", slots), query_bits, dim=self.dim)
+            scores = binary_dot(
+                self._chunk("_bits", slots), query_bits, dim=self.dim, cache_key=cache_key
+            )
             idx, best = _topk(scores, k)
             return idx, np.cos(np.pi * (self.dim - best) / self.dim).astype(np.float32)
         return topk_ip(query, self._chunk("_vectors", slots), k, cache_key=cache_key)
@@ -161,7 +172,15 @@ class OpenClVecStore:
 
             best_scores = np.empty(0, dtype=np.float32)
             best_indexes = np.empty(0, dtype=np.int64)
-            for start in range(0, self._size, self.chunk_rows):
+            # An unwrapped ring keeps every resident row contiguous, so one slab
+            # kernel replaces the per-chunk launches (and their sync overhead).
+            step = self.chunk_rows
+            if (
+                self._head + self._size <= self.max_vectors
+                and self._size <= _SINGLE_SLAB_MAX_ROWS
+            ):
+                step = self._size
+            for start in range(0, self._size, step):
                 stop = min(start + self.chunk_rows, self._size)
                 logical = np.arange(start, stop, dtype=np.int64)
                 slots = (self._head + logical) % self.max_vectors
