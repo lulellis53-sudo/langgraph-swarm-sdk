@@ -2192,6 +2192,7 @@ observability = [
     { name = "opentelemetry-instrumentation-fastapi" },
     { name = "opentelemetry-instrumentation-httpx" },
     { name = "opentelemetry-sdk" },
+    { name = "prometheus-client" },
 ]
 opencl = [
     { name = "pyopencl" },
@@ -2236,6 +2237,7 @@ requires-dist = [
     { name = "orjson", specifier = ">=3.10" },
     { name = "pip", marker = "extra == 'jupyter'", specifier = ">=25" },
     { name = "polars", specifier = ">=1.30" },
+    { name = "prometheus-client", marker = "extra == 'observability'", specifier = ">=0.20" },
     { name = "protobuf", specifier = ">=6.31" },
     { name = "pydantic", specifier = ">=2.11" },
     { name = "pydantic-settings", specifier = ">=2.10" },

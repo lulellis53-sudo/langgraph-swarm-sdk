@@ -68,6 +68,7 @@ observability = [
     "opentelemetry-exporter-otlp-proto-http>=1.30",
     "opentelemetry-instrumentation-fastapi>=0.52b0",
     "opentelemetry-instrumentation-httpx>=0.52b0",
+    "prometheus-client>=0.20",
 ]
 # ## FAISS vector index (CPU wheels everywhere; GPU = CUDA only)
 faiss = ["faiss-cpu>=1.11"]
