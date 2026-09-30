@@ -11,9 +11,11 @@ import time
 import numpy as np
 
 from swarm_sdk.gpu import batch_cosine
+from swarm_sdk.memory.opencl_store import OpenClVecStore
 from swarm_sdk.retrieval.embeddings import Embedder, unit
 
 _SPACE = re.compile(r"\s+")
+_INDEX_ROWS = 256
 
 
 def normalize(text: str) -> str:
@@ -66,6 +68,19 @@ class SemanticCache:
                     (cutoff,),
                 )
         self._conn.commit()
+        self._index = self._warm_index() if use_index else None
+
+    def _warm_index(self) -> OpenClVecStore:
+        """Load the newest rows into an in-memory index (older rows stay in SQLite)."""
+        index = OpenClVecStore(self.embedder.dim, max_vectors=_INDEX_ROWS)
+        rows = self._conn.execute(
+            "SELECT vector, response FROM semantic_cache ORDER BY id DESC LIMIT ?",
+            (_INDEX_ROWS,),
+        ).fetchall()
+        for blob, response in reversed(rows):
+            if len(blob) == self.embedder.dim * 4:
+                index.add(str(response), np.frombuffer(blob, dtype=np.float32))
+        return index
 
     def lookup(self, text: str) -> str | None:
         key = hashlib.sha256(normalize(text).encode()).hexdigest()
@@ -77,6 +92,11 @@ class SemanticCache:
         if row is not None:
             return str(row[0])
         vector = unit(self.embedder.embed([text])[0])
+        if self._index is not None:
+            hits = self._index.search(vector, 1)
+            if hits and hits[0].score >= self.threshold:
+                return hits[0].text
+            return None
         with self._lock:
             stored = self._conn.execute("SELECT vector, response FROM semantic_cache").fetchall()
         if not stored:
@@ -113,6 +133,8 @@ class SemanticCache:
                 (blob, response, now),
             )
             self._conn.commit()
+        if self._index is not None:
+            self._index.add(response, vector)
 
 
 __all__ = ["SemanticCache", "normalize"]

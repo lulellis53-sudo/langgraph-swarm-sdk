@@ -203,3 +203,37 @@ def test_semantic_cache_migrates_legacy_schema(tmp_path: Path) -> None:
     cache = SemanticCache(path, HashEmbedder(16), ttl_days=7)
     cache.store("q", "a")
     assert cache.lookup("q") == "a"
+
+
+def test_indexed_lookup_matches_scan(tmp_path: Path) -> None:
+    embedder = SemanticBucketEmbedder()
+    path = str(tmp_path / "c.db")
+    seed = SemanticCache(path, embedder, threshold=0.97)
+    seed.store("topic alpha", "answer-a")
+    seed.store("unrelated words here", "answer-b")
+
+    scan = SemanticCache(path, embedder, threshold=0.97, use_index=False)
+    indexed = SemanticCache(path, embedder, threshold=0.97, use_index=True)
+    for query in ("topic beta", "unrelated words here", "totally new thing"):
+        assert indexed.lookup(query) == scan.lookup(query)
+
+
+def test_indexed_cache_sees_rows_stored_after_init(tmp_path: Path) -> None:
+    embedder = SemanticBucketEmbedder()
+    cache = SemanticCache(str(tmp_path / "c.db"), embedder, use_index=True)
+    assert cache._index is not None
+    assert cache.lookup("topic one") is None
+    cache.store("topic one", "hit")
+    assert cache.lookup("topic two") == "hit"
+
+
+def test_indexed_cache_skips_wrong_dim_blobs(tmp_path: Path) -> None:
+    path = str(tmp_path / "c.db")
+    SemanticCache(path, HashEmbedder(16)).store("q", "a")
+    other = SemanticCache(path, HashEmbedder(32), use_index=True)
+    assert other.lookup("something else entirely") is None
+
+
+def test_indexed_cache_empty_db(tmp_path: Path) -> None:
+    cache = SemanticCache(str(tmp_path / "c.db"), HashEmbedder(16), use_index=True)
+    assert cache.lookup("x") is None

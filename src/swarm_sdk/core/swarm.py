@@ -189,6 +189,7 @@ class SwarmSDK:
                 self.embedder,
                 self.settings.semantic_threshold,
                 ttl_days=self.settings.cache_ttl_days,
+                use_index=self.settings.semantic_cache_on_gpu,
             )
         return self._cache
 
