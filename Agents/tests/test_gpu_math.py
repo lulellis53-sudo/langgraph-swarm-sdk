@@ -11,6 +11,9 @@ from hypothesis.extra.numpy import arrays
 from swarm_sdk.gpu import (
     batch_cosine,
     batch_dot,
+    batch_softmax,
+    binary_dot,
+    binary_quantize,
     dequant_dot,  # type: ignore[attr-defined]
     l2_norm,
     normalize,
@@ -183,3 +186,54 @@ def test_dequant_dot_single_row() -> None:
 def test_normalize_dot_zero_query_scores_zero() -> None:
     m = _random_matrix(3, 4)
     assert not normalize_dot(np.zeros(4, dtype=np.float32), m).any()
+
+
+def test_binary_quantize_packs_signs() -> None:
+    m = np.array([[1.0, -1.0, 0.0, -0.5] + [1.0] * 28 + [-1.0]], dtype=np.float32)
+    bits = binary_quantize(m)
+    assert bits.dtype == np.uint32 and bits.shape == (1, 2)
+    assert bits[0, 0] & 1 == 1
+    assert (bits[0, 0] >> 1) & 1 == 0
+    assert (bits[0, 0] >> 2) & 1 == 1
+    assert bits[0, 1] == 0
+
+
+def test_binary_dot_identical_is_dim() -> None:
+    m = _random_matrix(5, 40)
+    bits = binary_quantize(m)
+    scores = binary_dot(bits, bits[2], dim=40)
+    assert scores[2] == 40.0
+    assert scores.argmax() == 2
+
+
+def test_binary_dot_opposite_is_zero() -> None:
+    v = np.linspace(-1, 1, 33, dtype=np.float32).reshape(1, -1)
+    v[v == 0] = 0.5
+    assert binary_dot(binary_quantize(v), binary_quantize(-v)[0], dim=33)[0] == 0.0
+
+
+def test_binary_dot_dim_not_multiple_of_32_ignores_padding() -> None:
+    bits = binary_quantize(np.ones((1, 5), dtype=np.float32))
+    assert binary_dot(bits, bits[0], dim=5)[0] == 5.0
+
+
+def test_binary_dot_preserves_neighbor_order() -> None:
+    rng = np.random.default_rng(3)
+    base = rng.standard_normal((1, 256)).astype(np.float32)
+    near = base + 0.05 * rng.standard_normal((1, 256)).astype(np.float32)
+    far = rng.standard_normal((1, 256)).astype(np.float32)
+    bits = binary_quantize(np.vstack([far, near]))
+    scores = binary_dot(bits, binary_quantize(base)[0], dim=256)
+    assert scores[1] > scores[0]
+
+
+def test_batch_softmax_sums_to_one_and_is_stable() -> None:
+    p = batch_softmax(np.array([1000.0, 1001.0, 999.0], dtype=np.float32))
+    assert p.sum() == pytest.approx(1.0, abs=1e-6)
+    assert p.argmax() == 1
+    assert np.isfinite(p).all()
+
+
+def test_batch_softmax_single_and_empty() -> None:
+    assert batch_softmax(np.array([3.0], dtype=np.float32))[0] == pytest.approx(1.0)
+    assert batch_softmax(np.array([], dtype=np.float32)).size == 0

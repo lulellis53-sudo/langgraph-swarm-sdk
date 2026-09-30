@@ -93,6 +93,19 @@ __kernel void dequant_dot(__global const char *codes,
     for (uint c = 0; c < cols; c++) sum += (float)codes[r * cols + c] * query[c];
     out[r] = sum * scales[r];
 }
+
+__kernel void binary_dot(__global const uint *bits,
+                         __global const uint *query,
+                         __global float *out,
+                         const uint rows,
+                         const uint words,
+                         const uint dim) {
+    uint r = get_global_id(0);
+    if (r >= rows) return;
+    uint distance = 0;
+    for (uint w = 0; w < words; w++) distance += popcount(bits[r * words + w] ^ query[w]);
+    out[r] = (float)dim - (float)distance;
+}
 """
 
 
@@ -156,6 +169,7 @@ class _ClState:
                     "batch_dot",
                     "normalize_dot",
                     "dequant_dot",
+                    "binary_dot",
                 )
             }
             self._device_name = self.ctx.devices[0].name.strip()
@@ -370,6 +384,43 @@ def dequant_dot(int8_matrix: np.ndarray, scales: np.ndarray, query: np.ndarray) 
     if not _use_gpu(codes.shape[0]):
         return ((codes.astype(np.float32) @ query) * scale).astype(np.float32)
     return _launch("dequant_dot", [codes, scale, query], codes.shape[0], *codes.shape)
+
+
+def binary_quantize(matrix: np.ndarray) -> np.ndarray:
+    """Pack sign bits (``>= 0`` is 1) into ``uint32`` words, 32 columns per word."""
+    m = np.asarray(matrix, dtype=np.float32)
+    if m.ndim == 1:
+        m = m.reshape(1, -1)
+    rows, cols = m.shape
+    words = (cols + 31) // 32
+    padded = np.zeros((rows, words * 32), dtype=np.uint8)
+    padded[:, :cols] = m >= 0
+    packed = np.packbits(padded.reshape(rows, words, 32), axis=2, bitorder="little")
+    return np.ascontiguousarray(packed).view(np.uint32).reshape(rows, words)
+
+
+def binary_dot(bits_matrix: np.ndarray, query_bits: np.ndarray, *, dim: int) -> np.ndarray:
+    """``dim - hamming_distance`` per row; higher means more similar."""
+    bits = np.ascontiguousarray(bits_matrix, dtype=np.uint32)
+    query = np.ascontiguousarray(query_bits, dtype=np.uint32).reshape(-1)
+    if bits.shape[1] != query.shape[0]:
+        raise ValueError("query words must match matrix words")
+    if _use_gpu(bits.shape[0]):
+        return _launch(
+            "binary_dot", [bits, query], bits.shape[0], bits.shape[0], bits.shape[1], dim
+        )
+    xor = np.bitwise_xor(bits, query[None, :])
+    distance = np.unpackbits(xor.view(np.uint8), axis=1).sum(axis=1)
+    return (dim - distance).astype(np.float32)
+
+
+def batch_softmax(scores: np.ndarray) -> np.ndarray:
+    """Numerically stable softmax over a 1-D score vector."""
+    s = np.asarray(scores, dtype=np.float32).reshape(-1)
+    if s.size == 0:
+        return s
+    e = np.exp(s - s.max())
+    return (e / e.sum()).astype(np.float32)
 
 
 def topk_ip(
