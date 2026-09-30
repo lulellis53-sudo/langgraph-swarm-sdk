@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from swarm_sdk.observability import metrics
+import pytest
+
+from swarm_sdk.observability import metrics, tracing
 
 
 def test_metrics_calls_never_raise() -> None:
@@ -20,3 +22,15 @@ def test_metrics_enabled_matches_import() -> None:
         assert metrics.ENABLED is False
     else:
         assert metrics.ENABLED is True
+
+
+def test_span_is_a_noop_context_manager() -> None:
+    with tracing.span("swarm.run", mode="swarm", cached=False):
+        value = 1 + 1
+    assert value == 2
+
+
+def test_span_propagates_exceptions() -> None:
+    with pytest.raises(ValueError, match="boom"):
+        with tracing.span("swarm.run"):
+            raise ValueError("boom")
