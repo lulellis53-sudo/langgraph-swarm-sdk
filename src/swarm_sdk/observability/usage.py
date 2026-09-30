@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import polars as pl
-
 
 class UsageLog:
     """Accumulate per-agent token rows and summarize with Polars."""
@@ -30,6 +28,8 @@ class UsageLog:
         """
         if not self._rows:
             return []
+        import polars as pl
+
         frame = pl.DataFrame(self._rows)
         grouped = frame.group_by("agent").agg(pl.col("tokens").sum().alias("tokens"))
         return grouped.sort("agent").to_dicts()
