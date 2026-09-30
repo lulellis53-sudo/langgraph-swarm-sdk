@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import logging
+
 from langchain.chat_models import init_chat_model
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from swarm_sdk.execution.executor import offload
+from swarm_sdk.prompting.budget import count_text
+
+logger = logging.getLogger(__name__)
 
 
 def message_text(message: object) -> str:
@@ -53,6 +58,83 @@ def load_chat_model(model_name: str) -> BaseChatModel:
     return model
 
 
+def message_tokens(message: object) -> int | None:
+    """Return the provider-reported token total for one message, if any."""
+    if isinstance(message, dict):
+        meta = message.get("usage_metadata")
+    else:
+        meta = getattr(message, "usage_metadata", None)
+    if not isinstance(meta, dict):
+        return None
+    total = meta.get("total_tokens")
+    if isinstance(total, int):
+        return total
+    prompt, reply = meta.get("input_tokens"), meta.get("output_tokens")
+    if isinstance(prompt, int) and isinstance(reply, int):
+        return prompt + reply
+    return None
+
+
+def _message_kind(message: object) -> object:
+    if isinstance(message, dict):
+        return message.get("role") or message.get("type")
+    return getattr(message, "type", None)
+
+
+def usage_tokens(messages: list[object]) -> int | None:
+    """Sum provider token totals for AI messages after the last human message.
+
+    Earlier turns are replayed by the checkpointer; counting them would double-charge.
+    Returns ``None`` when no message reports usage.
+    """
+    start = 0
+    for index, message in enumerate(messages):
+        if _message_kind(message) in {"human", "user"}:
+            start = index + 1
+    reported = [t for m in messages[start:] if (t := message_tokens(m)) is not None]
+    return sum(reported) if reported else None
+
+
+async def complete_with_usage(
+    model: BaseChatModel,
+    system: str,
+    user: str,
+    *,
+    json_mode: bool = False,
+) -> tuple[str, int]:
+    """Invoke ``model`` on a system+user pair and return ``(text, tokens)``.
+
+    Args:
+        model: Chat model to call.
+        system: System prompt.
+        user: User / packed prompt body.
+        json_mode: Ask the provider for a JSON object; retried once without it if the
+            provider rejects ``response_format``.
+
+    Returns:
+        The reply text and the provider-reported token total, or an estimate
+        (``count_text`` of system, user and reply) when the provider reports none.
+    """
+
+    def _call() -> tuple[str, int]:
+        messages = [SystemMessage(content=system), HumanMessage(content=user)]
+        result = None
+        if json_mode:
+            try:
+                result = model.bind(response_format={"type": "json_object"}).invoke(messages)
+            except Exception:
+                logger.warning("provider rejected response_format; retrying without it")
+        if result is None:
+            result = model.invoke(messages)
+        text = message_text(result)
+        reported = message_tokens(result)
+        if reported is None:
+            reported = count_text(system) + count_text(user) + count_text(text)
+        return text, reported
+
+    return await offload(_call)
+
+
 async def complete(model: BaseChatModel, system: str, user: str) -> str:
     """Invoke ``model`` on a system+user pair via the shared thread pool.
 
@@ -64,14 +146,8 @@ async def complete(model: BaseChatModel, system: str, user: str) -> str:
     Returns:
         Model reply text.
     """
-
-    def _call() -> str:
-        result = model.invoke(
-            [SystemMessage(content=system), HumanMessage(content=user)],
-        )
-        return message_text(result)
-
-    return await offload(_call)
+    text, _ = await complete_with_usage(model, system, user)
+    return text
 
 
 def last_ai_text(messages: list[object]) -> str:
@@ -99,7 +175,10 @@ def last_ai_text(messages: list[object]) -> str:
 
 __all__ = [
     "complete",
+    "complete_with_usage",
     "last_ai_text",
     "load_chat_model",
     "message_text",
+    "message_tokens",
+    "usage_tokens",
 ]

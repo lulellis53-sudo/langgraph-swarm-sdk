@@ -21,7 +21,7 @@ from swarm_sdk.execution.fanout import fan_out
 from swarm_sdk.gpu import set_enabled as set_opencl_enabled
 from swarm_sdk.memory.base import MemoryHit, MemoryStore
 from swarm_sdk.memory.sqlite_vec import SqliteVecStore
-from swarm_sdk.models.chat import complete, last_ai_text, load_chat_model
+from swarm_sdk.models.chat import complete_with_usage, last_ai_text, load_chat_model, usage_tokens
 from swarm_sdk.models.selection import (
     THINK_TOKEN_BUDGET,
     FallbackChain,
@@ -36,9 +36,7 @@ from swarm_sdk.retrieval.hybrid import hybrid_search
 from swarm_sdk.retrieval.recall import recall_texts
 from swarm_sdk.retrieval.rerank import FastEmbedReranker, KeywordReranker, Reranker
 
-ROUTER_SYSTEM = (
-    'Route work. Reply with JSON only: {"mode":"parallel" or "swarm","tasks":[]}.'
-)
+ROUTER_SYSTEM = 'Route work. Reply with JSON only: {"mode":"parallel" or "swarm","tasks":[]}.'
 RESEARCHER_PROMPT = "You are the researcher. Use only the supplied context. Be brief."
 CODER_PROMPT = "You are the coder. Be brief."
 REVIEWER_PROMPT = "You are the reviewer. Be brief."
@@ -65,6 +63,17 @@ class RunResult(BaseModel):
 class RouteDecision(BaseModel):
     mode: Literal["parallel", "swarm"] = "swarm"
     tasks: list[str] = Field(default_factory=list)
+
+
+def _parse_route(raw: str) -> RouteDecision:
+    """Parse router output, defaulting to ``RouteDecision()`` on anything malformed."""
+    match = _JSON_OBJECT.search(raw)
+    if match is None:
+        return RouteDecision()
+    try:
+        return RouteDecision.model_validate(json.loads(match.group(0)))
+    except json.JSONDecodeError, ValidationError:
+        return RouteDecision()
 
 
 def _fastembed_available() -> bool:
@@ -222,7 +231,7 @@ class SwarmSDK:
         self._cap_tokens(self.file_config.router.think_level)
         memories = await offload(self._recall, text)
         packed = self.budget.pack(system=ROUTER_SYSTEM, memories=memories, turns=[text])
-        route = await self._route(packed)
+        route, route_tokens = await self._route(packed)
         if route.mode == "parallel" and route.tasks:
             answer, tokens = await fan_out(
                 self._specialist(),
@@ -234,6 +243,7 @@ class SwarmSDK:
         else:
             answer, tokens, agent = await self._swarm(packed, thread_id)
             mode = "swarm"
+        tokens += route_tokens
         await offload(self.cache.store, text, answer)
         await offload(self._remember, text, answer)
         self.usage.add(agent, tokens, False)
@@ -288,26 +298,16 @@ class SwarmSDK:
         vector = self.embedder.embed([record], query=False)[0]
         self.memory.add(record, vector)
 
-    async def _route(self, packed: PackedPrompt) -> RouteDecision:
+    async def _route(self, packed: PackedPrompt) -> tuple[RouteDecision, int]:
         if self._router_model is not None:
-            raw = await complete(self._router_model, ROUTER_SYSTEM, packed.text)
+            raw, tokens = await complete_with_usage(self._router_model, ROUTER_SYSTEM, packed.text)
         else:
-            raw = await self._fallback.complete(
+            raw, tokens = await self._fallback.complete_with_usage(
                 ROUTER_SYSTEM,
                 packed.text,
                 think_level=self.file_config.router.think_level,
             )
-        match = _JSON_OBJECT.search(raw)
-        if match is None:
-            return RouteDecision()
-        try:
-            payload = json.loads(match.group(0))
-        except json.JSONDecodeError:
-            return RouteDecision()
-        try:
-            return RouteDecision.model_validate(payload)
-        except ValidationError:
-            return RouteDecision()
+        return _parse_route(raw), tokens
 
     async def _swarm(self, packed: PackedPrompt, thread_id: str) -> tuple[str, int, str]:
         graph = self._graph()
@@ -329,7 +329,12 @@ class SwarmSDK:
             messages = []
         answer = last_ai_text(messages)
         agent = state.get("active_agent") or "researcher"
-        tokens = self.budget.count(packed.text) + self.budget.count(answer)
+        reported = usage_tokens(messages)
+        tokens = (
+            reported
+            if reported is not None
+            else self.budget.count(packed.text) + self.budget.count(answer)
+        )
         return answer, tokens, str(agent)
 
     def _router(self) -> BaseChatModel:

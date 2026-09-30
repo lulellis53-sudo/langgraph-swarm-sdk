@@ -9,7 +9,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from swarm_sdk.models.breaker import BreakerConfig, CircuitBreaker, CircuitOpenError
-from swarm_sdk.models.chat import complete, load_chat_model
+from swarm_sdk.models.chat import complete_with_usage, load_chat_model
 
 ThinkLevel = Literal["off", "low", "medium", "high", "xhigh"]
 
@@ -95,15 +95,28 @@ class FallbackChain:
         }
 
     async def complete(self, system: str, user: str, think_level: ThinkLevel | None = None) -> str:
+        """Complete a prompt via the first healthy route; see :meth:`complete_with_usage`."""
+        text, _ = await self.complete_with_usage(system, user, think_level)
+        return text
+
+    async def complete_with_usage(
+        self,
+        system: str,
+        user: str,
+        think_level: ThinkLevel | None = None,
+        *,
+        json_mode: bool = False,
+    ) -> tuple[str, int]:
         """Complete a prompt via the first healthy route that supports ``think_level``.
 
         Args:
             system: System prompt.
             user: User / packed prompt body.
             think_level: Optional think level filter.
+            json_mode: Ask the provider for a JSON object.
 
         Returns:
-            Model reply text from the first successful provider.
+            ``(reply text, tokens)`` from the first successful provider.
 
         Raises:
             ValueError: If no route supports the think level.
@@ -126,7 +139,7 @@ class FallbackChain:
                 continue  # provider is down, fall through to next route
             try:
                 model = load_chat_model(route.name)
-                result = await complete(model, system, user)
+                result = await complete_with_usage(model, system, user, json_mode=json_mode)
             except CircuitOpenError:
                 continue
             except Exception as exc:  # noqa: BLE001 - any provider error trips the breaker

@@ -7,12 +7,14 @@ import time
 from pathlib import Path
 
 import numpy as np
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from tests.fakes import Script, ScriptedModel, answer, handoff
 
 from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import SwarmSDK
 from swarm_sdk.memory.opencl_store import OpenClVecStore
+from swarm_sdk.models.chat import complete_with_usage, message_tokens, usage_tokens
+from swarm_sdk.models.selection import FallbackChain, ModelRoute, ModelSelectConfig
 from swarm_sdk.retrieval.cache import SemanticCache
 from swarm_sdk.retrieval.embeddings import HashEmbedder, unit
 from swarm_sdk.retrieval.rerank import IdentityReranker
@@ -237,3 +239,86 @@ def test_indexed_cache_skips_wrong_dim_blobs(tmp_path: Path) -> None:
 def test_indexed_cache_empty_db(tmp_path: Path) -> None:
     cache = SemanticCache(str(tmp_path / "c.db"), HashEmbedder(16), use_index=True)
     assert cache.lookup("x") is None
+
+
+def _ai(text: str, total: int | None) -> AIMessage:
+    meta = (
+        None
+        if total is None
+        else {"input_tokens": 1, "output_tokens": total - 1, "total_tokens": total}
+    )
+    return AIMessage(content=text, usage_metadata=meta)
+
+
+def test_message_tokens_reads_total_and_falls_back_to_sum() -> None:
+    assert message_tokens(_ai("x", 9)) == 9
+    partial = {
+        "role": "assistant",
+        "content": "x",
+        "usage_metadata": {"input_tokens": 3, "output_tokens": 4},
+    }
+    assert message_tokens(partial) == 7
+    assert message_tokens(_ai("x", None)) is None
+    assert message_tokens({"role": "assistant", "content": "x"}) is None
+
+
+def test_usage_tokens_counts_only_current_turn() -> None:
+    history = [
+        HumanMessage(content="old"),
+        _ai("old-a", 100),
+        HumanMessage(content="new"),
+        _ai("new-a", 7),
+    ]
+    assert usage_tokens(history) == 7
+    assert usage_tokens([HumanMessage(content="q"), _ai("a", None)]) is None
+
+
+async def test_complete_with_usage_prefers_provider_count() -> None:
+    model = ScriptedModel(script=Script([_ai("hello", 42)]))
+    assert await complete_with_usage(model, "sys", "user") == ("hello", 42)
+
+
+async def test_complete_with_usage_estimates_when_provider_silent() -> None:
+    model = ScriptedModel(script=Script([answer("hello there")]))
+    text, tokens = await complete_with_usage(model, "sys", "user")
+    assert text == "hello there"
+    assert tokens > 0
+
+
+class _RejectsResponseFormat(ScriptedModel):
+    def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+        if "response_format" in kwargs:
+            raise ValueError("response_format unsupported")
+        return super()._generate(messages, stop, run_manager, **kwargs)
+
+
+async def test_json_mode_falls_back_when_provider_rejects() -> None:
+    model = _RejectsResponseFormat(script=Script([_ai("plain", 5)]))
+    assert await complete_with_usage(model, "s", "u", json_mode=True) == ("plain", 5)
+
+
+async def test_fallback_chain_reports_usage_and_complete_stays_str(monkeypatch) -> None:
+    model = ScriptedModel(script=Script([_ai("hi", 7)]))
+    monkeypatch.setattr("swarm_sdk.models.selection.load_chat_model", lambda name: model)
+    chain = FallbackChain(ModelSelectConfig(routes=[ModelRoute(name="x:y", provider="x")]))
+    assert await chain.complete_with_usage("s", "u") == ("hi", 7)
+    assert await chain.complete("s", "u") == "hi"
+
+
+async def test_run_tokens_are_provider_reported_swarm(tmp_path: Path) -> None:
+    router = ScriptedModel(script=Script([_ai('{"mode":"swarm","tasks":[]}', 10)]))
+    specialist = ScriptedModel(script=Script([_ai("ok", 32)]))
+    sdk = _sdk(tmp_path, router=router, specialist=specialist)
+    result = await sdk.run("please answer", "thread")
+    assert result.tokens == 10 + 32
+
+
+async def test_run_tokens_are_provider_reported_parallel(tmp_path: Path) -> None:
+    router = ScriptedModel(
+        script=Script([_ai('{"mode":"parallel","tasks":["a task","b task"]}', 10)])
+    )
+    specialist = ScriptedModel(script=Script([_ai("done", 5)]))
+    sdk = _sdk(tmp_path, router=router, specialist=specialist)
+    result = await sdk.run("please answer", "thread")
+    assert result.mode == "parallel"
+    assert result.tokens == 10 + 3 * 5

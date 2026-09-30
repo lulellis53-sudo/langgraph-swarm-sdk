@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from swarm_sdk.prompting.budget import count_text
-
 TASK_SYSTEM = "Answer only the task. Be brief."
 SYNTH_SYSTEM = "Merge the JSON briefs into one short answer."
 
@@ -61,26 +59,26 @@ async def fan_out(
     """
     from langchain_core.language_models.chat_models import BaseChatModel
 
-    from swarm_sdk.models.chat import complete
+    from swarm_sdk.models.chat import complete_with_usage
     from swarm_sdk.models.selection import bounded_gather
 
     if not isinstance(model, BaseChatModel):
         raise TypeError("fan_out requires a chat model")
 
     async def one(task: str) -> SpecialistResult:
-        answer = await complete(model, TASK_SYSTEM, task)
+        answer, answer_tokens = await complete_with_usage(model, TASK_SYSTEM, task)
         payload = HandoffPayload(
             summary=answer[:280],
             ask=task[:200],
             facts=[answer[:120]] if answer else [],
         )
-        return SpecialistResult(agent=agent, payload=payload, tokens=count_text(answer))
+        return SpecialistResult(agent=agent, payload=payload, tokens=answer_tokens)
 
     factories = [lambda t=task: one(t) for task in tasks]
     results = await bounded_gather(factories, max_concurrency=max_concurrency)
     brief = "\n".join(item.payload.model_dump_json() for item in results)
-    merged = await complete(model, SYNTH_SYSTEM, brief)
-    tokens = sum(item.tokens for item in results) + count_text(brief) + count_text(merged)
+    merged, merged_tokens = await complete_with_usage(model, SYNTH_SYSTEM, brief)
+    tokens = sum(item.tokens for item in results) + merged_tokens
     return merged, tokens
 
 
