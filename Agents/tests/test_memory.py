@@ -299,3 +299,42 @@ def test_sqlite_store_uses_wal(tmp_path: Path) -> None:
     mode = store._conn.execute("PRAGMA journal_mode").fetchone()[0]
     store.close()
     assert mode.lower() == "wal"
+
+
+@pytest.mark.parametrize("mode", ["none", "int8", "binary"])
+def test_quantized_store_finds_exact_neighbor(mode: str) -> None:
+    store = OpenClVecStore(dim=64, quantize=mode)
+    rng = np.random.default_rng(1)
+    vectors = rng.standard_normal((50, 64)).astype(np.float32)
+    for i, v in enumerate(vectors):
+        store.add(f"t{i}", v)
+    hit = store.search(vectors[7], 1)[0]
+    assert hit.text == "t7"
+    assert hit.score == pytest.approx(1.0, abs=0.02)
+
+
+def test_quantized_store_uses_less_memory() -> None:
+    def filled(mode: str) -> int:
+        s = OpenClVecStore(dim=256, quantize=mode)
+        for i in range(64):
+            s.add(str(i), np.random.default_rng(i).standard_normal(256).astype(np.float32))
+        return s.resident_bytes
+
+    none, int8, binary = filled("none"), filled("int8"), filled("binary")
+    assert int8 < none / 3
+    assert binary < int8 / 4
+
+
+def test_binary_store_ring_buffer_keeps_ids_and_texts_aligned() -> None:
+    store = OpenClVecStore(dim=32, max_vectors=3, chunk_rows=1, quantize="binary")
+    rng = np.random.default_rng(5)
+    vecs = [rng.standard_normal(32).astype(np.float32) for _ in range(5)]
+    ids = [store.add(f"t{i}", v) for i, v in enumerate(vecs)]
+    hit = store.search(vecs[4], 1)[0]
+    assert hit.text == "t4"
+    assert hit.id == ids[4]
+
+
+def test_store_rejects_unknown_quantize_mode() -> None:
+    with pytest.raises(ValueError):
+        OpenClVecStore(dim=4, quantize="fp4")  # type: ignore[arg-type]
