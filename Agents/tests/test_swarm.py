@@ -368,3 +368,54 @@ async def test_route_with_empty_suffix_still_sends_a_user_message(tmp_path: Path
     sdk = sdk_with_router(tmp_path, "", router=ScriptedModel(script=script))
     await sdk._route(PackedPrompt(system="only-system", user=""))
     assert script.seen == ["only-system"]
+
+
+def _capped_sdk(tmp_path: Path, max_threads: int) -> SwarmSDK:
+    model = ScriptedModel(script=Script([answer("x")]))
+    return SwarmSDK(
+        _settings(tmp_path),
+        router_model=model,
+        specialist_model=model,
+        embedder=HashEmbedder(32),
+        reranker=IdentityReranker(),
+        memory=OpenClVecStore(32),
+        max_threads=max_threads,
+    )
+
+
+def test_thread_registry_evicts_oldest(tmp_path: Path) -> None:
+    sdk = _capped_sdk(tmp_path, 8)
+    for n in range(20):
+        sdk._register_thread(f"t{n}")
+    assert len(sdk._threads) <= 8
+    assert "t19" in sdk._threads
+    assert "t0" not in sdk._threads
+
+
+def test_thread_registry_reregistering_keeps_thread(tmp_path: Path) -> None:
+    sdk = _capped_sdk(tmp_path, 4)
+    for n in range(4):
+        assert sdk._register_thread(f"t{n}") is True
+    assert sdk._register_thread("t3") is False
+    assert len(sdk._threads) == 4
+
+
+def test_evicted_thread_can_start_again(tmp_path: Path) -> None:
+    sdk = _capped_sdk(tmp_path, 4)
+    for n in range(10):
+        sdk._register_thread(f"t{n}")
+    assert sdk._register_thread("t0") is True
+
+
+def test_eviction_deletes_checkpointer_state(tmp_path: Path, monkeypatch) -> None:
+    sdk = _capped_sdk(tmp_path, 4)
+    deleted: list[str] = []
+    monkeypatch.setattr(sdk._checkpointer, "delete_thread", deleted.append)
+    for n in range(6):
+        sdk._register_thread(f"t{n}")
+    assert deleted and deleted[0] == "t0"
+
+
+def test_max_threads_must_be_at_least_two(tmp_path: Path) -> None:
+    with pytest.raises(ValueError):
+        _capped_sdk(tmp_path, 1)
