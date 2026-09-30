@@ -12,7 +12,7 @@ embedding:
   dim: 1024
   batch_size: 8
   normalize: true
-  quantization: int8
+  # GGUF weights are Q8_0; emitted embeddings are float32 until SQLite quantizes them to INT8.
 
 vectorstore:
   backend: sqlite-vec
