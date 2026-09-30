@@ -290,3 +290,12 @@ def test_dedupe_never_grows_and_keeps_order(texts: list[str], threshold: float) 
             cursor += 1
         assert cursor < len(texts)
         cursor += 1
+
+
+def test_sqlite_store_uses_wal(tmp_path: Path) -> None:
+    from swarm_sdk.memory.sqlite_vec import SqliteVecStore
+
+    store = SqliteVecStore(str(tmp_path / "m.db"), 8)
+    mode = store._conn.execute("PRAGMA journal_mode").fetchone()[0]
+    store.close()
+    assert mode.lower() == "wal"

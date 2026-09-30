@@ -159,3 +159,8 @@ async def test_semantic_cache_hit_does_not_call_the_model(tmp_path: Path) -> Non
     assert second.cached is True
     assert second.text == "semantic-answer"
     assert model.script.calls == calls
+
+
+def test_semantic_cache_uses_wal(tmp_path: Path) -> None:
+    cache = SemanticCache(str(tmp_path / "c.db"), HashEmbedder(16))
+    assert cache._conn.execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"

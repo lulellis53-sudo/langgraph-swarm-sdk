@@ -25,6 +25,7 @@ class SemanticCache:
         self.threshold = threshold
         self._lock = threading.Lock()
         self._conn = sqlite3.connect(path, check_same_thread=False)
+        self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute(
             """
             CREATE TABLE IF NOT EXISTS exact_cache (

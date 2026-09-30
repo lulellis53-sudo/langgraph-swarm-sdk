@@ -27,6 +27,7 @@ class SqliteVecStore:
         self.dim = dim
         self._lock = threading.Lock()
         self._conn = sqlite3.connect(path, check_same_thread=False)
+        self._conn.execute("PRAGMA journal_mode=WAL")
         self._sqlite_vec = False
         enable_extension = getattr(self._conn, "enable_load_extension", None)
         try:
