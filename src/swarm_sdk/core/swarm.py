@@ -188,6 +188,7 @@ class SwarmSDK:
                 self.settings.cache_path,
                 self.embedder,
                 self.settings.semantic_threshold,
+                ttl_days=self.settings.cache_ttl_days,
             )
         return self._cache
 

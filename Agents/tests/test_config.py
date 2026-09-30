@@ -60,3 +60,11 @@ def test_agent_manifests_and_coordination() -> None:
     }
     assert manifests["Researcher"].model == "openai:gpt-4o-mini"
     assert validate_coordination(root) == []
+
+
+def test_new_settings_defaults_preserve_behavior() -> None:
+    s = Settings()
+    assert s.opencl_quantize == "none"
+    assert s.semantic_cache_on_gpu is False
+    assert s.cache_ttl_days is None
+    assert s.router_structured_output is True

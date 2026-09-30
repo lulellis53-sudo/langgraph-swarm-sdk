@@ -67,6 +67,10 @@ class Settings(BaseSettings):
     llama_n_ctx: int = Field(default=2048, ge=1)
     llama_n_batch: int = Field(default=8, ge=1)
     opencl_enabled: bool = True
+    opencl_quantize: Literal["none", "int8", "binary"] = "none"
+    semantic_cache_on_gpu: bool = False
+    cache_ttl_days: int | None = Field(default=None, ge=1)
+    router_structured_output: bool = True
 
 
 def load_merged_settings(

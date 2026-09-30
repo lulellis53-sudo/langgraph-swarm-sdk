@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sqlite3
+import time
 from pathlib import Path
 
 import numpy as np
@@ -164,3 +166,40 @@ async def test_semantic_cache_hit_does_not_call_the_model(tmp_path: Path) -> Non
 def test_semantic_cache_uses_wal(tmp_path: Path) -> None:
     cache = SemanticCache(str(tmp_path / "c.db"), HashEmbedder(16))
     assert cache._conn.execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"
+
+
+def test_semantic_cache_ttl_evicts_old_rows(tmp_path: Path) -> None:
+    path = str(tmp_path / "c.db")
+    embedder = HashEmbedder(16)
+    cache = SemanticCache(path, embedder)
+    cache.store("old question", "old answer")
+    old = time.time() - 10 * 86400
+    cache._conn.execute("UPDATE exact_cache SET inserted_at = ?", (old,))
+    cache._conn.execute("UPDATE semantic_cache SET inserted_at = ?", (old,))
+    cache._conn.commit()
+    cache._conn.close()
+
+    fresh = SemanticCache(path, embedder, ttl_days=1)
+    assert fresh.lookup("old question") is None
+
+
+def test_semantic_cache_ttl_none_keeps_rows(tmp_path: Path) -> None:
+    path = str(tmp_path / "c.db")
+    embedder = HashEmbedder(16)
+    SemanticCache(path, embedder).store("q", "a")
+    assert SemanticCache(path, embedder).lookup("q") == "a"
+
+
+def test_semantic_cache_migrates_legacy_schema(tmp_path: Path) -> None:
+    path = str(tmp_path / "legacy.db")
+    conn = sqlite3.connect(path)
+    conn.execute("CREATE TABLE exact_cache (key TEXT PRIMARY KEY, response TEXT NOT NULL)")
+    conn.execute(
+        "CREATE TABLE semantic_cache (id INTEGER PRIMARY KEY, vector BLOB NOT NULL, "
+        "response TEXT NOT NULL)"
+    )
+    conn.commit()
+    conn.close()
+    cache = SemanticCache(path, HashEmbedder(16), ttl_days=7)
+    cache.store("q", "a")
+    assert cache.lookup("q") == "a"

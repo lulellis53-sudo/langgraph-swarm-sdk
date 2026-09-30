@@ -6,6 +6,7 @@ import hashlib
 import re
 import sqlite3
 import threading
+import time
 
 import numpy as np
 
@@ -20,9 +21,19 @@ def normalize(text: str) -> str:
 
 
 class SemanticCache:
-    def __init__(self, path: str, embedder: Embedder, threshold: float = 0.97) -> None:
+    def __init__(
+        self,
+        path: str,
+        embedder: Embedder,
+        threshold: float = 0.97,
+        *,
+        ttl_days: int | None = None,
+        use_index: bool = False,
+    ) -> None:
         self.embedder = embedder
         self.threshold = threshold
+        self.ttl_days = ttl_days
+        self.use_index = use_index
         self._lock = threading.Lock()
         self._conn = sqlite3.connect(path, check_same_thread=False)
         self._conn.execute("PRAGMA journal_mode=WAL")
@@ -43,6 +54,17 @@ class SemanticCache:
             )
             """
         )
+        for table in ("exact_cache", "semantic_cache"):
+            columns = {row[1] for row in self._conn.execute(f"PRAGMA table_info({table})")}
+            if "inserted_at" not in columns:
+                self._conn.execute(f"ALTER TABLE {table} ADD COLUMN inserted_at REAL")
+        if ttl_days is not None:
+            cutoff = time.time() - ttl_days * 86400
+            for table in ("exact_cache", "semantic_cache"):
+                self._conn.execute(
+                    f"DELETE FROM {table} WHERE inserted_at IS NOT NULL AND inserted_at < ?",
+                    (cutoff,),
+                )
         self._conn.commit()
 
     def lookup(self, text: str) -> str | None:
@@ -81,13 +103,14 @@ class SemanticCache:
         vector = np.ascontiguousarray(unit(self.embedder.embed([text])[0]), dtype=np.float32)
         blob = vector.tobytes()
         with self._lock:
+            now = time.time()
             self._conn.execute(
-                "INSERT OR REPLACE INTO exact_cache(key, response) VALUES (?, ?)",
-                (key, response),
+                "INSERT OR REPLACE INTO exact_cache(key, response, inserted_at) VALUES (?, ?, ?)",
+                (key, response, now),
             )
             self._conn.execute(
-                "INSERT INTO semantic_cache(vector, response) VALUES (?, ?)",
-                (blob, response),
+                "INSERT INTO semantic_cache(vector, response, inserted_at) VALUES (?, ?, ?)",
+                (blob, response, now),
             )
             self._conn.commit()
 
