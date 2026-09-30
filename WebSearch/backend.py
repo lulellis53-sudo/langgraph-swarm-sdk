@@ -1,4 +1,8 @@
-"""Backend: HTML extractors (selectolax, trafilatura, bs4) and text normalization."""
+"""Backend: HTML extractors and text normalization.
+
+Order from ``providers.yaml``: selectolax, selectolax_regex, regex,
+trafilatura, bs4. Missing optional libs skip to the next extractor.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +14,11 @@ from typing import Literal
 from WebSearch.frontend.providers import ExtractorName, ProvidersConfig, load_providers
 
 _WS = re.compile(r"\s+")
+_TAG = re.compile(r"<[^>]+>", re.IGNORECASE)
+_SCRIPT = re.compile(
+    r"<script\b[^>]*>.*?</script>|<style\b[^>]*>.*?</style>",
+    re.IGNORECASE | re.DOTALL,
+)
 
 ExtractorUsed = ExtractorName | Literal["fallback"]
 
@@ -22,11 +31,26 @@ class ExtractedDoc:
 
 
 def normalize_text(text: str) -> str:
-    """Collapse whitespace and strip. Shared post-step for every extractor."""
+    """Collapse whitespace and strip. Shared post-step for every extractor.
+
+    Args:
+        text (str): Raw extracted text.
+
+    Returns:
+        str: Single-line-ish normalized text.
+    """
     return _WS.sub(" ", text).strip()
 
 
 def type_is_extracted(value: object) -> bool:
+    """Return whether *value* is an ``ExtractedDoc``.
+
+    Args:
+        value (object): Candidate object.
+
+    Returns:
+        bool: True if ``ExtractedDoc``.
+    """
     return isinstance(value, ExtractedDoc)
 
 
@@ -36,7 +60,16 @@ def extract_and_normalize(
     url: str = "",
     config: ProvidersConfig | None = None,
 ) -> ExtractedDoc:
-    """Try extractors in yaml order; always run ``normalize_text`` on the winner."""
+    """Try extractors in yaml order; always run ``normalize_text`` on the winner.
+
+    Args:
+        html (str): Page HTML.
+        url (str): Source URL stored on the doc.
+        config (ProvidersConfig | None): Extractor order.
+
+    Returns:
+        ExtractedDoc: Normalized text and which extractor produced it.
+    """
     order = (config or load_providers()).extractor_order
     last_text = ""
     used: ExtractorUsed = "fallback"
@@ -55,6 +88,10 @@ def extract_and_normalize(
 def _extract_with(name: ExtractorName, html: str) -> str:
     if name == "selectolax":
         return _selectolax(html)
+    if name == "selectolax_regex":
+        return _selectolax_regex(html)
+    if name == "regex":
+        return _regex(html)
     if name == "trafilatura":
         return _trafilatura(html)
     return _bs4(html)
@@ -71,6 +108,21 @@ def _selectolax(html: str) -> str:
     body = tree.body
     raw = body.text(separator="\n") if body is not None else tree.text()
     return raw or ""
+
+
+def _selectolax_regex(html: str) -> str:
+    """selectolax text, then regex whitespace/script leftovers."""
+    raw = _selectolax(html)
+    if not raw:
+        return ""
+    cleaned = _SCRIPT.sub(" ", raw)
+    return _TAG.sub(" ", cleaned)
+
+
+def _regex(html: str) -> str:
+    """Tag-strip with regex only (no parser extras)."""
+    without_chrome = _SCRIPT.sub(" ", html)
+    return _strip_tags(without_chrome)
 
 
 def _trafilatura(html: str) -> str:
@@ -94,7 +146,7 @@ def _bs4(html: str) -> str:
 
 
 def _strip_tags(html: str) -> str:
-    return re.sub(r"<[^>]+>", " ", html)
+    return _TAG.sub(" ", html)
 
 
 __all__ = [

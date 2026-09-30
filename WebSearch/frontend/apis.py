@@ -50,18 +50,24 @@ def _httpx_json(
     Raises:
         TimeoutError, OSError, ConnectionError: After retries.
     """
-    import httpx
+    try:
+        import httpx
+    except ImportError as exc:
+        raise OSError("httpx not installed") from exc
 
-    response = httpx.request(
-        method,
-        url,
-        headers=headers,
-        json=json_body,
-        params=params,
-        timeout=20.0,
-    )
-    response.raise_for_status()
-    return response.json()
+    try:
+        response = httpx.request(
+            method,
+            url,
+            headers=headers,
+            json=json_body,
+            params=params,
+            timeout=20.0,
+        )
+        response.raise_for_status()
+        return response.json()
+    except httpx.HTTPError as exc:
+        raise OSError(str(exc)) from exc
 
 
 def search_brave(query: str, spec: SearcherSpec) -> list[SearchHit]:
