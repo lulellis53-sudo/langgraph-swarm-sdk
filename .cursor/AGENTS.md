@@ -52,7 +52,7 @@ Repo (outside .cursor/) that agents must respect:
 ├── AGENTS.md           # Project-wide coding / Swarm map
 ├── Agents/             # Swarm personas, tests/, shared benchmark/
 ├── Main/               # Embeddings/vectorstore re-exports, YAML, Essentials
-├── WebSearch/          # Reserved empty folder for a new feature
+├── WebSearch/          # Frontend → midend → backend search pipeline
 ├── src/swarm_sdk/      # Library (pb/, orchestrator/, …)
 └── pyproject.toml      # Project metadata (stays at repo root)
 ```

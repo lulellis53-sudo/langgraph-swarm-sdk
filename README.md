@@ -91,7 +91,7 @@ Token savings: shared role-contract prompt cached per process, exact + semantic 
 
 gRPC: `SwarmService.SpawnPlan` (goal → plan handle), `RunPlan` (handle → per-step outputs + usage), `PlanStatus` (poll for long plans). Manifests may set `api_key_env: SWARM_<NAME>_API_KEY` — the env var *name*, never the key value.
 
-Predefined providers and routes live in [`src/swarm_sdk/agents/config/swarm.yaml`](src/swarm_sdk/agents/config/swarm.yaml) (human-facing symlinks under [`Main/config/`](Main/config/)). Per-agent roles, models, and tasks live in [`Agents/{Name}/agent.yaml`](Agents/Tester/agent.yaml) (see [`Agents/README.md`](Agents/README.md)). [`WebSearch/`](WebSearch/) is reserved for a new feature. `SWARM_*` env vars override file defaults. Open [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace) for a multi-root editor layout.
+Predefined providers and routes live in [`src/swarm_sdk/agents/config/swarm.yaml`](src/swarm_sdk/agents/config/swarm.yaml) (human-facing symlinks under [`Main/config/`](Main/config/)). Per-agent roles, models, and tasks live in [`Agents/{Name}/agent.yaml`](Agents/Tester/agent.yaml) (see [`Agents/README.md`](Agents/README.md)). [`WebSearch/`](WebSearch/) is a search/scrape pipeline (`frontend/` → `midend.py` → `backend.py`, config in `providers.yaml`). `SWARM_*` env vars override file defaults. Open [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace) for a multi-root editor layout.
 
 ## Token path
 
@@ -112,3 +112,19 @@ uv run --extra dev ruff check src Agents/tests Agents/benchmark Main
 uv run --extra dev ty check src Agents/tests Agents/benchmark Main
 uv run python -m swarm_sdk.agents.validate
 ```
+
+## Local CPython 3.14.7 runtime
+
+The standalone x86_64 CPython 3.14.7 build is available inside this checkout at
+`.runtime/cpython-3.14.7/bin/python3.14` (the local runtime path points to the
+installed build under `~/.local/opt`). Select that interpreter when creating a
+project virtual environment, for example:
+
+```bash
+uv venv --python .runtime/cpython-3.14.7/bin/python3.14 .venv-cpython3147
+```
+
+Keep the normal project `.venv` unless you intentionally want to recreate it.
+GPU benchmark commands and measured runs are documented in
+[`Agents/benchmark/README.md`](Agents/benchmark/README.md); they use the current
+project environment.

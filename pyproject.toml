@@ -108,6 +108,11 @@ jupyter = [
     "notebook>=7",
     "pip>=25",
 ]
+websearch = [
+    "selectolax>=0.3",
+    "trafilatura>=2.0",
+    "beautifulsoup4>=4.12",
+]
 
 [project.scripts]
 swarm-api = "swarm_sdk.serving.http:main"
@@ -126,7 +131,7 @@ packages = ["src/swarm_sdk"]
 [tool.ruff]
 line-length = 100
 target-version = "py314"
-src = ["src", "Agents/tests", "Agents/benchmark"]
+src = ["src", "Agents/tests", "Agents/benchmark", "WebSearch"]
 extend-exclude = ["src/swarm_sdk/pb"]
 
 [tool.ruff.lint]
