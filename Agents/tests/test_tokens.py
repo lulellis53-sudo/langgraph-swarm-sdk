@@ -7,7 +7,7 @@ import threading
 import hypothesis.strategies as st
 from hypothesis import assume, given, settings
 
-from swarm_sdk.observability.usage import UsageLog
+from swarm_sdk.observability.usage import UsageLog, estimate_cost_usd
 from swarm_sdk.prompting import budget
 from swarm_sdk.prompting.budget import TokenBudget, count_text
 
@@ -159,3 +159,26 @@ def test_count_text_cache_threadsafe() -> None:
         t.join()
     assert not errors
     assert len(budget._COUNT_CACHE) <= budget._COUNT_CACHE_MAX
+
+
+def test_usage_add_new_kwargs_are_optional() -> None:
+    log = UsageLog()
+    log.add("coder", 10, False)
+    assert log.summary() == [
+        {"agent": "coder", "tokens": 10, "latency_ms_total": 0.0, "cost_estimate_usd": 0.0}
+    ]
+
+
+def test_usage_summary_sums_latency_and_cost() -> None:
+    log = UsageLog()
+    log.add("coder", 1000, False, latency_ms=12.5, model="openai:gpt-4o-mini")
+    log.add("coder", 1000, False, latency_ms=7.5, model="openai:gpt-4o-mini")
+    (row,) = log.summary()
+    assert row["tokens"] == 2000
+    assert row["latency_ms_total"] == 20.0
+    assert row["cost_estimate_usd"] > 0.0
+
+
+def test_estimate_cost_unknown_model_is_zero() -> None:
+    assert estimate_cost_usd("nope:model", 5000) == 0.0
+    assert estimate_cost_usd("", 5000) == 0.0
