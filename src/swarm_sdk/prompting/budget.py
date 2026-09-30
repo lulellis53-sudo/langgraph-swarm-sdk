@@ -6,6 +6,7 @@ Default counting uses **tiktoken** (``cl100k_base``). Pass a Hugging Face
 
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -16,6 +17,9 @@ _WHITESPACE = Whitespace()
 _DEFAULT_TIKTOKEN = "cl100k_base"
 _ENCODING_CACHE: dict[str, Any] = {}
 _ENCODING_MISSING: set[str] = set()
+_COUNT_CACHE: dict[tuple[int, int], int] = {}
+_COUNT_CACHE_MAX = 512
+_COUNT_LOCK = threading.Lock()
 
 
 class _HasEncode(Protocol):
@@ -84,12 +88,24 @@ def count_text(text: str, tokenizer: _HasEncode | None = None) -> int:
     """
     if not text:
         return 0
+    key = (hash(text), id(tokenizer) if tokenizer is not None else 0)
+    cached = _COUNT_CACHE.get(key)
+    if cached is not None:
+        return cached
     if tokenizer is not None:
-        return _count_with(tokenizer, text)
-    encoding = _tiktoken_encoding()
-    if encoding is not None:
-        return _count_with(encoding, text)
-    return len(_WHITESPACE.pre_tokenize_str(text))
+        count = _count_with(tokenizer, text)
+    else:
+        encoding = _tiktoken_encoding()
+        if encoding is not None:
+            count = _count_with(encoding, text)
+        else:
+            count = len(_WHITESPACE.pre_tokenize_str(text))
+    with _COUNT_LOCK:
+        if len(_COUNT_CACHE) >= _COUNT_CACHE_MAX:
+            for stale in list(_COUNT_CACHE)[: _COUNT_CACHE_MAX // 2]:
+                del _COUNT_CACHE[stale]
+        _COUNT_CACHE[key] = count
+    return count
 
 
 @dataclass(frozen=True)

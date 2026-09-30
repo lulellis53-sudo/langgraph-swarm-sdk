@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import threading
+
 import hypothesis.strategies as st
 from hypothesis import assume, given, settings
 
 from swarm_sdk.observability.usage import UsageLog
+from swarm_sdk.prompting import budget
 from swarm_sdk.prompting.budget import TokenBudget, count_text
 
 _TEXT = st.text(alphabet=st.characters(blacklist_categories=("Cs", "Cc")), max_size=64)
@@ -102,3 +105,57 @@ def test_token_budget_rejects_non_positive_max(max_tokens: int) -> None:
     except ValueError:
         return
     raise AssertionError("expected ValueError for max_tokens < 1")
+
+
+class _CountingTok:
+    def __init__(self, per_char: int = 1) -> None:
+        self.calls = 0
+        self.per_char = per_char
+
+    def encode(self, text: str) -> list[int]:
+        self.calls += 1
+        return [0] * (len(text) * self.per_char)
+
+
+def test_count_text_cache_avoids_reencode() -> None:
+    budget._COUNT_CACHE.clear()
+    tok = _CountingTok()
+    assert count_text("hello world", tok) == 11
+    assert count_text("hello world", tok) == 11
+    assert tok.calls == 1
+
+
+def test_count_text_cache_is_per_tokenizer() -> None:
+    budget._COUNT_CACHE.clear()
+    one, two = _CountingTok(1), _CountingTok(2)
+    assert count_text("abc", one) == 3
+    assert count_text("abc", two) == 6
+
+
+def test_count_text_cache_is_bounded() -> None:
+    budget._COUNT_CACHE.clear()
+    tok = _CountingTok()
+    for i in range(budget._COUNT_CACHE_MAX + 100):
+        count_text(f"t{i} x", tok)
+    assert len(budget._COUNT_CACHE) <= budget._COUNT_CACHE_MAX
+
+
+def test_count_text_cache_threadsafe() -> None:
+    budget._COUNT_CACHE.clear()
+    tok = _CountingTok()
+    errors: list[BaseException] = []
+
+    def work(offset: int) -> None:
+        try:
+            for i in range(300):
+                count_text(f"w{offset}-{i}", tok)
+        except BaseException as exc:
+            errors.append(exc)
+
+    threads = [threading.Thread(target=work, args=(n,)) for n in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert not errors
+    assert len(budget._COUNT_CACHE) <= budget._COUNT_CACHE_MAX
