@@ -83,7 +83,7 @@ uv run swarm-grpc
 
 `swarm_sdk.orchestrator` runs a goal as a parallel multi-agent plan:
 
-1. `spawn(goal, manifests)` — the Orchestrator agent decomposes the goal into a JSON plan (validated by pydantic; falls back to a single-step plan on malformed output).
+1. `spawn(goal, manifests)` — the Orchestrator agent decomposes the goal into a JSON plan (validated by pydantic; the one retry includes the rejection reason so the model self-corrects, then it falls back to a single-step plan on malformed output).
 2. `run_plan(plan, factory)` — a LangGraph `StateGraph` executes the plan in dependency waves; steps in the same wave run concurrently via `bounded_gather` (capped by `parallelism.max_concurrency`; uvloop; the runtime thread pool widens automatically on free-threaded Python 3.14). Sibling Coder steps must claim disjoint `files`.
 3. Each step is a `WorkerAgent` bound to its `Agents/{Name}/agent.yaml` manifest: model, `think_level`, `effort`, and `token_budget` are pre-selected per agent; the system prompt is the role contract from that agent's `AGENTS.md`; the step prompt carries `task`, claimed `files`, and only its declared `inputs` (dependency outputs), never the whole transcript.
 
@@ -98,18 +98,21 @@ Predefined providers and routes live in [`src/swarm_sdk/agents/config/swarm.yaml
 1. Exact SHA-256 cache, then a cosine semantic cache (default threshold `0.97`).
 2. Router on `think_level: low` with provider fallback and circuit breakers (`GET /v1/health` shows breaker state).
 3. Think-level token caps, then tokenizer budget (system prompt, memories, newest turns; tool text capped).
-4. Hybrid dense + BM25 recall (RRF), or Mem0 `search_text` when `vectorstore.backend: mem0`; then dedupe, rerank; only top-k snippets injected.
-5. Near-duplicate memories dropped before the prompt.
-6. Parallel fan-out with bounded concurrency and JSON briefs; LangGraph handoffs for sequential specialist work.
+4. Hybrid dense + BM25 recall (RRF), or Mem0 `search_text` when `vectorstore.backend: mem0`; then dedupe, rerank; only top-k snippets injected. The sqlite backend falls back from FTS5 to a token scan when the SQLite build lacks FTS5, and BGE-M3 embeddings skip `query:`/`passage:` prefixes (BGE v1.x keeps them).
+5. Near-duplicate memories dropped before the prompt; empty answers are never cached or remembered (no poisoned cache hits).
+6. Parallel fan-out with bounded concurrency and JSON briefs (facts carry only summary overflow, no duplication); LangGraph handoffs for sequential specialist work.
 
 HTTP peers use `httpx2` with HTTP/2 (`h2`). `aiohttp` and `requests` are the other clients.
 
 ## Checks
 
+`ty` resolves the optional-dependency imports (mem0, prometheus_client, OpenCL),
+so run the gate with the extras the SDK supports:
+
 ```bash
-uv run --extra dev pytest Agents/tests Agents/benchmark -q
-uv run --extra dev ruff check src Agents/tests Agents/benchmark Main
-uv run --extra dev ty check src Agents/tests Agents/benchmark Main
+uv run --extra dev --extra observability --extra opencl --extra faiss --extra mem0 pytest Agents/tests Agents/benchmark -q
+uv run --extra dev --extra observability --extra opencl --extra faiss --extra mem0 ruff check src Agents/tests Agents/benchmark Main
+uv run --extra dev --extra observability --extra opencl --extra faiss --extra mem0 ty check src Agents/tests Agents/benchmark Main
 uv run python -m swarm_sdk.agents.validate
 ```
 

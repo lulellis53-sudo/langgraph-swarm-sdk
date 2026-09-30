@@ -87,9 +87,9 @@ Use `uv run …` so commands use the project virtualenv.
 Run before claiming work is done:
 
 ```bash
-uv run --extra dev pytest Agents/tests Agents/benchmark -q
-uv run --extra dev ruff check src Agents/tests Agents/benchmark Main
-uv run --extra dev ty check src Agents/tests Agents/benchmark Main
+uv run --extra dev --extra observability --extra opencl --extra faiss --extra mem0 pytest Agents/tests Agents/benchmark -q
+uv run --extra dev --extra observability --extra opencl --extra faiss --extra mem0 ruff check src Agents/tests Agents/benchmark Main
+uv run --extra dev --extra observability --extra opencl --extra faiss --extra mem0 ty check src Agents/tests Agents/benchmark Main
 uv run python -m swarm_sdk.agents.validate
 ```
 

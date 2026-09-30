@@ -7,7 +7,7 @@ alwaysApply: false
 # Tests & benchmarks
 
 - `Agents/tests/` unit/integration; `Agents/benchmark/` shared harnesses (`Agents/benchmark/README.md`).
-- Run: `uv run --extra dev pytest Agents/tests Agents/benchmark -q` (or a focused path).
+- Run: `uv run --extra dev --extra observability --extra opencl --extra faiss --extra mem0 pytest Agents/tests Agents/benchmark -q` (or a focused path).
 - SQL Pro: `Agents/benchmark/sql_pro/`, `uv run python -m benchmark.sql_pro.run`, `.cursor/commands/sql-pro.md`.
 - Do not commit `Agents/benchmark/results/` (gitignored).
 - Failing test first for bugs; no skip/xfail to green the gate.

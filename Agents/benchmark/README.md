@@ -56,12 +56,38 @@ it with `SWARM_CONFIG_PATH=Main/config/swarm-bge-m3-radeon.yaml` and install the
 `molten` extra. It creates a separate 1024-dimension database under
 `Main/Essentials/llama/`, preserving existing 384-dimension memory data.
 
+The profile was smoke-checked on 2026-09-29 with the local BGE-M3 Q8_0 GGUF.
+llama.cpp offloaded all 25/25 layers to the Radeon Pro 5300M through Vulkan;
+embeddings returned to Python as float32 and SQLite stored each 1024-D vector
+as an INT8 payload (1024 bytes). BGE-M3 does not need `query:` / `passage:`
+prefixes, so the embedding wrapper leaves its text unmodified. The local SQLite
+build has sqlite-vec but no FTS5; keyword lookup now falls back to a small Python
+token matcher. The native sqlite-vec search path runs inside SQLite and does not
+use OpenCL. OpenCL selection is independent and only accelerates the GPU math
+paths that explicitly call its dispatcher. The 16-document improvised-data smoke
+is functional coverage, not a retrieval-quality benchmark; results and the
+llama.cpp offload log are in
+[`results/int8_gpu_vectorized/`](results/int8_gpu_vectorized/) (gitignored).
+
 Use a small workload for a quick smoke measurement with `--rows 512 --dim 384
 --queries 10`. The report includes the actual OpenCL availability/device state;
 when OpenCL is missing or unusable, the same workload measures the NumPy path.
 Runtime offload defaults to at least 8192 rows because this machine's measured
 OpenCL path was slower through 4096×1024 vectors. The benchmark forces OpenCL
 on for comparison, then reports the fastest measured backend and chunk size.
+
+### Real Radeon run (2026-09-29)
+
+On the Intel MacBook Pro, OpenCL enumerated and executed on `AMD Radeon Pro 5300M
+Compute Engine`. The real kernel result for an 8192×384 dot workload matched NumPy
+with maximum absolute error `5.34e-05`. With deterministic normalized synthetic
+vectors (seed 7), recall@10 was 1.0 for every CPU and OpenCL profile. OpenCL was
+slower in both recorded retrieval workloads: at 2048×384 best p95 was 4.13 ms
+versus NumPy 0.21 ms; at 8192×1024 best p95 was 83.19 ms versus NumPy 1.92 ms.
+The best measured backend was NumPy. Run artifacts and compressed input data are
+under [`results/gpu_retrieval/runs/20260929T192753Z/`](results/gpu_retrieval/runs/20260929T192753Z/)
+(gitignored). The 7 GPU math tests passed with AMD explicitly selected and
+`SWARM_OPENCL_MIN_ROWS=1` so the small test matrices actually use the GPU.
 
 ## Model Delegation benchmark suite
 
@@ -101,3 +127,15 @@ uv run python -m benchmark.run --task codeagent_bencheval
 ```
 
 Case definitions: `benchmark/Tasks/codeagent_bencheval/cases.py`.
+
+## WebSearch tools (one query, one row per tool)
+
+Sends a single query to every WebSearch searcher, scrapes each tool's hits, and reports per tool:
+sites appeared, sites scraped, normalization % (`1 - normalized_chars/raw_html_chars`), tokens
+(`cl100k_base` count of the normalized text), API-reported tokens (Google grounding), and
+search/scrape time. Tools without their env key report zeros. Offline check:
+`uv run --extra dev pytest Agents/benchmark/Tasks/websearch_tools -q`.
+
+```bash
+PYTHONPATH=Agents:. uv run python -m benchmark.websearch_bench --query "(a|b) AND (c) after:2026-03-01" --write-results
+```

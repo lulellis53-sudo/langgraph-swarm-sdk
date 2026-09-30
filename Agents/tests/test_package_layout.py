@@ -72,7 +72,7 @@ def test_import_numpy_polars_sklearn() -> None:
 
     assert np.__version__
     assert pl.__version__
-    assert sklearn.__version__
+    assert isinstance(sklearn.__version__, str)
 
 
 def test_import_core_domain() -> None:
