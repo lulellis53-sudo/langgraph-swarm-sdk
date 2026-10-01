@@ -1,0 +1,37 @@
+{
+  "editor.defaultFormatter": "trunk.io",
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports.ruff": "explicit",
+      "source.fixAll.ruff": "explicit"
+    }
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "trunk.io",
+    "editor.formatOnSave": true
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "trunk.io",
+    "editor.formatOnSave": true
+  },
+  "[dockerfile]": {
+    "editor.defaultFormatter": "trunk.io",
+    "editor.formatOnSave": true
+  },
+  "[json]": {
+    "editor.defaultFormatter": "trunk.io",
+    "editor.formatOnSave": true
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "trunk.io",
+    "editor.formatOnSave": true
+  },
+  "kimi.editorContext": "onConversationStart",
+  "kimi.autosave": true,
+  "trunk.inlineDecorators": true,
+  "trunk.addToolsToPath": true,
+  "trunk.numJobs": 4,
+  "trunk.trunkPath": "/Users/usuario/.cache/trunk/launcher/trunk"
+}
