@@ -8,6 +8,8 @@ git worktree add WebSearch worktree/websearch
 
 Search/scrape pipeline. HTTP searchers fail closed (empty hits) without keys.
 
+**Workflow (setup, commands, layout):** [docs/workflow.md](docs/workflow.md)
+
 | Layer       | Path                                               | Role                                                                                                                            |
 | ----------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | Frontend    | [`frontend/`](frontend/)                           | `__init__.py` (yaml registry, `SearchHit`, HTTP APIs, dork builder), `websearchers.py` (failover + parallel + RRF fusion)       |
@@ -20,7 +22,7 @@ One query fans out to **every** configured searcher in parallel (`parallel_searc
 
 ### Result cleanup
 
-Before fusion each provider's batch passes a **prefilter** (`prefilter:` block in `providers.yaml`: scheme allowlist, `blocked_domains`, `min_snippet_chars`, `require_title`; Google `/url?q=` redirects are unwrapped). Rejected hits never reach RRF, so junk cannot win on consensus. After URL dedupe, titles and snippets are normalized (site-name suffixes such as `" | Example"` are stripped only when they name the hit's own host) and **near-duplicates** (SimHash over title + snippet, `near_distance=6`, `None` disables) are merged; the survivor lists the other searcher ids in `also_from`. Pass `sink=` (any object with `store(hits) -> SinkReport`) to `parallel_search` to receive the final hits, for example to index them; a sink that raises `OSError` is logged and the hits are still returned. The API token total of the call sits on the first hit.
+Before fusion each provider's batch passes a **prefilter** (`prefilter:` block in `providers.yaml`: scheme allowlist, `blocked_domains`, `min_snippet_chars`, `require_title`; Google `/url?q=` redirects are unwrapped). Rejected hits never reach RRF, so junk cannot win on consensus. After URL dedupe, titles and snippets are normalized (site-name suffixes such as `" | Example"` are stripped only when they name the hit's own host) and **near-duplicates** (SimHash over title + snippet, `near_distance=6`, `None` disables) are merged; the survivor lists the other searcher ids in `also_from`. Pass `sink=` (any object with `store(hits) -> SinkReport`) to `parallel_search` to receive the final hits, for example to index them; a sink that raises `OSError` is logged and the hits are still returned. The API token total of the call sits on the first hit. Design detail: [docs/design-prefilter.md](docs/design-prefilter.md).
 
 ### Agent tooling
 
@@ -33,50 +35,17 @@ print(search_brief("(langgraph|langchain) AND swarm", limit=5))  # prompt-ready
 
 `search_brief` renders a numbered brief: titles/snippets pass through text normalization (HTML tags stripped, entities decoded, duplicate lines removed), URLs are canonicalized (no tracking params), and a `Sources:` footer lists the contributing searcher ids. `max_chars` (default 1200) keeps the brief inside a prompt budget; at least one hit is always kept.
 
-Env var **names** only in yaml (`BRAVE_API_KEY`, `TAVILY_API_KEY`, `APIFY_TOKEN`, `EXA_API_KEY`, `SEARXNG_URL`). Optional extra: `uv sync --extra websearch`. Inject `SearchFn` / `FetchFn` in tests so no live network is required.
+Env var **names** only in yaml (`BRAVE_API_KEY`, `TAVILY_API_KEY`, `APIFY_TOKEN`, `EXA_API_KEY`, `SEARXNG_URL`). Install deps: `uv sync --extra extract --extra dev`. Inject `SearchFn` / `FetchFn` in tests so no live network is required.
 
-## Google Dorks
+## Google dorks
 
-Full recipe (parameters, variables, optional sites and dates): [`frontend/README.md`](frontend/README.md).
-
-A dork is a search query that uses operators to narrow results. The pattern:
-
-```
-(TERM|TERM|TERM) AND (TERM|TERM) after:2026-mm-dd
-```
-
-- `(a|b|c)` — **OR group**: a page matching _any_ of a, b, c qualifies. `|` is Google's OR (same as the word `OR`).
-- `AND` between groups — the page must satisfy **every** group. (Google ANDs terms implicitly; writing it makes the intent readable.)
-- `after:YYYY-MM-DD` — only pages dated after that day (`before:` is the mirror). Use a real ISO date.
-- `"two words"` — exact phrase. `-term` — exclude.
-
-Common operators, combinable with the groups above:
-
-| Operator             | Effect                 | Example             |
-| -------------------- | ---------------------- | ------------------- |
-| `site:`              | Only this domain       | `site:github.com`   |
-| `filetype:`          | Only this extension    | `filetype:pdf`      |
-| `intitle:`           | Word in the page title | `intitle:changelog` |
-| `inurl:`             | Word in the URL        | `inurl:docs`        |
-| `-`                  | Exclude a term         | `-jobs`             |
-| `after:` / `before:` | Date window            | `after:2026-01-01`  |
-
-Worked examples:
-
-```
-(langgraph|langchain) AND (handoff|swarm) after:2026-03-01
-(pytest|unittest) AND ("flaky test"|"race condition") site:github.com after:2026-01-01
-(rfc|specification) AND (websocket|sse) filetype:pdf
-```
-
-Build them safely in code (validates terms and dates, quotes phrases):
+Full tutorial: [docs/dorks.md](docs/dorks.md).
 
 ```python
 from WebSearch import dork, run_pipeline
 
 q = dork(["langgraph", "langchain"], ["handoff", "swarm"], after="2026-03-01")
-# '(langgraph|langchain) AND (handoff|swarm) after:2026-03-01'
-hits, pages, docs = run_pipeline(q)  # same query -> all searchers in parallel
+hits, pages, docs = run_pipeline(q)
 ```
 
-Notes: only Google fully honours every operator. Brave, Exa, Tavily and SearXNG (DuckDuckGo/Bing) treat some operators (`after:`, `AND`, `|`) as plain text or ignore them, so expect looser results there. `dork()` never contacts the network; use it only for searching public information you are entitled to look up.
+Notes: only Google fully honours every operator. Brave, Exa, Tavily and SearXNG treat some operators as plain text. `dork()` never contacts the network.
