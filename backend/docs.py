@@ -16,6 +16,8 @@ ExtractorUsed = ExtractorName | Literal["fallback"]
 
 @dataclass(frozen=True, slots=True)
 class ExtractedDoc:
+    """Normalized page text produced by the extractor pipeline."""
+
     text: str
     extractor: ExtractorUsed
     url: str = ""
@@ -45,7 +47,9 @@ def dedupe_docs(docs: Iterable[ExtractedDoc]) -> list[ExtractedDoc]:
     for doc in docs:
         if not doc.text:
             continue
-        digest = hashlib.blake2b(doc.text.casefold().encode(), digest_size=16).hexdigest()
+        digest = hashlib.blake2b(
+            doc.text.casefold().encode(), digest_size=16
+        ).hexdigest()
         if digest not in seen:
             seen.add(digest)
             unique.append(doc)

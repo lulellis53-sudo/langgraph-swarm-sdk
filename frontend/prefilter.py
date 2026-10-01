@@ -18,11 +18,14 @@ type RejectReason = Literal[
     "bad_url", "scheme", "blocked_domain", "empty", "short_snippet"
 ]
 
-_GOOGLE_HOST = re.compile(r"(www\.)?google\.(com?|[a-z]{2,3})(\.[a-z]{2})?")
+#: Google's own hosts (``google.com``, ``.de``, ``.co.uk``, ``.com.br``), never ``google.x.tld``.
+_GOOGLE_HOST = re.compile(r"(www\.)?google\.(com?(\.[a-z]{2})?|[a-z]{2,3})")
 
 
 @dataclass(frozen=True, slots=True)
 class Rejected:
+    """A hit dropped by :func:`prefilter_hits`, with the reason."""
+
     hit: SearchHit
     reason: RejectReason
 

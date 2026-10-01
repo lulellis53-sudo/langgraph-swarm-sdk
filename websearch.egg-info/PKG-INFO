@@ -1,3 +1,29 @@
+Metadata-Version: 2.4
+Name: websearch
+Version: 0.1.0
+Summary: Parallel web search, crawl/scrape, and extract pipeline (WebSearch worktree).
+Requires-Python: >=3.14
+Description-Content-Type: text/markdown
+Requires-Dist: aiohttp>=3.14.3
+Requires-Dist: beautifulsoup4>=4.15.0
+Requires-Dist: curl-cffi>=0.16.3
+Requires-Dist: fastapi>=0.142.2
+Requires-Dist: google-genai>=2.26.0
+Requires-Dist: httpx>=0.28
+Requires-Dist: httpx2>=2.13.1
+Requires-Dist: openai>=3.22.1
+Requires-Dist: pydantic>=2.13.5
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: requests>=2.34.2
+Requires-Dist: selectolax>=0.4.13
+Requires-Dist: tavily-python>=0.8.4
+Requires-Dist: trafilatura>=2.2.0
+Requires-Dist: uvloop>=0.21; sys_platform != "win32"
+Provides-Extra: dev
+Requires-Dist: pytest>=8.4; extra == "dev"
+Requires-Dist: ruff>=0.12; extra == "dev"
+Requires-Dist: ty>=0.0.1a0; extra == "dev"
+
 # WebSearch
 
 This directory is a **git worktree** of branch `worktree/websearch` (package files at the worktree root). From the SDK checkout:
@@ -10,13 +36,13 @@ Search/scrape pipeline. HTTP searchers fail closed (empty hits) without keys.
 
 **Workflow (setup, commands, layout):** [docs/workflow.md](docs/workflow.md)
 
-| Layer       | Path                               | Role                                                                                                                            |
-| ----------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Frontend    | [`frontend/`](frontend/)           | `__init__.py` (yaml registry, `SearchHit`, HTTP APIs, dork builder), `websearchers.py` (failover + parallel + RRF fusion)       |
-| Midend      | [`midend/`](midend/)               | `crawlers.py` (httpx → scrapy → playwright → crawlee), `scrape.py` (URL dedupe, concurrent scrape; `http`/`https` only)         |
-| Backend     | [`backend/`](backend/)             | `extractors.py` (selectolax, selectolax_regex, regex, trafilatura, bs4), `normalize.py`, `docs.py` (`ExtractedDoc`, doc dedupe) |
-| Agent tools | [`agent_tools.py`](agent_tools.py) | `search_hits` / `search_brief`: one query → consensus-ranked hits or a prompt-ready numbered brief                              |
-| Shared      | [`repeater.py`](repeater.py)       | URL canonicalization; `@repeater.s` retry on I/O (`TimeoutError` / `OSError` / `ConnectionError`)                               |
+| Layer       | Path                                               | Role                                                                                                                            |
+| ----------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend    | [`frontend/`](frontend/)                           | `__init__.py` (yaml registry, `SearchHit`, HTTP APIs, dork builder), `websearchers.py` (failover + parallel + RRF fusion)       |
+| Midend      | [`midend/`](midend/)                               | `crawlers.py` (httpx → scrapy → playwright → crawlee), `scrape.py` (URL dedupe, concurrent scrape; `http`/`https` only)         |
+| Backend     | [`backend/`](backend/)                             | `extractors.py` (selectolax, selectolax_regex, regex, trafilatura, bs4), `normalize.py`, `docs.py` (`ExtractedDoc`, doc dedupe) |
+| Agent tools | [`agent_tools.py`](agent_tools.py)                 | `search_hits` / `search_brief`: one query → consensus-ranked hits or a prompt-ready numbered brief                              |
+| Shared      | [`repeater.py`](repeater.py)                       | URL canonicalization; `@repeater.s` retry on I/O (`TimeoutError` / `OSError` / `ConnectionError`)                               |
 
 One query fans out to **every** configured searcher in parallel (`parallel_search`, threads). Batches are assembled in YAML order (deterministic regardless of completion timing), then **fused with reciprocal-rank fusion**: a URL found by several providers outranks one found by a single provider; `fuse=False` restores raw YAML-order concatenation. Results are deduplicated by canonical URL (`www.`, fragments, trailing `/`, `utm_*`/`gclid` ignored) and capped with `limit`. The whole fan-out runs under one wall-clock budget (`timeout_s`, default 30): slow searchers are abandoned and the finished batches still answer, so a hung provider can never stall an agent. `run_pipeline(query, parallel=False)` restores ordered failover (first searcher with hits wins). A failing searcher contributes no hits and never blocks the others.
 

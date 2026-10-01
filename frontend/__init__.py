@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from WebSearch.frontend.apis import builtin_searchers
+from WebSearch.frontend.apis import (
+    builtin_searchers,
+    search_brave,
+    search_google_ground,
+    search_tavily,
+)
 from WebSearch.frontend.dorks import DorkError, any_of, dork
 from WebSearch.frontend.hits import near_dedupe, normalize_hit
 from WebSearch.frontend.models import (
@@ -54,5 +59,8 @@ __all__ = [
     "parallel_search",
     "prefilter_hits",
     "registry_search",
+    "search_brave",
+    "search_google_ground",
     "searcher_ids",
+    "search_tavily",
 ]

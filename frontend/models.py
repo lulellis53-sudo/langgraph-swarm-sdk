@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from WebSearch.frontend.providers import SearcherSpec
-from WebSearch.urls import normalize_url
+from WebSearch.repeater import normalize_url
 
 #: Search implementation signature: ``(query, spec) -> hits``.
 SearchFn = Callable[[str, SearcherSpec], Sequence["SearchHit"]]
@@ -15,6 +15,8 @@ SearchFn = Callable[[str, SearcherSpec], Sequence["SearchHit"]]
 
 @dataclass(frozen=True, slots=True)
 class SearchHit:
+    """One search result from one searcher."""
+
     title: str
     url: str
     snippet: str
@@ -26,6 +28,8 @@ class SearchHit:
 
 
 class WebSearcher(Protocol):
+    """A searcher bound to its registry spec."""
+
     spec: SearcherSpec
 
     def search(self, query: str) -> Sequence[SearchHit]: ...
@@ -54,6 +58,7 @@ class NullSink:
     """Sink that stores nothing."""
 
     def store(self, hits: Sequence[SearchHit]) -> SinkReport:
+        """Return a zero-count report without persisting hits."""
         return SinkReport(stored=0)
 
 

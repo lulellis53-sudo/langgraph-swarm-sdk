@@ -25,6 +25,8 @@ _CRAWLERS: tuple[CrawlerName, ...] = ("httpx", "scrapy", "playwright", "crawlee"
 
 @dataclass(frozen=True, slots=True)
 class SearcherSpec:
+    """One ``searchers:`` entry of ``providers.yaml``."""
+
     id: str
     kind: SearcherKind
     api_key_env: str | None = None
@@ -36,6 +38,8 @@ class SearcherSpec:
 
 @dataclass(frozen=True, slots=True)
 class CrawlSpec:
+    """The ``crawl:`` block: limits and crawler order for fetching hit URLs."""
+
     timeout_s: float = 20.0
     max_bytes: int = 1_048_576
     max_urls: int = 8
@@ -45,6 +49,8 @@ class CrawlSpec:
 
 @dataclass(frozen=True, slots=True)
 class PrefilterPolicy:
+    """The ``prefilter:`` block: which hits are dropped before fusion."""
+
     schemes: tuple[str, ...] = ("http", "https")
     blocked_domains: tuple[str, ...] = ()
     min_snippet_chars: int = 0
@@ -53,6 +59,8 @@ class PrefilterPolicy:
 
 @dataclass(frozen=True, slots=True)
 class ProvidersConfig:
+    """Parsed ``providers.yaml``."""
+
     version: int
     searchers: tuple[SearcherSpec, ...]
     extractor_order: tuple[ExtractorName, ...]

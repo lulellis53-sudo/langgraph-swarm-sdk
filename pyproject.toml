@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "websearch"
 version = "0.1.0"
@@ -23,18 +27,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-extract = [
-    "beautifulsoup4>=4.12",
-    "selectolax>=0.3",
-    "trafilatura>=2.0",
-]
 dev = [
     "pytest>=8.4",
     "ruff>=0.12",
+    "ty>=0.0.1a0",
 ]
 
 [tool.uv]
 python-preference = "managed"
+# google-genai → google-auth needs cryptography; wheels only on this host (no assert.h with LLVM CC).
+no-build-package = ["cryptography"]
+constraint-dependencies = ["cryptography==48.0.1"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -47,7 +50,42 @@ src = ["."]
 extend-exclude = [".venv", "docs"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP"]
+select = ["E", "F", "I", "UP", "ANN", "D"]
+ignore = ["D203", "D213"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["ANN", "D"]
+"scripts/**/*.py" = ["D"]
+"frontend/http.py" = ["ANN401"]
+"frontend/models.py" = ["D102"]
+"repeater.py" = ["D102"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-annotations]
+allow-star-arg-any = true
+mypy-init-return = true
+suppress-none-returning = true
 
 [tool.ruff.lint.isort]
 known-first-party = ["WebSearch"]
+
+[tool.setuptools]
+packages = [
+    "WebSearch",
+    "WebSearch.frontend",
+    "WebSearch.backend",
+    "WebSearch.midend",
+]
+package-dir = { "WebSearch" = ".", "WebSearch.frontend" = "frontend", "WebSearch.backend" = "backend", "WebSearch.midend" = "midend" }
+
+[tool.ty.environment]
+python = "./.venv"
+python-version = "3.14"
+
+[tool.ty.src]
+exclude = ["tests/**", "scripts/**"]
+
+[tool.ty.rules]
+unresolved-import = "ignore"

@@ -1,6 +1,7 @@
 """Crawl search hits concurrently and decode them into ``ScrapedPage`` records.
 
-Only ``http``/``https`` URLs are allowed; duplicates are dropped before the URL cap."""
+Only ``http``/``https`` URLs are allowed; duplicates are dropped before the URL cap.
+"""
 
 from __future__ import annotations
 
@@ -18,7 +19,7 @@ from WebSearch.frontend.providers import (
     load_providers,
 )
 from WebSearch.midend.crawlers import ordered_fetch
-from WebSearch.urls import normalize_url
+from WebSearch.repeater import normalize_url
 
 #: Callable that fetches a URL and returns raw bytes. Used to inject test doubles.
 FetchFn = Callable[[str], bytes]
@@ -131,10 +132,14 @@ def _scrape_one(url: str, *, fetch: _Fetcher, crawl: CrawlSpec) -> ScrapedPage:
         raw, crawler = fetch(url)
     except (TimeoutError, OSError, ConnectionError) as exc:
         elapsed = (time.perf_counter() - start) * 1000
-        return ScrapedPage(url=url, html="", status=0, error=type(exc).__name__, elapsed_ms=elapsed)
+        return ScrapedPage(
+            url=url, html="", status=0, error=type(exc).__name__, elapsed_ms=elapsed
+        )
     html = raw[: crawl.max_bytes].decode("utf-8-sig", errors="replace")
     elapsed = (time.perf_counter() - start) * 1000
-    return ScrapedPage(url=url, html=html, status=200, crawler=crawler, elapsed_ms=elapsed)
+    return ScrapedPage(
+        url=url, html=html, status=200, crawler=crawler, elapsed_ms=elapsed
+    )
 
 
 __all__ = ["FetchFn", "ScrapedPage", "crawl_then_scrape", "type_is_http_url"]

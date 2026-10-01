@@ -11,7 +11,7 @@ from WebSearch.frontend.hits import near_dedupe, normalize_hit
 from WebSearch.frontend.models import ResultSink, SearchFn, SearchHit, dedupe_hits
 from WebSearch.frontend.prefilter import prefilter_hits
 from WebSearch.frontend.providers import ProvidersConfig, SearcherSpec, load_providers
-from WebSearch.urls import normalize_url
+from WebSearch.repeater import normalize_url
 
 logger = logging.getLogger(__name__)
 

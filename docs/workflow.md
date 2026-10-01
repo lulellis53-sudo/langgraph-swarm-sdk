@@ -32,7 +32,7 @@ providers.yaml
 
 ```bash
 cd /Users/usuario/Swarm-WebSearch
-uv sync --extra extract --extra dev
+uv sync --extra dev
 ```
 
 Interpreter: `.venv` (Python 3.14). Cursor is pointed at `${workspaceFolder}/.venv/bin/python`.
@@ -49,13 +49,16 @@ export SEARXNG_URL=http://127.0.0.1:8888
 
 ## Daily commands
 
-| Task         | Command                             |
-| ------------ | ----------------------------------- |
-| Tests        | `uv run pytest tests -q --tb=short` |
-| Lint         | `uv run ruff check .`               |
-| Format check | `uv run ruff format --check .`      |
-| Format apply | `uv run ruff format .`              |
-| Trunk (repo) | `trunk check` / `trunk fmt`         |
+| Task                           | Command                                 |
+| ------------------------------ | --------------------------------------- |
+| Tests                          | `uv run pytest tests -q --tb=short`     |
+| AST + lint + types             | `uv run python scripts/check_python.py` |
+| Lint                           | `uv run ruff check .`                   |
+| Types (ty)                     | `uv run ty check .`                     |
+| Docstrings + annotations (AST) | `uv run python scripts/validate_ast.py` |
+| Format check                   | `uv run ruff format --check .`          |
+| Format apply                   | `uv run ruff format .`                  |
+| Trunk (repo)                   | `trunk check` / `trunk fmt`             |
 
 ## Entry points
 
@@ -75,12 +78,12 @@ export SEARXNG_URL=http://127.0.0.1:8888
 
 ## Layout
 
-| Path                     | Role                                                |
-| ------------------------ | --------------------------------------------------- |
-| `frontend/`              | Registry, HTTP searchers, prefilter, fusion, dorks  |
-| `midend/`                | Fetch/scrape hit URLs                               |
-| `backend/`               | HTML → text, doc dedupe                             |
-| `agent_tools.py`         | Agent-facing `search_hits` / `search_brief`         |
-| `urls.py`, `repeater.py` | URL normalization, I/O retries                      |
-| `tests/`                 | pytest (conftest registers `WebSearch` import path) |
-| `docker/`                | Optional SearXNG image                              |
+| Path             | Role                                                |
+| ---------------- | --------------------------------------------------- |
+| `frontend/`      | Registry, HTTP searchers, prefilter, fusion, dorks  |
+| `midend/`        | Fetch/scrape hit URLs                               |
+| `backend/`       | HTML → text, doc dedupe                             |
+| `agent_tools.py` | Agent-facing `search_hits` / `search_brief`         |
+| `repeater.py`    | URL normalization, I/O retries                      |
+| `tests/`         | pytest (conftest registers `WebSearch` import path) |
+| `docker/`        | Optional SearXNG image                              |

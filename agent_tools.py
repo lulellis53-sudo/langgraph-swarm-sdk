@@ -16,7 +16,7 @@ from WebSearch.backend.normalize import normalize_text
 from WebSearch.frontend.models import SearchFn, SearchHit
 from WebSearch.frontend.providers import ProvidersConfig
 from WebSearch.frontend.websearchers import parallel_search
-from WebSearch.urls import normalize_url
+from WebSearch.repeater import normalize_url
 
 _TITLE_CHARS = 120
 _SNIPPET_CHARS = 200

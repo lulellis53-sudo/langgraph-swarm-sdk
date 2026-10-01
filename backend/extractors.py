@@ -17,6 +17,7 @@ _SCRIPT = re.compile(
 
 
 def extract_text(name: ExtractorName, html: str) -> str:
+    """Run the named extractor and return plain text (or ``""`` if unavailable)."""
     if name == "selectolax":
         return _selectolax(html)
     if name == "selectolax_regex":
@@ -42,7 +43,7 @@ def _selectolax(html: str) -> str:
 
 
 def _selectolax_regex(html: str) -> str:
-    """selectolax text, then regex whitespace/script leftovers."""
+    """Selectolax text, then regex whitespace/script leftovers."""
     raw = _selectolax(html)
     if not raw:
         return ""
@@ -77,6 +78,7 @@ def _bs4(html: str) -> str:
 
 
 def strip_tags(html: str) -> str:
+    """Remove HTML tags with a fast regex fallback."""
     return _TAG.sub(" ", html)
 
 
