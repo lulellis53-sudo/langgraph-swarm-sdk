@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import orjson
 from fastapi import FastAPI, Request, Response
 from pydantic import BaseModel, Field
@@ -9,6 +11,9 @@ from pydantic import BaseModel, Field
 from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import RunResult, SwarmSDK
 from swarm_sdk.execution.executor import install_uvloop
+
+if TYPE_CHECKING:
+    app: FastAPI
 
 
 class RunIn(BaseModel):
@@ -49,7 +54,17 @@ def _default_app() -> FastAPI:
     return create_app()
 
 
-app = _default_app()
+_app: FastAPI | None = None
+
+
+def __getattr__(name: str) -> object:
+    """Build the default app on first access so importing the module stays cheap."""
+    if name == "app":
+        global _app
+        if _app is None:
+            _app = _default_app()
+        return _app
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def main() -> None:

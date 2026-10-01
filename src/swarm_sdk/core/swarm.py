@@ -6,12 +6,8 @@ import importlib
 import json
 import re
 import threading
-from typing import Literal, Protocol, cast
+from typing import TYPE_CHECKING, Literal, Protocol, cast
 
-from langchain.agents import create_agent
-from langchain_core.language_models.chat_models import BaseChatModel
-from langgraph.checkpoint.memory import InMemorySaver
-from langgraph_swarm import create_handoff_tool, create_swarm
 from pydantic import BaseModel, Field, ValidationError
 
 from swarm_sdk.agents.manifest import langgraph_manifests, load_all_agent_manifests
@@ -37,6 +33,9 @@ from swarm_sdk.retrieval.embeddings import Embedder, FastEmbedder, HashEmbedder,
 from swarm_sdk.retrieval.recall import recall_hits
 from swarm_sdk.retrieval.rerank import FastEmbedReranker, KeywordReranker, Reranker
 
+if TYPE_CHECKING:
+    from langchain_core.language_models.chat_models import BaseChatModel
+
 ROUTER_SYSTEM = 'Route work. Reply with JSON only: {"mode":"parallel" or "swarm","tasks":[]}.'
 RESEARCHER_PROMPT = "You are the researcher. Use only the supplied context. Be brief."
 CODER_PROMPT = "You are the coder. Be brief."
@@ -46,6 +45,8 @@ _JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
 
 def _handoff(agent_name: str, description: str):
     """Keyword-only langgraph-swarm API: agent_name, optional name and description."""
+    from langgraph_swarm import create_handoff_tool
+
     return create_handoff_tool(
         agent_name=agent_name,
         name=f"transfer_to_{agent_name}",
@@ -175,6 +176,8 @@ class SwarmSDK:
         self._selector = ModelSelector(self.file_config.model_select)
         self._langgraph_manifests = langgraph_manifests(load_all_agent_manifests())
         self.usage = UsageLog()
+        from langgraph.checkpoint.memory import InMemorySaver
+
         self._compiled: CompiledGraph | None = None
         self._checkpointer = InMemorySaver()
         self.max_threads = max_threads
@@ -377,6 +380,9 @@ class SwarmSDK:
 
     def _graph(self) -> CompiledGraph:
         if self._compiled is None:
+            from langchain.agents import create_agent
+            from langgraph_swarm import create_swarm
+
             researcher = create_agent(
                 self._model_for_node("researcher"),
                 tools=[

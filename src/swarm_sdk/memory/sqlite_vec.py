@@ -100,6 +100,16 @@ class SqliteVecStore:
         )
 
     def add(self, text: str, vector: np.ndarray) -> int:
+        r"""Add a vector after L2 normalization and symmetric INT8 quantization.
+
+        The stored codes are
+
+        .. math::
+            q_j = \operatorname{clip}\!\left(\operatorname{round}\!
+                \left(127 \cdot \frac{x_j}{\|x\|_2}\right), -127, 127\right)
+
+        so dequantization recovers a close approximation of the unit vector.
+        """
         normalized = unit(vector)
         if normalized.shape[0] != self.dim:
             raise ValueError(f"expected dim {self.dim}, got {normalized.shape[0]}")
@@ -134,6 +144,16 @@ class SqliteVecStore:
         return row_id
 
     def search(self, vector: np.ndarray, k: int) -> list[MemoryHit]:
+        r"""Search for the ``k`` nearest neighbors of ``vector``.
+
+        When sqlite-vec is available, ``distance`` is the L2 distance between
+        INT8 quantized vectors and the reported score is
+
+        .. math::
+            \operatorname{score} = \frac{1}{1 + \operatorname{distance}}
+
+        so a distance of ``0`` maps to ``1`` and larger distances approach ``0``.
+        """
         if k < 1:
             return []
         query = unit(vector)
@@ -162,7 +182,16 @@ class SqliteVecStore:
         return hits
 
     def _search_int8_batches(self, query: np.ndarray, k: int) -> list[MemoryHit]:
-        """Search persisted INT8 rows in bounded batches, optionally on OpenCL."""
+        r"""Search persisted INT8 rows in bounded batches, optionally on OpenCL.
+
+        Rows are dequantized with
+
+        .. math::
+            \hat{x}_j = \frac{q_j}{127}
+
+        and scored by inner product with the (unit) query, which equals cosine
+        similarity for unit vectors.
+        """
         with self._lock:
             cursor = self._conn.execute(
                 """

@@ -8,6 +8,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis.extra.numpy import arrays
 
+from swarm_sdk import math as sm
 from swarm_sdk.gpu import (
     batch_cosine,
     batch_dot,
@@ -301,3 +302,63 @@ def test_opencl_cached_buffers_track_generation_changes() -> None:
     store.add("newer", np.eye(8, dtype=np.float32)[1])
     hits = store.search(np.eye(8, dtype=np.float32)[1], 1)
     assert hits[0].id == 4
+
+
+def test_batch_softmax_matches_symbolic_helper() -> None:
+    scores = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
+    expected = np.array(sm.softmax_scores(scores.tolist()), dtype=np.float32)
+    np.testing.assert_allclose(batch_softmax(scores), expected, rtol=1e-6)
+
+
+def test_quantize_int8_matches_symbolic_helper() -> None:
+    matrix = np.array([[0.0, 63.5, -127.0], [254.0, -254.0, 1.0]], dtype=np.float32)
+    codes, scales = quantize_int8(matrix)
+    for i in range(matrix.shape[0]):
+        expected_scale = sm.int8_scale(float(np.abs(matrix[i]).max()))
+        assert scales[i] == pytest.approx(expected_scale)
+        for j in range(matrix.shape[1]):
+            expected_code = sm.int8_quantize(float(matrix[i, j]), expected_scale)
+            assert int(codes[i, j]) == expected_code
+
+
+def test_binary_cosine_matches_symbolic_estimate() -> None:
+    dim = 64
+    query = np.random.default_rng(7).standard_normal(dim).astype(np.float32)
+    matrix = np.random.default_rng(8).standard_normal((10, dim)).astype(np.float32)
+    query_bits = binary_quantize(query)[0]
+    bits = binary_quantize(matrix)
+    scores = binary_dot(bits, query_bits, dim=dim)
+    for row, score in enumerate(scores):
+        hamming = dim - int(score)
+        expected = sm.binary_cosine_estimate(hamming, dim)
+        assert expected == pytest.approx(np.cos(np.pi * hamming / dim), abs=1e-5)
+    # The OpenCL store converts binary scores back to cosine estimates with float32
+    # arithmetic; compare against a float32 cosine, not a float64 one.
+    np.testing.assert_allclose(
+        np.cos(np.pi * (dim - scores) / dim).astype(np.float32),
+        np.array(
+            [sm.binary_cosine_estimate(int(dim - s), dim) for s in scores], dtype=np.float32
+        ),
+        rtol=1e-4,
+        atol=1e-6,
+    )
+
+
+def test_l2_norm_matches_symbolic_helper() -> None:
+    matrix = np.array([[3.0, 4.0], [0.0, 0.0], [1.0, 2.0]], dtype=np.float32)
+    norms = l2_norm(matrix)
+    for i, norm in enumerate(norms):
+        row = [float(matrix[i, j]) for j in range(matrix.shape[1])]
+        assert norm == pytest.approx(sm.l2_norm(row), rel=1e-5)
+
+
+def test_batch_cosine_matches_symbolic_helper() -> None:
+    rng = np.random.default_rng(9)
+    matrix = rng.standard_normal((5, 8)).astype(np.float32)
+    query = rng.standard_normal(8).astype(np.float32)
+    scores = batch_cosine(query, matrix)
+    expected = np.array(
+        [sm.cosine_similarity(query.tolist(), row.tolist()) for row in matrix],
+        dtype=np.float32,
+    )
+    np.testing.assert_allclose(scores, expected, rtol=1e-5, atol=1e-6)

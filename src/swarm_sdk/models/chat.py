@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import logging
-
-from langchain.chat_models import init_chat_model
-from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import HumanMessage, SystemMessage
+from typing import TYPE_CHECKING
 
 from swarm_sdk.execution.executor import offload
 from swarm_sdk.prompting.budget import count_text
+
+if TYPE_CHECKING:
+    from langchain_core.language_models.chat_models import BaseChatModel
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +52,9 @@ def load_chat_model(model_name: str) -> BaseChatModel:
     Raises:
         TypeError: If ``init_chat_model`` does not return a chat model.
     """
+    from langchain.chat_models import init_chat_model
+    from langchain_core.language_models.chat_models import BaseChatModel
+
     model = init_chat_model(model_name)
     if not isinstance(model, BaseChatModel):
         raise TypeError(f"expected a chat model, got {type(model).__name__}")
@@ -117,6 +120,8 @@ async def complete_with_usage(
     """
 
     def _call() -> tuple[str, int]:
+        from langchain_core.messages import HumanMessage, SystemMessage
+
         messages = [SystemMessage(content=system), HumanMessage(content=user)]
         result = None
         if json_mode:

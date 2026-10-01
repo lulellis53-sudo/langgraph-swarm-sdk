@@ -22,6 +22,13 @@ class Embedder(Protocol):
 
 
 def unit(vector: np.ndarray) -> np.ndarray:
+    r"""L2-normalize a vector.
+
+    .. math::
+        \hat{x} = \frac{x}{\|x\|_2}
+
+    Zero vectors are returned unchanged to avoid division by zero.
+    """
     array = np.asarray(vector, dtype=np.float32).reshape(-1)
     norm = float(np.linalg.norm(array))
     if norm == 0.0:
@@ -30,11 +37,27 @@ def unit(vector: np.ndarray) -> np.ndarray:
 
 
 def cosine(left: np.ndarray, right: np.ndarray) -> float:
+    r"""Cosine similarity between two vectors.
+
+    .. math::
+        \operatorname{cos}(u, v) =
+            \frac{u \cdot v}{\|u\|_2 \cdot \|v\|_2}
+
+    Returns a value in :math:`[-1, 1]`. Zero vectors yield ``0.0``.
+    """
     return float(np.dot(unit(left), unit(right)))
 
 
 def dedupe_texts(texts: list[str], vectors: np.ndarray, threshold: float) -> list[str]:
-    """Drop near-duplicate passages before they enter the prompt."""
+    r"""Drop near-duplicate passages before they enter the prompt.
+
+    A passage is skipped when its cosine similarity to any already-kept
+    passage is at least ``threshold``:
+
+    .. math::
+        \operatorname{sim}(u, v) = \frac{u \cdot v}{\|u\|_2 \cdot \|v\|_2}
+        \ge \theta
+    """
     kept_text: list[str] = []
     kept_vectors: list[np.ndarray] = []
     for text, vector in zip(texts, vectors, strict=True):

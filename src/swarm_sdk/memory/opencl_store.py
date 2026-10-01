@@ -26,15 +26,25 @@ def _topk(scores: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
 
 
 class OpenClVecStore:
-    """Brute-force vector store that runs search on the GPU when possible.
+    r"""Brute-force vector store that runs search on the GPU when possible.
 
     Vectors are kept in contiguous buffers whose element type depends on
     ``quantize``: float32 (``"none"``), symmetric per-row INT8 with a float32
     scale (``"int8"``), or packed sign bits (``"binary"``). Search uses the shared
     OpenCL dispatcher in `swarm_sdk.gpu` and falls back to NumPy if OpenCL is
-    unavailable or fails. Scores are cosine similarities for ``"none"`` and
-    ``"int8"``, and a cosine estimate derived from the Hamming distance for
-    ``"binary"``, so a single threshold works across modes.
+    unavailable or fails.
+
+    Score semantics:
+
+    - ``"none"``: exact cosine similarity
+      :math:`\cos(q, v) = \frac{q \cdot v}{\|q\|_2 \cdot \|v\|_2}`.
+    - ``"int8"``: dequantized inner product, which equals cosine similarity
+      because vectors are L2-normalized before storage.
+    - ``"binary"``: Hamming-based cosine estimate
+      :math:`\hat{c} = \cos\!\left(\pi \cdot \frac{d_H}{\dim}\right)`,
+      where :math:`d_H` is the Hamming distance between the sign-quantized
+      query and row. This maps identical sign vectors to ``1`` and opposite
+      sign vectors to ``-1``.
     """
 
     def __init__(
@@ -140,6 +150,14 @@ class OpenClVecStore:
         k: int,
         cache_key: object,
     ) -> tuple[np.ndarray, np.ndarray]:
+        r"""Score a contiguous chunk of rows and return top-k indices/scores.
+
+        For ``"binary"`` mode, the raw score is ``dim - hamming_distance``.
+        It is converted back to a cosine estimate with
+
+        .. math::
+            \hat{c} = \cos\!\left(\pi \cdot \frac{\dim - \text{score}}{\dim}\right)
+        """
         if self._mode == "int8":
             scores = dequant_dot(
                 self._chunk("_codes", slots),

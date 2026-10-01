@@ -157,6 +157,12 @@ async def bounded_gather[T](
 ) -> list[T]:
     """Gather async factories with a concurrency cap.
 
+    A failing factory cancels its in-flight siblings at once (TaskGroup
+    semantics) instead of letting doomed provider calls run to completion;
+    on Python 3.15 the group can also be aborted early via ``TaskGroup.cancel``.
+    A wave with exactly one failure re-raises that original error so callers
+    keep the provider exception, not an ``ExceptionGroup`` wrapper.
+
     Args:
         coro_factories: Zero-arg callables that return awaitables.
         max_concurrency: Max concurrent tasks (swarm parallelism limit).
@@ -170,7 +176,14 @@ async def bounded_gather[T](
         async with semaphore:
             return await factory()
 
-    return list(await asyncio.gather(*(run(f) for f in coro_factories)))
+    try:
+        async with asyncio.TaskGroup() as tg:
+            tasks = [tg.create_task(run(f)) for f in coro_factories]
+    except BaseExceptionGroup as group:
+        if len(group.exceptions) == 1:
+            raise group.exceptions[0] from None
+        raise
+    return [task.result() for task in tasks]
 
 
 __all__ = [

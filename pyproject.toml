@@ -39,6 +39,8 @@ dependencies = [
     "polars>=1.30",
     "scikit-learn>=1.6",
     "sqlite-vec>=0.1.6",
+    # ## Symbolic math for equation docs and numerical verification
+    "sympy>=1.13",
     # ## Embeddings (FastEmbed default = MiniLM-L6-v2 ONNX INT8 on CPU)
     # onnxruntime has no macOS x86_64 wheel; FastEmbed skips on Intel Mac unless ORT is installed elsewhere.
     "fastembed>=0.7; sys_platform != 'darwin' or platform_machine != 'x86_64'",

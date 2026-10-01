@@ -8,24 +8,34 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
-from tokenizers import Tokenizer
-from tokenizers.pre_tokenizers import Whitespace
-
-_WHITESPACE = Whitespace()
 _DEFAULT_TIKTOKEN = "cl100k_base"
 _ENCODING_CACHE: dict[str, Any] = {}
 _ENCODING_MISSING: set[str] = set()
 _COUNT_CACHE: dict[tuple[int, int], int] = {}
 _COUNT_CACHE_MAX = 512
 _COUNT_LOCK = threading.Lock()
+_whitespace_pre: Any | None = None
+
+if TYPE_CHECKING:
+    from tokenizers import Tokenizer
 
 
 class _HasEncode(Protocol):
     """Anything with an ``encode`` method (HF Tokenizer or tiktoken Encoding)."""
 
     def encode(self, text: str, /, *args: Any, **kwargs: Any) -> Any: ...
+
+
+def _whitespace() -> Any:
+    """Shared HF whitespace pre-tokenizer, imported on first use."""
+    global _whitespace_pre
+    if _whitespace_pre is None:
+        from tokenizers.pre_tokenizers import Whitespace
+
+        _whitespace_pre = Whitespace()
+    return _whitespace_pre
 
 
 def _tiktoken_encoding(name: str = _DEFAULT_TIKTOKEN) -> Any | None:
@@ -99,7 +109,7 @@ def count_text(text: str, tokenizer: _HasEncode | None = None) -> int:
         if encoding is not None:
             count = _count_with(encoding, text)
         else:
-            count = len(_WHITESPACE.pre_tokenize_str(text))
+            count = len(_whitespace().pre_tokenize_str(text))
     with _COUNT_LOCK:
         if len(_COUNT_CACHE) >= _COUNT_CACHE_MAX:
             for stale in list(_COUNT_CACHE)[: _COUNT_CACHE_MAX // 2]:

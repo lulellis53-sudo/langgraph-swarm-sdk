@@ -1,4 +1,27 @@
-"""Hybrid retrieval: dense vectors + BM25 keywords, merged with reciprocal rank fusion."""
+"""Hybrid retrieval: dense vectors + BM25 keywords, merged with reciprocal rank fusion.
+
+BM25 scores keyword matches and RRF merges rankings from different sources without
+requiring score calibration.
+
+Key formulas:
+
+.. math::
+    \operatorname{idf}(t) = \ln\!\left(
+        1 + \frac{N - \operatorname{df}(t) + 0.5}{\operatorname{df}(t) + 0.5}
+    \right)
+
+.. math::
+    \operatorname{BM25}(D, Q) = \sum_{t \in Q}
+        \operatorname{idf}(t) \cdot
+        \frac{\operatorname{tf}(t, D) \cdot (k_1 + 1)}
+             {\operatorname{tf}(t, D) + k_1 \cdot
+              \left(1 - b + b \cdot \frac{|D|}{\operatorname{avgdl}}\right)}
+
+.. math::
+    \operatorname{RRF}(r) = \frac{1}{k + r + 1}
+
+where ``r`` is a 0-based rank.
+"""
 
 from __future__ import annotations
 
@@ -16,7 +39,19 @@ if TYPE_CHECKING:
 
 
 def _bm25_scores(query: str, corpus: list[str], *, k1: float = 1.2, b: float = 0.75) -> list[float]:
-    """Lightweight BM25 over the candidate corpus only (no index required)."""
+    r"""Lightweight BM25 over the candidate corpus only (no index required).
+
+    Computes
+
+    .. math::
+        \operatorname{score}(D) = \sum_{t \in Q \cap D}
+            \operatorname{idf}(t) \cdot
+            \frac{\operatorname{tf}(t, D) \cdot (k_1 + 1)}
+                 {\operatorname{tf}(t, D) + k_1 \cdot
+                  \left(1 - b + b \cdot \frac{|D|}{\operatorname{avgdl}}\right)}
+
+    with ``idf(t)`` defined in the module docstring.
+    """
     docs = [tokenize(d) for d in corpus]
     q_terms = Counter(tokenize(query))
     if not docs or not q_terms:
@@ -40,7 +75,16 @@ def _bm25_scores(query: str, corpus: list[str], *, k1: float = 1.2, b: float = 0
 
 
 def rrf_merge(rankings: list[list[int]], *, k: int = 60) -> list[int]:
-    """Reciprocal rank fusion over ranked candidate index lists.
+    r"""Reciprocal rank fusion over ranked candidate index lists.
+
+    Fused score for candidate ``i``:
+
+    .. math::
+        \operatorname{score}(i) = \sum_{R \in \text{rankings}}
+            \frac{1}{k + \operatorname{rank}_R(i) + 1}
+
+    where :math:`\operatorname{rank}_R(i)` is the 0-based position of ``i`` in
+    ranking ``R`` (omitted if absent).
 
     Args:
         rankings: Each list is candidate indices ordered best-first.
@@ -57,13 +101,20 @@ def rrf_merge(rankings: list[list[int]], *, k: int = 60) -> list[int]:
 
 
 class HybridSearchConfig(BaseModel):
-    """Weights and caps for dense + keyword hybrid search.
+    r"""Weights and caps for dense + keyword hybrid search.
+
+    The final fused score for a candidate is the weighted sum of its RRF
+    contributions from each ranking source:
+
+    .. math::
+        \operatorname{fused}(i) = \sum_s w_s \cdot
+            \frac{1}{k + \operatorname{rank}_s(i) + 1}
 
     Attributes:
         enabled: When False, callers should skip hybrid fusion.
-        dense_weight: RRF weight for dense vector ranking.
-        keyword_weight: RRF weight for BM25 / keyword ranking.
-        rrf_k: Reciprocal-rank fusion constant.
+        dense_weight: RRF weight :math:`w_{\text{dense}}` for dense vector ranking.
+        keyword_weight: RRF weight :math:`w_{\text{keyword}}` for BM25 / keyword ranking.
+        rrf_k: Reciprocal-rank fusion constant :math:`k`.
         final_k: Max hits returned after fusion.
     """
 
@@ -82,7 +133,14 @@ def hybrid_search(
     retrieve_k: int,
     config: HybridSearchConfig | None = None,
 ) -> list[MemoryHit]:
-    """Dense + BM25 hybrid over the store's top candidates, fused with RRF.
+    r"""Dense + BM25 hybrid over the store's top candidates, fused with RRF.
+
+    Combines a dense vector ranking with a BM25 keyword ranking using weighted
+    reciprocal rank fusion:
+
+    .. math::
+        \operatorname{fused}(i) = w_{\text{dense}} \cdot \operatorname{RRF}(i; R_{\text{dense}})
+                                + w_{\text{keyword}} \cdot \operatorname{RRF}(i; R_{\text{keyword}})
 
     Args:
         query: Natural-language query (for BM25 / keyword_search).

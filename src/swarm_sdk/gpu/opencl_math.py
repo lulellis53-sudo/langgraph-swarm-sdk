@@ -441,7 +441,11 @@ def _run2d(name: str, buffers: list[Any], rows: int, wgs: int, *scalars: int) ->
 
 
 def l2_norm(vectors: np.ndarray) -> np.ndarray:
-    """Row-wise L2 norms. Falls back to NumPy."""
+    r"""Row-wise L2 (Euclidean) norms. Falls back to NumPy.
+
+    .. math::
+        \|x_i\|_2 = \sqrt{\sum_j x_{ij}^2}
+    """
     matrix = _ensure_f32_contiguous(vectors, "vectors").reshape(-1, vectors.shape[-1])
     if not _use_gpu(matrix.shape[0]):
         return np.linalg.norm(matrix, axis=1).astype(np.float32)
@@ -452,7 +456,13 @@ def l2_norm(vectors: np.ndarray) -> np.ndarray:
 
 
 def normalize(vectors: np.ndarray) -> np.ndarray:
-    """Row-wise L2 normalization. Falls back to NumPy."""
+    r"""Row-wise L2 normalization. Falls back to NumPy.
+
+    .. math::
+        \hat{x}_i = \frac{x_i}{\|x_i\|_2}
+
+    Zero rows are returned unchanged.
+    """
     matrix = _ensure_f32_contiguous(vectors, "vectors").reshape(-1, vectors.shape[-1])
     if not _use_gpu(matrix.shape[0]):
         norms = np.linalg.norm(matrix, axis=1, keepdims=True)
@@ -485,7 +495,11 @@ def batch_dot(
     *,
     cache_key: object | None = None,
 ) -> np.ndarray:
-    """Dot product of `query` with every row of `vectors`. Falls back to NumPy."""
+    r"""Dot product of ``query`` with every row of ``vectors``. Falls back to NumPy.
+
+    .. math::
+        s_i = \sum_j q_j \cdot v_{ij}
+    """
     query = _ensure_f32_contiguous(query, "query").reshape(-1)
     matrix = _ensure_f32_contiguous(vectors, "vectors").reshape(-1, query.shape[0])
     if matrix.shape[1] != query.shape[0]:
@@ -506,7 +520,11 @@ def batch_dot(
 
 
 def batch_cosine(query: np.ndarray, vectors: np.ndarray) -> np.ndarray:
-    """Cosine similarity of `query` with every row of `vectors`. Falls back to NumPy."""
+    r"""Cosine similarity of ``query`` with every row of ``vectors``. Falls back to NumPy.
+
+    .. math::
+        \operatorname{cos}(q, v_i) = \frac{q \cdot v_i}{\|q\|_2 \cdot \|v_i\|_2}
+    """
     query = _ensure_f32_contiguous(query, "query").reshape(-1)
     matrix = _ensure_f32_contiguous(vectors, "vectors").reshape(-1, query.shape[0])
     if not _use_gpu(matrix.shape[0]):
@@ -520,7 +538,14 @@ def batch_cosine(query: np.ndarray, vectors: np.ndarray) -> np.ndarray:
 
 
 def normalize_dot(query: np.ndarray, vectors: np.ndarray) -> np.ndarray:
-    """Cosine of ``query`` with every row in one pass; zero-norm rows score 0."""
+    r"""Cosine of ``query`` with every row in one pass; zero-norm rows score 0.
+
+    .. math::
+        \operatorname{cos}(q, v_i) = \frac{q \cdot v_i}{\|q\|_2 \cdot \|v_i\|_2}
+
+    The query is normalized once on the host; the kernel computes the row
+    norms and divides in a single pass.
+    """
     query = _ensure_f32_contiguous(query, "query").reshape(-1)
     matrix = _ensure_f32_contiguous(vectors, "vectors").reshape(-1, query.shape[0])
     query_norm = float(np.linalg.norm(query))
@@ -544,7 +569,18 @@ def normalize_dot(query: np.ndarray, vectors: np.ndarray) -> np.ndarray:
 
 
 def quantize_int8(matrix: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Symmetric per-row INT8 quantization: ``scale = max(|row|) / 127``."""
+    r"""Symmetric per-row INT8 quantization.
+
+    .. math::
+        \operatorname{scale}_i = \frac{\max_j |x_{ij}|}{127}
+
+    .. math::
+        q_{ij} = \operatorname{clip}\!\left(\operatorname{round}\!
+            \left(\frac{x_{ij}}{\operatorname{scale}_i}\right), -127, 127\right)
+
+    When :math:`\max_j |x_{ij}| = 0`, the scale is defined as ``1.0`` so the
+    zero row stays zero after dequantization.
+    """
     m = _ensure_f32_contiguous(matrix, "matrix")
     if m.ndim == 1:
         m = m.reshape(1, -1)
@@ -561,7 +597,14 @@ def dequant_dot(
     *,
     cache_key: object | None = None,
 ) -> np.ndarray:
-    """Scores of ``query`` against INT8 rows without materializing a float32 matrix on the GPU."""
+    r"""Scores of ``query`` against INT8 rows without materializing a float32 matrix on the GPU.
+
+    .. math::
+        s_i = \operatorname{scale}_i \cdot \sum_j q_j \cdot q_{ij}
+
+    where :math:`q_{ij}` are the INT8 codes and :math:`\operatorname{scale}_i`
+    is the per-row float32 scale.
+    """
     query = _ensure_f32_contiguous(query, "query").reshape(-1)
     codes = np.ascontiguousarray(int8_matrix, dtype=np.int8).reshape(-1, query.shape[0])
     scale = np.ascontiguousarray(scales, dtype=np.float32).reshape(-1)
@@ -577,7 +620,18 @@ def dequant_dot(
 
 
 def binary_quantize(matrix: np.ndarray) -> np.ndarray:
-    """Pack sign bits (``>= 0`` is 1) into ``uint32`` words, 32 columns per word."""
+    r"""Pack sign bits into ``uint32`` words, 32 columns per word.
+
+    Each dimension becomes a binary value:
+
+    .. math::
+        b_j = \begin{cases}
+            1 & x_j \ge 0 \\
+            0 & x_j < 0
+        \end{cases}
+
+    The bits are packed little-endian into 32-bit words.
+    """
     m = np.asarray(matrix, dtype=np.float32)
     if m.ndim == 1:
         m = m.reshape(1, -1)
@@ -596,7 +650,14 @@ def binary_dot(
     dim: int,
     cache_key: object | None = None,
 ) -> np.ndarray:
-    """``dim - hamming_distance`` per row; higher means more similar."""
+    r"""``dim - hamming_distance`` per row; higher means more similar.
+
+    .. math::
+        s_i = \dim - \sum_j \operatorname{popcount}(b_{ij} \oplus q_j)
+
+    where :math:`\oplus` is bitwise XOR. Identical binary vectors score
+    ``dim``; opposite vectors score ``0``.
+    """
     bits = np.ascontiguousarray(bits_matrix, dtype=np.uint32)
     query = np.ascontiguousarray(query_bits, dtype=np.uint32).reshape(-1)
     if bits.shape[1] != query.shape[0]:
@@ -614,7 +675,13 @@ def binary_dot(
 
 
 def batch_softmax(scores: np.ndarray) -> np.ndarray:
-    """Numerically stable softmax over a 1-D score vector."""
+    r"""Numerically stable softmax over a 1-D score vector.
+
+    .. math::
+        p_i = \frac{e^{s_i - \max_j s_j}}{\sum_j e^{s_j - \max_j s_j}}
+
+    The shift by :math:`\max_j s_j` prevents overflow for large scores.
+    """
     s = np.asarray(scores, dtype=np.float32).reshape(-1)
     if s.size == 0:
         return s
@@ -629,7 +696,11 @@ def topk_ip(
     *,
     cache_key: object | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Return top-k indices and inner-product scores. Falls back to NumPy."""
+    r"""Return top-k indices and inner-product scores. Falls back to NumPy.
+
+    Computes :math:`s_i = q \cdot v_i`, then returns the ``k`` largest scores
+    sorted descending.
+    """
     if k < 1:
         return np.array([], dtype=np.int64), np.array([], dtype=np.float32)
     scores = batch_dot(query, vectors, cache_key=cache_key)
