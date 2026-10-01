@@ -33,7 +33,7 @@ Static Templates (all personas): [`.cursor/templates/python_static_template.py`]
 
 ## Adding tasks
 
-Edit `coordination.yaml` → `tasks:`. Copy the example structure from the comments. Each task needs an `id`, `title`, `assigned` agent(s), `depends_on` list, and `status`. Coder tasks that should share a wave also need disjoint `files` (and usually `task: implement_in_files`). A production file and the tests that cover it stay on the same Coder task.
+Edit `coordination.yaml` → `tasks:`. Copy the example structure from the comments. Each task needs an `id`, `title`, `assigned` registered agent(s), `depends_on` list, and `status`; `task` optionally selects a task ID from that agent's manifest. Coder tasks that should share a wave also need disjoint `files` (and usually `task: implement_in_files`). A production file and the tests that cover it stay on the same Coder task.
 
 ## Runtime config
 

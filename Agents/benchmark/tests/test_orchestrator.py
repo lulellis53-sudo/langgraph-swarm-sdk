@@ -44,6 +44,20 @@ def _chain_plan(n: int) -> Plan:
     return Plan(steps=steps)
 
 
+def test_worker_prompt_budget_allows_empty_user_when_system_uses_limit(tmp_path: Path) -> None:
+    worker = WorkerAgent(
+        manifest(token_budget={"max_prompt": 1, "max_completion": 1}),
+        agents_root=str(tmp_path),
+    )
+    system = worker._system_prompt()
+
+    user = worker._user_prompt("extra user content", {})
+
+    packed = f"{system}\n{user}" if user else system
+    assert worker.tokens.count(packed) <= worker.tokens.max_tokens
+    assert user == ""
+
+
 @st.composite
 def dag_plans(draw: st.DrawFn) -> Plan:
     """Generate a small DAG of unique step ids with edges only to earlier ids."""

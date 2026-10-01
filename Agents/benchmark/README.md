@@ -140,18 +140,20 @@ uv run python -m benchmark.run --task sql_pro
 
 Case definitions: `benchmark/sql_pro/suite.yaml`. Cursor command: `/sql-pro`.
 
-## Code Agent benchmark suite (20 tasks)
+## Code-agent harness calibration (20 tasks)
 
-Deterministic coding-evaluation cases for the **Coder** agent. Each case
-measures task score, token usage, latency, think level, effort, pass rate,
-files changed, and lines changed. No API keys required.
+This offline suite feeds each case's reference solution to the scorer as a
+scripted Coder. It checks the scorer and acceptance tests and gives an upper
+bound; it does **not** measure the current Coder agent or compare models. The
+reported token, latency, and change metrics describe the reference harness.
 
 ```bash
 uv run pytest Agents/benchmark/Tasks/codeagent_bencheval -q
 uv run python -m benchmark.run --task codeagent_bencheval
 ```
 
-Case definitions: `benchmark/Tasks/codeagent_bencheval/cases.py`.
+Case definitions: `benchmark/Tasks/codeagent_bencheval/cases.py`. To measure a
+real agent, connect a Coder implementation instead of `_reference_agent`.
 
 ## WebSearch tools (one query, one row per tool)
 

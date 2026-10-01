@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import cast
 
 import pytest
 from langchain_core.messages import AIMessage
@@ -98,6 +99,45 @@ def test_run_plan_without_plan_id_returns_pollable_id(
     status = servicer.PlanStatus(swarm_pb2.PlanHandle(plan_id=result.plan_id), None)
     assert status.status == "done"
     assert status.steps_done == 1
+
+
+def test_run_plan_rejects_unknown_agent_before_execution(tmp_path: Path, monkeypatch) -> None:
+    from swarm_sdk.orchestrator.plan import PlanResult, UsageTotals
+    from swarm_sdk.serving import grpc as grpc_server
+    from swarm_sdk.serving.grpc import SwarmServicer
+
+    executed = False
+
+    async def fake_run_plan(*_args: object, **_kwargs: object) -> PlanResult:
+        nonlocal executed
+        executed = True
+        return PlanResult(outputs={}, usage=UsageTotals())
+
+    monkeypatch.setattr(grpc_server, "run_plan", fake_run_plan)
+    grpc_server._PLANS.clear()
+    grpc_server._RESULTS.clear()
+    sdk = SwarmSDK(
+        Settings(memory_backend="opencl", embed_dim=32),
+        router_model=ScriptedModel(script=Script([])),
+        specialist_model=ScriptedModel(script=Script([])),
+        embedder=HashEmbedder(32),
+        reranker=IdentityReranker(),
+    )
+    servicer = SwarmServicer(sdk)
+    handle = swarm_pb2.PlanHandle(
+        plan_id="untrusted-plan",
+        steps=[
+            swarm_pb2.PlanStepMsg(
+                id="S1", title="step", description="do anything", agent="Unknown"
+            )
+        ],
+    )
+
+    with pytest.raises(ValueError, match="unknown agents"):
+        servicer.RunPlan(handle, None)
+
+    assert not executed
+    assert "untrusted-plan" not in grpc_server._PLANS
 
 
 def test_grpc_plan_handle_roundtrips_files_and_task() -> None:
@@ -297,6 +337,33 @@ def test_plan_status_unknown_plan_is_failed() -> None:
     assert status.steps_total == 0
 
 
+def test_grpc_serve_fails_when_bind_returns_zero(monkeypatch) -> None:
+    from swarm_sdk.serving import grpc as grpc_server
+
+    class Server:
+        started = False
+
+        def add_insecure_port(self, _address: str) -> int:
+            return 0
+
+        def add_generic_rpc_handlers(self, _handlers: object) -> None:
+            pass
+
+        def add_registered_method_handlers(self, _service: str, _handlers: object) -> None:
+            pass
+
+        def start(self) -> None:
+            self.started = True
+
+    server = Server()
+    monkeypatch.setattr(grpc_server.grpc, "server", lambda _executor: server)
+
+    with pytest.raises(RuntimeError, match="could not bind gRPC server"):
+        grpc_server.serve(cast(SwarmSDK, object()), host="127.0.0.1", port=50051)
+
+    assert not server.started
+
+
 def test_to_result_msg_records_result_for_status_polling() -> None:
     from swarm_sdk.orchestrator.plan import PlanResult, StepOutput, UsageTotals
     from swarm_sdk.serving import grpc as grpc_server
@@ -335,25 +402,29 @@ def test_to_result_msg_records_result_for_status_polling() -> None:
 
 
 def test_serve_creates_started_grpc_server(
-    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import grpc as grpc_lib
+    from swarm_sdk.serving import grpc as grpc_server
 
-    from swarm_sdk.serving.grpc import serve
+    class Server:
+        started = False
 
-    settings = Settings(
-        memory_path=str(tmp_path / "mem.db"),
-        cache_path=str(tmp_path / "cache.db"),
-        embed_dim=32,
-        memory_backend="opencl",
-    )
-    sdk = SwarmSDK(
-        settings,
-        router_model=ScriptedModel(script=Script([])),
-        specialist_model=ScriptedModel(script=Script([])),
-        embedder=HashEmbedder(32),
-        reranker=IdentityReranker(),
-    )
-    server = serve(sdk, "127.0.0.1", 0)
-    assert isinstance(server, grpc_lib.Server)
-    server.stop(0)
+        def add_insecure_port(self, address: str) -> int:
+            assert address == "127.0.0.1:0"
+            return 12345
+
+        def add_generic_rpc_handlers(self, _handlers: object) -> None:
+            pass
+
+        def add_registered_method_handlers(self, _service: str, _handlers: object) -> None:
+            pass
+
+        def start(self) -> None:
+            self.started = True
+
+    server = Server()
+    monkeypatch.setattr(grpc_server.grpc, "server", lambda _executor: server)
+    sdk = cast(SwarmSDK, object())
+
+    assert grpc_server.serve(sdk, "127.0.0.1", 0) is server
+    assert server.started

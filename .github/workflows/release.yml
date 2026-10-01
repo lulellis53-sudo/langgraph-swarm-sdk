@@ -19,7 +19,7 @@ jobs:
       - name: Install dev dependencies
         run: uv sync --extra dev --frozen
       - name: Run tests
-        run: uv run pytest Agents/tests -q
+        run: uv run pytest Agents/benchmark/tests -q
 
   build:
     name: Build distributions

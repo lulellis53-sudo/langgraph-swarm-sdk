@@ -173,6 +173,20 @@ async def test_semantic_cache_hit_does_not_call_the_model(tmp_path: Path) -> Non
     assert model.script.calls == calls
 
 
+def test_request_token_budget_does_not_mutate_shared_budget(tmp_path: Path) -> None:
+    sdk = _sdk(
+        tmp_path,
+        router=ScriptedModel(script=Script([])),
+        specialist=ScriptedModel(script=Script([])),
+    )
+    sdk.budget.max_tokens = 4096
+
+    request_budget = sdk._budget_for("low")
+
+    assert request_budget.max_tokens == 512
+    assert sdk.budget.max_tokens == 4096
+
+
 def test_semantic_cache_uses_wal(tmp_path: Path) -> None:
     cache = SemanticCache(str(tmp_path / "c.db"), HashEmbedder(16))
     assert cache._conn.execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"

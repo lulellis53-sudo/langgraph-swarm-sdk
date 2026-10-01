@@ -128,24 +128,28 @@ agents:
 tasks:
   - id: MD01
     title: "Route: pick provider/model for a sub-task"
-    assigned: [ModelDelegate/Router]
+    assigned: [ModelDelegate]
+    task: route_task
     depends_on: []
     status: todo
 
   - id: MD02
     title: "Fallback: pre-compute retry chain for the selected route"
-    assigned: [ModelDelegate/FallbackResolver]
+    assigned: [ModelDelegate]
+    task: resolve_fallback
     depends_on: [MD01]
     status: todo
 
   - id: MD03
     title: "Embed: dispatch embedding task to GPU or registry provider"
-    assigned: [ModelDelegate/Embedder]
+    assigned: [ModelDelegate]
+    task: delegate_embedding
     depends_on: []
     status: todo
 
   - id: MD04
     title: "Math: dispatch numerical task to GPU or fast LLM"
-    assigned: [ModelDelegate/MathWorker]
+    assigned: [ModelDelegate]
+    task: delegate_math
     depends_on: []
     status: todo

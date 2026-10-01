@@ -39,6 +39,28 @@ def validate_coordination(agents_dir: Path) -> list[str]:
             errors.append(f"{name}: missing agent.yaml")
         elif manifests[name].name != name:
             errors.append(f"{name}: manifest name mismatch ({manifests[name].name})")
+
+    tasks = data.get("tasks", [])
+    if not isinstance(tasks, list):
+        return [*errors, "coordination.yaml tasks must be a list"]
+    for entry in tasks:
+        if not isinstance(entry, dict):
+            continue
+        task_id = entry.get("id", "<unknown>")
+        assigned = entry.get("assigned", [])
+        if not isinstance(assigned, list):
+            errors.append(f"{task_id}: assigned must be a list")
+            continue
+        for name in assigned:
+            manifest = manifests.get(name) if isinstance(name, str) else None
+            if manifest is None:
+                errors.append(f"{task_id}: unknown assigned agent {name!r}")
+                continue
+            task_name = entry.get("task")
+            if task_name:
+                known_tasks = {task.id for task in manifest.tasks}
+                if task_name not in known_tasks:
+                    errors.append(f"{task_id}: unknown task {task_name!r} for agent {name!r}")
     return errors
 
 

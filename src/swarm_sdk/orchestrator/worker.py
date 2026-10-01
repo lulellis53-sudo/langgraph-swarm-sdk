@@ -138,7 +138,8 @@ class WorkerAgent:
         system = self._system_prompt()
         if budget.count(f"{system}\n{user}") > budget.max_tokens:
             # Leave whatever room the system prompt does not consume.
-            user = budget.truncate(user, max(1, budget.max_tokens - budget.count(system)))
+            remaining = max(0, budget.max_tokens - budget.count(system))
+            user = budget.truncate(user, remaining)
         return user
 
     def _model_name(self) -> str:
@@ -232,7 +233,7 @@ class WorkerAgent:
             step_id=step_id,
             agent=self.name,
             content=content,
-            prompt_tokens=count_text(f"{system}\n{user}"),
+            prompt_tokens=count_text(f"{system}\n{user}" if user else system),
             completion_tokens=count_text(content),
             wall_s=wall,
         )

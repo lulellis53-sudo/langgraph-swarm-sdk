@@ -209,10 +209,17 @@ class SwarmSDK:
             )
         return self._cache
 
-    def _cap_tokens(self, think_level: ThinkLevel) -> None:
+    def _budget_for(self, think_level: ThinkLevel) -> TokenBudget:
+        """Create an isolated prompt budget for one run."""
+        max_tokens = min(self.budget.max_tokens, self.settings.max_tokens)
         cap = THINK_TOKEN_BUDGET.get(think_level, self.settings.max_tokens)
         if think_level != "off" and cap > 0:
-            self.budget.max_tokens = min(self.settings.max_tokens, cap)
+            max_tokens = min(max_tokens, cap)
+        return TokenBudget(
+            max_tokens=max_tokens,
+            tool_cap=self.budget.tool_cap,
+            tokenizer=self.budget.tokenizer,
+        )
 
     async def run(self, text: str, thread_id: str = "default") -> RunResult:
         if self.settings.peer_url:
@@ -235,9 +242,9 @@ class SwarmSDK:
                 mode="cache",
             )
 
-        self._cap_tokens(self.file_config.router.think_level)
+        request_budget = self._budget_for(self.file_config.router.think_level)
         memories = await offload(self._recall, text)
-        packed = self.budget.pack(system=ROUTER_SYSTEM, memories=memories, turns=[text])
+        packed = request_budget.pack(system=ROUTER_SYSTEM, memories=memories, turns=[text])
         route, route_tokens = await self._route(packed)
         if route.mode == "parallel" and route.tasks:
             answer, tokens = await fan_out(
@@ -257,7 +264,6 @@ class SwarmSDK:
             await offload(self.cache.store, text, answer)
             await offload(self._remember, text, answer)
         self.usage.add(agent, tokens, False)
-        self.budget.max_tokens = self.settings.max_tokens
         return RunResult(
             text=answer,
             cached=False,

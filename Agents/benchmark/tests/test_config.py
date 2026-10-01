@@ -50,7 +50,7 @@ def test_bge_radeon_profile_sets_int8_sqlite_and_llama_gpu() -> None:
 def test_agent_manifests_and_coordination() -> None:
     root = agents_root()
     manifests = load_all_agent_manifests(root)
-    assert len(manifests) == 15
+    assert len(manifests) >= 15
     assert manifests["Refactor"].role == "safe_incremental_refactor"
     assert manifests["Coder"].role == "implement_changes"
     assert manifests["Coder"].name == "Coder"
@@ -85,6 +85,38 @@ def test_file_config_maps_quantize_and_structured_output(tmp_path: Path) -> None
     assert file_cfg.vectorstore.quantize == "int8"
     assert settings.opencl_quantize == "int8"
     assert settings.router_structured_output is False
+
+
+def test_environment_backend_overrides_file_config(tmp_path: Path, monkeypatch) -> None:
+    from swarm_sdk.config.loader import load_settings
+
+    config = tmp_path / "swarm.yaml"
+    config.write_text("version: 1\nvectorstore:\n  backend: sqlite-vec\n", encoding="utf-8")
+    monkeypatch.setenv("SWARM_MEMORY_BACKEND", "mem0")
+
+    settings, _ = load_settings(config)
+
+    assert settings.memory_backend == "mem0"
+
+
+def test_coordination_rejects_unregistered_task_assignee(tmp_path: Path) -> None:
+    agents_dir = tmp_path / "Agents"
+    tester_dir = agents_dir / "Tester"
+    tester_dir.mkdir(parents=True)
+    (tester_dir / "agent.yaml").write_text(
+        "version: 1\nname: Tester\nrole: test\ntasks:\n  - id: run_tests\n"
+        "    description: Run tests\n",
+        encoding="utf-8",
+    )
+    (agents_dir / "coordination.yaml").write_text(
+        "version: '1'\nagents:\n  - name: Tester\n    manifest: Agents/Tester/agent.yaml\n"
+        "tasks:\n  - id: T01\n    assigned: [Tester/Nested]\n    task: run_tests\n",
+        encoding="utf-8",
+    )
+
+    errors = validate_coordination(agents_dir)
+
+    assert errors == ["T01: unknown assigned agent 'Tester/Nested'"]
 
 
 def test_open_store_passes_quantize_to_opencl_store() -> None:

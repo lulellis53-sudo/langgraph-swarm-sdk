@@ -14,7 +14,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     task_dir = Path(__file__).parent / "Tasks" / args.task
-    candidates = list(task_dir.glob("test_*.py"))
+    candidates = sorted(task_dir.glob("test_*.py"))
     module_path = candidates[0] if candidates else task_dir / "test_benchmark.py"
     if not module_path.is_file():
         print(f"missing {module_path}", file=sys.stderr)
@@ -30,8 +30,13 @@ def main(argv: list[str] | None = None) -> int:
     module = importlib.util.module_from_spec(spec)
     try:
         spec.loader.exec_module(module)
-        if hasattr(module, "run"):
-            module.run()
+        run = getattr(module, "run", None)
+        if callable(run):
+            run()
+        else:
+            import pytest
+
+            return int(pytest.main(["-q", str(task_dir)]))
     finally:
         if sys.path and sys.path[0] == task_dir_str:
             sys.path.pop(0)

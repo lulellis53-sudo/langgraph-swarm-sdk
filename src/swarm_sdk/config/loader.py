@@ -199,7 +199,7 @@ def load_swarm_config(path: Path | None = None) -> SwarmFileConfig:
 
 
 def settings_from_file(file_cfg: SwarmFileConfig, env: Settings | None = None) -> Settings:
-    """File defaults merged under explicit SWARM_* env (env wins via Settings load order)."""
+    """Merge file defaults under explicitly supplied runtime settings."""
     base = env or Settings()
     updates: dict[str, object] = {
         "router_model": file_cfg.router.router_model,
@@ -241,7 +241,9 @@ def settings_from_file(file_cfg: SwarmFileConfig, env: Settings | None = None) -
         )
         if strong:
             updates["specialist_model"] = strong
-    return base.model_copy(update=updates)
+    explicit = base.model_fields_set
+    file_defaults = {name: value for name, value in updates.items() if name not in explicit}
+    return base.model_copy(update=file_defaults)
 
 
 def load_settings(config_path: Path | None = None) -> tuple[Settings, SwarmFileConfig]:

@@ -14,6 +14,7 @@ from swarm_sdk.core.swarm import SwarmSDK
 from swarm_sdk.execution.executor import install_uvloop
 from swarm_sdk.orchestrator import make_factory, run_plan, spawn
 from swarm_sdk.orchestrator.plan import Plan, PlanResult
+from swarm_sdk.orchestrator.spawn import _validate_plan
 from swarm_sdk.pb import swarm_pb2, swarm_pb2_grpc
 
 #: Spawned plans awaiting execution, keyed by plan id (see module docstring).
@@ -151,13 +152,18 @@ class SwarmServicer(swarm_pb2_grpc.SwarmServiceServicer):
         context: grpc.ServicerContext | None,
     ) -> swarm_pb2.PlanResultMsg:
         """Execute a plan through the LangGraph orchestration engine."""
-        del context
         plan_id = request.plan_id or uuid.uuid4().hex
         plan = _PLANS.get(plan_id)
         if plan is None:
             plan = _from_handle(request)
-            _PLANS[plan_id] = plan
         manifests = load_all_agent_manifests()
+        try:
+            _validate_plan(plan, manifests)
+        except ValueError as exc:
+            if context is not None:
+                context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(exc))
+            raise
+        _PLANS[plan_id] = plan
         result = asyncio.run(
             run_plan(
                 plan,
@@ -198,7 +204,9 @@ def serve(sdk: SwarmSDK, host: str = "127.0.0.1", port: int = 50051) -> grpc.Ser
     """Start an insecure gRPC server with the swarm service registered."""
     server = grpc.server(concurrent.futures.ThreadPoolExecutor(max_workers=8))
     swarm_pb2_grpc.add_SwarmServiceServicer_to_server(SwarmServicer(sdk), server)
-    server.add_insecure_port(f"{host}:{port}")
+    bound_port = server.add_insecure_port(f"{host}:{port}")
+    if bound_port == 0:
+        raise RuntimeError(f"could not bind gRPC server to {host}:{port}")
     server.start()
     return server
 
