@@ -9,8 +9,15 @@ from pathlib import Path
 import numpy as np
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
-from tests.fakes import ROUTER_OUTPUTS, Script, ScriptedModel, answer, handoff, sdk_with_router
 
+from benchmark.tests.fakes import (
+    ROUTER_OUTPUTS,
+    Script,
+    ScriptedModel,
+    answer,
+    handoff,
+    sdk_with_router,
+)
 from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import SwarmSDK
 from swarm_sdk.memory.opencl_store import OpenClVecStore

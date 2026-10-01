@@ -10,7 +10,7 @@ from pathlib import Path
 from swarm_sdk.execution.concurrency import parallel_cap
 from swarm_sdk.execution.executor import _pool_workers
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 TEMPLATE = ROOT / ".cursor/templates/python_static_template.py"
 TEMPLATE_LITE = ROOT / ".cursor/templates/python_static_template_lite.py"
 AGENTS = ROOT / "AGENTS.md"

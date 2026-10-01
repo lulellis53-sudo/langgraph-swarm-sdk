@@ -36,7 +36,7 @@ def test_bge_radeon_profile_sets_int8_sqlite_and_llama_gpu() -> None:
 
     from swarm_sdk.config.loader import settings_from_file
 
-    profile = Path(__file__).resolve().parents[2] / "Main" / "config" / "swarm-bge-m3-radeon.yaml"
+    profile = Path(__file__).resolve().parents[3] / "Main" / "config" / "swarm-bge-m3-radeon.yaml"
     cfg = load_swarm_config(profile)
     settings = settings_from_file(cfg)
     assert settings.embed_backend == "llama-cpp"

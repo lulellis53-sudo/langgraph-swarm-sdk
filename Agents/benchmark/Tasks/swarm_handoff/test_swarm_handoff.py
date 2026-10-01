@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-from tests.fakes import Script, ScriptedModel, answer, handoff
+from benchmark.tests.fakes import Script, ScriptedModel, answer, handoff
 
 from swarm_sdk.config.loader import load_swarm_config
 from swarm_sdk.config.settings import Settings

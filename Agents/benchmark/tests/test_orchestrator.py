@@ -9,8 +9,8 @@ import hypothesis.strategies as st
 import pytest
 from hypothesis import assume, given, settings
 from pydantic import ValidationError
-from tests.fakes import Script, ScriptedModel, answer
 
+from benchmark.tests.fakes import Script, ScriptedModel, answer
 from swarm_sdk.agents.manifest import AgentManifest
 from swarm_sdk.orchestrator import Plan, PlanStep, make_factory, run_plan, spawn
 from swarm_sdk.orchestrator.graph import build_graph

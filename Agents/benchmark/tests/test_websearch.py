@@ -185,6 +185,97 @@ def test_parallel_search_runs_concurrently() -> None:
     assert len(hits) == 2
 
 
+def test_parallel_search_ranks_consensus_first() -> None:
+    from WebSearch import parallel_search
+
+    def brave(query: str, spec: SearcherSpec) -> list[SearchHit]:
+        return [
+            SearchHit("X", "https://x.example/", "", spec.id),
+            SearchHit("B", "https://b.example/", "", spec.id),
+        ]
+
+    def tavily(query: str, spec: SearcherSpec) -> list[SearchHit]:
+        return [
+            SearchHit("B", "https://B.example/", "", spec.id),
+            SearchHit("Y", "https://y.example/", "", spec.id),
+        ]
+
+    fused = parallel_search("q", backends={"brave": brave, "tavily": tavily})
+    assert [h.title for h in fused] == ["B", "X", "Y"]
+
+    unfused = parallel_search(
+        "q", backends={"brave": brave, "tavily": tavily}, fuse=False
+    )
+    assert [h.title for h in unfused] == ["X", "B", "Y"]
+
+
+def test_parallel_search_timeout_abandons_slow_provider() -> None:
+    import time
+
+    from WebSearch import parallel_search
+
+    def slow(query: str, spec: SearcherSpec) -> list[SearchHit]:
+        time.sleep(1.0)
+        return [SearchHit("S", "https://slow.example/", "", spec.id)]
+
+    def fast(query: str, spec: SearcherSpec) -> list[SearchHit]:
+        return [SearchHit("F", "https://fast.example/", "", spec.id)]
+
+    started = time.perf_counter()
+    hits = parallel_search("q", backends={"brave": slow, "tavily": fast}, timeout_s=0.1)
+    elapsed = time.perf_counter() - started
+    assert [h.title for h in hits] == ["F"]
+    assert elapsed < 0.8
+
+
+def test_parallel_search_limit_caps_results() -> None:
+    from WebSearch import parallel_search
+
+    def many(query: str, spec: SearcherSpec) -> list[SearchHit]:
+        return [SearchHit(f"T{i}", f"https://limit.example/{i}", "", spec.id) for i in range(5)]
+
+    assert len(parallel_search("q", backends={"brave": many}, limit=2)) == 2
+    assert len(parallel_search("q", backends={"brave": many})) == 5
+
+
+def test_search_brief_is_numbered_normalized_and_capped() -> None:
+    from WebSearch import search_brief
+
+    def brave(query: str, spec: SearcherSpec) -> list[SearchHit]:
+        return [
+            SearchHit(
+                "Alpha  <b>Beta</b>\nMenu\nmenu",
+                "https://x.example/a?utm_source=t#frag",
+                "line1\nline1\n  line2 ",
+                spec.id,
+            )
+        ]
+
+    def tavily(query: str, spec: SearcherSpec) -> list[SearchHit]:
+        return [
+            SearchHit("Alpha Beta", "https://x.example/a", "dup", spec.id),
+            SearchHit("Gamma", "https://y.example/", "g", spec.id),
+        ]
+
+    brief = search_brief("q", backends={"brave": brave, "tavily": tavily})
+    assert "[1]" in brief and "[2]" in brief
+    assert "Alpha Beta" in brief
+    assert "<b>" not in brief
+    assert "line1 line2" in brief
+    assert "menu menu" not in brief
+    assert "utm_source" not in brief and "#frag" not in brief
+    assert "Sources: brave, tavily" in brief
+
+    short = search_brief("q", backends={"brave": brave, "tavily": tavily}, max_chars=40)
+    assert len(short.splitlines()) < len(brief.splitlines())
+
+
+def test_render_brief_empty_hits() -> None:
+    from WebSearch import render_brief
+
+    assert render_brief([]) == ""
+
+
 def test_dork_builder() -> None:
     import pytest
     from WebSearch.frontend.dorks import DorkError, any_of, dork

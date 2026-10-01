@@ -48,8 +48,7 @@ For swarm coordination: start from `[Agents/SKILLS.md](Agents/SKILLS.md)` and `[
 | `[WebSearch/](WebSearch/)`                                   | Symlink to git worktree `../Swarm-WebSearch` (`worktree/websearch`): search pipeline |
 | `[Agents/](Agents/)`                                         | Specialist **swarm personas** (`AGENTS.md` + `agent.yaml` per role)                                      |
 | `[Agents/coordination.yaml](Agents/coordination.yaml)`       | Task graph for multi-agent workflows                                                                     |
-| `[Agents/tests/](Agents/tests/)`                             | Unit and integration tests                                                                               |
-| `[Agents/benchmark/](Agents/benchmark/)`                     | Token/retrieval/swarm benchmarks (incl. `[Agents/benchmark/sql_pro/](Agents/benchmark/sql_pro/)`)        |
+| `[Agents/benchmark/](Agents/benchmark/)`                     | Token/retrieval/swarm benchmarks; unit/integration tests in `[Agents/benchmark/tests/](Agents/benchmark/tests/)` (incl. `[Agents/benchmark/sql_pro/](Agents/benchmark/sql_pro/)`)  |
 | `[.cursor/commands/](.cursor/commands/)`                     | Cursor slash commands (e.g. `/sql-pro`)                                                                  |
 | `[.cursor/AGENTS.md](.cursor/AGENTS.md)`                     | Cursor agent guidelines, folder design, modus operandi                                                   |
 | `[.cursor/rules/](.cursor/rules/)`                           | Project `.mdc` rules (core, Context7-after-edit, Python, protobuf, …)                                    |
@@ -87,9 +86,9 @@ Use `uv run …` so commands use the project virtualenv.
 Run before claiming work is done:
 
 ```bash
-uv run --extra dev --extra observability --extra opencl --extra faiss --extra mem0 pytest Agents/tests Agents/benchmark -q
-uv run --extra dev --extra observability --extra opencl --extra faiss --extra mem0 ruff check src Agents/tests Agents/benchmark Main
-uv run --extra dev --extra observability --extra opencl --extra faiss --extra mem0 ty check src Agents/tests Agents/benchmark Main
+uv run --extra dev --extra observability --extra opencl --extra faiss --extra mem0 pytest Agents/benchmark -q
+uv run --extra dev --extra observability --extra opencl --extra faiss --extra mem0 ruff check src Agents/benchmark Main
+uv run --extra dev --extra observability --extra opencl --extra faiss --extra mem0 ty check src Agents/benchmark Main
 uv run python -m swarm_sdk.agents.validate
 ```
 

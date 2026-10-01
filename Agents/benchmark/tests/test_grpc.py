@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 from langchain_core.messages import AIMessage
-from tests.fakes import Script, ScriptedModel, answer
 
+from benchmark.tests.fakes import Script, ScriptedModel, answer
 from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import SwarmSDK
 from swarm_sdk.pb import swarm_pb2

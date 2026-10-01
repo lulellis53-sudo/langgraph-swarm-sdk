@@ -110,9 +110,9 @@ HTTP peers use `httpx2` with HTTP/2 (`h2`). `aiohttp` and `requests` are the oth
 so run the gate with the extras the SDK supports:
 
 ```bash
-uv run --extra dev --extra observability --extra opencl --extra faiss --extra mem0 pytest Agents/tests Agents/benchmark -q
-uv run --extra dev --extra observability --extra opencl --extra faiss --extra mem0 ruff check src Agents/tests Agents/benchmark Main
-uv run --extra dev --extra observability --extra opencl --extra faiss --extra mem0 ty check src Agents/tests Agents/benchmark Main
+uv run --extra dev --extra observability --extra opencl --extra faiss --extra mem0 pytest Agents/benchmark -q
+uv run --extra dev --extra observability --extra opencl --extra faiss --extra mem0 ruff check src Agents/benchmark Main
+uv run --extra dev --extra observability --extra opencl --extra faiss --extra mem0 ty check src Agents/benchmark Main
 uv run python -m swarm_sdk.agents.validate
 ```
 
