@@ -301,7 +301,7 @@ def test_dork_builder() -> None:
 
 def test_google_ground_parses_chunks_and_tokens(monkeypatch) -> None:
     from WebSearch import frontend
-    from WebSearch.frontend import apis
+    from WebSearch.frontend import websearchers
 
     payload = {
         "candidates": [
@@ -320,7 +320,7 @@ def test_google_ground_parses_chunks_and_tokens(monkeypatch) -> None:
         "usageMetadata": {"totalTokenCount": 42},
     }
     monkeypatch.setenv("GEMINI_API_KEY", "k")
-    monkeypatch.setattr(apis, "_httpx_json", lambda *a, **k: payload)
+    monkeypatch.setattr(websearchers, "_httpx_json", lambda *a, **k: payload)
     spec = SearcherSpec(id="google_ground", kind="websearcher", api_key_env="GEMINI_API_KEY")
     hits = frontend.search_google_ground("q", spec)
     assert [h.title for h in hits] == ["a.com", "b.com"]
