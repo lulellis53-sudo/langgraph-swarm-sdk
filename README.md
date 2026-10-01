@@ -13,7 +13,7 @@ Search/scrape pipeline. HTTP searchers fail closed (empty hits) without keys.
 | Layer       | Path                               | Role                                                                                                                            |
 | ----------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | Frontend    | [`frontend/`](frontend/)           | `__init__.py` (yaml registry, `SearchHit`, HTTP APIs, dork builder), `websearchers.py` (failover + parallel + RRF fusion)       |
-| Midend      | [`midend/`](midend/)               | `crawlers.py` (httpx → scrapy → playwright → crawlee), `scrape.py` (URL dedupe, concurrent scrape; `http`/`https` only)         |
+| Midend      | [`midend/`](midend/)               | `__init__.py` (crawlers httpx → scrapy → playwright → crawlee, then URL dedupe and concurrent scrape; `http`/`https` only)      |
 | Backend     | [`backend/`](backend/)             | `extractors.py` (selectolax, selectolax_regex, regex, trafilatura, bs4), `normalize.py`, `docs.py` (`ExtractedDoc`, doc dedupe) |
 | Agent tools | [`agent_tools.py`](agent_tools.py) | `search_hits` / `search_brief`: one query → consensus-ranked hits or a prompt-ready numbered brief                              |
 | Shared      | [`repeater.py`](repeater.py)       | URL canonicalization; `@repeater.s` retry on I/O (`TimeoutError` / `OSError` / `ConnectionError`)                               |
