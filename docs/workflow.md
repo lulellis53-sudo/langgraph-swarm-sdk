@@ -37,6 +37,8 @@ uv sync --extra dev
 
 Interpreter: `.venv` (Python 3.14). Cursor is pointed at `${workspaceFolder}/.venv/bin/python`.
 
+**Snippets:** install [Python Snippets 3](https://marketplace.visualstudio.com/items?itemName=EricSia.pythonsnippets3) (`ericsia.pythonsnippets3`). Type prefixes such as `def.function()` for built-ins, or `wsdef` / `wstest` / `wshit` from `.vscode/python.code-snippets` for this repo. Tab completion and snippet suggestions are enabled for Python in `.vscode/settings.json`.
+
 Export API keys referenced in `providers.yaml` (names only in yaml; values from the environment). Missing keys fail closed for that searcher.
 
 Optional local SearXNG (DuckDuckGo + Bing):

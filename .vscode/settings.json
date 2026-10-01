@@ -4,9 +4,19 @@
   "ruff.configuration": "pyproject.toml",
   "ruff.enable": true,
   "editor.defaultFormatter": "trunk.io",
+  "editor.snippetSuggestions": "top",
+  "editor.tabCompletion": "on",
   "[python]": {
     "editor.defaultFormatter": "charliermarsh.ruff",
     "editor.formatOnSave": true,
+    "editor.tabCompletion": "on",
+    "editor.snippetSuggestions": "top",
+    "editor.suggest.snippetsPreventQuickSuggestions": false,
+    "editor.quickSuggestions": {
+      "other": "on",
+      "comments": "off",
+      "strings": "on"
+    },
     "editor.codeActionsOnSave": {
       "source.organizeImports.ruff": "explicit",
       "source.fixAll.ruff": "explicit"
