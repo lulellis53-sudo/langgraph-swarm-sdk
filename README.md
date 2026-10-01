@@ -60,7 +60,7 @@ vectorstore:
     infer: false
 ```
 
-`MEM0_API_KEY` lives in `~/.env`. YAML only names the env var.
+API keys (`MEM0_API_KEY`, `TAVILY_API_KEY`, `BRAVE_API_KEY`, `EXA_API_KEY`) live in the macOS Keychain, encrypted at rest. Store each with `uv run swarm-vault set <NAME>` (it prompts; nothing is echoed or written to disk) and check with `uv run swarm-vault status`. `swarm-api` and `swarm-grpc` load them at start; a variable already in the environment wins, and `~/.env` is a legacy fallback. YAML only names the env var; `.env.example` lists the names.
 
 Inspect the host map and selected backends with:
 

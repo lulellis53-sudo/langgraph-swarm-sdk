@@ -119,6 +119,7 @@ websearch = [
 [project.scripts]
 swarm-api = "swarm_sdk.serving.http:main"
 swarm-grpc = "swarm_sdk.serving.grpc:main"
+swarm-vault = "swarm_sdk.vault:main"
 
 [build-system]
 requires = ["hatchling"]

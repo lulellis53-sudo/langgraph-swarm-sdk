@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import RunResult, SwarmSDK
 from swarm_sdk.execution.executor import install_uvloop
+from swarm_sdk.vault import KNOWN_NAMES, load_into_env
 
 if TYPE_CHECKING:
     app: FastAPI
@@ -72,6 +73,7 @@ def main() -> None:
 
     install_uvloop()
     settings = Settings()
+    load_into_env(KNOWN_NAMES)
     uvicorn.run(
         "swarm_sdk.serving.http:app",
         host=settings.api_host,

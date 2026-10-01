@@ -6,10 +6,12 @@ Values are never logged or put in exceptions; errors carry the secret NAME only.
 
 from __future__ import annotations
 
+import getpass
 import logging
 import os
 import re
 import subprocess
+import sys
 from collections.abc import Callable, Iterable, MutableMapping, Sequence
 from pathlib import Path
 
@@ -125,6 +127,45 @@ def load_into_env(
     return unresolved
 
 
+def main(argv: Sequence[str] | None = None, *, runner: Runner | None = None) -> int:
+    """Run ``swarm-vault set NAME`` or ``swarm-vault status [NAME ...]``."""
+    args = list(sys.argv[1:] if argv is None else argv)
+    if not args or args[0] not in {"set", "status"}:
+        print("usage: swarm-vault set NAME | status [NAME ...]", file=sys.stderr)
+        return 2
+    cmd, names = args[0], args[1:]
+    try:
+        if cmd == "set":
+            if len(names) != 1:
+                print("usage: swarm-vault set NAME", file=sys.stderr)
+                return 2
+            name = _check(names[0])
+            # No value on argv: `security` prompts for it on the terminal.
+            proc = subprocess.run(
+                [
+                    "security",
+                    "add-generic-password",
+                    "-a",
+                    getpass.getuser(),
+                    "-s",
+                    f"{SERVICE_PREFIX}{name}",
+                    "-U",
+                    "-w",
+                ],
+                check=False,
+            )
+            return proc.returncode
+        missing = False
+        for name in names or KNOWN_NAMES:
+            found = get_with_source(name, runner=runner)
+            print(f"{name}: {found[1] if found else 'missing'}")
+            missing = missing or found is None
+        return 1 if missing else 0
+    except VaultError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
+
 __all__ = [
     "KNOWN_NAMES",
     "Runner",
@@ -132,5 +173,6 @@ __all__ = [
     "get",
     "get_with_source",
     "load_into_env",
+    "main",
     "run_cli",
 ]

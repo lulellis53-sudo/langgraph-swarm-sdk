@@ -98,3 +98,65 @@ def test_known_names_cover_the_four_provider_keys() -> None:
         "BRAVE_API_KEY",
         "EXA_API_KEY",
     }
+
+
+def test_status_prints_source_never_value(capsys: pytest.CaptureFixture[str]) -> None:
+    runner = FakeRunner({"security": "topsecret"})
+    rc = vault.main(["status", "MEM0_API_KEY"], runner=runner)
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "MEM0_API_KEY: keychain" in out
+    assert "topsecret" not in out
+
+
+def test_status_defaults_to_known_names_and_reports_missing(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for name in vault.KNOWN_NAMES:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr(vault.Path, "home", lambda: Path("/nonexistent-home"))
+    assert vault.main(["status"], runner=FakeRunner({})) == 1
+    out = capsys.readouterr().out
+    for name in vault.KNOWN_NAMES:
+        assert f"{name}: missing" in out
+
+
+def test_set_delegates_prompt_to_security(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[list[str]] = []
+
+    class Done:
+        returncode = 0
+
+    def fake_run(argv: list[str], **kwargs: object) -> Done:
+        seen.append(argv)
+        assert "capture_output" not in kwargs  # stdio inherited so security can prompt
+        return Done()
+
+    monkeypatch.setattr(vault.subprocess, "run", fake_run)
+    assert vault.main(["set", "MEM0_API_KEY"]) == 0
+    argv = seen[0]
+    assert argv[:2] == ["security", "add-generic-password"]
+    assert argv[argv.index("-s") + 1] == "swarm/MEM0_API_KEY"
+    assert argv[-1] == "-w"  # nothing after -w: security prompts for the value
+
+
+def test_set_rejects_bad_name(capsys: pytest.CaptureFixture[str]) -> None:
+    assert vault.main(["set", "bad name"]) == 2
+    assert "invalid secret name" in capsys.readouterr().err
+
+
+def test_env_example_lists_only_names() -> None:
+    path = Path(__file__).resolve().parents[3] / ".env.example"
+    rows = [r for r in path.read_text().splitlines() if r.strip() and not r.startswith("#")]
+    assert {r.partition("=")[0] for r in rows} == set(vault.KNOWN_NAMES)
+    assert all(r.partition("=")[2] == "" for r in rows)
+
+
+def test_http_entrypoint_loads_known_names(monkeypatch: pytest.MonkeyPatch) -> None:
+    import swarm_sdk.serving.http as http
+
+    calls: list[list[str]] = []
+    monkeypatch.setattr(http, "load_into_env", lambda names, **_: calls.append(list(names)) or [])
+    monkeypatch.setattr("uvicorn.run", lambda *a, **k: None)
+    http.main()
+    assert calls == [list(vault.KNOWN_NAMES)]
