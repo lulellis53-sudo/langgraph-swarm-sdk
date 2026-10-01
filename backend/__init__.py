@@ -13,11 +13,21 @@ from WebSearch.backend.docs import (
     type_is_extracted,
 )
 from WebSearch.backend.normalize import normalize_text
+from WebSearch.backend.prefilter import (
+    Rejected,
+    RejectReason,
+    prefilter_hits,
+    unwrap_redirect,
+)
 
 __all__ = [
     "ExtractedDoc",
+    "RejectReason",
+    "Rejected",
     "dedupe_docs",
     "extract_and_normalize",
     "normalize_text",
+    "prefilter_hits",
     "type_is_extracted",
+    "unwrap_redirect",
 ]

@@ -13,9 +13,12 @@ import re
 from collections.abc import Mapping
 
 from WebSearch.backend.normalize import normalize_text
-from WebSearch.frontend.models import SearchFn, SearchHit
-from WebSearch.frontend.providers import ProvidersConfig
-from WebSearch.frontend.websearchers import parallel_search
+from WebSearch.frontend.websearchers import (
+    ProvidersConfig,
+    SearchFn,
+    SearchHit,
+    parallel_search,
+)
 from WebSearch.repeater import normalize_url
 
 _TITLE_CHARS = 120

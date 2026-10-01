@@ -11,15 +11,20 @@ requires-python = ">=3.14"
 dependencies = [
     "aiohttp>=3.14.3",
     "beautifulsoup4>=4.15.0",
+    "crawlee>=0.5.0",
     "curl-cffi>=0.16.3",
+    "duckduckgo-search>=7.0.0",
     "fastapi>=0.142.2",
     "google-genai>=2.26.0",
     "httpx>=0.28",
     "httpx2>=2.13.1",
     "openai>=3.22.1",
+    "playwright>=1.49.0",
+    "playwright-stealth>=1.0.0",
     "pydantic>=2.13.5",
     "pyyaml>=6.0",
     "requests>=2.34.2",
+    "scrapy>=2.12.0",
     "selectolax>=0.4.13",
     "tavily-python>=0.8.4",
     "trafilatura>=2.2.0",
@@ -56,8 +61,7 @@ ignore = ["D203", "D213"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["ANN", "D"]
 "scripts/**/*.py" = ["D"]
-"frontend/http.py" = ["ANN401"]
-"frontend/models.py" = ["D102"]
+"frontend/websearchers.py" = ["ANN401", "D102"]
 "repeater.py" = ["D102"]
 
 [tool.ruff.lint.pydocstyle]

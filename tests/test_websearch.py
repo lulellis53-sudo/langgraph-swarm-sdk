@@ -8,14 +8,15 @@ from pathlib import Path
 
 import pytest
 
+from WebSearch.backend.prefilter import prefilter_hits, unwrap_redirect
 from WebSearch.frontend import SearchHit, parallel_search, registry_search
 from WebSearch.frontend.hits import near_dedupe, normalize_hit
-from WebSearch.frontend.models import NullSink, SinkReport
-from WebSearch.frontend.prefilter import prefilter_hits, unwrap_redirect
-from WebSearch.frontend.providers import (
+from WebSearch.frontend.websearchers import (
+    NullSink,
     PrefilterPolicy,
     ProvidersConfig,
     SearcherSpec,
+    SinkReport,
     load_providers,
 )
 

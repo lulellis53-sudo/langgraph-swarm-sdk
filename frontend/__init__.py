@@ -1,37 +1,32 @@
-"""Frontend package: provider registry, searchers and dork builder."""
+"""Frontend package: searchers, dorks, and hit cleanup."""
 
 from __future__ import annotations
 
-from WebSearch.frontend.apis import (
-    builtin_searchers,
-    search_brave,
-    search_google_ground,
-    search_tavily,
-)
+from WebSearch.backend.prefilter import prefilter_hits
 from WebSearch.frontend.dorks import DorkError, any_of, dork
 from WebSearch.frontend.hits import near_dedupe, normalize_hit
-from WebSearch.frontend.models import (
-    NullSink,
-    ResultSink,
-    SearchFn,
-    SearchHit,
-    SinkReport,
-    dedupe_hits,
-)
-from WebSearch.frontend.prefilter import prefilter_hits
-from WebSearch.frontend.providers import (
+from WebSearch.frontend.websearchers import (
     CrawlerName,
     CrawlSpec,
     ExtractorName,
+    NullSink,
     PrefilterPolicy,
     ProvidersConfig,
+    ResultSink,
     SearcherSpec,
+    SearchFn,
+    SearchHit,
+    SinkReport,
+    builtin_searchers,
+    dedupe_hits,
     get_searcher,
     load_providers,
-)
-from WebSearch.frontend.websearchers import (
     parallel_search,
     registry_search,
+    search_brave,
+    search_ddg,
+    search_google_ground,
+    search_tavily,
     searcher_ids,
 )
 
@@ -60,8 +55,8 @@ __all__ = [
     "prefilter_hits",
     "registry_search",
     "search_brave",
+    "search_ddg",
     "search_google_ground",
     "searcher_ids",
     "search_tavily",
 ]
-

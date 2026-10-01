@@ -9,7 +9,7 @@ from dataclasses import replace
 from urllib.parse import urlsplit
 
 from WebSearch.backend.normalize import normalize_text
-from WebSearch.frontend.models import SearchHit
+from WebSearch.frontend.websearchers import SearchHit
 
 #: " | ", " - ", en/em dash and middle dot between a title and a site name.
 _SEPARATOR = re.compile(r"\s+[|–—·-]\s+")

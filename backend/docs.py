@@ -9,7 +9,7 @@ from typing import Literal
 
 from WebSearch.backend.extractors import extract_text, strip_tags
 from WebSearch.backend.normalize import normalize_text
-from WebSearch.frontend.providers import ExtractorName, ProvidersConfig, load_providers
+from WebSearch.frontend.websearchers import ExtractorName, ProvidersConfig, load_providers
 
 ExtractorUsed = ExtractorName | Literal["fallback"]
 

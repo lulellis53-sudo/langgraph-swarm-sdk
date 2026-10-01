@@ -2,6 +2,12 @@
 
 End-to-end flow for this worktree: configure providers, run search, optionally scrape and extract.
 
+## Architecture
+
+- **Frontend** — Web search + API-key providers configured in `providers.yaml`, queried in one shot.
+- **Mid end** — Scrapers and crawlers that fetch the hit URLs.
+- **Backend** — Regex prefilter, normalization, dedupe, and a Swarm agent helper for extraction.
+
 ## Pipeline
 
 ```text
@@ -82,7 +88,8 @@ export SEARXNG_URL=http://127.0.0.1:8888
 
 | Path             | Role                                                |
 | ---------------- | --------------------------------------------------- |
-| `frontend/`      | Registry, HTTP searchers, prefilter, fusion, dorks  |
+| `frontend/`      | Registry, HTTP searchers, fusion, dorks             |
+| `backend/`       | Extract/normalize docs; prefilter hits before fusion |
 | `midend/`        | Fetch/scrape hit URLs                               |
 | `backend/`       | HTML → text, doc dedupe                             |
 | `agent_tools.py` | Agent-facing `search_hits` / `search_brief`         |

@@ -16,11 +16,11 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
-from WebSearch.frontend.models import SearchHit
-from WebSearch.frontend.providers import (
+from WebSearch.frontend.websearchers import (
     CrawlerName,
     CrawlSpec,
     ProvidersConfig,
+    SearchHit,
     load_providers,
 )
 from WebSearch.repeater import normalize_url, repeater
@@ -143,11 +143,18 @@ def fetch_playwright(url: str, *, timeout_s: float = 20.0) -> bytes:
         sync_api = importlib.import_module("playwright.sync_api")
     except ImportError as exc:
         raise OSError("playwright not installed") from exc
+    try:
+        stealth = importlib.import_module("playwright_stealth")
+        stealth_sync = getattr(stealth, "stealth_sync", None)
+    except ImportError:
+        stealth_sync = None
     playwright_error = sync_api.Error
     try:
         with sync_api.sync_playwright() as playwright:
             browser = playwright.chromium.launch(headless=True)
             page = browser.new_page()
+            if stealth_sync is not None:
+                stealth_sync(page)
             page.goto(url, timeout=int(timeout_s * 1000), wait_until="domcontentloaded")
             html = page.content()
             browser.close()

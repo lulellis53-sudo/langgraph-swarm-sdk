@@ -15,6 +15,9 @@ searchers:
     kind: websearcher
     api_key_env: BRAVE_API_KEY
     description: Brave Search API (web).
+  - id: ddg
+    kind: websearcher
+    description: DuckDuckGo text search (no API key).
   - id: tavily
     kind: websearcher
     api_key_env: TAVILY_API_KEY

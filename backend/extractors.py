@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib
 import re
 
-from WebSearch.frontend.providers import ExtractorName
+from WebSearch.frontend.websearchers import ExtractorName
 
 _TAG = re.compile(r"<[^>]+>", re.IGNORECASE)
 

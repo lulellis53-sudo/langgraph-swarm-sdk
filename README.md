@@ -12,9 +12,9 @@ Search/scrape pipeline. HTTP searchers fail closed (empty hits) without keys.
 
 | Layer       | Path                               | Role                                                                                                                            |
 | ----------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Frontend    | [`frontend/`](frontend/)           | `__init__.py` (yaml registry, `SearchHit`, HTTP APIs, dork builder), `websearchers.py` (failover + parallel + RRF fusion)       |
+| Frontend    | [`frontend/`](frontend/)           | `websearchers.py` (registry, types, HTTP, APIs, fusion); `dorks.py`, `hits.py`                                                    |
 | Midend      | [`midend/`](midend/)               | `__init__.py` (crawlers httpx → scrapy → playwright → crawlee, then URL dedupe and concurrent scrape; `http`/`https` only)      |
-| Backend     | [`backend/`](backend/)             | `extractors.py` (selectolax, selectolax_regex, regex, trafilatura, bs4), `normalize.py`, `docs.py` (`ExtractedDoc`, doc dedupe) |
+| Backend     | [`backend/`](backend/)             | `prefilter.py` (hit policy before fusion), `extractors.py`, `normalize.py`, `docs.py` (`ExtractedDoc`, doc dedupe)              |
 | Agent tools | [`agent_tools.py`](agent_tools.py) | `search_hits` / `search_brief`: one query → consensus-ranked hits or a prompt-ready numbered brief                              |
 | Shared      | [`repeater.py`](repeater.py)       | URL canonicalization; `@repeater.s` retry on I/O (`TimeoutError` / `OSError` / `ConnectionError`)                               |
 
