@@ -1,8 +1,8 @@
 {
   "recommendations": [
     "moonshot-ai.kimi-code",
-    "trunk.io",
     "ericsia.pythonsnippets3",
-    "charliermarsh.ruff"
+    "charliermarsh.ruff",
+    "eamodio.gitlens"
   ]
 }
