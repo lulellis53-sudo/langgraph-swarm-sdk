@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from benchmark.websearch_bench import format_table, run_benchmark
 from WebSearch import SearchHit
-from WebSearch.frontend.providers import SearcherSpec
+from WebSearch.frontend import SearcherSpec
 
 _PAGE = (
     b"<html><script>var x=1;</script><body><nav>Home</nav><nav>home</nav>"

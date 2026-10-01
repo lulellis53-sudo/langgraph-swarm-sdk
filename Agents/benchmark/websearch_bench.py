@@ -37,7 +37,7 @@ from WebSearch import (
     load_providers,
 )
 from WebSearch.backend import dedupe_docs, extract_and_normalize
-from WebSearch.frontend.models import dedupe_hits
+from WebSearch.frontend import dedupe_hits
 
 from swarm_sdk.prompting.budget import count_text
 

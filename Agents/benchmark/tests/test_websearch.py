@@ -4,10 +4,16 @@ from __future__ import annotations
 
 from WebSearch import run_pipeline
 from WebSearch.backend import extract_and_normalize, normalize_text
-from WebSearch.frontend.apis import search_brave, search_tavily
-from WebSearch.frontend.models import SearchHit
-from WebSearch.frontend.providers import SearcherSpec, get_searcher, load_providers
-from WebSearch.frontend.websearchers import registry_search, searcher_ids
+from WebSearch.frontend import (
+    SearcherSpec,
+    SearchHit,
+    get_searcher,
+    load_providers,
+    registry_search,
+    search_brave,
+    search_tavily,
+    searcher_ids,
+)
 from WebSearch.midend import crawl_then_scrape
 from WebSearch.repeater import repeater
 
@@ -101,7 +107,7 @@ def test_backend_regex_and_normalize() -> None:
     assert "Para" in doc.text
     if doc.extractor != "fallback":
         assert "secret" not in doc.text
-    from WebSearch.frontend.providers import CrawlSpec, ProvidersConfig
+    from WebSearch.frontend import CrawlSpec, ProvidersConfig
 
     regex_cfg = ProvidersConfig(
         version=1,
@@ -278,7 +284,7 @@ def test_render_brief_empty_hits() -> None:
 
 def test_dork_builder() -> None:
     import pytest
-    from WebSearch.frontend.dorks import DorkError, any_of, dork
+    from WebSearch.frontend import DorkError, any_of, dork
 
     assert any_of("a", "two words") == '(a|"two words")'
     assert (
@@ -294,7 +300,7 @@ def test_dork_builder() -> None:
 
 
 def test_google_ground_parses_chunks_and_tokens(monkeypatch) -> None:
-    from WebSearch.frontend import apis, http
+    from WebSearch import frontend
 
     payload = {
         "candidates": [
@@ -313,14 +319,14 @@ def test_google_ground_parses_chunks_and_tokens(monkeypatch) -> None:
         "usageMetadata": {"totalTokenCount": 42},
     }
     monkeypatch.setenv("GEMINI_API_KEY", "k")
-    monkeypatch.setattr(http, "request_json", lambda *a, **k: payload)
+    monkeypatch.setattr(frontend, "request_json", lambda *a, **k: payload)
     spec = SearcherSpec(id="google_ground", kind="websearcher", api_key_env="GEMINI_API_KEY")
-    hits = apis.search_google_ground("q", spec)
+    hits = frontend.search_google_ground("q", spec)
     assert [h.title for h in hits] == ["a.com", "b.com"]
     assert hits[1].snippet == "claim"
     assert (hits[0].api_tokens, hits[1].api_tokens) == (42, 0)
     monkeypatch.delenv("GEMINI_API_KEY")
-    assert apis.search_google_ground("q", spec) == []
+    assert frontend.search_google_ground("q", spec) == []
 
 
 def test_normalize_dedupes_lines_and_entities() -> None:
