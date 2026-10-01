@@ -1,6 +1,6 @@
 # Benchmarks
 
-Task folders under `Tasks/{name}/` measure token usage, cache hits, retrieval quality, and swarm behavior using **predefined models** from [Main/config/swarm.yaml](../../Main/config/swarm.yaml) and scripted chat models (no API keys in CI).
+One QA tree: benchmark **task folders** under `Tasks/{name}/` measure token usage, cache hits, retrieval quality, and swarm behavior using **predefined models** from [Main/config/swarm.yaml](../../Main/config/swarm.yaml) and scripted chat models (no API keys in CI); **unit and integration tests** for the SDK live in [`tests/`](tests/) (importable as `benchmark.tests.*`, shared fakes in `tests/fakes.py`).
 
 ## Token-minimization pipeline (what we score)
 
@@ -75,6 +75,31 @@ when OpenCL is missing or unusable, the same workload measures the NumPy path.
 Runtime offload defaults to at least 8192 rows because this machine's measured
 OpenCL path was slower through 4096×1024 vectors. The benchmark forces OpenCL
 on for comparison, then reports the fastest measured backend and chunk size.
+
+### Efficiency gains vs replaced behavior (`Tasks/efficiency_gains/`)
+
+```bash
+PYTHONPATH=Agents:. uv run python -m benchmark.Tasks.efficiency_gains.benchmark_efficiency_gains --write-results
+uv run --extra dev pytest Agents/benchmark/Tasks/efficiency_gains -q
+```
+
+Each scenario re-implements the replaced (pre-optimization) behavior inline and
+runs the current SDK on the identical deterministic workload; improvements are
+measured, never hardcoded. Measured 2026-09-30 (seed 7, 200 answers / 48 texts /
+400 docs, `results/efficiency_gains/latest.json`):
+
+| Metric                                   | Baseline | Current | Improvement        |
+| ---------------------------------------- | -------: | ------: | -----------------: |
+| Fan-out brief tokens into synthesizer    |   13,200 |  11,386 | **−13.75%**        |
+| BGE-M3 embedding input tokens            |      480 |     336 | **−30.0%**         |
+| Plan recovery after rejected first reply |       0% |    100% | **+100 pp**        |
+| Bogus empty answers served from cache    |     100% |      0% | **−100%**          |
+| Recall prompt tokens (50% dup memories)  |      239 |     119 | **−50.2%**         |
+| Keyword search on FTS5-less SQLite       |    crash | working | **+100 pp**, recall 1.0, p50 0.73 ms |
+
+Mean measured improvement across the token metrics: **48.5% fewer tokens**; the
+two 0→100 metrics (delegation recovery, cache integrity) are percentage-point
+wins rather than ratios.
 
 ### Real Radeon run (2026-09-29)
 
