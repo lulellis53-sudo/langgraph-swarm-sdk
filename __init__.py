@@ -9,6 +9,7 @@ from WebSearch.agent_tools import render_brief, search_brief, search_hits
 from WebSearch.backend import ExtractedDoc, dedupe_docs, extract_and_normalize
 from WebSearch.frontend.dorks import DorkError, any_of, dork
 from WebSearch.frontend.websearchers import (
+    _SEARCH_CACHE_TTL_S,
     ProvidersConfig,
     SearchFn,
     SearchHit,
@@ -45,8 +46,18 @@ def run_pipeline(
     """
     cfg = config or load_providers()
     table = backends if backends is not None else builtin_searchers()
-    search = parallel_search if parallel else registry_search
-    hits = list(search(query, config=cfg, backends=table, searcher_id=searcher_id))
+    if parallel:
+        hits = list(
+            parallel_search(
+                query,
+                config=cfg,
+                backends=table,
+                searcher_id=searcher_id,
+                cache_ttl_s=_SEARCH_CACHE_TTL_S,
+            )
+        )
+    else:
+        hits = list(registry_search(query, config=cfg, backends=table, searcher_id=searcher_id))
     pages = crawl_then_scrape(hits, fetch=fetch, config=cfg)
     docs = [
         extract_and_normalize(page.html, url=page.url, config=cfg) for page in pages if page.html

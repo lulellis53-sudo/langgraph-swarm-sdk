@@ -5,15 +5,21 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
+import time
+from collections import OrderedDict
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Any, Literal, Protocol
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 import yaml
 
 from WebSearch.repeater import normalize_url, repeater
+
+if TYPE_CHECKING:
+    from httpx import Client as HttpxClient
 
 logger = logging.getLogger(__name__)
 
@@ -189,8 +195,11 @@ def type_is_searcher_kind(value: object) -> bool:
     return value in ("docs", "websearcher")
 
 
+_PROVIDERS_CACHE: dict[tuple[str, int, int], ProvidersConfig] = {}
+
+
 def load_providers(path: Path | None = None) -> ProvidersConfig:
-    """Parse ``providers.yaml``.
+    """Parse ``providers.yaml``, cached per file version.
 
     Args:
         path (Path | None): Override path; default is :func:`providers_yaml_path`.
@@ -202,7 +211,19 @@ def load_providers(path: Path | None = None) -> ProvidersConfig:
         ValueError: If YAML is not a mapping, names an unknown extractor/crawler,
             or has a non-numeric ``version``/``crawl`` limit.
     """
-    raw = yaml.safe_load((path or providers_yaml_path()).read_text(encoding="utf-8"))
+    target = (path or providers_yaml_path()).resolve()
+    stat = target.stat()
+    key = (str(target), stat.st_mtime_ns, stat.st_size)
+    cached = _PROVIDERS_CACHE.get(key)
+    if cached is None:
+        cached = _parse_providers(target)
+        _PROVIDERS_CACHE[key] = cached
+    return cached
+
+
+def _parse_providers(target: Path) -> ProvidersConfig:
+    """Parse the yaml file at *target* into a :class:`ProvidersConfig`."""
+    raw = yaml.safe_load(target.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
         raise ValueError("providers.yaml must be a mapping")
     searchers: list[SearcherSpec] = []
@@ -224,9 +245,7 @@ def load_providers(path: Path | None = None) -> ProvidersConfig:
                 id=str(item["id"]),
                 kind=kind,
                 api_key_env=str(env) if isinstance(env, str) else None,
-                engine=(
-                    str(item["engine"]) if isinstance(item.get("engine"), str) else None
-                ),
+                engine=(str(item["engine"]) if isinstance(item.get("engine"), str) else None),
                 description=str(item.get("description") or ""),
                 base_url=str(base) if isinstance(base, str) else None,
                 base_url_env=str(base_env) if isinstance(base_env, str) else None,
@@ -250,23 +269,15 @@ def load_providers(path: Path | None = None) -> ProvidersConfig:
     else:
         schemes = ("http", "https")
     prefilter_block = raw.get("prefilter")
-    prefilter_raw: dict[str, object] = (
-        prefilter_block if isinstance(prefilter_block, dict) else {}
-    )
+    prefilter_raw: dict[str, object] = prefilter_block if isinstance(prefilter_block, dict) else {}
     return ProvidersConfig(
         version=_coerce_number(raw.get("version"), int, 1, "version"),
         searchers=tuple(searchers),
         extractor_order=order,
         crawl=CrawlSpec(
-            timeout_s=_coerce_number(
-                crawl_raw.get("timeout_s"), float, 20.0, "crawl.timeout_s"
-            ),
-            max_bytes=_coerce_number(
-                crawl_raw.get("max_bytes"), int, 1_048_576, "crawl.max_bytes"
-            ),
-            max_urls=_coerce_number(
-                crawl_raw.get("max_urls"), int, 8, "crawl.max_urls"
-            ),
+            timeout_s=_coerce_number(crawl_raw.get("timeout_s"), float, 20.0, "crawl.timeout_s"),
+            max_bytes=_coerce_number(crawl_raw.get("max_bytes"), int, 1_048_576, "crawl.max_bytes"),
+            max_urls=_coerce_number(crawl_raw.get("max_urls"), int, 8, "crawl.max_urls"),
             schemes=schemes,
             crawler_order=crawler_order,
         ),
@@ -278,9 +289,7 @@ def _str_tuple(value: object) -> tuple[str, ...]:
     """Lowercased, stripped, non-empty strings of a yaml list; anything else → ``()``."""
     if not isinstance(value, list):
         return ()
-    return tuple(
-        text for item in value if (text := str(item).strip().lower().lstrip("."))
-    )
+    return tuple(text for item in value if (text := str(item).strip().lower().lstrip(".")))
 
 
 def _parse_prefilter(raw: dict[str, object]) -> PrefilterPolicy:
@@ -310,23 +319,15 @@ def _coerce_number[N: (int, float)](
     Raises:
         ValueError: If a string/number cannot be converted (names *label*).
     """
-    if (
-        value is None
-        or isinstance(value, bool)
-        or not isinstance(value, int | float | str)
-    ):
+    if value is None or isinstance(value, bool) or not isinstance(value, int | float | str):
         return default
     try:
         return cast(value)
     except ValueError as exc:
-        raise ValueError(
-            f"providers.yaml: {label} must be a number, got {value!r}"
-        ) from exc
+        raise ValueError(f"providers.yaml: {label} must be a number, got {value!r}") from exc
 
 
-def _parse_names[T: str](
-    raw: object, allowed: tuple[T, ...], label: str
-) -> tuple[T, ...]:
+def _parse_names[T: str](raw: object, allowed: tuple[T, ...], label: str) -> tuple[T, ...]:
     """Validate a yaml ``order`` list against *allowed*; empty/invalid shape → all."""
     if not isinstance(raw, list):
         return allowed
@@ -390,6 +391,70 @@ def env_base(spec: SearcherSpec) -> str:
     return (spec.base_url or "").rstrip("/")
 
 
+_HTTP_CLIENT: HttpxClient | None = None
+_HTTP_CLIENT_LOCK = threading.Lock()
+_EXECUTOR: ThreadPoolExecutor | None = None
+_EXECUTOR_LOCK = threading.Lock()
+_SEARCH_CACHE_TTL_S = 300.0
+_SEARCH_CACHE_MAX = 256
+_SEARCH_CACHE: OrderedDict[tuple[str, str], tuple[float, list[SearchHit]]] = OrderedDict()
+_SEARCH_CACHE_LOCK = threading.Lock()
+
+
+def _search_cache_get(searcher_id: str, query: str) -> list[SearchHit] | None:
+    """Live cached hits for this (searcher, query) pair, or ``None``."""
+    now = time.monotonic()
+    with _SEARCH_CACHE_LOCK:
+        entry = _SEARCH_CACHE.get((searcher_id, query))
+        if entry is None:
+            return None
+        expires_at, hits = entry
+        if now >= expires_at:
+            del _SEARCH_CACHE[(searcher_id, query)]
+            return None
+        _SEARCH_CACHE.move_to_end((searcher_id, query))
+        return hits
+
+
+def _search_cache_put(searcher_id: str, query: str, hits: list[SearchHit], ttl_s: float) -> None:
+    """Store hits with ``api_tokens`` zeroed: a cache hit costs no API call."""
+    while len(_SEARCH_CACHE) >= _SEARCH_CACHE_MAX:
+        _SEARCH_CACHE.popitem(last=False)
+    with _SEARCH_CACHE_LOCK:
+        _SEARCH_CACHE[(searcher_id, query)] = (
+            time.monotonic() + ttl_s,
+            [replace(hit, api_tokens=0) for hit in hits],
+        )
+
+
+def shared_http_client() -> HttpxClient:
+    """Process-wide ``httpx.Client`` so TCP/TLS connections are reused."""
+    global _HTTP_CLIENT
+    if _HTTP_CLIENT is None:
+        with _HTTP_CLIENT_LOCK:
+            if _HTTP_CLIENT is None:
+                import httpx
+
+                try:
+                    _HTTP_CLIENT = httpx.Client(http2=True)
+                except ImportError:
+                    # h2 optional: HTTP/2 multiplexing when present, else HTTP/1.1.
+                    _HTTP_CLIENT = httpx.Client()
+    return _HTTP_CLIENT
+
+
+def shared_executor() -> ThreadPoolExecutor:
+    """Process-wide worker pool; callers must never shut it down."""
+    global _EXECUTOR
+    if _EXECUTOR is None:
+        with _EXECUTOR_LOCK:
+            if _EXECUTOR is None:
+                _EXECUTOR = ThreadPoolExecutor(
+                    max_workers=_MAX_WORKERS, thread_name_prefix="websearch"
+                )
+    return _EXECUTOR
+
+
 @repeater.s
 def request_json(
     method: str,
@@ -422,7 +487,7 @@ def request_json(
         raise OSError("httpx not installed") from exc
 
     try:
-        response = httpx.request(
+        response = shared_http_client().request(
             method,
             url,
             headers=headers,
@@ -807,9 +872,7 @@ def registry_search(
     return hits
 
 
-def _select_specs(
-    config: ProvidersConfig, searcher_id: str | None
-) -> list[SearcherSpec]:
+def _select_specs(config: ProvidersConfig, searcher_id: str | None) -> list[SearcherSpec]:
     specs = list(config.searchers)
     if searcher_id is None:
         return specs
@@ -819,9 +882,7 @@ def _select_specs(
     return specs
 
 
-def _rrf_fuse(
-    batches: Sequence[Sequence[SearchHit]], *, k: int = 60
-) -> list[SearchHit]:
+def _rrf_fuse(batches: Sequence[Sequence[SearchHit]], *, k: int = 60) -> list[SearchHit]:
     """Reciprocal-rank fusion across per-provider rankings.
 
     A URL returned by several providers outranks one returned by a single
@@ -861,6 +922,7 @@ def parallel_search(
     fuse: bool = True,
     near_distance: int | None = 6,
     sink: ResultSink | None = None,
+    cache_ttl_s: float = _SEARCH_CACHE_TTL_S,
 ) -> list[SearchHit]:
     """Send one ``query`` to every configured searcher at once and merge the hits.
 
@@ -891,6 +953,9 @@ def parallel_search(
         near_distance (int | None): Largest SimHash Hamming distance counted
             as a near-duplicate; ``None`` disables near-dedupe.
         sink (ResultSink | None): Receives the final hits when there are any.
+        cache_ttl_s (float): Per-(searcher, query) result cache lifetime;
+            ``<= 0`` (default) disables caching — opt in at the pipeline level.
+            Cached hits report no API tokens.
 
     Returns:
         list[SearchHit]: Unique hits from all searchers, best first.
@@ -903,41 +968,42 @@ def parallel_search(
 
     cfg = config or load_providers()
     table = dict(backends if backends is not None else builtin_searchers())
-    jobs = [
-        (spec, table[spec.id])
-        for spec in _select_specs(cfg, searcher_id)
-        if spec.id in table
-    ]
+    jobs = [(spec, table[spec.id]) for spec in _select_specs(cfg, searcher_id) if spec.id in table]
     if not jobs:
         return []
 
+    semaphore = threading.Semaphore(max(1, min(max_workers, len(jobs))))
+
     def run(job: tuple[SearcherSpec, SearchFn]) -> Sequence[SearchHit]:
         spec, fn = job
-        try:
-            return fn(query, spec)
-        except TimeoutError, OSError, ConnectionError, ValueError:
-            logger.warning("searcher %s failed", spec.id, exc_info=True)
-            return []
+        with semaphore:
+            if cache_ttl_s > 0:
+                cached = _search_cache_get(spec.id, query)
+                if cached is not None:
+                    return cached
+            try:
+                hits = list(fn(query, spec))
+            except TimeoutError, OSError, ConnectionError, ValueError:
+                logger.warning("searcher %s failed", spec.id, exc_info=True)
+                return []
+            if cache_ttl_s > 0:
+                _search_cache_put(spec.id, query, hits, cache_ttl_s)
+            return hits
 
-    executor = ThreadPoolExecutor(max_workers=max(1, min(max_workers, len(jobs))))
+    executor = shared_executor()
     wait = timeout_s if timeout_s and timeout_s > 0 else None
-    pending = [(index, executor.submit(run, job)) for index, job in enumerate(jobs)]
+    index_by_future = {executor.submit(run, job): index for index, job in enumerate(jobs)}
     by_index: dict[int, Sequence[SearchHit]] = {}
     try:
-        for future in as_completed([future for _, future in pending], timeout=wait):
+        for future in as_completed(index_by_future, timeout=wait):
             try:
-                index = next(i for i, f in pending if f is future)
-                by_index[index] = future.result()
+                by_index[index_by_future[future]] = future.result()
             except Exception:
                 logger.warning("searcher crashed", exc_info=True)
     except TimeoutError:
-        for _, future in pending:
+        for future in index_by_future:
             future.cancel()
-        logger.warning(
-            "search budget %ss exceeded; abandoning slow searchers", timeout_s
-        )
-    finally:
-        executor.shutdown(wait=False)
+        logger.warning("search budget %ss exceeded; abandoning slow searchers", timeout_s)
     batches = [by_index[index] for index in sorted(by_index)]
     api_tokens = sum(hit.api_tokens for batch in batches for hit in batch)
     clean = [prefilter_hits(batch, cfg.prefilter)[0] for batch in batches]
@@ -962,9 +1028,7 @@ def _store(sink: ResultSink, hits: Sequence[SearchHit]) -> None:
     except OSError:
         logger.exception("result sink failed; returning hits unstored")
         return
-    logger.debug(
-        "sink stored=%d skipped=%d %s", report.stored, report.skipped, report.detail
-    )
+    logger.debug("sink stored=%d skipped=%d %s", report.stored, report.skipped, report.detail)
 
 
 __all__ = [
@@ -994,6 +1058,8 @@ __all__ = [
     "load_providers",
     "parallel_search",
     "providers_yaml_path",
+    "shared_executor",
+    "shared_http_client",
     "registry_search",
     "request_json",
     "search_apify",

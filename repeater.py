@@ -49,9 +49,7 @@ def normalize_url(url: str) -> str:
         if not key.lower().startswith("utm_") and key.lower() not in _TRACKING_PARAMS
     )
     path = parts.path.rstrip("/")
-    return f"{parts.scheme.lower()}://{host}{path}" + (
-        f"?{urlencode(query)}" if query else ""
-    )
+    return f"{parts.scheme.lower()}://{host}{path}" + (f"?{urlencode(query)}" if query else "")
 
 
 class _Repeater:

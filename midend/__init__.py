@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import asyncio
 import importlib
+import threading
 import time
 from collections.abc import Callable, Sequence
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from types import ModuleType
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 from WebSearch.frontend.websearchers import (
@@ -22,8 +24,13 @@ from WebSearch.frontend.websearchers import (
     ProvidersConfig,
     SearchHit,
     load_providers,
+    shared_executor,
+    shared_http_client,
 )
 from WebSearch.repeater import normalize_url, repeater
+
+if TYPE_CHECKING:
+    from playwright.sync_api import Browser
 
 # --- crawlers ------------------------------------------------------------------
 
@@ -45,19 +52,22 @@ def ordered_fetch(url: str, *, crawl: CrawlSpec | None = None) -> tuple[bytes, C
     last: BaseException | None = None
     for name in spec.crawler_order:
         try:
-            return _fetch_named(name, url, spec.timeout_s), name
+            return _fetch_named(name, url, spec.timeout_s, max_bytes=spec.max_bytes), name
         except (TimeoutError, OSError, ConnectionError, ImportError) as exc:
             last = exc
     raise OSError(str(last) if last is not None else "all crawlers failed") from last
 
 
-def _fetch_named(name: CrawlerName, url: str, timeout_s: float) -> bytes:
+def _fetch_named(
+    name: CrawlerName, url: str, timeout_s: float, *, max_bytes: int | None = None
+) -> bytes:
     """Dispatch a fetch to the crawler named in ``providers.yaml``.
 
     Args:
         name: Crawler identifier from the yaml registry.
         url: Absolute http(s) URL.
         timeout_s: Per-crawler timeout in seconds.
+        max_bytes: Retained-body cap; only the httpx crawler applies it.
 
     Returns:
         bytes: Response body.
@@ -66,7 +76,7 @@ def _fetch_named(name: CrawlerName, url: str, timeout_s: float) -> bytes:
         OSError: If the named crawler is unavailable or the fetch fails.
     """
     if name == "httpx":
-        return default_fetch(url, timeout_s=timeout_s)
+        return default_fetch(url, timeout_s=timeout_s, max_bytes=max_bytes)
     if name == "scrapy":
         return fetch_scrapy(url, timeout_s=timeout_s)
     if name == "playwright":
@@ -75,15 +85,16 @@ def _fetch_named(name: CrawlerName, url: str, timeout_s: float) -> bytes:
 
 
 @repeater.s
-def default_fetch(url: str, *, timeout_s: float = 20.0) -> bytes:
-    """HTTP GET via httpx.
+def default_fetch(url: str, *, timeout_s: float = 20.0, max_bytes: int | None = None) -> bytes:
+    """HTTP GET via the shared httpx client.
 
     Args:
         url (str): Absolute URL.
         timeout_s (float): Request timeout in seconds.
+        max_bytes (int | None): Cap on retained body bytes; ``None`` keeps all.
 
     Returns:
-        bytes: Response body.
+        bytes: Response body, at most ``max_bytes`` when capped.
 
     Raises:
         TimeoutError, OSError, ConnectionError: After retries / HTTP errors.
@@ -94,9 +105,20 @@ def default_fetch(url: str, *, timeout_s: float = 20.0) -> bytes:
         raise OSError("httpx not installed") from exc
 
     try:
-        response = httpx.get(url, timeout=timeout_s, follow_redirects=True)
-        response.raise_for_status()
-        return bytes(response.content)
+        with shared_http_client().stream(
+            "GET", url, timeout=timeout_s, follow_redirects=True
+        ) as response:
+            response.raise_for_status()
+            if max_bytes is None:
+                return response.read()
+            chunks: list[bytes] = []
+            remaining = max_bytes
+            for chunk in response.iter_bytes():
+                if remaining <= 0:
+                    break
+                chunks.append(chunk[:remaining])
+                remaining -= len(chunk)
+            return b"".join(chunks)
     except httpx.HTTPError as exc:
         raise OSError(str(exc)) from exc
 
@@ -125,9 +147,29 @@ def fetch_scrapy(url: str, *, timeout_s: float = 20.0) -> bytes:
     return raw
 
 
+_PLAYWRIGHT_LOCAL = threading.local()
+
+
+def _thread_browser(sync_api: ModuleType) -> Browser:
+    """Start one Chromium per worker thread; sync API objects are thread-bound."""
+    browser = getattr(_PLAYWRIGHT_LOCAL, "browser", None)
+    if browser is not None and browser.is_connected():
+        return browser
+    old_pw = getattr(_PLAYWRIGHT_LOCAL, "pw", None)
+    if old_pw is not None:
+        old_pw.stop()
+    pw = sync_api.sync_playwright().start()
+    _PLAYWRIGHT_LOCAL.pw = pw
+    _PLAYWRIGHT_LOCAL.browser = pw.chromium.launch(headless=True)
+    return _PLAYWRIGHT_LOCAL.browser
+
+
 @repeater.s
 def fetch_playwright(url: str, *, timeout_s: float = 20.0) -> bytes:
     """Headless Chromium GET via Playwright. Fails if playwright is missing.
+
+    The browser starts once per worker thread and is reused across calls; the
+    sync API is thread-bound, so a shared browser would raise cross-thread.
 
     Args:
         url (str): Absolute URL.
@@ -150,16 +192,20 @@ def fetch_playwright(url: str, *, timeout_s: float = 20.0) -> bytes:
         stealth_sync = None
     playwright_error = sync_api.Error
     try:
-        with sync_api.sync_playwright() as playwright:
-            browser = playwright.chromium.launch(headless=True)
-            page = browser.new_page()
+        browser = _thread_browser(sync_api)
+        page = browser.new_page()
+        try:
             if stealth_sync is not None:
                 stealth_sync(page)
             page.goto(url, timeout=int(timeout_s * 1000), wait_until="domcontentloaded")
             html = page.content()
-            browser.close()
+        finally:
+            page.close()
         return html.encode("utf-8")
     except playwright_error as exc:
+        browser = getattr(_PLAYWRIGHT_LOCAL, "browser", None)
+        if browser is not None and not browser.is_connected():
+            _PLAYWRIGHT_LOCAL.browser = None
         raise OSError(str(exc)) from exc
 
 
@@ -299,8 +345,14 @@ def crawl_then_scrape(
     urls = urls[: crawl.max_urls]
     if not urls:
         return []
-    with ThreadPoolExecutor(max_workers=max(1, min(max_workers, len(urls)))) as pool:
-        return list(pool.map(lambda u: _scrape_one(u, fetch=getter, crawl=crawl), urls))
+    semaphore = threading.Semaphore(max(1, min(max_workers, len(urls))))
+
+    def capped(url: str) -> tuple[bytes, CrawlerName | None]:
+        with semaphore:
+            return getter(url)
+
+    pool = shared_executor()
+    return list(pool.map(lambda u: _scrape_one(u, fetch=capped, crawl=crawl), urls))
 
 
 def _scrape_one(url: str, *, fetch: _Fetcher, crawl: CrawlSpec) -> ScrapedPage:

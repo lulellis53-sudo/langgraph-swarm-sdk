@@ -18,7 +18,10 @@ def _run(label: str, cmd: list[str]) -> int:
 def main() -> int:
     """Execute the full Python quality gate."""
     steps = [
-        ("compileall (AST parse)", [sys.executable, "-m", "compileall", "-q", "."]),
+        (
+            "compileall (AST parse)",
+            [sys.executable, "-m", "compileall", "-q", "-x", r"/\.venv/|/__pycache__/", "."],
+        ),
         ("validate_ast", [sys.executable, str(ROOT / "scripts" / "validate_ast.py")]),
         ("ruff", [sys.executable, "-m", "ruff", "check", "."]),
         ("ty", [sys.executable, "-m", "ty", "check", "."]),

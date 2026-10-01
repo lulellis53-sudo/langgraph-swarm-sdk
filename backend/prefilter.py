@@ -49,12 +49,7 @@ def _is_google_host(host: str) -> bool:
     if host == "google.com":
         return True
     parts = host.split(".")
-    return (
-        len(parts) == 3
-        and parts[0] == "google"
-        and len(parts[1]) == 2
-        and len(parts[2]) == 2
-    )
+    return len(parts) == 3 and parts[0] == "google" and len(parts[1]) == 2 and len(parts[2]) == 2
 
 
 def unwrap_redirect(url: str) -> str:

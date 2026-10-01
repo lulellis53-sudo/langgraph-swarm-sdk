@@ -14,6 +14,7 @@ from collections.abc import Mapping
 
 from WebSearch.backend.normalize import normalize_text
 from WebSearch.frontend.websearchers import (
+    _SEARCH_CACHE_TTL_S,
     ProvidersConfig,
     SearchFn,
     SearchHit,
@@ -66,6 +67,7 @@ def search_hits(
         max_workers=max_workers,
         timeout_s=timeout_s,
         limit=limit,
+        cache_ttl_s=_SEARCH_CACHE_TTL_S,
     )
 
 

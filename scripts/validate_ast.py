@@ -107,18 +107,13 @@ def _walk_public_defs(
                 for base in node.bases
             )
             for child in node.body:
-                if protocol and isinstance(
-                    child, (ast.FunctionDef, ast.AsyncFunctionDef)
-                ):
+                if protocol and isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     continue
                 stack.append(child)
             continue
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
-        if any(
-            isinstance(dec, ast.Name) and dec.id == "overload"
-            for dec in node.decorator_list
-        ):
+        if any(isinstance(dec, ast.Name) and dec.id == "overload" for dec in node.decorator_list):
             continue
         if in_tests or not _is_public(node.name):
             continue
@@ -139,8 +134,7 @@ def _walk_public_defs(
                     line=node.lineno,
                     code="annotation",
                     message=(
-                        f"public function `{node.name}` missing annotations: "
-                        f"{', '.join(missing)}"
+                        f"public function `{node.name}` missing annotations: {', '.join(missing)}"
                     ),
                 )
             )

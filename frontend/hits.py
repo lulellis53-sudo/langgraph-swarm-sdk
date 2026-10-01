@@ -104,8 +104,7 @@ def near_dedupe(hits: Sequence[SearchHit], *, max_distance: int = 6) -> list[Sea
                 (
                     index
                     for index, other in enumerate(prints)
-                    if other is not None
-                    and (fingerprint ^ other).bit_count() <= max_distance
+                    if other is not None and (fingerprint ^ other).bit_count() <= max_distance
                 ),
                 None,
             )
@@ -113,10 +112,7 @@ def near_dedupe(hits: Sequence[SearchHit], *, max_distance: int = 6) -> list[Sea
             kept.append(hit)
             prints.append(fingerprint)
             merged.append([])
-        elif (
-            hit.searcher_id != kept[match].searcher_id
-            and hit.searcher_id not in merged[match]
-        ):
+        elif hit.searcher_id != kept[match].searcher_id and hit.searcher_id not in merged[match]:
             merged[match].append(hit.searcher_id)
     return [
         replace(hit, also_from=(*hit.also_from, *ids)) if ids else hit

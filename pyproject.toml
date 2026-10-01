@@ -15,6 +15,7 @@ dependencies = [
     "curl-cffi>=0.16.3",
     "duckduckgo-search>=7.0.0",
     "fastapi>=0.115",
+    "fastembed>=0.6.0 ; sys_platform != 'darwin' or platform_machine != 'x86_64'",
     "google-genai>=2.26.0",
     "httpx>=0.28",
     "httpx2>=2.13",
@@ -28,6 +29,7 @@ dependencies = [
     "selectolax>=0.4.13",
     "tavily-python>=0.8.4",
     "trafilatura>=2.2.0",
+    "uvicorn>=0.34.0",
     "uvloop>=0.21 ; sys_platform != 'win32'",
 ]
 
@@ -62,6 +64,7 @@ ignore = ["D203", "D213"]
 "tests/**/*.py" = ["ANN", "D"]
 "scripts/**/*.py" = ["D"]
 "frontend/websearchers.py" = ["ANN401", "D102"]
+"midend/__init__.py" = ["ANN401"]
 "repeater.py" = ["D102"]
 
 [tool.ruff.lint.pydocstyle]
