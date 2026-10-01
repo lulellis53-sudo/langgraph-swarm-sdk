@@ -1,32 +1,52 @@
-.venv/
+# --- Python -------------------------------------------------------------------
 __pycache__/
 *.py[cod]
+.venv/
+.runtime/
+*.egg-info/
+dist/
+
+# --- Test and coverage caches -------------------------------------------------
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
-.remember/
-.env
-.env.*
-dist/
-*.egg-info/
-*.db
-*.sqlite
-Agents/benchmark/results/
-docs/*
-!docs/superpowers/
-docs/superpowers/*
-!docs/superpowers/specs/
-!docs/superpowers/plans/
+.hypothesis/
 .coverage
 htmlcov/
 *.profraw
 *.profdata
+
+# --- Local tool and assistant state (never commit scratch space) --------------
+.claude/
+.crush/
+.remember/
+.superpowers/
 .idea/
+
+# --- Secrets ------------------------------------------------------------------
+.env
+.env.*
+
+# --- Databases ----------------------------------------------------------------
+*.db
+*.sqlite
+
+# --- Build and benchmark results ----------------------------------------------
+Agents/benchmark/results/
 Main/Essentials/
 
-# Nested git worktree (branch worktree/websearch); no trailing slash so the
-# symlink itself is ignored, not just a materialized directory.
+# --- Docs: keep curated docs; scratch only under docs/superpowers -------------
+docs/*
+!docs/MemoryAllocators.md
+!docs/Molten.md
+!docs/superpowers/
+docs/superpowers/*
+!docs/superpowers/specs/
+!docs/superpowers/plans/
+
+# --- Nested git worktree (branch worktree/websearch); no trailing slash so ----
+# --- the symlink itself is ignored, not just a materialized directory. --------
 /WebSearch
 
-# Local standalone CPython path and environments
-.runtime/
+# --- Jupyter scratch ----------------------------------------------------------
+notebooks/.ipynb_checkpoints/
