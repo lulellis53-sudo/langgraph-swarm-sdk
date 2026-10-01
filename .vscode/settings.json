@@ -3,7 +3,6 @@
   "python.terminal.activateEnvironment": true,
   "python.languageServer": "None",
   "python.analysis.typeCheckingMode": "off",
-
   "[python]": {
     "editor.defaultFormatter": "charliermarsh.ruff",
     "editor.formatOnSave": true,
@@ -13,16 +12,16 @@
     },
     "editor.defaultFoldingRangeProvider": "charliermarsh.ruff"
   },
-
   "ruff.enable": true,
   "ruff.nativeServer": "on",
   "ruff.configuration": "pyproject.toml",
   "ruff.configurationPreference": "filesystemFirst",
   "ruff.importStrategy": "fromEnvironment",
-  "ruff.interpreter": ["${workspaceFolder}/.venv/bin/python"],
+  "ruff.interpreter": [
+    "${workspaceFolder}/.venv/bin/python"
+  ],
   "ruff.organizeImports": true,
   "ruff.fixAll": true,
-
   "ty.importStrategy": "fromEnvironment",
   "ty.interpreter": "${workspaceFolder}/.venv/bin/python",
   "ty.diagnosticMode": "workspace",
@@ -33,7 +32,6 @@
   "ty.completions.completeFunctionParentheses": true,
   "ty.inlayHints.variableTypes": true,
   "ty.inlayHints.callArgumentNames": true,
-
   "editor.suggestOnTriggerCharacters": true,
   "editor.quickSuggestions": {
     "other": "on",
@@ -43,18 +41,15 @@
   "editor.inlineSuggest.enabled": true,
   "editor.parameterHints.enabled": true,
   "editor.wordBasedSuggestions": "off",
-
   "jupyter.askForKernelRestart": false,
   "jupyter.kernels.excludePythonEnvironments": [],
   "notebook.formatOnSave.enabled": true,
-
   "colab.logging.level": "info",
   "colab.uploading": true,
   "colab.activityBarContentView": true,
   "colab.activityBarResourceView": true,
   "colab.serverMounting": false,
   "colab.terminal": false,
-
   "chatgpt.openOnStartup": false,
   "chatgpt.followUpQueueMode": "queue",
   "chatgpt.composerEnterBehavior": "cmdIfMultiline",
@@ -90,5 +85,14 @@
   },
   "workbench.editor.autoLockGroups": {
     "jupyter-notebook": true
-  }
+  },
+  "python.testing.unittestArgs": [
+    "-v",
+    "-s",
+    "./Agents",
+    "-p",
+    "*test.py"
+  ],
+  "python.testing.pytestEnabled": false,
+  "python.testing.unittestEnabled": true
 }

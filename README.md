@@ -4,12 +4,12 @@ Parallel multi-LLM swarm on [LangGraph Swarm](https://github.com/langchain-ai/la
 
 ## Requirements
 
-- Python `>=3.14.5` (`uv python install 3.14.5`)
+- Python `>=3.14.7` (`uv python install 3.14.5`)
 - [uv](https://docs.astral.sh/uv/)
 
 ```bash
-uv sync --extra dev --extra faiss --extra qdrant --extra mem0
-```
+uv sync --extra dev --extra faiss --extra qdrant --extra mem0 
+``` 
 
 Optional **Jupyter Notebook + Jupyter AI** (uses prebuilt `cryptography` wheels; see `[tool.uv]` in `pyproject.toml`):
 
