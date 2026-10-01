@@ -7,6 +7,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+
 from WebSearch.frontend import SearchHit, parallel_search, registry_search
 from WebSearch.frontend.hits import near_dedupe, normalize_hit
 from WebSearch.frontend.models import NullSink, SinkReport
@@ -207,9 +208,7 @@ def test_site_suffix_is_stripped_when_it_names_the_host() -> None:
 
 def test_site_suffix_with_spaces_and_dash_variants() -> None:
     hit = normalize_hit(
-        _text_hit(
-            title="Best answer – Stack Overflow", url="https://stackoverflow.com/q/1"
-        )
+        _text_hit(title="Best answer – Stack Overflow", url="https://stackoverflow.com/q/1")
     )
     assert hit.title == "Best answer"
 
@@ -225,9 +224,7 @@ def test_site_suffix_matches_a_subdomain_label() -> None:
 
 
 def test_other_separator_text_is_kept() -> None:
-    hit = normalize_hit(
-        _text_hit(title="Pros | Cons of rust", url="https://example.com/a")
-    )
+    hit = normalize_hit(_text_hit(title="Pros | Cons of rust", url="https://example.com/a"))
     assert hit.title == "Pros | Cons of rust"
 
 
@@ -290,12 +287,7 @@ def test_near_dedupe_never_merges_short_texts() -> None:
 def test_near_dedupe_zero_distance_keeps_an_edited_copy() -> None:
     edited = _text_hit(BASE + " today", "", "https://b.example/2", "tavily")
     assert (
-        len(
-            near_dedupe(
-                [_text_hit(BASE, "", "https://a.example/1"), edited], max_distance=0
-            )
-        )
-        == 2
+        len(near_dedupe([_text_hit(BASE, "", "https://a.example/1"), edited], max_distance=0)) == 2
     )
 
 
@@ -327,9 +319,7 @@ def _search_hit(
     snippet: str = "a reasonably long snippet",
     tokens: int = 0,
 ) -> SearchHit:
-    return SearchHit(
-        title=title, url=url, snippet=snippet, searcher_id="x", api_tokens=tokens
-    )
+    return SearchHit(title=title, url=url, snippet=snippet, searcher_id="x", api_tokens=tokens)
 
 
 class _RecordingSink:
@@ -350,9 +340,7 @@ class _FailingSink:
 
 
 def test_junk_hit_returned_by_two_providers_does_not_outrank_a_clean_hit() -> None:
-    junk, clean = _search_hit("https://spam.example/x"), _search_hit(
-        "https://good.example/y"
-    )
+    junk, clean = _search_hit("https://spam.example/x"), _search_hit("https://good.example/y")
     cfg = _config("a", "b", policy=PrefilterPolicy(blocked_domains=("spam.example",)))
     backends = {"a": _backend([junk, clean]), "b": _backend([junk])}
     assert [h.url for h in parallel_search("q", config=cfg, backends=backends)] == [
