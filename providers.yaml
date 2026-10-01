@@ -33,6 +33,12 @@ searchers:
     engine: duckduckgo,bing
     base_url_env: SEARXNG_URL
     description: Self-hosted SearXNG JSON (DuckDuckGo + Bing engines).
+  - id: google_ground
+    kind: websearcher
+    api_key_env: GEMINI_API_KEY
+    engine: gemini-2.5-flash
+    base_url: https://generativelanguage.googleapis.com/v1beta
+    description: Gemini with Google Search grounding (cited sources + token usage).
 
 extractors:
   order:

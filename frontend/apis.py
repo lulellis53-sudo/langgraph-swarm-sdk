@@ -2,89 +2,14 @@
 
 from __future__ import annotations
 
-import os
-from collections.abc import Callable, Sequence
-from typing import Any
+from dataclasses import replace
 
+from WebSearch.frontend.http import call_json as _httpx_json
+from WebSearch.frontend.http import dig, env_base, env_key, hits_from_maps
+from WebSearch.frontend.models import SearchFn, SearchHit
 from WebSearch.frontend.providers import SearcherSpec
-from WebSearch.frontend.websearchers import SearchHit
-from WebSearch.repeater import repeater
 
-#: Search implementation signature: ``(query, spec) -> hits``.
-SearchFn = Callable[[str, SearcherSpec], Sequence[SearchHit]]
-
-
-def _key(spec: SearcherSpec) -> str:
-    """Read an API key from the environment using the spec's env var name.
-
-    Args:
-        spec: Searcher configuration from ``providers.yaml``.
-
-    Returns:
-        str: The trimmed key, or an empty string if the env var is unset.
-    """
-    name = spec.api_key_env
-    if not name:
-        return ""
-    return os.environ.get(name, "").strip()
-
-
-def _base(spec: SearcherSpec) -> str:
-    """Resolve the searcher base URL from env var or spec field.
-
-    Args:
-        spec: Searcher configuration from ``providers.yaml``.
-
-    Returns:
-        str: Root URL with trailing slashes removed, or an empty string.
-    """
-    if spec.base_url_env:
-        return os.environ.get(spec.base_url_env, "").strip().rstrip("/")
-    return (spec.base_url or "").rstrip("/")
-
-
-@repeater.s
-def _httpx_json(
-    method: str,
-    url: str,
-    *,
-    headers: dict[str, str] | None = None,
-    json_body: dict[str, Any] | None = None,
-    params: dict[str, str] | None = None,
-) -> Any:
-    """GET/POST JSON. Deferred httpx import.
-
-    Args:
-        method (str): ``GET`` or ``POST``.
-        url (str): Absolute URL.
-        headers (dict[str, str] | None): Extra headers.
-        json_body (dict[str, Any] | None): POST body.
-        params (dict[str, str] | None): Query string.
-
-    Returns:
-        Any: Parsed JSON.
-
-    Raises:
-        TimeoutError, OSError, ConnectionError: After retries.
-    """
-    try:
-        import httpx
-    except ImportError as exc:
-        raise OSError("httpx not installed") from exc
-
-    try:
-        response = httpx.request(
-            method,
-            url,
-            headers=headers,
-            json=json_body,
-            params=params,
-            timeout=20.0,
-        )
-        response.raise_for_status()
-        return response.json()
-    except httpx.HTTPError as exc:
-        raise OSError(str(exc)) from exc
+_APIFY_ACTOR = "apify~google-search-scraper"
 
 
 def search_brave(query: str, spec: SearcherSpec) -> list[SearchHit]:
@@ -97,21 +22,20 @@ def search_brave(query: str, spec: SearcherSpec) -> list[SearchHit]:
     Returns:
         list[SearchHit]: Web results, or ``[]`` if the key is missing or the call fails.
     """
-    token = _key(spec)
+    token = env_key(spec)
     if not token:
         return []
-    try:
-        data = _httpx_json(
-            "GET",
-            "https://api.search.brave.com/res/v1/web/search",
-            headers={"Accept": "application/json", "X-Subscription-Token": token},
-            params={"q": query},
-        )
-    except (TimeoutError, OSError, ConnectionError, ValueError):
+    data = _httpx_json(
+        "GET",
+        "https://api.search.brave.com/res/v1/web/search",
+        headers={"Accept": "application/json", "X-Subscription-Token": token},
+        params={"q": query},
+    )
+    if data is None:
         return []
-    web = data.get("web") if isinstance(data, dict) else None
-    results = web.get("results") if isinstance(web, dict) else None
-    return _hits_from_maps(results, spec.id, title="title", url="url", snippet="description")
+    return hits_from_maps(
+        dig(data, "web", "results"), spec.id, title="title", url="url", snippet="description"
+    )
 
 
 def search_tavily(query: str, spec: SearcherSpec) -> list[SearchHit]:
@@ -124,58 +48,49 @@ def search_tavily(query: str, spec: SearcherSpec) -> list[SearchHit]:
     Returns:
         list[SearchHit]: Results, or ``[]`` on missing key / failure.
     """
-    token = _key(spec)
+    token = env_key(spec)
     if not token:
         return []
-    try:
-        data = _httpx_json(
-            "POST",
-            "https://api.tavily.com/search",
-            json_body={"api_key": token, "query": query, "max_results": 8},
-        )
-    except (TimeoutError, OSError, ConnectionError, ValueError):
+    data = _httpx_json(
+        "POST",
+        "https://api.tavily.com/search",
+        json_body={"api_key": token, "query": query, "max_results": 8},
+    )
+    if data is None:
         return []
-    results = data.get("results") if isinstance(data, dict) else None
-    return _hits_from_maps(results, spec.id, title="title", url="url", snippet="content")
+    return hits_from_maps(
+        dig(data, "results"), spec.id, title="title", url="url", snippet="content"
+    )
 
 
 def search_apify(query: str, spec: SearcherSpec) -> list[SearchHit]:
-    """Apify API probe. Fails closed without ``APIFY_TOKEN`` or on HTTP errors.
+    """Google SERP through the Apify ``google-search-scraper`` actor (sync run).
 
     Args:
-        query (str): Unused except as a future actor input.
+        query (str): User query (dork strings work as-is).
         spec (SearcherSpec): ``base_url`` plus ``APIFY_TOKEN``.
 
     Returns:
-        list[SearchHit]: Actor list rows if the token works; otherwise ``[]``.
+        list[SearchHit]: Organic results, or ``[]`` without a token or on failure.
     """
-    del query
-    token = _key(spec)
+    token = env_key(spec)
     if not token:
         return []
-    root = _base(spec) or "https://api.apify.com/v2"
-    try:
-        data = _httpx_json(
-            "GET",
-            f"{root}/acts",
-            headers={"Authorization": f"Bearer {token}"},
-            params={"limit": "1"},
-        )
-    except (TimeoutError, OSError, ConnectionError, ValueError):
-        return []
-    bucket = data.get("data") if isinstance(data, dict) else None
-    items = bucket.get("items") if isinstance(bucket, dict) else None
-    if not isinstance(items, list):
+    root = env_base(spec) or "https://api.apify.com/v2"
+    data = _httpx_json(
+        "POST",
+        f"{root}/acts/{_APIFY_ACTOR}/run-sync-get-dataset-items",
+        headers={"Authorization": f"Bearer {token}"},
+        json_body={"queries": query, "maxPagesPerQuery": 1, "resultsPerPage": 10},
+        timeout_s=120.0,
+    )
+    if not isinstance(data, list):
         return []
     hits: list[SearchHit] = []
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        name = str(item.get("name") or item.get("id") or "")
-        if not name:
-            continue
-        hits.append(
-            SearchHit(title=name, url=f"{root}/acts/{name}", snippet="", searcher_id=spec.id)
+    for page in data:
+        organic = dig(page, "organicResults")
+        hits.extend(
+            hits_from_maps(organic, spec.id, title="title", url="url", snippet="description")
         )
     return hits
 
@@ -190,20 +105,18 @@ def search_exa(query: str, spec: SearcherSpec) -> list[SearchHit]:
     Returns:
         list[SearchHit]: Results, or ``[]`` on missing key / failure.
     """
-    token = _key(spec)
+    token = env_key(spec)
     if not token:
         return []
-    try:
-        data = _httpx_json(
-            "POST",
-            "https://api.exa.ai/search",
-            headers={"x-api-key": token, "Content-Type": "application/json"},
-            json_body={"query": query, "numResults": 8},
-        )
-    except (TimeoutError, OSError, ConnectionError, ValueError):
+    data = _httpx_json(
+        "POST",
+        "https://api.exa.ai/search",
+        headers={"x-api-key": token, "Content-Type": "application/json"},
+        json_body={"query": query, "numResults": 8},
+    )
+    if data is None:
         return []
-    results = data.get("results") if isinstance(data, dict) else None
-    return _hits_from_maps(results, spec.id, title="title", url="url", snippet="text")
+    return hits_from_maps(dig(data, "results"), spec.id, title="title", url="url", snippet="text")
 
 
 def search_searxng(query: str, spec: SearcherSpec) -> list[SearchHit]:
@@ -216,62 +129,77 @@ def search_searxng(query: str, spec: SearcherSpec) -> list[SearchHit]:
     Returns:
         list[SearchHit]: Results, or ``[]`` if the instance URL is unset or the call fails.
     """
-    root = _base(spec)
+    root = env_base(spec)
     if not root:
         return []
     engines = spec.engine or "duckduckgo,bing"
-    try:
-        data = _httpx_json(
-            "GET",
-            f"{root}/search",
-            params={"q": query, "format": "json", "engines": engines},
-        )
-    except (TimeoutError, OSError, ConnectionError, ValueError):
+    data = _httpx_json(
+        "GET",
+        f"{root}/search",
+        params={"q": query, "format": "json", "engines": engines},
+    )
+    if data is None:
         return []
-    results = data.get("results") if isinstance(data, dict) else None
-    return _hits_from_maps(results, spec.id, title="title", url="url", snippet="content")
+    return hits_from_maps(
+        dig(data, "results"), spec.id, title="title", url="url", snippet="content"
+    )
 
 
-def _hits_from_maps(
-    rows: object,
-    searcher_id: str,
-    *,
-    title: str,
-    url: str,
-    snippet: str,
-) -> list[SearchHit]:
-    """Normalize a list of raw result dicts into ``SearchHit`` objects.
+def search_google_ground(query: str, spec: SearcherSpec) -> list[SearchHit]:
+    """Gemini with Google Search grounding; returns the cited web sources.
 
-    Rows without an ``http``/``https`` URL are skipped so downstream callers
-    never have to validate schemes themselves.
+    ``spec.engine`` is the model id, ``spec.base_url`` the API root, and the key
+    comes from ``GEMINI_API_KEY``. Cited URIs are Google redirect links; the
+    midend follows redirects when scraping.
 
     Args:
-        rows: Raw result list from a search API response.
-        searcher_id: Identifier of the searcher that produced the rows.
-        title: Key in each row dict that holds the result title.
-        url: Key in each row dict that holds the result URL.
-        snippet: Key in each row dict that holds the result snippet.
+        query (str): User query (dork strings work as-is).
+        spec (SearcherSpec): Searcher configuration.
 
     Returns:
-        list[SearchHit]: Valid, normalized hits.
+        list[SearchHit]: One hit per grounding chunk. The API-reported token total
+        is stored on the first hit. ``[]`` without a key or on failure.
     """
-    if not isinstance(rows, list):
+    token = env_key(spec)
+    if not token:
         return []
-    hits: list[SearchHit] = []
-    for row in rows:
-        if not isinstance(row, dict):
-            continue
-        href = str(row.get(url) or "")
-        if not href.startswith("http"):
-            continue
-        hits.append(
-            SearchHit(
-                title=str(row.get(title) or href),
-                url=href,
-                snippet=str(row.get(snippet) or ""),
-                searcher_id=searcher_id,
-            )
-        )
+    root = env_base(spec) or "https://generativelanguage.googleapis.com/v1beta"
+    model = spec.engine or "gemini-2.5-flash"
+    data = _httpx_json(
+        "POST",
+        f"{root}/models/{model}:generateContent",
+        headers={"x-goog-api-key": token, "Content-Type": "application/json"},
+        json_body={
+            "contents": [{"parts": [{"text": query}]}],
+            "tools": [{"google_search": {}}],
+        },
+        timeout_s=60.0,
+    )
+    candidates = dig(data, "candidates")
+    if not isinstance(candidates, list) or not candidates:
+        return []
+    meta = dig(candidates[0], "groundingMetadata")
+    chunks = dig(meta, "groundingChunks")
+    if not isinstance(chunks, list):
+        return []
+    quoted: dict[int, list[str]] = {}
+    supports = dig(meta, "groundingSupports")
+    for support in supports if isinstance(supports, list) else []:
+        text = dig(support, "segment", "text")
+        idxs = dig(support, "groundingChunkIndices")
+        if isinstance(text, str) and isinstance(idxs, list):
+            for i in idxs:
+                if isinstance(i, int):
+                    quoted.setdefault(i, []).append(text)
+    rows = [
+        {**web, "snippet": " ".join(quoted.get(i, []))}
+        for i, chunk in enumerate(chunks)
+        if isinstance(web := dig(chunk, "web"), dict)
+    ]
+    hits = hits_from_maps(rows, spec.id, title="title", url="uri", snippet="snippet")
+    total = dig(data, "usageMetadata", "totalTokenCount")
+    if hits and isinstance(total, int):
+        hits[0] = replace(hits[0], api_tokens=total)
     return hits
 
 
@@ -286,6 +214,7 @@ def builtin_searchers() -> dict[str, SearchFn]:
         "tavily": search_tavily,
         "apify": search_apify,
         "exa": search_exa,
+        "google_ground": search_google_ground,
         "searxng": search_searxng,
     }
 
@@ -295,6 +224,7 @@ __all__ = [
     "search_apify",
     "search_brave",
     "search_exa",
+    "search_google_ground",
     "search_searxng",
     "search_tavily",
 ]

@@ -115,12 +115,12 @@ def load_providers(path: Path | None = None) -> ProvidersConfig:
     order_raw = (
         extractors_block.get("order") if isinstance(extractors_block, dict) else None
     ) or list(_EXTRACTORS)
-    order = _parse_extractors(order_raw)
+    order = _parse_names(order_raw, _EXTRACTORS, "extractor")
     crawlers_block = raw.get("crawlers")
     crawler_raw = (
         crawlers_block.get("order") if isinstance(crawlers_block, dict) else None
     ) or list(_CRAWLERS)
-    crawler_order = _parse_crawlers(crawler_raw)
+    crawler_order = _parse_names(crawler_raw, _CRAWLERS, "crawler")
     crawl_block = raw.get("crawl")
     crawl_raw: dict[str, object] = crawl_block if isinstance(crawl_block, dict) else {}
     schemes_val = crawl_raw.get("schemes")
@@ -134,7 +134,7 @@ def load_providers(path: Path | None = None) -> ProvidersConfig:
     return ProvidersConfig(
         version=int(raw.get("version") or 1),
         searchers=tuple(searchers),
-        extractor_order=tuple(order),
+        extractor_order=order,
         crawl=CrawlSpec(
             timeout_s=float(timeout_val) if isinstance(timeout_val, int | float | str) else 20.0,
             max_bytes=int(bytes_val) if isinstance(bytes_val, int | float | str) else 1_048_576,
@@ -145,42 +145,17 @@ def load_providers(path: Path | None = None) -> ProvidersConfig:
     )
 
 
-def _parse_extractors(order_raw: object) -> list[ExtractorName]:
-    order: list[ExtractorName] = []
-    if not isinstance(order_raw, list):
-        return list(_EXTRACTORS)
-    for name in order_raw:
-        if name == "selectolax":
-            order.append("selectolax")
-        elif name == "selectolax_regex":
-            order.append("selectolax_regex")
-        elif name == "regex":
-            order.append("regex")
-        elif name == "trafilatura":
-            order.append("trafilatura")
-        elif name == "bs4":
-            order.append("bs4")
-        else:
-            raise ValueError(f"unknown extractor: {name!r}")
-    return order or list(_EXTRACTORS)
-
-
-def _parse_crawlers(order_raw: object) -> tuple[CrawlerName, ...]:
-    order: list[CrawlerName] = []
-    if not isinstance(order_raw, list):
-        return _CRAWLERS
-    for name in order_raw:
-        if name == "httpx":
-            order.append("httpx")
-        elif name == "scrapy":
-            order.append("scrapy")
-        elif name == "playwright":
-            order.append("playwright")
-        elif name == "crawlee":
-            order.append("crawlee")
-        else:
-            raise ValueError(f"unknown crawler: {name!r}")
-    return tuple(order) or _CRAWLERS
+def _parse_names[T: str](raw: object, allowed: tuple[T, ...], label: str) -> tuple[T, ...]:
+    """Validate a yaml ``order`` list against *allowed*; empty/invalid shape → all."""
+    if not isinstance(raw, list):
+        return allowed
+    order: list[T] = []
+    for name in raw:
+        match = next((a for a in allowed if a == name), None)
+        if match is None:
+            raise ValueError(f"unknown {label}: {name!r}")
+        order.append(match)
+    return tuple(order) or allowed
 
 
 def get_searcher(config: ProvidersConfig, searcher_id: str) -> SearcherSpec:

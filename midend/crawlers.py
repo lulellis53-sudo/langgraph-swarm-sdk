@@ -1,109 +1,12 @@
-"""Midend: crawl URLs then scrape HTML.
-
-Crawlers (httpx, scrapy, playwright, crawlee) fetch bytes in yaml order;
-missing extras fail closed and the next crawler runs. Scrapers turn the
-response into a page record. Only ``http``/``https`` URLs are allowed.
-"""
+"""Crawlers (httpx, scrapy, playwright, crawlee) tried in ``providers.yaml`` order."""
 
 from __future__ import annotations
 
 import asyncio
 import importlib
-from collections.abc import Callable, Sequence
-from dataclasses import dataclass
-from urllib.parse import urlparse
 
-from WebSearch.frontend.providers import (
-    CrawlerName,
-    CrawlSpec,
-    ProvidersConfig,
-    load_providers,
-)
-from WebSearch.frontend.websearchers import SearchHit
+from WebSearch.frontend.providers import CrawlerName, CrawlSpec, load_providers
 from WebSearch.repeater import repeater
-
-#: Callable that fetches a URL and returns raw bytes. Used to inject test doubles.
-FetchFn = Callable[[str], bytes]
-
-
-@dataclass(frozen=True, slots=True)
-class ScrapedPage:
-    """One crawled URL plus the scraped HTML and metadata.
-
-    Attributes:
-        url: The original URL.
-        html: Decoded page body (empty when ``error`` is set).
-        status: HTTP-like status; ``0`` for blocked or network errors.
-        error: Short error tag, or ``None`` on success.
-        crawler: Name of the crawler that produced the bytes, or ``None``.
-    """
-
-    url: str
-    html: str
-    status: int = 200
-    error: str | None = None
-    crawler: CrawlerName | None = None
-
-
-def type_is_http_url(url: str, schemes: Sequence[str]) -> bool:
-    """Return whether *url* uses an allowed scheme and has a host.
-
-    Args:
-        url (str): Candidate URL.
-        schemes (Sequence[str]): Allowed schemes (e.g. http, https).
-
-    Returns:
-        bool: True if crawl is allowed.
-    """
-    parsed = urlparse(url)
-    return parsed.scheme in schemes and bool(parsed.netloc)
-
-
-def crawl_then_scrape(
-    hits: Sequence[SearchHit],
-    *,
-    fetch: FetchFn | None = None,
-    config: ProvidersConfig | None = None,
-) -> list[ScrapedPage]:
-    """Walk search hits: crawl each allowed URL, then scrape into ``ScrapedPage``.
-
-    Args:
-        hits (Sequence[SearchHit]): Frontend results.
-        fetch (FetchFn | None): Override GET. Default tries crawlers in yaml order.
-        config (ProvidersConfig | None): Crawl limits and crawler order.
-
-    Returns:
-        list[ScrapedPage]: One page per truncated hit list.
-    """
-    crawl = (config or load_providers()).crawl
-    getter = fetch if fetch is not None else (lambda u: ordered_fetch(u, crawl=crawl)[0])
-    pages: list[ScrapedPage] = []
-    for hit in hits[: crawl.max_urls]:
-        pages.append(_scrape_one(hit.url, fetch=getter, crawl=crawl))
-    return pages
-
-
-def _scrape_one(url: str, *, fetch: FetchFn, crawl: CrawlSpec) -> ScrapedPage:
-    """Crawl and decode a single URL, applying scheme blocking and size caps.
-
-    Args:
-        url: Candidate URL.
-        fetch: Low-level byte fetcher (injected for tests).
-        crawl: Crawl limits and allowed schemes.
-
-    Returns:
-        ScrapedPage: Success page or a failure record with an ``error`` tag.
-    """
-    if not type_is_http_url(url, crawl.schemes):
-        return ScrapedPage(url=url, html="", status=0, error="blocked_scheme")
-    try:
-        raw = fetch(url)
-    except (TimeoutError, OSError, ConnectionError) as exc:
-        return ScrapedPage(url=url, html="", status=0, error=type(exc).__name__)
-    if len(raw) > crawl.max_bytes:
-        raw = raw[: crawl.max_bytes]
-    html = raw.decode("utf-8", errors="replace")
-    return ScrapedPage(url=url, html=html, status=200)
 
 
 def ordered_fetch(url: str, *, crawl: CrawlSpec | None = None) -> tuple[bytes, CrawlerName]:
@@ -280,13 +183,9 @@ def fetch_crawlee(url: str, *, timeout_s: float = 20.0) -> bytes:
 
 
 __all__ = [
-    "FetchFn",
-    "ScrapedPage",
-    "crawl_then_scrape",
     "default_fetch",
     "fetch_crawlee",
     "fetch_playwright",
     "fetch_scrapy",
     "ordered_fetch",
-    "type_is_http_url",
 ]
