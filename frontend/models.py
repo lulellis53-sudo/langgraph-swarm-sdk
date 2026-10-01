@@ -21,12 +21,40 @@ class SearchHit:
     searcher_id: str
     #: Tokens the search API reported for the call; set on the first hit only.
     api_tokens: int = 0
+    #: Searcher ids whose near-duplicate hit was merged into this one.
+    also_from: tuple[str, ...] = ()
 
 
 class WebSearcher(Protocol):
     spec: SearcherSpec
 
     def search(self, query: str) -> Sequence[SearchHit]: ...
+
+
+@dataclass(frozen=True, slots=True)
+class SinkReport:
+    """Outcome of one :meth:`ResultSink.store` call.
+
+    ``detail`` is free text the sink may use to say how it ran; WebSearch never
+    interprets it.
+    """
+
+    stored: int
+    skipped: int = 0
+    detail: str = ""
+
+
+class ResultSink(Protocol):
+    """Receives the final, cleaned hits (for example to index them)."""
+
+    def store(self, hits: Sequence[SearchHit]) -> SinkReport: ...
+
+
+class NullSink:
+    """Sink that stores nothing."""
+
+    def store(self, hits: Sequence[SearchHit]) -> SinkReport:
+        return SinkReport(stored=0)
 
 
 def type_is_hit(value: object) -> bool:
@@ -61,4 +89,13 @@ def dedupe_hits(hits: Sequence[SearchHit]) -> list[SearchHit]:
     return unique
 
 
-__all__ = ["SearchFn", "SearchHit", "WebSearcher", "dedupe_hits", "type_is_hit"]
+__all__ = [
+    "NullSink",
+    "ResultSink",
+    "SearchFn",
+    "SearchHit",
+    "SinkReport",
+    "WebSearcher",
+    "dedupe_hits",
+    "type_is_hit",
+]

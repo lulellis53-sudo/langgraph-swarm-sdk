@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from typing import Any
 
@@ -89,11 +90,18 @@ def call_json(method: str, url: str, **kwargs: Any) -> Any | None:
     """Fail-closed wrapper over :func:`request_json`.
 
     Returns:
-        Any | None: Parsed JSON, or ``None`` on any transient/parse failure.
+        Any | None: Parsed JSON, or ``None`` on a transient network failure or a
+        body that is not valid JSON. Other errors propagate.
     """
     try:
         return request_json(method, url, **kwargs)
-    except TimeoutError, OSError, ConnectionError, ValueError:
+    except (
+        TimeoutError,
+        OSError,
+        ConnectionError,
+        json.JSONDecodeError,
+        UnicodeDecodeError,
+    ):
         return None
 
 

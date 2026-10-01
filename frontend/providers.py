@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import yaml
 
@@ -43,11 +44,20 @@ class CrawlSpec:
 
 
 @dataclass(frozen=True, slots=True)
+class PrefilterPolicy:
+    schemes: tuple[str, ...] = ("http", "https")
+    blocked_domains: tuple[str, ...] = ()
+    min_snippet_chars: int = 0
+    require_title: bool = True
+
+
+@dataclass(frozen=True, slots=True)
 class ProvidersConfig:
     version: int
     searchers: tuple[SearcherSpec, ...]
     extractor_order: tuple[ExtractorName, ...]
     crawl: CrawlSpec = field(default_factory=CrawlSpec)
+    prefilter: PrefilterPolicy = field(default_factory=PrefilterPolicy)
 
 
 def providers_yaml_path() -> Path:
@@ -81,7 +91,8 @@ def load_providers(path: Path | None = None) -> ProvidersConfig:
         ProvidersConfig: Searchers, extractor order, crawl/crawler settings.
 
     Raises:
-        ValueError: If YAML is not a mapping or names an unknown extractor/crawler.
+        ValueError: If YAML is not a mapping, names an unknown extractor/crawler,
+            or has a non-numeric ``version``/``crawl`` limit.
     """
     raw = yaml.safe_load((path or providers_yaml_path()).read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
@@ -105,7 +116,9 @@ def load_providers(path: Path | None = None) -> ProvidersConfig:
                 id=str(item["id"]),
                 kind=kind,
                 api_key_env=str(env) if isinstance(env, str) else None,
-                engine=str(item["engine"]) if isinstance(item.get("engine"), str) else None,
+                engine=(
+                    str(item["engine"]) if isinstance(item.get("engine"), str) else None
+                ),
                 description=str(item.get("description") or ""),
                 base_url=str(base) if isinstance(base, str) else None,
                 base_url_env=str(base_env) if isinstance(base_env, str) else None,
@@ -128,24 +141,84 @@ def load_providers(path: Path | None = None) -> ProvidersConfig:
         schemes = tuple(str(s) for s in schemes_val) or ("http", "https")
     else:
         schemes = ("http", "https")
-    timeout_val = crawl_raw.get("timeout_s")
-    bytes_val = crawl_raw.get("max_bytes")
-    urls_val = crawl_raw.get("max_urls")
+    prefilter_block = raw.get("prefilter")
+    prefilter_raw: dict[str, object] = (
+        prefilter_block if isinstance(prefilter_block, dict) else {}
+    )
     return ProvidersConfig(
-        version=int(raw.get("version") or 1),
+        version=_coerce_number(raw.get("version"), int, 1, "version"),
         searchers=tuple(searchers),
         extractor_order=order,
         crawl=CrawlSpec(
-            timeout_s=float(timeout_val) if isinstance(timeout_val, int | float | str) else 20.0,
-            max_bytes=int(bytes_val) if isinstance(bytes_val, int | float | str) else 1_048_576,
-            max_urls=int(urls_val) if isinstance(urls_val, int | float | str) else 8,
+            timeout_s=_coerce_number(
+                crawl_raw.get("timeout_s"), float, 20.0, "crawl.timeout_s"
+            ),
+            max_bytes=_coerce_number(
+                crawl_raw.get("max_bytes"), int, 1_048_576, "crawl.max_bytes"
+            ),
+            max_urls=_coerce_number(
+                crawl_raw.get("max_urls"), int, 8, "crawl.max_urls"
+            ),
             schemes=schemes,
             crawler_order=crawler_order,
         ),
+        prefilter=_parse_prefilter(prefilter_raw),
     )
 
 
-def _parse_names[T: str](raw: object, allowed: tuple[T, ...], label: str) -> tuple[T, ...]:
+def _str_tuple(value: object) -> tuple[str, ...]:
+    """Lowercased, stripped, non-empty strings of a yaml list; anything else → ``()``."""
+    if not isinstance(value, list):
+        return ()
+    return tuple(
+        text for item in value if (text := str(item).strip().lower().lstrip("."))
+    )
+
+
+def _parse_prefilter(raw: dict[str, object]) -> PrefilterPolicy:
+    """Build a :class:`PrefilterPolicy` from the ``prefilter:`` yaml block."""
+    require_title = raw.get("require_title")
+    if require_title is None:
+        require_title = True
+    elif not isinstance(require_title, bool):
+        raise ValueError(
+            f"providers.yaml: prefilter.require_title must be true or false, got {require_title!r}"
+        )
+    return PrefilterPolicy(
+        schemes=_str_tuple(raw.get("schemes")) or ("http", "https"),
+        blocked_domains=_str_tuple(raw.get("blocked_domains")),
+        min_snippet_chars=_coerce_number(
+            raw.get("min_snippet_chars"), int, 0, "prefilter.min_snippet_chars"
+        ),
+        require_title=require_title,
+    )
+
+
+def _coerce_number[N: (int, float)](
+    value: object, cast: Callable[[Any], N], default: N, label: str
+) -> N:
+    """Cast a yaml scalar with *cast*; ``None``/wrong shape → *default*.
+
+    Raises:
+        ValueError: If a string/number cannot be converted (names *label*).
+    """
+    if (
+        value is None
+        or isinstance(value, bool)
+        or not isinstance(value, int | float | str)
+    ):
+        return default
+    try:
+        return cast(value)
+    except ValueError as exc:
+        raise ValueError(
+            f"providers.yaml: {label} must be a number, got {value!r}"
+        ) from exc
+
+
+def _parse_names[T: str](
+    raw: object, allowed: tuple[T, ...], label: str
+) -> tuple[T, ...]:
     """Validate a yaml ``order`` list against *allowed*; empty/invalid shape → all."""
     if not isinstance(raw, list):
         return allowed
@@ -181,6 +254,7 @@ __all__ = [
     "CrawlerName",
     "CrawlSpec",
     "ExtractorName",
+    "PrefilterPolicy",
     "ProvidersConfig",
     "SearcherKind",
     "SearcherSpec",

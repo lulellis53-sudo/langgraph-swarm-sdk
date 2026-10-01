@@ -62,3 +62,11 @@ crawl:
   schemes:
     - http
     - https
+
+prefilter:
+  schemes:
+    - http
+    - https
+  blocked_domains: []
+  min_snippet_chars: 0
+  require_title: true

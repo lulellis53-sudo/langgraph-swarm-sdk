@@ -1,6 +1,6 @@
 """Agent-facing search tooling: one query in, one token-lean brief out.
 
-Wraps the multi-provider pipeline for swarm agents: parallel search across
+Wraps the multi-provider pipeline for LLM agents: parallel search across
 every configured provider, consensus-ranked (RRF), deduplicated by canonical
 URL, then rendered as a numbered brief sized for a prompt budget. Agents that
 prefer structured data use :func:`search_hits`; agents that want to paste

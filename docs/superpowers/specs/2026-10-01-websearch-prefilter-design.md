@@ -26,13 +26,14 @@ a caller persist it:
 
 ## Components
 
-### `backend/prefilter.py`
+### `frontend/prefilter.py`
 
 - `PrefilterPolicy` (frozen, slots dataclass): `schemes` (default `http`,
   `https`), `blocked_domains` (tuple, suffix match), `min_snippet_chars` (int,
   default 0), `require_title` (bool, default True).
-  Loaded from a new optional `prefilter:` block in `providers.yaml`; numeric
-  fields use the same fail-fast coercion as `crawl:`.
+  Defined in `frontend/providers.py` next to `CrawlSpec` and loaded from a new
+  optional `prefilter:` block in `providers.yaml`; numeric fields use the same
+  fail-fast coercion as `crawl:`.
 - `Rejected` (frozen dataclass): `hit: SearchHit`, `reason: RejectReason`.
   `RejectReason` is a `Literal`: `bad_url`, `scheme`, `blocked_domain`,
   `empty`, `short_snippet`.
@@ -43,17 +44,19 @@ a caller persist it:
   unwrap redirect (replacing the hit URL), then apply checks in the order
   listed in `RejectReason`. A failure on one hit rejects that hit only.
 
-### `backend/hits.py`
+### `frontend/hits.py`
 
 - `normalize_hit(hit) -> SearchHit`: `normalize_text` on title and snippet;
   strip a trailing site-name suffix (`" | X"`, `" - X"`, `" – X"`) only when `X`
-  matches the hit's own registrable-domain label (case-insensitive), so titles
+  matches the hit's own host label (any label before the TLD) (case-insensitive), so titles
   that merely contain a separator are kept.
-- `near_dedupe(hits, *, max_distance=3) -> list[SearchHit]`: 64-bit SimHash over
+- `near_dedupe(hits, *, max_distance=6) -> list[SearchHit]`: 64-bit SimHash over
   word 3-shingles of `title + " " + snippet`; a hit within `max_distance`
   Hamming bits of an earlier kept hit is dropped. Input order is rank order, so
   the best-ranked hit survives. Hits with fewer than 3 tokens are never merged
-  (too little signal). The survivor records the dropped searcher ids in
+  (too little signal). The default of 6 was measured on 64-bit SimHashes of
+  short title+snippet text: an appended word gives distance 5, a swapped phrase
+  9, an unrelated hit 29. The survivor records the dropped searcher ids in
   `SearchHit.also_from: tuple[str, ...]` (new field, default `()`).
 
 ### `ResultSink`
@@ -77,10 +80,12 @@ class NullSink:  # default: stores nothing
 `detail` is free text the sink may use to report how it ran (for example which
 embedder it used). WebSearch never interprets it.
 
-### `midend/pipeline.py`
+### Layering
 
-Orchestrates the post-search stages so `parallel_search` and `search_brief`
-share one path.
+`backend` already imports `frontend.providers`, so the hit-level stages live in
+`frontend` (they operate on `SearchHit`) and call `backend.normalize` for text.
+There is no separate pipeline module: `parallel_search` is the single path and
+`search_hits` / `search_brief` inherit it.
 
 ## Data flow
 
@@ -90,7 +95,11 @@ search (parallel) -> prefilter -> RRF fuse -> exact URL dedupe
 ```
 
 Prefilter runs before fusion so a junk URL cannot gain rank from consensus.
-`parallel_search(..., sink: ResultSink | None = None)`; `None` skips the sink.
+`registry_search` (ordered failover) applies only the prefilter stage.
+`parallel_search(..., near_distance: int | None = 6, sink: ResultSink | None = None)`;
+`near_distance=None` disables near-dedupe and `sink=None` skips the sink. The API
+token total reported by the providers is summed before prefiltering and placed
+on the first final hit, so rejecting the hit that carried it loses no accounting.
 Rejected hits are logged at DEBUG with their reason and returned by
 `prefilter_hits` for callers that want them.
 
