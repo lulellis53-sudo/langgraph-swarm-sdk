@@ -1,5 +1,6 @@
 """Core domain: SwarmSDK orchestrator facade."""
 
+from swarm_sdk.core.rules import HostInvariants, HostRuleEngine
 from swarm_sdk.core.swarm import (
     RouteDecision,
     RunResult,
@@ -10,6 +11,8 @@ from swarm_sdk.core.swarm import (
 )
 
 __all__ = [
+    "HostInvariants",
+    "HostRuleEngine",
     "RouteDecision",
     "RunResult",
     "SwarmSDK",
