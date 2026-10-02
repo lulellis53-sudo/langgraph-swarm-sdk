@@ -1,0 +1,54 @@
+{
+  "WebSearch public function": {
+    "prefix": "wsdef",
+    "body": [
+      "def ${1:name}(${2:}) -> ${3:None}:",
+      "    \"\"\"${4:Summary.}",
+      "",
+      "    Args:",
+      "        ${5:arg}: ${6:Description.}",
+      "",
+      "    Returns:",
+      "        ${3:None}: ${7:Description.}",
+      "    \"\"\"",
+      "    $0"
+    ],
+    "description": "Function with Google-style docstring (matches Ruff D rules)"
+  },
+  "WebSearch pytest test": {
+    "prefix": "wstest",
+    "body": [
+      "def test_${1:behavior}() -> None:",
+      "    \"\"\"${2:Expected outcome.}\"\"\"",
+      "    $0"
+    ],
+    "description": "pytest test with return type and docstring"
+  },
+  "WebSearch SearchHit": {
+    "prefix": "wshit",
+    "body": [
+      "SearchHit(",
+      "    title=\"${1:title}\",",
+      "    url=\"${2:https://example.com/}\",",
+      "    snippet=\"${3:snippet}\",",
+      "    searcher_id=\"${4:x}\",",
+      ")"
+    ],
+    "description": "SearchHit constructor for tests"
+  },
+  "WebSearch parallel_search import": {
+    "prefix": "wssearch",
+    "body": [
+      "from WebSearch import parallel_search, search_hits",
+      "",
+      "hits = search_hits(\"${1:query}\", limit=${2:5})",
+      "$0"
+    ],
+    "description": "Agent search entry point"
+  },
+  "WebSearch from __future__": {
+    "prefix": "wsfuture",
+    "body": "from __future__ import annotations",
+    "description": "Future annotations import (project default)"
+  }
+}
