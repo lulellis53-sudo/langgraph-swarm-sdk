@@ -32,6 +32,10 @@ def create_app(sdk: SwarmSDK | None = None) -> FastAPI:
     application = FastAPI(title="LangGraph Swarm SDK")
     application.state.sdk = sdk if sdk is not None else SwarmSDK.from_settings()
 
+    @application.get("/healthz")
+    async def healthz() -> dict[str, str]:
+        return {"status": "ok"}
+
     @application.get("/v1/health")
     async def health(request: Request) -> dict[str, object]:
         sdk_obj: SwarmSDK = request.app.state.sdk
