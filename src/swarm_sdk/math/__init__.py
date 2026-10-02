@@ -9,6 +9,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from swarm_sdk.math.types import (
+    MathBackend,
+    MathDispatchDecision,
+    MathMode,
+    MathProblem,
+    MathResult,
+    MathTaskType,
+    ThinkLevel,
+    VerificationResult,
+)
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
@@ -260,6 +271,14 @@ def symbolic_cosine() -> "sp.Eq":  # noqa: UP037
 
 
 __all__ = [
+    "MathBackend",
+    "MathDispatchDecision",
+    "MathMode",
+    "MathProblem",
+    "MathResult",
+    "MathTaskType",
+    "ThinkLevel",
+    "VerificationResult",
     "bm25_idf",
     "bm25_score",
     "bm25_term_score",
