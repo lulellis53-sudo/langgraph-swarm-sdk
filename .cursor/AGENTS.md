@@ -22,6 +22,7 @@ Scoped instructions for Agent work under `.cursor/`. Complements the root [`AGEN
 | Creating 3–10 micro-files for one feature | Extend the natural owner module; keep roles in one file when they share state |
 | Writing 5-line stub functions that only forward or rename | Write real functions with the full logic, guards, and return contract |
 | Spreading one concern across many half-finished modules | Finish one well-structured file; extract later only when reuse is proven |
+| Creating git branches or new worktrees | Stay on the current checkout; use an existing worktree only if it is already linked |
 
 ## Folder design
 

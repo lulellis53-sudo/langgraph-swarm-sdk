@@ -31,6 +31,7 @@ Think → Check → Plan (multitasks) → Act → Context7 → Tighten → re-Ch
 ## Always
 
 - Commits only when the user asks; never force-push `main`.
+- Do not create branches or worktrees — stay on the current checkout (see `git-docs`).
 - Do not weaken Ruff/ty/tests without a named rule and reason.
 - **Stop looping.** One failed attempt → analyse → one deliberate fix. No speculative file-sprawl.
 - Prefer **one well-written module** with real functions over many 5-line stubs or micro-files.

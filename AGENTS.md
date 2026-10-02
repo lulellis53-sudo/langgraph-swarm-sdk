@@ -161,6 +161,7 @@ uv run python -m swarm_sdk.agents.validate
 ### Subtopic: Commits
 
 - **Commits:** only when the user asks; do not force-push `main`.
+- **Branches / worktrees:** do not create them. Stay on the current checkout. Use an existing worktree only if it is already linked.
 
 ### Subtopic: Documentation
 

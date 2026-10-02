@@ -1,35 +1,22 @@
 ---
 name: worktree-websearch
 description: >-
-  Run live web research in an isolated Git worktree so installs, scratch notes,
-  and experimental edits stay off the main checkout. Use when the user says
-  worktree websearch, /worktree-websearch, parallel research, or wants web
-  lookup without disturbing their current branch.
+  Run live web research from the current checkout. Do not create branches or
+  worktrees. Use when the user says worktree websearch, /worktree-websearch,
+  parallel research, or wants web lookup without extra git isolation.
 ---
 
 # Worktree Websearch
 
-Research on the public web from an isolated checkout. Default posture: **read-only on the repo** unless the user asks to save a report.
+Research on the public web from the current checkout. Default posture: **read-only on the repo** unless the user asks to save a report.
 
-## 1. Isolate with a worktree
+## 1. Stay on the current checkout
 
-Pick one path:
+Do **not** create a branch or a new worktree (`git worktree add`, `/worktree`, best-of-n runners). Research from this checkout.
 
-| Context | Action |
-| -------- | ------ |
-| IDE chat | Ask the user to send the task as `/worktree <research question>` (or run `/worktree` yourself if the product exposes it in this session). |
-| Agent setup missing | Create a sibling worktree manually, then work only inside it: |
+If `WebSearch/` already points at the sibling `worktree/websearch` checkout, use that existing tree. Do not add, remove, or re-point worktrees.
 
-```bash
-git worktree add ../Swarm-WebSearch worktree/websearch
-ln -sfn ../Swarm-WebSearch WebSearch
-```
-
-`WebSearch/` in the main checkout is a symlink to that sibling worktree (do not nest a worktree inside the SDK tree).
-
-Open that folder in a second window if the user will keep coding in the main checkout.
-
-After Cursor creates a worktree, it runs `.cursor/worktrees.json` setup (`uv sync --extra dev`). Wait for setup to finish before heavy commands.
+Only create or delete a worktree when the user explicitly asks.
 
 ## 2. Clarify the research goal
 
@@ -70,13 +57,12 @@ Default response shape:
 <only if useful>
 ```
 
-If the user wants a saved artifact, write under the **worktree** only, e.g. `research/<slug>.md`, and do not touch unrelated product code.
+If the user wants a saved artifact, write it only where they asked (e.g. `research/<slug>.md`) and do not touch unrelated product code.
 
 ## 5. Finish
 
-- **Main checkout unchanged**: leave research commits on `worktree/websearch` or discard the worktree.
-- Merge notes into main only when the user asks (`/apply-worktree` in IDE, or cherry-pick / copy the file).
-- Remove the worktree when done: `/delete-worktree` or `git worktree remove ../Swarm-WebSearch` (then delete the `WebSearch` symlink).
+- Leave git state as you found it: no new branch, no new worktree, no worktree remove.
+- Commit or merge research notes only when the user asks.
 
 ## Hard limits
 
