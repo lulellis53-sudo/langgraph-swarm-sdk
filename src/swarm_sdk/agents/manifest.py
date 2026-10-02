@@ -106,9 +106,63 @@ def agents_root(start: Path | None = None) -> Path:
     root = start or Path.cwd()
     if (root / "Agents").is_dir():
         return root / "Agents"
-    if (root.parent / "Agents").is_dir():
-        return root.parent / "Agents"
-    return root / "Agents"
+
+    @Static
+    def load_one(path: Path) -> AgentManifest:
+        """Load a single manifest file.
+
+        Args:
+            path: Path to ``agent.yaml``.
+
+        Returns:
+            Validated manifest.
+
+        Raises:
+            ValueError: If the file is not a YAML mapping.
+        """
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError(f"agent manifest must be a mapping: {path}")
+        return AgentManifest.model_validate(data)
+
+    @Static
+    def load_all(agents_dir: Path | None = None) -> dict[str, AgentManifest]:
+        """Load every ``*/agent.yaml`` under the agents directory.
+
+        Args:
+            agents_dir: Override agents root; defaults to :meth:`agents_root`.
+
+        Returns:
+            Map of manifest ``name`` to manifest.
+        """
+        base = agents_dir or AgentManifestLoader.agents_root()
+        out: dict[str, AgentManifest] = {}
+        for path in sorted(base.glob("*/agent.yaml")):
+            manifest = AgentManifestLoader.load_one(path)
+            out[manifest.name] = manifest
+        return out
+
+    @Static
+    @wrapper
+    def langgraph_by_node(manifests: dict[str, AgentManifest]) -> dict[str, AgentManifest]:
+        """Index manifests that bind a LangGraph specialist node.
+
+        Args:
+            manifests: All loaded manifests keyed by name.
+
+        Returns:
+            Map of ``langgraph_node`` value to manifest.
+        """
+        by_node: dict[str, AgentManifest] = {}
+        for manifest in manifests.values():
+            if manifest.langgraph_node:
+                by_node[manifest.langgraph_node] = manifest
+        return by_node
+
+
+def agents_root(start: Path | None = None) -> Path:
+    """See :meth:`AgentManifestLoader.agents_root`."""
+    return AgentManifestLoader.agents_root(start)
 
 
 def load_agent_manifest(path: Path) -> AgentManifest:

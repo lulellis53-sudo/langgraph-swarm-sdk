@@ -1,5 +1,7 @@
+
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage
 
@@ -9,6 +11,11 @@ from swarm_sdk.core.swarm import SwarmSDK
 from swarm_sdk.retrieval.embeddings import HashEmbedder
 from swarm_sdk.retrieval.rerank import IdentityReranker
 from swarm_sdk.serving.http import create_app
+
+pytestmark = pytest.mark.skipif(
+    not sqlite_extension_loading_available(),
+    reason="CPython build lacks sqlite3 extension loading; sqlite_vec cannot load",
+)
 
 
 def test_health_and_run(tmp_path: Path) -> None:

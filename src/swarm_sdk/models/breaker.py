@@ -17,21 +17,34 @@ class CircuitOpenError(RuntimeError):
 
 
 class BreakerState(StrEnum):
+    """Circuit breaker lifecycle states."""
+
     CLOSED = "closed"
     OPEN = "open"
     HALF_OPEN = "half_open"
 
 
 class BreakerConfig(BaseModel):
+    """Thresholds for opening and probing a breaker."""
+
     failure_threshold: int = Field(default=3, ge=1)
     reset_timeout_s: float = Field(default=30.0, gt=0)
     half_open_max_probes: int = Field(default=1, ge=1)
 
 
 class CircuitBreaker:
-    """Per-provider circuit breaker. Not thread-safe; use one per event loop/task family."""
+    """Per-provider circuit breaker.
+
+    Not thread-safe; use one instance per provider or task family.
+    """
 
     def __init__(self, name: str, config: BreakerConfig | None = None) -> None:
+        """Create a breaker for one provider name.
+
+        Args:
+            name: Provider label for error messages.
+            config: Optional threshold overrides.
+        """
         self.name = name
         self.config = config or BreakerConfig()
         self._state = BreakerState.CLOSED
@@ -41,6 +54,7 @@ class CircuitBreaker:
 
     @property
     def state(self) -> BreakerState:
+        """Current state, promoting OPEN -> HALF_OPEN after cooldown."""
         if self._state is BreakerState.OPEN:
             elapsed = time.monotonic() - self._opened_at
             if elapsed >= self.config.reset_timeout_s:
@@ -49,6 +63,7 @@ class CircuitBreaker:
         return self._state
 
     def before_call(self) -> None:
+        """Gate a call; raise :class:`CircuitOpenError` when not allowed."""
         state = self.state
         if state is BreakerState.OPEN:
             raise CircuitOpenError(f"circuit '{self.name}' is open")
@@ -58,10 +73,12 @@ class CircuitBreaker:
             self._half_open_calls += 1
 
     def record_success(self) -> None:
+        """Record success and close the breaker."""
         self._failures = 0
         self._state = BreakerState.CLOSED
 
     def record_failure(self) -> None:
+        """Record failure; trip when threshold exceeded."""
         if self._state is BreakerState.HALF_OPEN:
             self._trip()
             return
@@ -70,6 +87,7 @@ class CircuitBreaker:
             self._trip()
 
     def _trip(self) -> None:
+        """Open the circuit and reset counters."""
         self._state = BreakerState.OPEN
         self._opened_at = time.monotonic()
         self._failures = 0

@@ -21,13 +21,6 @@ class ParallelismConfig(BaseModel):
     synth_timeout_s: int = 60
 
 
-class ProviderEntry(BaseModel):
-    name: str
-    models: list[str] = Field(default_factory=list)
-    api_key_env: str = ""
-    priority: int = 100
-
-
 class EmbeddingConfig(BaseModel):
     model: str = "sentence-transformers/all-MiniLM-L6-v2"
     dim: int = 384
@@ -177,14 +170,20 @@ def load_swarm_config(path: Path | None = None) -> SwarmFileConfig:
         final_k = int(vector_raw["final_k"])
         hybrid = hybrid.model_copy(update={"final_k": final_k})
 
-    return SwarmFileConfig(
-        version=int(data.get("version", 1)),
-        parallelism=ParallelismConfig.model_validate(data.get("parallelism", {})),
-        providers=[
+    providers_path = cfg_path.parent / "providers.yaml"
+    if providers_path.is_file():
+        providers = load_provider_catalog(providers_path).providers
+    else:
+        providers = [
             ProviderEntry.model_validate(p)
             for p in data.get("providers", [])
             if isinstance(p, dict)
-        ],
+        ]
+
+    return SwarmFileConfig(
+        version=int(data.get("version", 1)),
+        parallelism=ParallelismConfig.model_validate(data.get("parallelism", {})),
+        providers=providers,
         model_select=ModelSelectConfig(
             default_level=cast(ThinkLevel, default_level),
             routes=_parse_routes(model_raw),
