@@ -349,3 +349,25 @@ def test_midend_dedupes_urls_before_cap() -> None:
     ]
     pages = crawl_then_scrape(hits, fetch=lambda u: b"<p>hi</p>")
     assert [p.url for p in pages] == [hits[0].url, hits[2].url]
+
+
+def test_langchain_tools_use_injected_backend() -> None:
+    from WebSearch.langchain_tools import websearch_langchain_tools
+
+    def backend(query: str, spec: SearcherSpec) -> list[SearchHit]:
+        del query
+        return [
+            SearchHit(
+                title="LC",
+                url="https://example.com/lc",
+                snippet="from tool",
+                searcher_id=spec.id,
+            )
+        ]
+
+    tools = websearch_langchain_tools(backends={"stub": backend})
+    by_name = {tool.name: tool for tool in tools}
+    brief = by_name["web_search_brief"].invoke({"query": "q", "limit": 3})
+    assert "LC" in brief and "example.com/lc" in brief
+    payload = by_name["web_search_hits"].invoke({"query": "q", "limit": 3})
+    assert payload[0]["title"] == "LC" and payload[0]["searcher_id"] == "stub"
