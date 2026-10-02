@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from swarm_sdk.math.dispatch import classify_math_task
 from swarm_sdk.math.types import (
     MathBackend,
     MathDispatchDecision,
@@ -280,6 +281,7 @@ __all__ = [
     "ThinkLevel",
     "VerificationResult",
     "bm25_idf",
+    "classify_math_task",
     "bm25_score",
     "bm25_term_score",
     "binary_cosine_estimate",
