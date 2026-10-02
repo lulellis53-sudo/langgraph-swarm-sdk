@@ -11,6 +11,12 @@ dependencies = [
     "langchain>=1.0",
     "langgraph>=1.0",
     "langgraph-swarm>=0.1",
+    "langchain-anthropic>=0.3",
+    "langchain-cohere>=0.3",
+    "langchain-google-genai>=2.0",
+    "langchain-groq>=0.2",
+    "langchain-mistralai>=0.2",
+    "langchain-openai>=0.3",
     "pydantic>=2.11",
     "pydantic-settings>=2.10",
     # ## Config & serialization
@@ -120,6 +126,7 @@ websearch = [
 swarm-api = "swarm_sdk.serving.http:main"
 swarm-grpc = "swarm_sdk.serving.grpc:main"
 swarm-vault = "swarm_sdk.vault:main"
+low-swarm = "swarm_sdk.cli:main"
 
 [build-system]
 requires = ["hatchling"]
