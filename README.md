@@ -35,6 +35,23 @@ print(search_brief("(langgraph|langchain) AND swarm", limit=5))  # prompt-ready
 
 `search_brief` renders a numbered brief: titles/snippets pass through text normalization (HTML tags stripped, entities decoded, duplicate lines removed), URLs are canonicalized (no tracking params), and a `Sources:` footer lists the contributing searcher ids. `max_chars` (default 1200) keeps the brief inside a prompt budget; at least one hit is always kept.
 
+### Use with LangChain
+
+From the Swarm checkout (LangGraph already depends on LangChain):
+
+```python
+from langchain.agents import create_agent
+from WebSearch.langchain_tools import websearch_langchain_tools
+
+tools = websearch_langchain_tools()
+agent = create_agent("openai:gpt-4o-mini", tools=tools)
+agent.invoke({"messages": [("user", "What changed in LangGraph swarm handoffs lately?")]})
+```
+
+Bind tools on an existing graph node with ``model.bind_tools(websearch_langchain_tools())``. Pass ``backends=`` when testing so no API keys are required (same injectable ``SearchFn`` as :func:`search_hits`).
+
+**Pydantic AI:** wrap a single tool with ``pydantic_ai.ext.langchain.tool_from_langchain`` or attach a LangChain toolkit via ``LangChainToolset`` — see [Pydantic AI third-party tools](https://ai.pydantic.dev/toolsets/#langchain-tools). Swarm’s runtime stays on LangGraph; use Pydantic AI for standalone agents and bridge tools as needed.
+
 Env var **names** only in yaml (`BRAVE_API_KEY`, `TAVILY_API_KEY`, `APIFY_TOKEN`, `EXA_API_KEY`, `SEARXNG_URL`). Install deps: `uv sync --extra dev`. Inject `SearchFn` / `FetchFn` in tests so no live network is required.
 
 ## Google dorks

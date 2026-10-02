@@ -5,12 +5,14 @@ from __future__ import annotations
 import json
 import logging
 import os
+import subprocess
 import threading
 import time
 from collections import OrderedDict
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field, replace
+from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 
@@ -362,19 +364,35 @@ def get_searcher(config: ProvidersConfig, searcher_id: str) -> SearcherSpec:
 # --- HTTP / JSON plumbing (fail closed) ----------------------------------------
 
 
+@lru_cache(maxsize=64)
+def _keychain_secret(name: str) -> str:
+    """MacOS Keychain fallback (service ``swarm/<name>``); empty when absent."""
+    try:
+        proc = subprocess.run(
+            ["security", "find-generic-password", "-s", f"swarm/{name}", "-w"],
+            capture_output=True,
+            text=True,
+            timeout=5.0,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return proc.stdout.strip() if proc.returncode == 0 else ""
+
+
 def env_key(spec: SearcherSpec) -> str:
-    """Read an API key from the environment using the spec's env var name.
+    """Read an API key from the environment, falling back to the Keychain.
 
     Args:
         spec: Searcher configuration from ``providers.yaml``.
 
     Returns:
-        str: The trimmed key, or an empty string if the env var is unset.
+        str: The trimmed key, or an empty string if unresolved.
     """
     name = spec.api_key_env
     if not name:
         return ""
-    return os.environ.get(name, "").strip()
+    return os.environ.get(name, "").strip() or _keychain_secret(name)
 
 
 def env_base(spec: SearcherSpec) -> str:
@@ -401,27 +419,29 @@ _SEARCH_CACHE: OrderedDict[tuple[str, str], tuple[float, list[SearchHit]]] = Ord
 _SEARCH_CACHE_LOCK = threading.Lock()
 
 
-def _search_cache_get(searcher_id: str, query: str) -> list[SearchHit] | None:
+def _search_cache_get(searcher_id: str, query: str, scope: int) -> list[SearchHit] | None:
     """Live cached hits for this (searcher, query) pair, or ``None``."""
     now = time.monotonic()
     with _SEARCH_CACHE_LOCK:
-        entry = _SEARCH_CACHE.get((searcher_id, query))
+        entry = _SEARCH_CACHE.get((searcher_id, query, scope))
         if entry is None:
             return None
         expires_at, hits = entry
         if now >= expires_at:
-            del _SEARCH_CACHE[(searcher_id, query)]
+            del _SEARCH_CACHE[(searcher_id, query, scope)]
             return None
-        _SEARCH_CACHE.move_to_end((searcher_id, query))
+        _SEARCH_CACHE.move_to_end((searcher_id, query, scope))
         return hits
 
 
-def _search_cache_put(searcher_id: str, query: str, hits: list[SearchHit], ttl_s: float) -> None:
+def _search_cache_put(
+    searcher_id: str, query: str, scope: int, hits: list[SearchHit], ttl_s: float
+) -> None:
     """Store hits with ``api_tokens`` zeroed: a cache hit costs no API call."""
     while len(_SEARCH_CACHE) >= _SEARCH_CACHE_MAX:
         _SEARCH_CACHE.popitem(last=False)
     with _SEARCH_CACHE_LOCK:
-        _SEARCH_CACHE[(searcher_id, query)] = (
+        _SEARCH_CACHE[(searcher_id, query, scope)] = (
             time.monotonic() + ttl_s,
             [replace(hit, api_tokens=0) for hit in hits],
         )
@@ -978,7 +998,7 @@ def parallel_search(
         spec, fn = job
         with semaphore:
             if cache_ttl_s > 0:
-                cached = _search_cache_get(spec.id, query)
+                cached = _search_cache_get(spec.id, query, id(fn))
                 if cached is not None:
                     return cached
             try:
@@ -987,7 +1007,7 @@ def parallel_search(
                 logger.warning("searcher %s failed", spec.id, exc_info=True)
                 return []
             if cache_ttl_s > 0:
-                _search_cache_put(spec.id, query, hits, cache_ttl_s)
+                _search_cache_put(spec.id, query, id(fn), hits, cache_ttl_s)
             return hits
 
     executor = shared_executor()

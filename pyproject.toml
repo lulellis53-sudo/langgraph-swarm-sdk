@@ -39,6 +39,9 @@ dev = [
     "ruff>=0.12",
     "ty>=0.0.1a0",
 ]
+langchain = [
+    "langchain-core>=1.6",
+]
 
 [tool.uv]
 python-preference = "managed"
