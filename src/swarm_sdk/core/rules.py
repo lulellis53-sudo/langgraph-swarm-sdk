@@ -212,15 +212,15 @@ class HostRuleEngine:
         """Checks if a command enables or targets prohibited SIMD instructions."""
         for simd in self.invariants.simd_prohibited:
             if simd.upper() == "AVX-512":
-                # Look for flags like -mavx512, +avx512, --enable-avx512, CFLAGS="-mavx512"
-                flag_match = re.search(r"(?i)(?:-m|\+|--enable-|-enable-)avx-?512\w*", command_line)
+                # Look for flags like -mavx512, +avx512, --enable-avx512, CFLAGS="-mavx512", -DENABLE_AVX512
+                flag_match = re.search(r"(?i)(?:-m|\+|--enable-|-enable-|-D[A-Za-z0-9_]*?)avx-?512\w*", command_line)
                 if flag_match:
                     prefix = command_line[max(0, flag_match.start() - 5):flag_match.start()]
                     if not prefix.endswith("-mno-") and not prefix.endswith("-no-"):
                         return f"Command attempts to use prohibited SIMD instruction set: {simd}"
 
                 # Look for word matches like avx512 / AVX-512 unless preceded by negation
-                for m in re.finditer(r"(?i)\bavx-?512\w*", command_line):
+                for m in re.finditer(r"(?i)(?:^|[^a-zA-Z0-9_-])(?:[A-Za-z0-9_]+_)?avx-?512\w*", command_line):
                     start = m.start()
                     prefix = command_line[max(0, start - 10):start]
                     if re.search(r"(?i)(?:-mno-?|no[-_\s]+)$", prefix):

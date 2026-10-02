@@ -190,8 +190,18 @@ def normalize_service(service: str) -> str:
 # -----------------------------------------------------------------------------
 
 
+# Global tracker for latest execution state (for CLI & programmatic inspection)
+latest_state: dict[str, Any] | None = None
+
+
+def get_latest_state() -> dict[str, Any] | None:
+    """Returns the most recent execution state from handle_run."""
+    return latest_state
+
+
 def handle_run(args: argparse.Namespace, console: Any) -> int:
     """Executes code synthesis state machine via LowSwarmEngine."""
+    global latest_state
     task: str = args.task
     files: list[str] | None = args.files
     profile: bool = bool(args.profile)
@@ -200,8 +210,10 @@ def handle_run(args: argparse.Namespace, console: Any) -> int:
     engine = LowSwarmEngine()
 
     start_time = time.perf_counter()
-    state = engine.run(task=task, target_files=files)
+    start_cpu = time.process_time()
+    state = engine.run(task=task, target_files=files, profile=profile)
     elapsed_ms = (time.perf_counter() - start_time) * 1000.0
+    cpu_ms = (time.process_time() - start_cpu) * 1000.0
 
     status = state.get("status", "unknown")
     is_success = status == "success"
@@ -245,10 +257,29 @@ def handle_run(args: argparse.Namespace, console: Any) -> int:
 
     if profile:
         rss = state.get("metrics", {}).get("rss_gb", engine.get_current_rss_gb())
+        if "metrics" not in state or not isinstance(state["metrics"], dict):
+            state["metrics"] = {}
+        state["metrics"]["wall_clock_ms"] = elapsed_ms
+        state["metrics"]["cpu_time_ms"] = cpu_ms
+        state["metrics"]["rss_gb"] = rss
         table.add_row("Profile Latency", f"{elapsed_ms:.2f} ms")
+        table.add_row("CPU Time", f"{cpu_ms:.2f} ms")
         table.add_row("Process RSS", f"{rss:.2f} GB")
 
+    latest_state = state
     console.print(create_panel(table, title="Execution Summary"))
+
+    # If execution succeeded, write synthesized code to target files if existing or --apply
+    if is_success:
+        synthesized_code = state.get("synthesized_code") or {}
+        for fname, code in synthesized_code.items():
+            fpath = Path(fname)
+            if fpath.exists() or getattr(args, "apply", False):
+                try:
+                    fpath.parent.mkdir(parents=True, exist_ok=True)
+                    fpath.write_text(code, encoding="utf-8")
+                except OSError:
+                    pass
 
     # Render diff patches if synthesized
     diff_patches = state.get("diff_patches") or []
@@ -439,6 +470,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--profile",
         action="store_true",
         help="Measure latency and memory profile",
+    )
+    p_run.add_argument(
+        "--apply",
+        action="store_true",
+        help="Write synthesized code to target files",
     )
     p_run.add_argument(
         "--verbose",
