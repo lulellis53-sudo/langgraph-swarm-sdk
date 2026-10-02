@@ -5,6 +5,7 @@ from __future__ import annotations
 from WebSearch import run_pipeline
 from WebSearch.backend import extract_and_normalize, normalize_text
 from WebSearch.frontend import (
+    ProvidersConfig,
     SearcherSpec,
     SearchHit,
     get_searcher,
@@ -365,7 +366,12 @@ def test_langchain_tools_use_injected_backend() -> None:
             )
         ]
 
-    tools = websearch_langchain_tools(backends={"stub": backend})
+    cfg = ProvidersConfig(
+        version=1,
+        searchers=(SearcherSpec(id="stub", kind="websearcher"),),
+        extractor_order=("regex",),
+    )
+    tools = websearch_langchain_tools(config=cfg, backends={"stub": backend})
     by_name = {tool.name: tool for tool in tools}
     brief = by_name["web_search_brief"].invoke({"query": "q", "limit": 3})
     assert "LC" in brief and "example.com/lc" in brief
