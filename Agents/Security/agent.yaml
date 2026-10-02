@@ -1,0 +1,33 @@
+version: "1"
+name: Security
+role: security_review
+
+model: openai:gpt-4o
+think_level: high
+
+token_budget:
+  max_prompt: 8192
+  max_completion: 2048
+
+tasks:
+  - id: secrets_audit
+    description: >-
+      Scan a codebase or diff for secrets, credentials, and unsafe
+      secret-handling patterns.
+    outputs:
+      - findings
+      - remediation_steps
+
+  - id: dependency_audit
+    description: >-
+      Check dependencies for known CVEs and flag outdated or abandoned
+      packages.
+    outputs:
+      - vulnerability_report
+      - upgrade_plan
+
+capabilities:
+  - secret_scanning
+  - dependency_audit
+  - threat_modeling
+  - owasp_top10

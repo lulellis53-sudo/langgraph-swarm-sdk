@@ -1,0 +1,203 @@
+# Model registry: provider routes for the swarm.
+# ONE predefined model per provider; the priority chain is the fallback order.
+# Free providers use low-token models at low effort; paid providers use
+# medium-tier models at medium effort. Every route covers all think levels.
+# `effort`: provider-side reasoning effort hint (low/medium/high).
+# `evidence`: user (user-specified), web (searched Sep 2026), assumed (verify),
+#             verified live 2026-10-01 (probe against the provider).
+version: 1
+
+providers:
+  # ---- Paid: medium tier, medium effort ----
+  - name: zai:glm-5.2
+    provider: zai
+    api_key_env: ZAI_API_KEY
+    base_url_env: ZAI_BASE_URL   # https://api.z.ai/api/paas/v4
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 5
+    evidence: user (z.ai medium tier; glm-5.2 maps medium->high server-side)
+
+  - name: anthropic:claude-sonnet-4-5
+    provider: anthropic
+    api_key_env: ANTHROPIC_API_KEY
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 7
+    evidence: user (ANTHROPIC_API_KEY; Sonnet 4.5 = Anthropic medium tier)
+
+  - name: moonshot:kimi-k2.7-code
+    provider: moonshot
+    api_key_env: KIMI_CODE_PLAN_API_KEY
+    base_url_env: MOONSHOT_BASE_URL   # https://api.moonshot.ai/v1
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 10
+    evidence: user (Kimi 2.7 Code Plan); fallback key KIMI_CODE_PLAN_API_KEY_2 reserved
+
+  - name: google:gemini-3.8-flash
+    provider: google
+    api_key_env: GEMINI_API_KEY
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 12
+    evidence: user (Gemini 3.8 Flash = Google medium tier)
+
+  - name: xiaomi:mimo-v2.5-pro
+    provider: xiaomi
+    api_key_env: MIMO_API_KEY
+    base_url_env: MIMO_BASE_URL   # OpenAI-compatible endpoint (verify with Xiaomi docs)
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 15
+    evidence: user (MiMo 2.5 Pro = Xiaomi medium tier)
+
+  - name: xai:grok-4.6
+    provider: xai
+    api_key_env: XAI_API_KEY
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 18
+    evidence: user (Grok 4.6, medium effort)
+
+  - name: minimax:minimax-2.7-high-speed
+    provider: minimax
+    api_key_env: MINIMAX_API_KEY
+    base_url_env: MINIMAX_BASE_URL   # https://api.minimax.io/v1
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 20
+    evidence: user (2.7 high speed); model ID assumed - verify in Minimax console
+
+  - name: openai:gpt-6-luna
+    provider: codex
+    api_key_env: CODEX_OAUTH_TOKEN
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 25
+    evidence: user (Codex OAuth, GPT 6 Luna)
+
+  - name: anthropic:claude-sonnet-4.6
+    provider: claude-code
+    api_key_env: CLAUDE_CODE_API_KEY
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 30
+    evidence: user (Claude Code API, Sonnet 4.6); inactive until CLAUDE_CODE_API_KEY is stored
+
+  # ---- Free: low token usage, low effort ----
+  - name: nvidia:nemotron-3.5-lightning-30b-a3b
+    provider: nvidia
+    api_key_env: NVIDIA_API_KEY
+    base_url_env: NVIDIA_BASE_URL
+    effort: low
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 35
+    evidence: verified live 2026-10-01 (smallest verified NIM reasoner; free tier 40 rpm/10k day)
+
+  - name: ollama-cloud:llama-3.3
+    provider: ollama-cloud
+    api_key_env: OLLAMA_CLOUD_API_KEY
+    base_url_env: OLLAMA_CLOUD_BASE_URL    # https://ollama.com/v1
+    effort: low
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 52
+    evidence: assumed (Ollama Cloud hosted endpoint)
+
+  # ---- Paid value pool: medium tier, medium effort ----
+  - name: openrouter:z-ai/glm-5.3-flash
+    provider: openrouter
+    api_key_env: OPENROUTER_API_KEY
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 40
+    evidence: web (#2 OpenRouter by usage, best coding value)
+
+  - name: alibaba:qwen-3.8
+    provider: alibaba
+    api_key_env: ALIBABA_API_KEY
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 58
+    evidence: assumed (Alibaba Cloud Qwen 3.8 direct API)
+
+  - name: cohere:command-a
+    provider: cohere-1
+    api_key_env: COHERE_API_KEY_1
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 60
+    evidence: assumed (Cohere primary key instance)
+
+  - name: cohere:command-r7b
+    provider: cohere-2
+    api_key_env: COHERE_API_KEY_2
+    effort: low
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 62
+    evidence: assumed (Cohere fallback key instance)
+
+  - name: mistral:mistral-large-latest
+    provider: mistral-1
+    api_key_env: MISTRAL_API_KEY_1
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 65
+    evidence: assumed (Mistral primary key instance)
+
+  - name: mistral:ministral-3-8b-latest
+    provider: mistral-2
+    api_key_env: MISTRAL_API_KEY_2
+    effort: low
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 67
+    evidence: assumed (Mistral fallback key instance; Ministral 3 8B 2512)
+
+  - name: groq:openai/gpt-oss-120b
+    provider: groq-1
+    api_key_env: GROQ_API_KEY
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 70
+    evidence: user (Groq gpt-oss 120b thinking; primary key instance)
+
+  - name: groq:openai/gpt-oss-20b
+    provider: groq-2
+    api_key_env: GROQ_API_KEY_2
+    effort: low
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 72
+    evidence: user (Groq gpt-oss 20b; fallback key instance, pending key)
+
+  - name: sambanova:Meta-Llama-3.3-70B-Instruct
+    provider: sambanova
+    api_key_env: SAMBANOVA_API_KEY
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 80
+    evidence: assumed (fallback)
+
+  - name: fireworks:accounts/fireworks/models/kimi-k2.7
+    provider: fireworks
+    api_key_env: FIREWORKS_API_KEY
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 85
+    evidence: assumed (fallback)
+
+  # ---- Free/local: low effort ----
+  - name: ollama:glm5.3
+    provider: ollama
+    base_url_env: OLLAMA_BASE_URL          # e.g. http://127.0.0.1:11434
+    effort: low
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 90
+    evidence: assumed (local Ollama)
+
+  - name: ollama-cloud:qwen3.8
+    provider: ollama-2
+    base_url_env: OLLAMA_2_BASE_URL        # e.g. http://127.0.0.1:11435
+    effort: low
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 92
+    evidence: assumed (local Ollama instance #2)

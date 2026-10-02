@@ -1,0 +1,31 @@
+version: "1"
+name: Debugger
+role: root_cause_failures
+
+model: openai:gpt-4o-mini
+think_level: high
+
+token_budget:
+  max_prompt: 4096
+  max_completion: 1024
+
+tasks:
+  - id: reproduce_failure
+    description: >-
+      Reproduce a reported failure and isolate it to a minimal test case.
+    outputs:
+      - reproduction_steps
+      - minimal_test_case
+
+  - id: identify_root_cause
+    description: >-
+      Trace a failure to its root cause and propose the minimal fix.
+    outputs:
+      - root_cause_statement
+      - fix_proposal
+
+capabilities:
+  - stack_trace_analysis
+  - log_reading
+  - test_runner
+  - bisect

@@ -1,0 +1,160 @@
+# Swarm task coordination
+# Agent registry and task board for the active project.
+# Update `status` as work progresses. Valid statuses: todo, in_progress, done, blocked.
+version: "1"
+
+agents:
+  - name: Orchestrator
+    role: coordinate the swarm
+    contract: Agents/Orchestrator/AGENTS.md
+    manifest: Agents/Orchestrator/agent.yaml
+
+  - name: ModelDelegate
+    role: model_delegation
+    contract: Agents/ModelDelegate/AGENTS.md
+    manifest: Agents/ModelDelegate/agent.yaml
+
+  - name: Planner
+    role: decompose goals into task graphs
+    contract: Agents/Planner/AGENTS.md
+    manifest: Agents/Planner/agent.yaml
+
+  - name: Researcher
+    role: read-only research and synthesis
+    contract: Agents/Researcher/AGENTS.md
+    manifest: Agents/Researcher/agent.yaml
+
+  - name: Coder
+    role: implement code changes
+    contract: Agents/Coder/AGENTS.md
+    manifest: Agents/Coder/agent.yaml
+
+  - name: Reviewer
+    role: review diffs and PRs
+    contract: Agents/Reviewer/AGENTS.md
+    manifest: Agents/Reviewer/agent.yaml
+
+  - name: Tester
+    role: write and run tests
+    contract: Agents/Tester/AGENTS.md
+    manifest: Agents/Tester/agent.yaml
+
+  - name: Debugger
+    role: root-cause failures
+    contract: Agents/Debugger/AGENTS.md
+    manifest: Agents/Debugger/agent.yaml
+
+  - name: Documenter
+    role: maintain documentation
+    contract: Agents/Documenter/AGENTS.md
+    manifest: Agents/Documenter/agent.yaml
+
+  - name: DevOps
+    role: CI/CD and environments
+    contract: Agents/DevOps/AGENTS.md
+    manifest: Agents/DevOps/agent.yaml
+
+  - name: Security
+    role: security review and auditing
+    contract: Agents/Security/AGENTS.md
+    manifest: Agents/Security/agent.yaml
+
+  - name: DataEngineer
+    role: data pipelines and storage
+    contract: Agents/DataEngineer/AGENTS.md
+    manifest: Agents/DataEngineer/agent.yaml
+
+  - name: MLSpecialist
+    role: model evaluation and integration
+    contract: Agents/MLSpecialist/AGENTS.md
+    manifest: Agents/MLSpecialist/agent.yaml
+
+  - name: Optimizer
+    role: performance tuning
+    contract: Agents/Optimizer/AGENTS.md
+    manifest: Agents/Optimizer/agent.yaml
+
+  - name: Refactor
+    role: safe incremental refactors
+    contract: Agents/Refactor/AGENTS.md
+    manifest: Agents/Refactor/agent.yaml
+
+  - name: TxtToCsv
+    role: convert text files to CSV
+    contract: Agents/TxtToCsv/AGENTS.md
+    manifest: Agents/TxtToCsv/agent.yaml
+
+# Task board — replace with tasks for the active project.
+# Each task must have: id, title, assigned agent(s), depends_on, and status.
+# Coder tasks that share a wave also need disjoint files (and usually task).
+# Example structure:
+#
+# tasks:
+#   - id: T01
+#     title: "Discover: read codebase and map key modules"
+#     assigned: [Researcher]
+#     depends_on: []
+#     status: todo
+#
+#   - id: T02
+#     title: "Plan: decompose goal into implementation tasks"
+#     assigned: [Planner]
+#     depends_on: [T01]
+#     status: todo
+#
+#   - id: T03
+#     title: "Implement: module A (exclusive files)"
+#     assigned: [Coder]
+#     task: implement_in_files
+#     files: [src/a.py, tests/test_a.py]
+#     depends_on: [T02]
+#     status: todo
+#
+#   - id: T04
+#     title: "Implement: module B (disjoint files, same wave as T03)"
+#     assigned: [Coder]
+#     task: implement_in_files
+#     files: [src/b.py, tests/test_b.py]
+#     depends_on: [T02]
+#     status: todo
+#
+#   - id: T05
+#     title: "Test: write and run tests for T03+T04"
+#     assigned: [Tester]
+#     depends_on: [T03, T04]
+#     status: todo
+#
+#   - id: T06
+#     title: "Review: diff review for T03+T04"
+#     assigned: [Reviewer]
+#     depends_on: [T05]
+#     status: todo
+
+tasks:
+  - id: MD01
+    title: "Route: pick provider/model for a sub-task"
+    assigned: [ModelDelegate]
+    task: route_task
+    depends_on: []
+    status: todo
+
+  - id: MD02
+    title: "Fallback: pre-compute retry chain for the selected route"
+    assigned: [ModelDelegate]
+    task: resolve_fallback
+    depends_on: [MD01]
+    status: todo
+
+  - id: MD03
+    title: "Embed: dispatch embedding task to GPU or registry provider"
+    assigned: [ModelDelegate]
+    task: delegate_embedding
+    depends_on: []
+    status: todo
+
+  - id: MD04
+    title: "Math: dispatch numerical task to GPU or fast LLM"
+    assigned: [ModelDelegate]
+    task: delegate_math
+    depends_on: []
+    status: todo

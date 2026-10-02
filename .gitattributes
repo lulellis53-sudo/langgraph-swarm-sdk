@@ -1,0 +1,11 @@
+# Normalize line endings; let git decide text vs binary per content.
+* text=auto
+
+# Shell scripts must stay LF (used in docker/linux images).
+*.sh text eol=lf
+
+# Generated artifacts: never show as diffs, mark as generated on GitHub.
+uv.lock -diff linguist-generated=true
+src/swarm_sdk/pb/swarm_pb2.py linguist-generated=true
+src/swarm_sdk/pb/swarm_pb2.pyi linguist-generated=true
+src/swarm_sdk/pb/swarm_pb2_grpc.py linguist-generated=true

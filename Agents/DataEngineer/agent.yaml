@@ -1,0 +1,33 @@
+version: "1"
+name: DataEngineer
+role: data_pipeline_and_storage
+
+model: openai:gpt-4o-mini
+think_level: medium
+
+token_budget:
+  max_prompt: 4096
+  max_completion: 1024
+
+tasks:
+  - id: pipeline_design
+    description: >-
+      Design or implement a data pipeline, ETL process, or storage schema
+      for a given data source and target.
+    outputs:
+      - schema_or_code
+      - migration_plan
+
+  - id: store_operations
+    description: >-
+      Execute, verify, or debug read/write operations against a data
+      store and validate data integrity.
+    outputs:
+      - operation_result
+      - validation_report
+
+capabilities:
+  - sql
+  - vector_stores
+  - etl
+  - schema_migration

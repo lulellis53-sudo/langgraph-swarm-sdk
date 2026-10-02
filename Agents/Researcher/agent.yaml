@@ -1,0 +1,38 @@
+version: "1"
+name: Researcher
+role: read_only_research
+# Wire this persona into the handoff swarm: swarm_sdk.core.swarm builds one
+# create_agent node per manifest whose langgraph_node is set.
+langgraph_node: researcher
+
+model: openai:gpt-4o-mini
+think_level: medium
+effort: medium
+api_key_env: SWARM_RESEARCHER_API_KEY
+
+token_budget:
+  max_prompt: 4096
+  max_completion: 1024
+
+tasks:
+  - id: code_search
+    description: >-
+      Locate definitions, callers, patterns, or evidence within a codebase
+      without modifying any files.
+    outputs:
+      - findings_report
+      - file_locations
+
+  - id: summarize_domain
+    description: >-
+      Synthesize documentation, issues, or external sources into a
+      structured summary for other agents.
+    outputs:
+      - summary_report
+      - key_facts
+
+capabilities:
+  - grep
+  - file_read
+  - web_search
+  - read_only

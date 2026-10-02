@@ -1,43 +1,57 @@
-[build-system]
-requires = ["setuptools>=75", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [project]
-name = "websearch"
+name = "langgraph-swarm-sdk"
 version = "0.1.0"
-description = "Parallel web search, crawl/scrape, and extract pipeline (WebSearch worktree)."
+description = "Parallel multi-LLM LangGraph swarm with memory, rerankers, tokenizers, and semantic caching."
 readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "dantenho", email = "dantenho@gmail.com" }]
 requires-python = ">=3.14.5"
 dependencies = [
-    "aiohttp>=3.11",
-    "beautifulsoup4>=4.15.0",
-    "crawlee>=0.5.0",
-    "curl-cffi>=0.16.3",
-    "duckduckgo-search>=7.0.0",
+    # ## Swarm / LangGraph
+    "langchain>=1.0",
+    "langgraph>=1.0",
+    "langgraph-swarm>=0.1",
+    "langchain-anthropic>=0.3",
+    "langchain-cohere>=0.3",
+    "langchain-google-genai>=2.0",
+    "langchain-groq>=0.2",
+    "langchain-mistralai>=0.2",
+    "langchain-openai>=0.3",
+    "pydantic>=2.11",
+    "pydantic-settings>=2.10",
+    # ## Config & serialization
+    "pyyaml>=6.0",
+    "orjson>=3.10",
+    "protobuf>=6.31",
+    # ## HTTP API (swarm-api entrypoint)
     "fastapi>=0.115",
-    "fastembed>=0.6.0 ; sys_platform != 'darwin' or platform_machine != 'x86_64'",
-    "google-genai>=2.26.0",
+    "uvicorn[standard]>=0.34",
+    "uvloop>=0.21; sys_platform != 'win32'",
+    # ## HTTP clients
     "httpx>=0.28",
     "httpx2>=2.13",
-    "openai>=3.22.1",
-    "playwright>=1.49.0",
-    "playwright-stealth>=1.0.0",
-    "pydantic>=2.11",
-    "pyyaml>=6.0",
+    "h2>=4.2",
+    "aiohttp>=3.11",
     "requests>=2.32",
-    "scrapy>=2.12.0",
-    "selectolax>=0.4.13",
-    "tavily-python>=0.8.4",
-    "trafilatura>=2.2.0",
-    "uvicorn>=0.34.0",
-    "uvloop>=0.21 ; sys_platform != 'win32'",
-]
-
-[project.optional-dependencies]
-dev = [
-    "pytest>=8.4",
-    "ruff>=0.12",
-    "ty>=0.0.1a0",
+    # ## gRPC (swarm-grpc)
+    "grpcio>=1.71",
+    "grpcio-tools>=1.71",
+    # ## Tokenization & token budgets
+    # tiktoken = default token counter (cl100k_base); tokenizers = HF Tokenizer packing
+    "tokenizers>=0.22",
+    "tiktoken>=0.9",
+    # ## Numerics, tables, and sklearn (CPU)
+    "numpy>=2.1",
+    "polars>=1.30",
+    "scikit-learn>=1.6",
+    "sqlite-vec>=0.1.6",
+    # ## Symbolic math for equation docs and numerical verification
+    "sympy>=1.13",
+    # ## Embeddings (FastEmbed default = MiniLM-L6-v2 ONNX INT8 on CPU)
+    # onnxruntime has no macOS x86_64 wheel; FastEmbed skips on Intel Mac unless ORT is installed elsewhere.
+    "fastembed>=0.7; sys_platform != 'darwin' or platform_machine != 'x86_64'",
+    "langgraph-checkpoint-sqlite>=3.1.1",
+    "langgraph-sdk>=0.4.5",
 ]
 langchain = [
     "langchain-core>=1.6",
@@ -45,57 +59,122 @@ langchain = [
 
 [tool.uv]
 python-preference = "managed"
-# google-genai → google-auth needs cryptography; wheels only on this host (no assert.h with LLVM CC).
+# Jupyter AI → cryptography; source builds fail with custom LLVM (missing assert.h). Wheels only.
 no-build-package = ["cryptography"]
 constraint-dependencies = ["cryptography==48.0.1"]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["."]
+[project.optional-dependencies]
+# ## Testing & property tests
+dev = [
+    "hypothesis>=6.135",
+    "pytest>=8.4",
+    "pytest-asyncio>=1.1",
+    "ruff>=0.12",
+    "taplo>=0.9",
+    "ty>=0.0.1a0",
+
+]
+# ## Observability (OTel traces for FastAPI / httpx)
+observability = [
+    "opentelemetry-api>=1.30",
+    "opentelemetry-sdk>=1.30",
+    "opentelemetry-exporter-otlp-proto-http>=1.30",
+    "opentelemetry-instrumentation-fastapi>=0.52b0",
+    "opentelemetry-instrumentation-httpx>=0.52b0",
+    "prometheus-client>=0.20",
+]
+# ## FAISS vector index (CPU wheels everywhere; GPU = CUDA only)
+faiss = ["faiss-cpu>=1.11"]
+faiss-gpu = [
+    "faiss-gpu>=1.11; sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
+# ## FastEmbed + ONNX runtime (MiniLM-L6-v2 INT8; explicit when not in core deps)
+embed = [
+    "fastembed>=0.7",
+    "onnxruntime>=1.20; sys_platform != 'darwin' or platform_machine != 'x86_64'",
+]
+# ## ONNX Runtime GPU / CoreML execution providers (not Intel Mac x86_64)
+embed-gpu = [
+    "onnxruntime-gpu>=1.20; sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
+# ## MoltenVK / Vulkan + OpenCL (Intel Mac Radeon, llama.cpp GGUF embeddings)
+molten = [
+    "pyopencl>=2024.1",
+    "llama-cpp-python>=0.3.0",
+]
+opencl = ["pyopencl>=2024.1"]
+llama-cpp = ["llama-cpp-python>=0.3.0"]
+# ## ML rerankers / transformers (sympy + HF stack)
+ml = [
+    "sympy>=1.13",
+    "scikit-learn>=1.6",
+    "transformers>=4.51",
+    "onnxruntime>=1.20; sys_platform != 'darwin' or platform_machine != 'x86_64'",
+]
+qdrant = ["qdrant-client>=1.14"]
+# ## Mem0 Platform memory (MemoryClient; API key in MEM0_API_KEY)
+mem0 = ["mem0ai>=1.0"]
+jupyter = [
+    "cryptography==48.0.1",
+    "ipykernel>=6",
+    "jupyter-ai>=2",
+    "notebook>=7",
+    "pip>=25",
+]
+websearch = [
+    "selectolax>=0.3",
+    "trafilatura>=2.0",
+    "beautifulsoup4>=4.12",
+]
+
+[project.scripts]
+swarm-api = "swarm_sdk.serving.http:main"
+swarm-grpc = "swarm_sdk.serving.grpc:main"
+swarm-vault = "swarm_sdk.vault:main"
+low-swarm = "swarm_sdk.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "langgraph-cli[inmem]>=0.1.54",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/swarm_sdk"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/swarm_sdk/pb/swarm.proto" = "swarm_sdk/pb/swarm.proto"
 
 [tool.ruff]
 line-length = 100
 target-version = "py314"
-src = ["."]
-extend-exclude = [".venv", "docs"]
+src = ["src", "Agents/tests", "Agents/benchmark", "WebSearch"]
+extend-exclude = ["src/swarm_sdk/pb"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "ANN", "D"]
-ignore = ["D203", "D213"]
+select = ["E", "F", "I", "UP"]
 
-[tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["ANN", "D"]
-"scripts/**/*.py" = ["D"]
-"frontend/websearchers.py" = ["ANN401", "D102"]
-"midend/__init__.py" = ["ANN401"]
-"repeater.py" = ["D102"]
-
-[tool.ruff.lint.pydocstyle]
-convention = "google"
-
-[tool.ruff.lint.flake8-annotations]
-allow-star-arg-any = true
-mypy-init-return = true
-suppress-none-returning = true
-
-[tool.ruff.lint.isort]
-known-first-party = ["WebSearch"]
-
-[tool.setuptools]
-packages = [
-    "WebSearch",
-    "WebSearch.frontend",
-    "WebSearch.backend",
-    "WebSearch.midend",
-]
-package-dir = { "WebSearch" = ".", "WebSearch.frontend" = "frontend", "WebSearch.backend" = "backend", "WebSearch.midend" = "midend" }
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
 
 [tool.ty.environment]
 python = "./.venv"
 python-version = "3.14"
 
 [tool.ty.src]
-exclude = ["tests/**", "scripts/**"]
+exclude = [
+  "src/swarm_sdk/pb/**",
+  "src/swarm_sdk/memory/faiss_store.py",
+  "src/swarm_sdk/memory/qdrant_store.py",
+  "src/swarm_sdk/gpu/opencl_math.py",
+]
 
-[tool.ty.rules]
-unresolved-import = "ignore"
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["Agents/benchmark"]
+pythonpath = [".", "Agents"]

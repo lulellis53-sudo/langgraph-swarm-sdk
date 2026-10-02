@@ -1,0 +1,17 @@
+---
+description: After any substantive edit, query Context7 (else Tavily/Exa) before claiming done
+alwaysApply: true
+---
+
+# Context7 after editing
+
+After you change code that touches a library, framework, API, CLI, or protocol:
+
+1. Call **Context7 MCP**: `resolve-library-id` → `query-docs` with a focused query.
+2. If Context7 has no useful hit, use **Tavily** or **Exa**.
+3. Apply only fixes that improve correctness, security, or maintainability — no drive-by style churn.
+4. Re-run the relevant tests/gate if the docs change required a follow-up edit.
+
+Skip Context7 for pure doc/comment typos, renames with no API surface, or when the user forbids network/MCP.
+
+Canonical loop: [`.cursor/AGENTS.md`](../AGENTS.md).

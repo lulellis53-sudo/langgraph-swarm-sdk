@@ -1,0 +1,65 @@
+version: "1"
+name: Coder
+role: implement_changes
+# Wire this persona into the handoff swarm: swarm_sdk.core.swarm builds one
+# create_agent node per manifest whose langgraph_node is set.
+langgraph_node: coder
+
+model: openai:gpt-4o
+think_level: high
+effort: high
+api_key_env: SWARM_CODER_API_KEY
+
+token_budget:
+  max_prompt: 8192
+  max_completion: 2048
+
+tasks:
+  - id: implement_feature
+    description: >-
+      Write or modify code to satisfy a spec or acceptance criteria.
+      When files is set, write only those paths; when empty, this step is
+      the sole Coder and must still stay in scope.
+    outputs:
+      - claimed_files
+      - changed_files
+      - test_commands
+      - parallel_safe
+
+  - id: implement_in_files
+    description: >-
+      Implement only in the exclusive files claimed for this step. Safe to
+      run in the same wave as other Coder steps whose files do not overlap.
+      Keep a module's tests in this step, not in a sibling.
+    outputs:
+      - claimed_files
+      - changed_files
+      - test_commands
+      - parallel_safe
+
+  - id: fix_regression
+    description: >-
+      Restore a previously passing behavior with the minimal correct change.
+      Claim the production file and the tests that pin it in files.
+    outputs:
+      - claimed_files
+      - changed_files
+      - root_cause_summary
+      - parallel_safe
+
+  - id: add_tests
+    description: >-
+      Add or update tests that cover this step's production files. Do not
+      split those test files from the impl across parallel Coder steps.
+    outputs:
+      - claimed_files
+      - changed_files
+      - test_commands
+
+capabilities:
+  - code_edit
+  - shell
+  - diff
+  - test_runner
+  - file_scoped
+  - parallel
