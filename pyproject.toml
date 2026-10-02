@@ -51,6 +51,7 @@ dependencies = [
     # onnxruntime has no macOS x86_64 wheel; FastEmbed skips on Intel Mac unless ORT is installed elsewhere.
     "fastembed>=0.7; sys_platform != 'darwin' or platform_machine != 'x86_64'",
     "langgraph-checkpoint-sqlite>=3.1.1",
+    "langgraph-sdk>=0.4.5",
 ]
 
 [tool.uv]
@@ -133,6 +134,11 @@ low-swarm = "swarm_sdk.cli:main"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[dependency-groups]
+dev = [
+    "langgraph-cli[inmem]>=0.1.54",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/swarm_sdk"]
 
@@ -167,5 +173,5 @@ exclude = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["Agents/tests", "Agents/benchmark"]
+testpaths = ["Agents/benchmark"]
 pythonpath = [".", "Agents"]

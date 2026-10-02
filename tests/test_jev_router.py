@@ -353,3 +353,28 @@ class TestJevLatencyAndFallback:
         assert score.score == 0.88
         assert score.model_tier == "pro"
         assert score.complexity_bucket == "high"
+
+
+class TestOpenRouterKey:
+    """Jev reuses OPENROUTER_API_KEY only when it talks to OpenRouter itself."""
+
+    @staticmethod
+    def _vault(monkeypatch: pytest.MonkeyPatch, secrets: dict[str, str]) -> None:
+        monkeypatch.setattr("swarm_sdk.vault.resolve", lambda name, **_kw: secrets.get(name))
+        monkeypatch.delenv("JEV_API_KEY", raising=False)
+
+    def test_openrouter_endpoint_uses_openrouter_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self._vault(monkeypatch, {"OPENROUTER_API_KEY": "or-key"})
+        client = JevRouter(endpoint="https://openrouter.ai/api/v1")
+        assert client.api_key == "or-key"
+
+    def test_other_endpoint_never_gets_openrouter_key(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._vault(monkeypatch, {"OPENROUTER_API_KEY": "or-key"})
+        assert JevRouter(endpoint="https://jev.example.com").api_key is None
+        assert JevRouter(endpoint="https://openrouter.ai.evil.com").api_key is None
+
+    def test_jev_key_wins(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        self._vault(monkeypatch, {"JEV_API_KEY": "jev-key", "OPENROUTER_API_KEY": "or-key"})
+        assert JevRouter(endpoint="https://openrouter.ai/api/v1").api_key == "jev-key"

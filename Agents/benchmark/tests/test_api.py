@@ -10,7 +10,17 @@ from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import SwarmSDK
 from swarm_sdk.retrieval.embeddings import HashEmbedder
 from swarm_sdk.retrieval.rerank import IdentityReranker
+import sqlite3
 from swarm_sdk.serving.http import create_app
+
+
+def sqlite_extension_loading_available() -> bool:
+    conn = sqlite3.connect(":memory:")
+    try:
+        return hasattr(conn, "enable_load_extension")
+    finally:
+        conn.close()
+
 
 pytestmark = pytest.mark.skipif(
     not sqlite_extension_loading_available(),

@@ -18,11 +18,9 @@ from __future__ import annotations
 
 import os
 import time
-from functools import lru_cache
-from pathlib import Path
 from typing import TYPE_CHECKING
 
-from swarm_sdk.agents.manifest import AgentManifest
+from swarm_sdk.agents.manifest import AgentManifest, role_contract
 from swarm_sdk.models.chat import complete, load_chat_model
 from swarm_sdk.prompting.budget import TokenBudget, count_text
 from swarm_sdk.retrieval.cache import SemanticCache
@@ -32,27 +30,7 @@ from .plan import StepOutput
 if TYPE_CHECKING:
     from langchain_core.language_models.chat_models import BaseChatModel
 
-
-@lru_cache(maxsize=32)
-def role_contract(agents_root: str, name: str) -> str:
-    """Role contract text (``Agents/{Name}/AGENTS.md``), cached per process.
-
-    The result is cached because the contract is immutable during a run and is
-    the system prompt of every step that agent executes — reloading it per
-    step would be pure I/O overhead.
-
-    Args:
-        agents_root: Absolute path to the directory containing ``{Name}/AGENTS.md``.
-        name: Agent (directory) name, e.g. ``"Coder"``.
-
-    Returns:
-        The file content as text; ``""`` when the file does not exist (the
-        manifest's ``role`` field is then used as the system prompt instead).
-    """
-    path = Path(agents_root) / name / "AGENTS.md"
-    if not path.is_file():
-        return ""
-    return path.read_text(encoding="utf-8")
+__all__ = ["WorkerAgent", "role_contract"]
 
 
 class WorkerAgent:
@@ -163,16 +141,21 @@ class WorkerAgent:
         ``setdefault`` so an explicitly configured environment wins.
 
         Raises:
-            RuntimeError: When the named env var is unset at call time.
+            RuntimeError: When neither the named env var nor the provider's own key
+                (``<PROVIDER>_API_KEY``) is set at call time.
         """
         env = self.manifest.api_key_env
         if not env:
             return
+        provider_env = f"{self._model_name().split(':', 1)[0].upper()}_API_KEY"
         value = os.environ.get(env)
         if not value:
+            # Per-agent override unset: the provider's own key (e.g. primed from the
+            # Keychain by prime_runtime_secrets) is enough.
+            if os.environ.get(provider_env):
+                return
             raise RuntimeError(f"api key env var {env} is not set for agent {self.name}")
-        provider = self._model_name().split(":", 1)[0].upper()
-        os.environ.setdefault(f"{provider}_API_KEY", value)
+        os.environ.setdefault(provider_env, value)
 
     async def run(
         self,

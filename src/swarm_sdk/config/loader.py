@@ -28,6 +28,35 @@ class ProviderEntry(BaseModel):
     priority: int = 100
 
 
+class ProviderCatalog(BaseModel):
+    """Parsed ``providers.yaml`` (the file beside ``swarm.yaml``)."""
+
+    version: int = 1
+    providers: list[ProviderEntry] = Field(default_factory=list)
+
+    def ranked(self) -> list[ProviderEntry]:
+        """Entries sorted by priority (lower = preferred)."""
+        return sorted(self.providers, key=lambda entry: entry.priority)
+
+
+def load_provider_catalog(path: Path) -> ProviderCatalog:
+    """Parse a ``providers.yaml`` file into a :class:`ProviderCatalog`.
+
+    Args:
+        path: Explicit path to the providers file.
+
+    Returns:
+        Parsed catalog; ``providers`` is empty when the file lists none.
+
+    Raises:
+        ValueError: If the file is not a YAML mapping.
+    """
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError(f"providers file must be a mapping: {path}")
+    return ProviderCatalog.model_validate(data)
+
+
 class EmbeddingConfig(BaseModel):
     model: str = "sentence-transformers/all-MiniLM-L6-v2"
     dim: int = 384

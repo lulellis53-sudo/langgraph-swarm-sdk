@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING
 from pydantic import ValidationError
 
 from swarm_sdk.agents.manifest import AgentManifest, agents_root
+from swarm_sdk.execution.executor import offload
 from swarm_sdk.models.chat import complete, load_chat_model
 
 from .graph import WorkerFactory
@@ -30,6 +31,7 @@ from .worker import WorkerAgent
 
 if TYPE_CHECKING:
     from langchain_core.language_models.chat_models import BaseChatModel
+    from langchain_core.runnables import Runnable
 
     from swarm_sdk.retrieval.cache import SemanticCache
 
@@ -94,11 +96,24 @@ def _fallback_plan(goal: str, manifests: dict[str, AgentManifest]) -> Plan:
     )
 
 
+def _structured_or_none(model: BaseChatModel, schema: type) -> Runnable | None:
+    """Wrap ``model`` for structured output, or ``None`` when unsupported.
+
+    ``with_structured_output`` raises ``NotImplementedError`` before any model
+    call when the model class does not override ``bind_tools``.
+    """
+    try:
+        return model.with_structured_output(schema, include_raw=True)
+    except NotImplementedError:
+        return None
+
+
 async def spawn(
     goal: str,
     manifests: dict[str, AgentManifest],
     *,
     model_override: BaseChatModel | None = None,
+    structured: bool | None = None,
 ) -> Plan:
     """Ask the Orchestrator agent for a JSON plan; validate into a Plan.
 
@@ -109,11 +124,18 @@ async def spawn(
             are validated against these names.
         model_override: Optional pre-built chat model (tests, scripted runs).
             When ``None`` the orchestrator's manifest model is loaded.
+        structured: Prefer LangChain ``with_structured_output`` for the plan.
+            ``None`` resolves from ``Settings.planner_structured_output``; the
+            JSON-prompt + regex path stays as the fallback either way.
 
     Returns:
         A validated plan. Guaranteed non-empty: malformed replies fall back to
         a single-step plan after one retry.
     """
+    if structured is None:
+        from swarm_sdk.config.settings import Settings
+
+        structured = Settings().planner_structured_output
     orchestrator = manifests.get("Orchestrator") or next(iter(manifests.values()))
     roster = "\n".join(f"- {m.name}: {m.role}" for m in manifests.values())
     prompt = PLAN_PROMPT.format(goal=goal, agents=roster)
@@ -122,25 +144,42 @@ async def spawn(
         model = model_override
     else:
         model = load_chat_model(_model_name(orchestrator))
+    structured_model = _structured_or_none(model, Plan) if structured else None
     attempt_prompt = prompt
     last_error: Exception | None = None
     for _ in range(2):
-        raw = await complete(model, orchestrator.role, attempt_prompt)
-        match = _JSON_OBJECT.search(raw)
-        if match is None:
-            last_error = ValueError(f"orchestrator returned no JSON: {raw[:120]!r}")
+        plan: Plan | None = None
+        if structured_model is not None:
+            from langchain_core.messages import HumanMessage, SystemMessage
+
+            result = await offload(
+                structured_model.invoke,
+                [SystemMessage(content=orchestrator.role), HumanMessage(content=attempt_prompt)],
+            )
+            parsed = result.get("parsed")
+            if isinstance(parsed, Plan):
+                plan = parsed
+            else:
+                last_error = result.get("parsing_error") or ValueError(
+                    "orchestrator structured reply did not parse"
+                )
         else:
-            try:
-                plan = Plan.model_validate(json.loads(match.group(0)))
-            except (ValidationError, json.JSONDecodeError) as exc:
-                last_error = exc
+            raw = await complete(model, orchestrator.role, attempt_prompt)
+            match = _JSON_OBJECT.search(raw)
+            if match is None:
+                last_error = ValueError(f"orchestrator returned no JSON: {raw[:120]!r}")
             else:
                 try:
-                    _validate_plan(plan, manifests)
-                except ValueError as exc:
+                    plan = Plan.model_validate(json.loads(match.group(0)))
+                except (ValidationError, json.JSONDecodeError) as exc:
                     last_error = exc
-                else:
-                    return plan
+        if plan is not None:
+            try:
+                _validate_plan(plan, manifests)
+            except ValueError as exc:
+                last_error = exc
+            else:
+                return plan
         # Self-correction: the retry sees why the first reply was rejected, so
         # one retry fixes most malformations instead of repeating them.
         attempt_prompt = (

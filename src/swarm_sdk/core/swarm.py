@@ -4,13 +4,20 @@ from __future__ import annotations
 
 import importlib
 import json
+import logging
 import re
 import threading
 from typing import TYPE_CHECKING, Literal, Protocol, cast
 
 from pydantic import BaseModel, Field, ValidationError
 
-from swarm_sdk.agents.manifest import langgraph_manifests, load_all_agent_manifests
+from swarm_sdk.agents.manifest import (
+    AgentManifest,
+    agents_root,
+    langgraph_manifests,
+    load_all_agent_manifests,
+    role_contract,
+)
 from swarm_sdk.config.loader import SwarmFileConfig, load_swarm_config
 from swarm_sdk.config.settings import Settings, load_merged_settings
 from swarm_sdk.execution.executor import offload
@@ -18,7 +25,13 @@ from swarm_sdk.execution.fanout import fan_out
 from swarm_sdk.gpu import set_enabled as set_opencl_enabled
 from swarm_sdk.memory.base import MemoryHit, MemoryStore
 from swarm_sdk.memory.sqlite_vec import SqliteVecStore
-from swarm_sdk.models.chat import complete_with_usage, last_ai_text, load_chat_model, usage_tokens
+from swarm_sdk.models.chat import (
+    complete_with_usage,
+    last_ai_text,
+    load_chat_model,
+    message_tokens,
+    usage_tokens,
+)
 from swarm_sdk.models.selection import (
     THINK_TOKEN_BUDGET,
     FallbackChain,
@@ -27,7 +40,7 @@ from swarm_sdk.models.selection import (
 )
 from swarm_sdk.observability import metrics
 from swarm_sdk.observability.usage import UsageLog
-from swarm_sdk.prompting.budget import PackedPrompt, TokenBudget
+from swarm_sdk.prompting.budget import PackedPrompt, TokenBudget, count_text
 from swarm_sdk.retrieval.cache import SemanticCache
 from swarm_sdk.retrieval.embeddings import Embedder, FastEmbedder, HashEmbedder, LlamaCppEmbedder
 from swarm_sdk.retrieval.recall import recall_hits
@@ -36,10 +49,19 @@ from swarm_sdk.retrieval.rerank import FastEmbedReranker, KeywordReranker, Reran
 if TYPE_CHECKING:
     from langchain_core.language_models.chat_models import BaseChatModel
 
+logger = logging.getLogger(__name__)
+
 ROUTER_SYSTEM = 'Route work. Reply with JSON only: {"mode":"parallel" or "swarm","tasks":[]}.'
 RESEARCHER_PROMPT = "You are the researcher. Use only the supplied context. Be brief."
 CODER_PROMPT = "You are the coder. Be brief."
 REVIEWER_PROMPT = "You are the reviewer. Be brief."
+# Fallback one-line prompts for the default trio when no manifest wires a node
+# (e.g. an installed wheel used outside the repository, without ``Agents/``).
+_DEFAULT_NODE_PROMPTS = {
+    "researcher": RESEARCHER_PROMPT,
+    "coder": CODER_PROMPT,
+    "reviewer": REVIEWER_PROMPT,
+}
 _JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
 
 
@@ -76,6 +98,44 @@ def _parse_route(raw: str) -> RouteDecision:
         return RouteDecision.model_validate(json.loads(match.group(0)))
     except json.JSONDecodeError, ValidationError:
         return RouteDecision()
+
+
+def manifest_node_prompt(agents_root: str, manifest: AgentManifest) -> str:
+    """System prompt for one manifest-wired swarm node.
+
+    Preference order: the role contract (``Agents/{Name}/AGENTS.md``), then the
+    manifest ``role`` line, then a one-line default naming the node.
+
+    Args:
+        agents_root: Directory holding the ``Agents/{Name}/`` folders.
+        manifest: Validated manifest of the wired agent.
+
+    Returns:
+        The prompt text, truncated to the manifest's prompt budget.
+    """
+    contract = role_contract(agents_root, manifest.name)
+    text = contract or manifest.role
+    if not text:
+        node = manifest.langgraph_node or manifest.name.lower()
+        return f"You are the {node}. Be brief."
+    budget = TokenBudget(max_tokens=manifest.token_budget.max_prompt)
+    return budget.pack(system=text, memories=[], turns=[]).system
+
+
+def _websearch_tools() -> list[object]:
+    """LangChain web-search tools from the WebSearch package; empty when absent.
+
+    The package lives in-repo (``WebSearch/``) or installable as ``websearch``;
+    both import names are tried so an installed wheel without the source tree
+    still finds it when the ``websearch`` extra is present.
+    """
+    for module in ("WebSearch.langchain_tools", "websearch.langchain_tools"):
+        try:
+            imported = importlib.import_module(module)
+        except ImportError:
+            continue
+        return list(imported.websearch_langchain_tools())
+    return []
 
 
 def _fastembed_available() -> bool:
@@ -197,6 +257,10 @@ class SwarmSDK:
     def provider_health(self) -> dict[str, str]:
         return {name: breaker.state.value for name, breaker in self._fallback.breakers.items()}
 
+    def compiled_graph(self) -> CompiledGraph:
+        """The compiled handoff swarm graph (LangGraph Server entry point)."""
+        return self._graph()
+
     @property
     def memory(self) -> MemoryStore:
         if self._memory is None:
@@ -228,6 +292,17 @@ class SwarmSDK:
         )
 
     async def run(self, text: str, thread_id: str = "default") -> RunResult:
+        if self.settings.server_url:
+            from swarm_sdk.serving.client import run_on_server
+
+            payload = await run_on_server(
+                text,
+                thread_id,
+                server_url=self.settings.server_url,
+                graph_id=self.settings.server_graph,
+            )
+            return RunResult.model_validate(payload)
+
         if self.settings.peer_url:
             from swarm_sdk.serving.peer import async_post_json
 
@@ -299,19 +374,54 @@ class SwarmSDK:
         vector = self.embedder.embed([record], query=False)[0]
         self.memory.add(record, vector)
 
+    async def _route_structured(self, user: str) -> tuple[RouteDecision | None, int]:
+        """Ask the router for a ``RouteDecision`` via LangChain tool-calling.
+
+        Args:
+            user: The packed router prompt body (memories + user text).
+
+        Returns:
+            ``(decision, tokens)`` on a parseable reply, else ``(None, 0)`` so
+            the caller falls back to the JSON-mode + regex path.
+        """
+        from langchain_core.messages import HumanMessage, SystemMessage
+
+        try:
+            structured = self._router().with_structured_output(RouteDecision, include_raw=True)
+        except NotImplementedError:
+            return None, 0
+        result = await offload(
+            structured.invoke,
+            [SystemMessage(content=ROUTER_SYSTEM), HumanMessage(content=user)],
+        )
+        if not isinstance(result, dict):
+            return None, 0
+        parsed = result.get("parsed")
+        if not isinstance(parsed, RouteDecision):
+            return None, 0
+        tokens = message_tokens(result.get("raw"))
+        if tokens is None:
+            tokens = count_text(ROUTER_SYSTEM) + count_text(user)
+        return parsed, tokens
+
     async def _route(self, packed: PackedPrompt) -> tuple[RouteDecision, int]:
+        user = packed.suffix or packed.prefix
+        if self.settings.router_structured_output:
+            decision, tokens = await self._route_structured(user)
+            if decision is not None:
+                return decision, tokens
         json_mode = self.settings.router_structured_output
         if self._router_model is not None:
             raw, tokens = await complete_with_usage(
                 self._router_model,
                 ROUTER_SYSTEM,
-                packed.suffix or packed.prefix,
+                user,
                 json_mode=json_mode,
             )
         else:
             raw, tokens = await self._fallback.complete_with_usage(
                 ROUTER_SYSTEM,
-                packed.suffix or packed.prefix,
+                user,
                 think_level=self.file_config.router.think_level,
                 json_mode=json_mode,
             )
@@ -349,7 +459,7 @@ class SwarmSDK:
         payload: dict[str, object] = {"messages": [{"role": "user", "content": user}]}
         self._register_thread(thread_id)
         if self._is_new_thread(thread_id):
-            payload["active_agent"] = "researcher"
+            payload["active_agent"] = self._default_agent
 
         def _call() -> dict[str, object]:
             state = graph.invoke(payload, self._run_config(thread_id))
@@ -362,7 +472,7 @@ class SwarmSDK:
         if not isinstance(messages, list):
             messages = []
         answer = last_ai_text(messages)
-        agent = state.get("active_agent") or "researcher"
+        agent = state.get("active_agent") or self._default_agent
         reported = usage_tokens(messages)
         tokens = (
             reported
@@ -392,42 +502,58 @@ class SwarmSDK:
         route = self._selector.select(manifest.think_level)
         return load_chat_model(route.name)
 
+    @property
+    def _default_agent(self) -> str:
+        """Entry node for new threads; ``researcher`` whenever it is wired."""
+        nodes = set(self._langgraph_manifests) or set(_DEFAULT_NODE_PROMPTS)
+        return "researcher" if "researcher" in nodes else sorted(nodes)[0]
+
+    def _node_tools(self, manifest: AgentManifest | None, peers: list[str]) -> list[object]:
+        """Tools for one swarm node: capability-gated extras plus handoffs.
+
+        A manifest advertising the ``web_search`` capability also gets the
+        WebSearch LangChain tools when ``Settings.enable_websearch_tools`` is
+        set and the package is importable; otherwise only handoff tools.
+        """
+        handoffs = [_handoff(peer, f"Hand off {peer} work.") for peer in peers]
+        if (
+            manifest is not None
+            and self.settings.enable_websearch_tools
+            and "web_search" in manifest.capabilities
+        ):
+            return [*_websearch_tools(), *handoffs]
+        return handoffs
+
     def _graph(self) -> CompiledGraph:
         if self._compiled is None:
             from langchain.agents import create_agent
             from langgraph_swarm import create_swarm
 
-            researcher = create_agent(
-                self._model_for_node("researcher"),
-                tools=[
-                    _handoff("coder", "Hand off coding."),
-                    _handoff("reviewer", "Hand off review."),
-                ],
-                system_prompt=RESEARCHER_PROMPT,
-                name="researcher",
-            )
-            coder = create_agent(
-                self._model_for_node("coder"),
-                tools=[
-                    _handoff("researcher", "Hand off research."),
-                    _handoff("reviewer", "Hand off review."),
-                ],
-                system_prompt=CODER_PROMPT,
-                name="coder",
-            )
-            reviewer = create_agent(
-                self._model_for_node("reviewer"),
-                tools=[
-                    _handoff("researcher", "Hand off research."),
-                    _handoff("coder", "Hand off coding."),
-                ],
-                system_prompt=REVIEWER_PROMPT,
-                name="reviewer",
-            )
-            workflow = create_swarm(
-                [researcher, coder, reviewer],
-                default_active_agent="researcher",
-            )
+            # Nodes come from the Agents/ catalog: every manifest that wires a
+            # ``langgraph_node`` becomes a specialist; prompts are that persona's
+            # role contract. Without a catalog the default trio stands in.
+            nodes = sorted(self._langgraph_manifests) or sorted(_DEFAULT_NODE_PROMPTS)
+            root = str(agents_root())
+            agents = []
+            for node in nodes:
+                manifest = self._langgraph_manifests.get(node)
+                prompt = (
+                    manifest_node_prompt(root, manifest)
+                    if manifest is not None
+                    else _DEFAULT_NODE_PROMPTS.get(node, f"You are the {node}. Be brief.")
+                )
+                peers = [peer for peer in nodes if peer != node]
+                agents.append(
+                    # Mixed handoff/websearch tool objects; the static overloads
+                    # only track the literal tool-list shape (cf. load_chat_model).
+                    create_agent(  # ty: ignore[no-matching-overload]
+                        self._model_for_node(node),
+                        tools=self._node_tools(manifest, peers),
+                        system_prompt=prompt,
+                        name=node,
+                    )
+                )
+            workflow = create_swarm(agents, default_active_agent=self._default_agent)
             # Short-term: checkpointer (active_agent + messages per thread_id).
             # Long-term recall is SwarmSDK.memory (sqlite-vec / mem0 / …), not this store.
             self._compiled = cast(CompiledGraph, workflow.compile(checkpointer=self._checkpointer))

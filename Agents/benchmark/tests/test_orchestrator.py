@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import time
 from pathlib import Path
 
@@ -264,18 +265,24 @@ async def test_spawn_validates_and_falls_back() -> None:
     manifests = {"Orchestrator": manifest("Orchestrator"), "Coder": manifest("Coder")}
     good_json = '{"steps": [{"id": "S1", "title": "t", "description": "d", "agent": "Coder"}]}'
     good = Script([answer(good_json)])
-    plan = await spawn("goal", manifests, model_override=ScriptedModel(script=good))
+    plan = await spawn(
+        "goal", manifests, model_override=ScriptedModel(script=good), structured=False
+    )
     assert [s.id for s in plan.steps] == ["S1"]
     assert plan.steps[0].agent == "Coder"
 
     bad = Script([answer("no json here"), answer("still not json")])
-    plan = await spawn("goal", manifests, model_override=ScriptedModel(script=bad))
+    plan = await spawn(
+        "goal", manifests, model_override=ScriptedModel(script=bad), structured=False
+    )
     assert len(plan.steps) == 1
 
     unknown_agent = Script(
         [answer('{"steps": [{"id": "S1", "title": "t", "description": "d", "agent": "Ghost"}]}')],
     )
-    plan = await spawn("goal", manifests, model_override=ScriptedModel(script=unknown_agent))
+    plan = await spawn(
+        "goal", manifests, model_override=ScriptedModel(script=unknown_agent), structured=False
+    )
     assert plan.steps[0].agent in manifests
 
 
@@ -296,7 +303,9 @@ async def test_spawn_rejects_overlapping_coder_files() -> None:
         "]}"
     )
     script = Script([answer(overlap), answer(overlap)])
-    plan = await spawn("goal", manifests, model_override=ScriptedModel(script=script))
+    plan = await spawn(
+        "goal", manifests, model_override=ScriptedModel(script=script), structured=False
+    )
     assert len(plan.steps) == 1
 
 
@@ -317,7 +326,7 @@ async def test_spawn_accepts_disjoint_coder_files() -> None:
         "]}"
     )
     scripted = ScriptedModel(script=Script([answer(good)]))
-    plan = await spawn("goal", manifests, model_override=scripted)
+    plan = await spawn("goal", manifests, model_override=scripted, structured=False)
     assert [s.id for s in plan.steps] == ["S1", "S2"]
     assert plan.steps[0].files == ["src/a.py"]
     assert plan.steps[0].task == "implement_in_files"
@@ -387,3 +396,39 @@ def test_build_graph_compiles() -> None:
     graph = build_graph(plan, make_factory({"Coder": manifest("Coder")}))
     compiled = graph.compile()
     assert compiled is not None
+
+
+def test_resolve_api_key_falls_back_to_provider_key(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.delenv("SWARM_CODER_API_KEY", raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "provider-key")
+    worker = WorkerAgent(
+        manifest("Coder", api_key_env="SWARM_CODER_API_KEY"), agents_root=str(tmp_path)
+    )
+    worker._resolve_api_key()
+    assert os.environ["OPENAI_API_KEY"] == "provider-key"
+
+
+def test_resolve_api_key_raises_when_nothing_is_set(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.delenv("SWARM_CODER_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    worker = WorkerAgent(
+        manifest("Coder", api_key_env="SWARM_CODER_API_KEY"), agents_root=str(tmp_path)
+    )
+    with pytest.raises(RuntimeError, match="SWARM_CODER_API_KEY"):
+        worker._resolve_api_key()
+
+
+def test_resolve_api_key_named_var_wins_over_missing_provider(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("SWARM_CODER_API_KEY", "per-agent")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    worker = WorkerAgent(
+        manifest("Coder", api_key_env="SWARM_CODER_API_KEY"), agents_root=str(tmp_path)
+    )
+    worker._resolve_api_key()
+    assert os.environ["OPENAI_API_KEY"] == "per-agent"

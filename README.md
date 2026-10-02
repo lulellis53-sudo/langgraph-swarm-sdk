@@ -79,11 +79,25 @@ uv run swarm-grpc
 
 `POST /v1/runs` with `{"text": "...", "thread_id": "t1"}`. `GET /v1/health`. gRPC `SwarmService.Run` and `SwarmService.Recall` call the same core.
 
+### LangGraph Server
+
+[`langgraph.json`](langgraph.json) deploys both engines as server graphs (factories in [`src/swarm_sdk/server/graphs.py`](src/swarm_sdk/server/graphs.py)):
+
+- `swarm` — the manifest-driven handoff graph (`Agents/{Researcher,Coder,Reviewer}/agent.yaml` set `langgraph_node`; each persona's `AGENTS.md` contract is its system prompt).
+- `plan` — goal → `spawn` → wave execution in one graph.
+
+```bash
+langgraph up                # deploy locally (the Python 3.14 langgraph-cli has no in-memory `dev`)
+SWARM_SERVER_URL=http://127.0.0.1:2024 uv run swarm-api   # or set SWARM_SERVER_URL anywhere:
+```
+
+With `SWARM_SERVER_URL` set, `SwarmSDK.run` delegates to the server via the `langgraph_sdk` client (`swarm_sdk.serving.client.run_on_server`) instead of running the graph in-process; threads and checkpoints live server-side. Leave it unset for the built-in FastAPI/gRPC serving.
+
 ## Orchestration engine
 
 `swarm_sdk.orchestrator` runs a goal as a parallel multi-agent plan:
 
-1. `spawn(goal, manifests)` — the Orchestrator agent decomposes the goal into a JSON plan (validated by pydantic; the one retry includes the rejection reason so the model self-corrects, then it falls back to a single-step plan on malformed output).
+1. `spawn(goal, manifests)` — the Orchestrator agent decomposes the goal into a plan via LangChain `with_structured_output` (tool-calling; the JSON-prompt + regex path remains as fallback and behind `SWARM_PLANNER_STRUCTURED_OUTPUT=false`; the one retry includes the rejection reason so the model self-corrects, then it falls back to a single-step plan).
 2. `run_plan(plan, factory)` — a LangGraph `StateGraph` executes the plan in dependency waves; steps in the same wave run concurrently via `bounded_gather` (capped by `parallelism.max_concurrency`; uvloop; the runtime thread pool widens automatically on free-threaded Python 3.14). Sibling Coder steps must claim disjoint `files`.
 3. Each step is a `WorkerAgent` bound to its `Agents/{Name}/agent.yaml` manifest: model, `think_level`, `effort`, and `token_budget` are pre-selected per agent; the system prompt is the role contract from that agent's `AGENTS.md`; the step prompt carries `task`, claimed `files`, and only its declared `inputs` (dependency outputs), never the whole transcript.
 
@@ -100,7 +114,7 @@ Predefined providers and routes live in [`src/swarm_sdk/agents/config/swarm.yaml
 3. Think-level token caps, then tokenizer budget (system prompt, memories, newest turns; tool text capped).
 4. Hybrid dense + BM25 recall (RRF), or Mem0 `search_text` when `vectorstore.backend: mem0`; then dedupe, rerank; only top-k snippets injected. The sqlite backend falls back from FTS5 to a token scan when the SQLite build lacks FTS5, and BGE-M3 embeddings skip `query:`/`passage:` prefixes (BGE v1.x keeps them).
 5. Near-duplicate memories dropped before the prompt; empty answers are never cached or remembered (no poisoned cache hits).
-6. Parallel fan-out with bounded concurrency and JSON briefs (facts carry only summary overflow, no duplication); LangGraph handoffs for sequential specialist work.
+6. Parallel fan-out with bounded concurrency and JSON briefs (facts carry only summary overflow, no duplication); LangGraph handoffs for sequential specialist work. Handoff nodes are the `Agents/` personas that set `langgraph_node` in `agent.yaml` (see [`Agents/SKILLS.md`](Agents/SKILLS.md)); the router answers via LangChain structured output with JSON-mode + regex fallback. Agents with the `web_search` capability get the WebSearch LangChain tools when `SWARM_ENABLE_WEBSEARCH_TOOLS=true`.
 
 HTTP peers use `httpx2` with HTTP/2 (`h2`). `aiohttp` and `requests` are the other clients.
 

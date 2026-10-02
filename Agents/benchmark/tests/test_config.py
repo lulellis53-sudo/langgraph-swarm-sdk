@@ -5,11 +5,12 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
 import yaml
 
 from swarm_sdk.agents.manifest import agents_root, load_all_agent_manifests
 from swarm_sdk.agents.validate import validate_coordination
-from swarm_sdk.config.loader import load_swarm_config
+from swarm_sdk.config.loader import _BUNDLED_SWARM_CONFIG, load_swarm_config
 from swarm_sdk.config.settings import Settings, load_merged_settings
 
 
@@ -201,3 +202,24 @@ def test_dotenv_is_owner_only_when_present() -> None:
     env = agents_root().parent / ".env"
     if env.exists():
         assert env.stat().st_mode & 0o077 == 0, ".env must be chmod 600"
+
+
+def test_load_provider_catalog_parses_bundled_yaml() -> None:
+    from swarm_sdk.config.loader import load_provider_catalog
+
+    catalog = load_provider_catalog(_BUNDLED_SWARM_CONFIG.parent / "providers.yaml")
+
+    assert catalog.providers
+    openai_entry = next(p for p in catalog.providers if p.name == "openai")
+    assert openai_entry.api_key_env == "OPENAI_API_KEY"
+    assert catalog.ranked()[0].priority <= catalog.ranked()[-1].priority
+
+
+def test_load_provider_catalog_rejects_non_mapping(tmp_path: Path) -> None:
+    from swarm_sdk.config.loader import load_provider_catalog
+
+    bad = tmp_path / "providers.yaml"
+    bad.write_text("- just\n- a\n- list\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="must be a mapping"):
+        load_provider_catalog(bad)

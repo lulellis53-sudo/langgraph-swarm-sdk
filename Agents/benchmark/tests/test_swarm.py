@@ -17,6 +17,7 @@ from benchmark.tests.fakes import (
     answer,
     handoff,
     sdk_with_router,
+    structured,
 )
 from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import SwarmSDK
@@ -152,9 +153,7 @@ async def test_exact_cache_hit_does_not_call_the_model(tmp_path: Path) -> None:
 async def test_semantic_cache_hit_does_not_call_the_model(tmp_path: Path) -> None:
     embedder = SpyEmbedder(SemanticBucketEmbedder())
     model = ScriptedModel(
-        script=Script(
-            [AIMessage(content='{"mode":"swarm","tasks":[]}'), answer("semantic-answer")]
-        )
+        script=Script([AIMessage(content='{"mode":"swarm","tasks":[]}'), answer("semantic-answer")])
     )
     settings = _settings(tmp_path, max_tokens=256)
     sdk = SwarmSDK(
@@ -328,7 +327,9 @@ async def test_fallback_chain_reports_usage_and_complete_stays_str(monkeypatch) 
 
 
 async def test_run_tokens_are_provider_reported_swarm(tmp_path: Path) -> None:
-    router = ScriptedModel(script=Script([_ai('{"mode":"swarm","tasks":[]}', 10)]))
+    router = ScriptedModel(
+        script=Script([structured("RouteDecision", {"mode": "swarm", "tasks": []}, 10)])
+    )
     specialist = ScriptedModel(script=Script([_ai("ok", 32)]))
     sdk = _sdk(tmp_path, router=router, specialist=specialist)
     result = await sdk.run("please answer", "thread")
@@ -337,7 +338,9 @@ async def test_run_tokens_are_provider_reported_swarm(tmp_path: Path) -> None:
 
 async def test_run_tokens_are_provider_reported_parallel(tmp_path: Path) -> None:
     router = ScriptedModel(
-        script=Script([_ai('{"mode":"parallel","tasks":["a task","b task"]}', 10)])
+        script=Script(
+            [structured("RouteDecision", {"mode": "parallel", "tasks": ["a task", "b task"]}, 10)]
+        )
     )
     specialist = ScriptedModel(script=Script([_ai("done", 5)]))
     sdk = _sdk(tmp_path, router=router, specialist=specialist)
@@ -348,7 +351,7 @@ async def test_run_tokens_are_provider_reported_parallel(tmp_path: Path) -> None
 
 @pytest.mark.parametrize(("raw", "mode", "tasks"), ROUTER_OUTPUTS)
 async def test_route_survives_adversarial_router_output(tmp_path, raw, mode, tasks) -> None:
-    sdk = sdk_with_router(tmp_path, raw)
+    sdk = sdk_with_router(tmp_path, raw, structured=False)
     decision, _ = await sdk._route(sdk.budget.pack(system="s", memories=[], turns=["q"]))
     assert (decision.mode, decision.tasks) == (mode, tasks)
 
@@ -362,13 +365,20 @@ class _FormatSpyModel(ScriptedModel):
         return super()._generate(messages, stop, run_manager, **kwargs)
 
 
-@pytest.mark.parametrize("structured", [True, False])
-async def test_route_requests_json_mode_only_when_enabled(tmp_path, structured: bool) -> None:
+@pytest.mark.parametrize(
+    ("structured", "expected_format_calls"),
+    [(True, [False, True]), (False, [False])],
+    ids=["structured-then-json-fallback", "plain-regex-path"],
+)
+async def test_route_requests_json_mode_only_when_enabled(
+    tmp_path, structured: bool, expected_format_calls: list[bool]
+) -> None:
+    """Structured routing tries tool-calling first; only the fallback binds JSON mode."""
     _FORMAT_SEEN.clear()
     spy = _FormatSpyModel(script=Script([answer('{"mode":"swarm","tasks":[]}')]))
     sdk = sdk_with_router(tmp_path, "", structured=structured, router=spy)
     await sdk._route(sdk.budget.pack(system="s", memories=[], turns=["q"]))
-    assert _FORMAT_SEEN == [structured]
+    assert _FORMAT_SEEN == expected_format_calls
 
 
 async def test_route_does_not_repeat_the_system_prompt(tmp_path: Path) -> None:
@@ -386,7 +396,7 @@ async def test_route_with_empty_suffix_still_sends_a_user_message(tmp_path: Path
     from swarm_sdk.prompting.budget import PackedPrompt
 
     script = Script([answer('{"mode":"swarm","tasks":[]}')])
-    sdk = sdk_with_router(tmp_path, "", router=ScriptedModel(script=script))
+    sdk = sdk_with_router(tmp_path, "", router=ScriptedModel(script=script), structured=False)
     await sdk._route(PackedPrompt(system="only-system", user=""))
     assert script.seen == ["only-system"]
 

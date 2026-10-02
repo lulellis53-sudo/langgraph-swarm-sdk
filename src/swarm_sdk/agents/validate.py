@@ -7,14 +7,13 @@ from pathlib import Path
 
 import yaml
 
-from swarm_sdk.agents.manifest import AgentManifestLoader
-from swarm_sdk.decorators import Static
+from swarm_sdk.agents.manifest import AgentManifestLoader, load_all_agent_manifests
 
 
 class AgentValidator:
     """Cross-check coordination entries and on-disk agent manifests."""
 
-    @Static
+    @staticmethod
     def validate_coordination(agents_dir: Path) -> list[str]:
         """Return human-readable errors; empty list means OK.
 

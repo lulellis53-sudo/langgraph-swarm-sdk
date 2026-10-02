@@ -2357,6 +2357,18 @@ wheels = [
 ]
 
 [[package]]
+name = "langgraph-cli"
+version = "0.1.54"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f1/5c/e8fc086a2c4e7021ec87088165f02f5c5e4f7441f864b0809ed49ba50d79/langgraph_cli-0.1.54.tar.gz", hash = "sha256:2714a62616ae9d9d7363d8a597f18c85aa38b8ed27bc85d6106c98da67e796eb", size = 17855, upload-time = "2024-11-15T19:03:22.55Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/19/e4/fac960db5b6cb1690018021a0ea77aa42b654048787a625c553b8f6b8e01/langgraph_cli-0.1.54-py3-none-any.whl", hash = "sha256:24f6e858e69c5e0f7d25e915742bf3506cdf7d3bc9033c2c0fbc950a3954fa85", size = 21084, upload-time = "2024-11-15T19:03:21.493Z" },
+]
+
+[[package]]
 name = "langgraph-prebuilt"
 version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2421,6 +2433,7 @@ dependencies = [
     { name = "langchain-openai" },
     { name = "langgraph" },
     { name = "langgraph-checkpoint-sqlite" },
+    { name = "langgraph-sdk" },
     { name = "langgraph-swarm" },
     { name = "numpy" },
     { name = "orjson" },
@@ -2504,6 +2517,11 @@ websearch = [
     { name = "trafilatura" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "langgraph-cli" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.11" },
@@ -2531,6 +2549,7 @@ requires-dist = [
     { name = "langchain-openai", specifier = ">=0.3" },
     { name = "langgraph", specifier = ">=1.0" },
     { name = "langgraph-checkpoint-sqlite", specifier = ">=3.1.1" },
+    { name = "langgraph-sdk", specifier = ">=0.4.5" },
     { name = "langgraph-swarm", specifier = ">=0.1" },
     { name = "llama-cpp-python", marker = "extra == 'llama-cpp'", specifier = ">=0.3.0" },
     { name = "llama-cpp-python", marker = "extra == 'molten'", specifier = ">=0.3.0" },
@@ -2576,6 +2595,9 @@ requires-dist = [
     { name = "uvloop", marker = "sys_platform != 'win32'", specifier = ">=0.21" },
 ]
 provides-extras = ["dev", "observability", "faiss", "faiss-gpu", "embed", "embed-gpu", "molten", "opencl", "llama-cpp", "ml", "qdrant", "mem0", "jupyter", "websearch"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "langgraph-cli", extras = ["inmem"], specifier = ">=0.1.54" }]
 
 [[package]]
 name = "langsmith"

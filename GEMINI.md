@@ -376,3 +376,16 @@ uv run --extra dev --extra observability --extra opencl --extra faiss --extra me
 uv run --extra dev --extra observability --extra opencl --extra faiss --extra mem0 ty check src Agents/benchmark Main
 uv run python -m swarm_sdk.agents.validate
 ```
+
+### 18.4 Post-Activity Retrospective & Self-Criticism (`Howicanupdate.md`)
+
+After completing an activity, a complete task, or major milestone, write or update `Howicanupdate.md` in the project root containing **only 4 lines of criticism**:
+1. Stalled on sandbox boundaries by probing paths outside workspace before proactively enabling bypass.
+2. Incurred search round-trips by proposing monolithic agent frameworks instead of pure Unix CLI tools.
+3. Executed broad shell probes across TCC-protected home roots instead of targeted project subdirectories.
+4. Over-indexed on plan-mode ceremony for immediate environment commands, delaying direct execution.
+
+Followed by:
+- **Concrete Update & Improvement Actions (How I Can Update)**: Clear, prioritized action items to update the system and optimize performance in the next iteration.
+
+

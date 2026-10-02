@@ -9,6 +9,7 @@ names an environment variable; the key value itself is never stored here.
 
 from __future__ import annotations
 
+from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
@@ -17,9 +18,31 @@ from pydantic import BaseModel, Field
 
 from swarm_sdk.models.selection import ThinkLevel
 
-#: Nodes of the fixed handoff swarm in swarm_sdk.swarm; ``None`` means the agent
+#: Nodes of the handoff swarm in swarm_sdk.core.swarm; ``None`` means the agent
 #: participates only through the orchestration engine, not the handoff graph.
 LangGraphNode = Literal["researcher", "coder", "reviewer"] | None
+
+
+@lru_cache(maxsize=32)
+def role_contract(agents_root: str, name: str) -> str:
+    """Role contract text (``Agents/{Name}/AGENTS.md``), cached per process.
+
+    The result is cached because the contract is immutable during a run and is
+    the system prompt of every step that agent executes — reloading it per
+    step would be pure I/O overhead.
+
+    Args:
+        agents_root: Absolute path to the directory containing ``{Name}/AGENTS.md``.
+        name: Agent (directory) name, e.g. ``"Coder"``.
+
+    Returns:
+        The file content as text; ``""`` when the file does not exist (the
+        manifest's ``role`` field is then used as the system prompt instead).
+    """
+    path = Path(agents_root) / name / "AGENTS.md"
+    if not path.is_file():
+        return ""
+    return path.read_text(encoding="utf-8")
 
 
 class AgentTaskSpec(BaseModel):

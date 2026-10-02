@@ -59,6 +59,10 @@ class Settings(BaseSettings):
     # None keeps checkpoints in memory (lost on restart); a path makes threads durable.
     checkpoint_path: str | None = None
     peer_url: str | None = None
+    # LangGraph Server deployment (langgraph.json): when set, runs delegate to the
+    # server via langgraph_sdk instead of running the graph in-process.
+    server_url: str | None = None
+    server_graph: str = "swarm"
     api_host: str = "127.0.0.1"
     api_port: int = 8000
     grpc_port: int = 50051
@@ -78,6 +82,11 @@ class Settings(BaseSettings):
     semantic_cache_on_gpu: bool = False
     cache_ttl_days: int | None = Field(default=None, ge=1)
     router_structured_output: bool = True
+    # Plan decomposition via tool-calling structured output; off = JSON prompt + regex.
+    planner_structured_output: bool = True
+    # Give manifest agents with the ``web_search`` capability the WebSearch LangChain
+    # tools. Off keeps runs offline and deterministic (tests, CI).
+    enable_websearch_tools: bool = False
 
 
 def load_merged_settings(

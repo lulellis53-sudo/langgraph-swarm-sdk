@@ -58,6 +58,27 @@ def answer(text: str) -> AIMessage:
     return AIMessage(content=text)
 
 
+def structured(tool_name: str, args: dict[str, Any], total: int | None = None) -> AIMessage:
+    """AIMessage whose tool_call args satisfy a ``with_structured_output`` schema.
+
+    The base ``with_structured_output`` binds the schema as a tool and parses
+    the reply's first tool call, so a scripted reply carries the schema name
+    and its validated fields as ``args``.
+    """
+    meta = (
+        None
+        if total is None
+        else {"input_tokens": 1, "output_tokens": total - 1, "total_tokens": total}
+    )
+    return AIMessage(
+        content="",
+        tool_calls=[
+            {"name": tool_name, "args": args, "id": f"call-{tool_name}", "type": "tool_call"}
+        ],
+        usage_metadata=meta,
+    )
+
+
 def handoff(agent_name: str) -> AIMessage:
     return AIMessage(
         content="",

@@ -1,6 +1,9 @@
 version: "1"
 name: Reviewer
 role: review_changes
+# Wire this persona into the handoff swarm: swarm_sdk.core.swarm builds one
+# create_agent node per manifest whose langgraph_node is set.
+langgraph_node: reviewer
 
 model: openai:gpt-4o
 think_level: high

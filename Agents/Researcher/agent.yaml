@@ -1,6 +1,9 @@
 version: "1"
 name: Researcher
 role: read_only_research
+# Wire this persona into the handoff swarm: swarm_sdk.core.swarm builds one
+# create_agent node per manifest whose langgraph_node is set.
+langgraph_node: researcher
 
 model: openai:gpt-4o-mini
 think_level: medium

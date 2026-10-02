@@ -20,6 +20,7 @@ import time
 import urllib.error
 import urllib.request
 from typing import Any, ClassVar
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
 
@@ -216,16 +217,28 @@ class JevRouter:
             self.api_key = self._resolve_api_key()
 
     def _resolve_api_key(self) -> str | None:
-        """Resolves JEV_API_KEY from vault or environment."""
+        """Resolve ``JEV_API_KEY``; fall back to ``OPENROUTER_API_KEY`` for OpenRouter endpoints.
+
+        The OpenRouter key is only ever offered to ``openrouter.ai`` itself, so a
+        misconfigured ``JEV_ENDPOINT`` cannot receive it.
+        """
         try:
-            from swarm_sdk.vault import get_jev_key
+            from swarm_sdk.vault import get_jev_key, resolve
 
             key = get_jev_key()
             if key:
                 return key
+            if self._endpoint_is_openrouter():
+                key = resolve("OPENROUTER_API_KEY")
+                if key:
+                    return key
         except Exception:
             pass
         return os.environ.get("JEV_API_KEY")
+
+    def _endpoint_is_openrouter(self) -> bool:
+        host = urlparse(self.endpoint or "").hostname or ""
+        return host == "openrouter.ai" or host.endswith(".openrouter.ai")
 
     def _post_remote(self, path: str, payload: dict[str, Any]) -> dict[str, Any] | None:
         """Attempts remote POST to Jev microservice with timeout guard."""
