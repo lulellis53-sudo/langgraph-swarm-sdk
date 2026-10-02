@@ -135,3 +135,22 @@ def test_embedding_dispatch_prefers_gpu(gpu_backend: str) -> None:
 def test_math_dispatch_prefers_gpu(gpu_backend: str) -> None:
     backend = os.environ.get("SWARM_GPU_BACKEND", "")
     assert backend in {"opencl", "molten", "metal", "vulkan"}
+
+
+def test_math_dispatch_respects_hardware_crossover(monkeypatch: pytest.MonkeyPatch) -> None:
+    from swarm_sdk.math.dispatch import classify_math_task
+    from swarm_sdk.math.types import MathProblem
+
+    monkeypatch.setenv("SWARM_GPU_BACKEND", "opencl")
+    small = MathProblem(problem_statement="small matrix", task_type="matrix", shape=(256, 256))
+    large = MathProblem(problem_statement="large matrix", task_type="matrix", shape=(8192, 1024))
+
+    assert classify_math_task(small).backend == "numpy"
+    assert classify_math_task(large).backend == "opencl"
+
+
+def test_coordination_board_lists_math_solve_and_verify() -> None:
+    agents_dir = Path(__file__).resolve().parents[3]
+    board = yaml.safe_load((agents_dir / "coordination.yaml").read_text(encoding="utf-8"))
+    tasks = {t["task"] for t in board["tasks"] if "task" in t}
+    assert {"delegate_math", "solve_math", "verify_math"} <= tasks

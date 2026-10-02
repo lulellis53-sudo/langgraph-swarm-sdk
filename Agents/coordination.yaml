@@ -158,3 +158,17 @@ tasks:
     task: delegate_math
     depends_on: []
     status: todo
+
+  - id: MD05
+    title: "Math: solve a problem end to end with LaTeX result and verification script"
+    assigned: [ModelDelegate]
+    task: solve_math
+    depends_on: []
+    status: todo
+
+  - id: MD06
+    title: "Math: computationally verify a mathematical claim"
+    assigned: [ModelDelegate]
+    task: verify_math
+    depends_on: []
+    status: todo
