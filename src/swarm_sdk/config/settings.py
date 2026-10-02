@@ -26,7 +26,7 @@ for _env_file in (Path.home() / ".env", Path.cwd() / ".env"):
             for _key, _value in dotenv_values(_env_file).items():
                 if _value and _key not in os.environ:
                     os.environ[_key] = _value
-    except (PermissionError, OSError):
+    except PermissionError, OSError:
         pass
 
 
@@ -54,6 +54,8 @@ class Settings(BaseSettings):
     mem0_agent_id: str = "swarm-sdk"
     mem0_infer: bool = False
     cache_path: str = "swarm-cache.sqlite"
+    # None keeps checkpoints in memory (lost on restart); a path makes threads durable.
+    checkpoint_path: str | None = None
     peer_url: str | None = None
     api_host: str = "127.0.0.1"
     api_port: int = 8000

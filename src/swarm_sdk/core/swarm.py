@@ -179,10 +179,10 @@ class SwarmSDK:
         self._selector = ModelSelector(self.file_config.model_select)
         self._langgraph_manifests = langgraph_manifests(load_all_agent_manifests())
         self.usage = UsageLog()
-        from langgraph.checkpoint.memory import InMemorySaver
+        from swarm_sdk.core.checkpoint import open_checkpointer
 
         self._compiled: CompiledGraph | None = None
-        self._checkpointer = InMemorySaver()
+        self._checkpointer = open_checkpointer(self.settings.checkpoint_path)
         self.max_threads = max_threads
         self._threads: dict[str, None] = {}
         self._threads_lock = threading.Lock()
@@ -317,6 +317,11 @@ class SwarmSDK:
             )
         return _parse_route(raw), tokens
 
+    def _is_new_thread(self, thread_id: str) -> bool:
+        """True when the checkpointer holds no state for ``thread_id`` (survives restarts)."""
+        config = {"configurable": {"thread_id": thread_id}}
+        return self._checkpointer.get_tuple(config) is None
+
     def _register_thread(self, thread_id: str) -> bool:
         """Track ``thread_id``; return True if it is new. Evicts the oldest ids past the cap."""
         with self._threads_lock:
@@ -327,9 +332,8 @@ class SwarmSDK:
                 drop = max(1, self.max_threads // 4)
                 for stale in list(self._threads)[:drop]:
                     del self._threads[stale]
-                    delete = getattr(self._checkpointer, "delete_thread", None)
-                    if callable(delete):
-                        delete(stale)
+                    if self.settings.checkpoint_path is None:
+                        self._checkpointer.delete_thread(stale)
             metrics.set_active_threads(len(self._threads))
             return True
 
@@ -337,7 +341,8 @@ class SwarmSDK:
         graph = self._graph()
         user = packed.user or packed.system
         payload: dict[str, object] = {"messages": [{"role": "user", "content": user}]}
-        if self._register_thread(thread_id):
+        self._register_thread(thread_id)
+        if self._is_new_thread(thread_id):
             payload["active_agent"] = "researcher"
 
         def _call() -> dict[str, object]:
