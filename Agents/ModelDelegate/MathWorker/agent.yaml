@@ -8,18 +8,35 @@ effort: low
 api_key_env: MISTRAL_API_KEY_2
 
 token_budget:
-  max_prompt: 2048
-  max_completion: 512
+  max_prompt: 4096
+  max_completion: 2048
 
 tasks:
   - id: delegate_math
     description: >-
-      Choose GPU or registry provider for a numerical/linear-algebra task.
+      Choose GPU, CPU BLAS or a registry LLM route for a numerical/linear-algebra task.
     outputs:
       - selected_route
       - gpu_enabled
       - backend
+  - id: solve_math
+    description: >-
+      Solve a math problem end to end: formulation, derivation, LaTeX result and a
+      reproducible verification script.
+    outputs:
+      - solution
+      - verification
+  - id: verify_math
+    description: >-
+      Computationally verify a mathematical claim with a SymPy/NumPy script and report
+      the error bound.
+    outputs:
+      - verification
 
 capabilities:
   - gpu_math
   - registry_lookup
+  - symbolic_math
+  - numerical_optimization
+  - statistical_analysis
+  - proof_verification
