@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     router_model: str = "openai:gpt-4o-mini"
     specialist_model: str = "openai:gpt-4o"
     max_tokens: int = Field(default=2048, ge=1)
+    # Hard cap on graph steps per run; a handoff ping-pong stops here (spec §17.1/§17.5).
+    recursion_limit: int = Field(default=50, ge=2)
     tool_cap: int = Field(default=128, ge=1)
     semantic_threshold: float = Field(default=0.97, ge=0.0, le=1.0)
     dedup_threshold: float = Field(default=0.98, ge=0.0, le=1.0)

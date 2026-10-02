@@ -317,6 +317,12 @@ class SwarmSDK:
             )
         return _parse_route(raw), tokens
 
+    def _run_config(self, thread_id: str) -> dict[str, object]:
+        return {
+            "configurable": {"thread_id": thread_id},
+            "recursion_limit": self.settings.recursion_limit,
+        }
+
     def _is_new_thread(self, thread_id: str) -> bool:
         """True when the checkpointer holds no state for ``thread_id`` (survives restarts)."""
         config = {"configurable": {"thread_id": thread_id}}
@@ -346,7 +352,7 @@ class SwarmSDK:
             payload["active_agent"] = "researcher"
 
         def _call() -> dict[str, object]:
-            state = graph.invoke(payload, {"configurable": {"thread_id": thread_id}})
+            state = graph.invoke(payload, self._run_config(thread_id))
             if not isinstance(state, dict):
                 raise TypeError("swarm state must be a dict")
             return state

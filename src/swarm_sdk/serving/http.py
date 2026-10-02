@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import orjson
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
+from langgraph.errors import GraphRecursionError
 from pydantic import BaseModel, Field
 
 from swarm_sdk.config.settings import Settings
@@ -39,7 +40,12 @@ def create_app(sdk: SwarmSDK | None = None) -> FastAPI:
     @application.post("/v1/runs", response_model=RunResult)
     async def runs(body: RunIn, request: Request) -> RunResult:
         sdk_obj: SwarmSDK = request.app.state.sdk
-        return await sdk_obj.run(body.text, body.thread_id)
+        try:
+            return await sdk_obj.run(body.text, body.thread_id)
+        except GraphRecursionError as err:
+            raise HTTPException(
+                status_code=508, detail="handoff loop: recursion limit reached"
+            ) from err
 
     @application.post("/v1/recall")
     async def recall(body: RecallIn, request: Request) -> Response:
