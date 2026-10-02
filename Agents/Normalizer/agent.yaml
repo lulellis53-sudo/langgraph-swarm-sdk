@@ -1,0 +1,24 @@
+version: "1"
+name: Normalizer
+role: normalize_dedupe
+
+model: inherit
+
+token_budget:
+  max_prompt: 16384
+  max_completion: 512
+
+capabilities:
+  - selectolax_extract
+  - normalize_text
+  - blake2b_dedupe
+
+tasks:
+  - id: normalize_dedupe
+    description: >-
+      Deterministic pipeline step: run the Normalizer capability on the
+      scratchpad payloads from the previous wave and return a short
+      summary. Heavy payloads travel in the factory scratchpad,
+      never in the transcript.
+    outputs:
+      - summary

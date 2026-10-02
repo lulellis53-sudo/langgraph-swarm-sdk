@@ -154,6 +154,9 @@ class SwarmSDK:
     ) -> None:
         if max_threads < 2:
             raise ValueError("max_threads must be at least 2")
+        from swarm_sdk.vault import prime_runtime_secrets
+
+        prime_runtime_secrets()
         if settings is None and file_config is None:
             settings, file_config = load_merged_settings()
         self.settings = settings or Settings()

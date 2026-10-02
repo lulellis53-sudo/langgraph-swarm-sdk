@@ -45,7 +45,7 @@ class SqliteVecStore:
                     """
                 )
                 self._sqlite_vec = True
-        except (ImportError, AttributeError, sqlite3.Error):
+        except ImportError, AttributeError, sqlite3.Error:
             # Some Python distributions compile SQLite without extension loading.
             # Keep persistence available with stdlib SQLite and stream INT8 vectors
             # through the same OpenCL/NumPy top-k dispatcher at query time.

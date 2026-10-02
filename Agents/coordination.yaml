@@ -79,6 +79,11 @@ agents:
     contract: Agents/Refactor/AGENTS.md
     manifest: Agents/Refactor/agent.yaml
 
+  - name: TxtToCsv
+    role: convert text files to CSV
+    contract: Agents/TxtToCsv/AGENTS.md
+    manifest: Agents/TxtToCsv/agent.yaml
+
 # Task board — replace with tasks for the active project.
 # Each task must have: id, title, assigned agent(s), depends_on, and status.
 # Coder tasks that share a wave also need disjoint files (and usually task).

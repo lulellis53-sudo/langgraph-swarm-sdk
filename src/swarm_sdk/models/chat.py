@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 import logging
+import os
+from functools import lru_cache
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+import yaml
 
 from swarm_sdk.execution.executor import offload
 from swarm_sdk.prompting.budget import count_text
@@ -40,25 +45,93 @@ def message_text(message: object) -> str:
     return str(content)
 
 
+@lru_cache(maxsize=1)
+def _route_index() -> dict[str, tuple[str, str]]:
+    """Model name -> ``(api_key_env, base_url_env)`` from the packaged registry."""
+    path = Path(__file__).resolve().parent.parent / "agents" / "config" / "model_registry.yaml"
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except OSError:
+        return {}
+    index: dict[str, tuple[str, str]] = {}
+    for entry in data.get("providers") or []:
+        if isinstance(entry, dict) and isinstance(entry.get("name"), str):
+            index[entry["name"]] = (
+                entry.get("api_key_env") or "",
+                entry.get("base_url_env") or "",
+            )
+    return index
+
+
+# OpenAI-compatible providers: their routes carry a ``base_url_env`` in the
+# registry instead of a native LangChain integration.
+_COMPAT_PROVIDERS = frozenset({"zai", "minimax", "moonshot", "xiaomi", "nvidia"})
+
+_KEY_KWARG = {
+    "openai": "api_key",
+    "anthropic": "anthropic_api_key",
+    "cohere": "cohere_api_key",
+    "groq": "groq_api_key",
+    "mistral": "mistral_api_key",
+    "google_genai": "google_api_key",
+    "xai": "xai_api_key",
+}
+
+
 def load_chat_model(model_name: str) -> BaseChatModel:
     """Initialize a LangChain chat model from a provider:name string.
 
+    OpenAI-compatible providers (``zai``, ``minimax``, ``moonshot``,
+    ``xiaomi``) are constructed as ``ChatOpenAI`` with the base URL taken
+    from their registry ``base_url_env``; ``google:`` routes to the
+    ``google_genai`` integration.
+
     Args:
-        model_name: e.g. ``"openai:gpt-4o-mini"``.
+        model_name: e.g. ``"openai:gpt-4o-mini"`` or ``"zai:glm-5.3"``.
 
     Returns:
         A ``BaseChatModel`` instance.
 
     Raises:
         TypeError: If ``init_chat_model`` does not return a chat model.
+        ValueError: If an OpenAI-compatible route has no base URL configured.
     """
     from langchain.chat_models import init_chat_model
     from langchain_core.language_models.chat_models import BaseChatModel
 
-    model = init_chat_model(model_name)
-    if not isinstance(model, BaseChatModel):
-        raise TypeError(f"expected a chat model, got {type(model).__name__}")
-    return model
+    provider, _, model = model_name.partition(":")
+    if provider == "google":
+        chat_model = init_chat_model(f"google_genai:{model}")
+    elif provider == "groq":
+        chat_model = init_chat_model(model, model_provider="groq")
+    elif provider in _COMPAT_PROVIDERS:
+        api_key_env, base_url_env = _route_index().get(model_name, ("", ""))
+        base_url = os.environ.get(base_url_env, "").strip()
+        if not base_url:
+            raise ValueError(
+                f"{provider} routes need {base_url_env or 'a base URL env'} "
+                "(OpenAI-compatible endpoint); store it with `swarm-vault set`"
+            )
+        chat_model = init_chat_model(
+            model,
+            model_provider="openai",
+            base_url=base_url,
+            api_key=os.environ.get(api_key_env, ""),
+        )
+    else:
+        kwargs: dict[str, object] = {}
+        route_key_env, _ = _route_index().get(model_name, ("", ""))
+        key_kwarg = _KEY_KWARG.get(provider)
+        if route_key_env and key_kwarg:
+            value = os.environ.get(route_key_env, "")
+            if value:
+                kwargs[key_kwarg] = value
+        # kwargs dict cannot match init_chat_model's static overloads;
+        # the shapes are covered by test_model_routes.py.
+        chat_model = init_chat_model(model_name, **kwargs)  # ty: ignore[no-matching-overload]
+    if not isinstance(chat_model, BaseChatModel):
+        raise TypeError(f"expected a chat model, got {type(chat_model).__name__}")
+    return chat_model
 
 
 def message_tokens(message: object) -> int | None:

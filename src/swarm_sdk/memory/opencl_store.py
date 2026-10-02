@@ -193,10 +193,7 @@ class OpenClVecStore:
             # An unwrapped ring keeps every resident row contiguous, so one slab
             # kernel replaces the per-chunk launches (and their sync overhead).
             step = self.chunk_rows
-            if (
-                self._head + self._size <= self.max_vectors
-                and self._size <= _SINGLE_SLAB_MAX_ROWS
-            ):
+            if self._head + self._size <= self.max_vectors and self._size <= _SINGLE_SLAB_MAX_ROWS:
                 step = self._size
             for start in range(0, self._size, step):
                 stop = min(start + self.chunk_rows, self._size)

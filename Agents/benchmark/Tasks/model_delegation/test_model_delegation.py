@@ -63,11 +63,11 @@ def selector(registry_routes: list[ModelRoute]) -> ModelSelector:
 @pytest.mark.parametrize(
     ("think_level", "expected_provider", "expected_model"),
     [
-        ("off", "xiaomi", "xiaomi:mimo-v2.5-pro"),
-        ("low", "xiaomi", "xiaomi:mimo-v2.5-pro"),
-        ("medium", "xiaomi", "xiaomi:mimo-v2.5-pro"),
-        ("high", "zai", "zai:glm-5.3"),
-        ("xhigh", "zai", "zai:glm-5.3"),
+        ("off", "zai", "zai:glm-5.2"),
+        ("low", "zai", "zai:glm-5.2"),
+        ("medium", "zai", "zai:glm-5.2"),
+        ("high", "zai", "zai:glm-5.2"),
+        ("xhigh", "zai", "zai:glm-5.2"),
     ],
 )
 def test_route_by_think_level(

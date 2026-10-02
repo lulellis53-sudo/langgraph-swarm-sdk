@@ -1,0 +1,23 @@
+version: "1"
+name: Persister
+role: store_documents
+
+model: inherit
+
+token_budget:
+  max_prompt: 16384
+  max_completion: 512
+
+capabilities:
+  - sqlite_store
+  - url_digest_dedupe
+
+tasks:
+  - id: store_documents
+    description: >-
+      Deterministic pipeline step: run the Persister capability on the
+      scratchpad payloads from the previous wave and return a short
+      summary. Heavy payloads travel in the factory scratchpad,
+      never in the transcript.
+    outputs:
+      - summary

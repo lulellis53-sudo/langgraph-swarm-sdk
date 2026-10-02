@@ -17,6 +17,8 @@
 | [MLSpecialist](MLSpecialist/AGENTS.md) | model evaluation and integration | gpt-4o | high | [agent.yaml](MLSpecialist/agent.yaml) |
 | [Optimizer](Optimizer/AGENTS.md) | performance tuning | gpt-4o-mini | medium | [agent.yaml](Optimizer/agent.yaml) |
 | [Refactor](Refactor/AGENTS.md) | safe incremental refactors | gpt-4o | high | [agent.yaml](Refactor/agent.yaml) |
+| [TxtToCsv](TxtToCsv/AGENTS.md) | convert text files to CSV | gpt-4o-mini | low | [agent.yaml](TxtToCsv/agent.yaml) |
+| [RAG](RAG/AGENTS.md) | semantic caching, hybrid search, reranking & grounding | inherit | high | [agent.yaml](RAG/agent.yaml) |
 
 ## How to use this swarm
 

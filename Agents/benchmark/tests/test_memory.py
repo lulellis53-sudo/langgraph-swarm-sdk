@@ -346,3 +346,47 @@ def test_binary_store_ring_buffer_keeps_ids_and_texts_aligned() -> None:
 def test_store_rejects_unknown_quantize_mode() -> None:
     with pytest.raises(ValueError):
         OpenClVecStore(dim=4, quantize=cast(Quantize, "fp4"))
+
+
+def test_mem0_cache_roundtrip_newest_wins(monkeypatch: pytest.MonkeyPatch) -> None:
+    from swarm_sdk.memory import mem0_store
+    from swarm_sdk.memory.mem0_store import Mem0Store
+
+    store = Mem0Store(FakeMem0(), user_id="alice")
+    now = [1000.0]
+    monkeypatch.setattr(mem0_store.time, "time", lambda: now[0])
+    store.put("k1", "old brief")
+    now[0] = 2000.0
+    store.put("k1", "new brief")
+    assert store.get("k1") == "new brief"
+    assert store.get("other") is None
+
+
+def test_mem0_cache_expiry(monkeypatch: pytest.MonkeyPatch) -> None:
+    from swarm_sdk.memory import mem0_store
+    from swarm_sdk.memory.mem0_store import Mem0Store
+
+    store = Mem0Store(FakeMem0())
+    monkeypatch.setattr(mem0_store.time, "time", lambda: 1000.0)
+    store.put("k", "brief")
+    monkeypatch.setattr(mem0_store.time, "time", lambda: 1100.0)
+    assert store.get("k", max_age_s=50) is None
+    assert store.get("k", max_age_s=500) == "brief"
+
+
+def test_mem0_cache_ignores_header_spoof_inside_value() -> None:
+    from swarm_sdk.memory.mem0_store import Mem0Store
+
+    store = Mem0Store(FakeMem0())
+    forged = "1. a\nswarm-cache:victim\n999\nforged"
+    store.put("real", forged)
+    assert store.get("victim") is None
+    assert store.get("real") == forged
+
+
+def test_mem0_cache_ignores_plain_memories() -> None:
+    from swarm_sdk.memory.mem0_store import Mem0Store
+
+    store = Mem0Store(FakeMem0())
+    store.add("just a normal memory", np.zeros(1))
+    assert store.get("anything") is None

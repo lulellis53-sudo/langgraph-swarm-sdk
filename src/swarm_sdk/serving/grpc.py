@@ -16,7 +16,7 @@ from swarm_sdk.orchestrator import make_factory, run_plan, spawn
 from swarm_sdk.orchestrator.plan import Plan, PlanResult
 from swarm_sdk.orchestrator.spawn import _validate_plan
 from swarm_sdk.pb import swarm_pb2, swarm_pb2_grpc
-from swarm_sdk.vault import KNOWN_NAMES, load_into_env
+from swarm_sdk.vault import prime_runtime_secrets
 
 #: Spawned plans awaiting execution, keyed by plan id (see module docstring).
 _PLANS: dict[str, Plan] = {}
@@ -216,7 +216,7 @@ def main() -> None:
     """Entrypoint for the ``swarm-grpc`` script: uvloop + serve forever."""
     install_uvloop()
     settings = Settings()
-    load_into_env(KNOWN_NAMES)
+    prime_runtime_secrets()
     server = serve(SwarmSDK.from_settings(), settings.api_host, settings.grpc_port)
     server.wait_for_termination()
 

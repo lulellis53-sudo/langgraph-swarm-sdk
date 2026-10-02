@@ -21,10 +21,13 @@ EmbedBackend = Literal["fastembed", "llama-cpp", "hash"]
 # variables always take precedence; empty entries are ignored. Downstream code
 # reads provider keys via os.environ (api_key_env in config/model_registry.yaml).
 for _env_file in (Path.home() / ".env", Path.cwd() / ".env"):
-    if _env_file.is_file():
-        for _key, _value in dotenv_values(_env_file).items():
-            if _value and _key not in os.environ:
-                os.environ[_key] = _value
+    try:
+        if _env_file.is_file():
+            for _key, _value in dotenv_values(_env_file).items():
+                if _value and _key not in os.environ:
+                    os.environ[_key] = _value
+    except (PermissionError, OSError):
+        pass
 
 
 class Settings(BaseSettings):

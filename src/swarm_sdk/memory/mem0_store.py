@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import time
 from typing import TYPE_CHECKING, Protocol, cast
 
 import numpy as np
@@ -18,6 +19,8 @@ from swarm_sdk.memory.base import MemoryHit
 
 if TYPE_CHECKING:
     from swarm_sdk.config.settings import Settings
+
+_CACHE_HEAD = "swarm-cache"
 
 
 class Mem0Client(Protocol):
@@ -123,6 +126,34 @@ class Mem0Store:
             return _hit_id(rows[0].get("id", rows[0].get("event_id")))
         self._next_id += 1
         return self._next_id
+
+    def put(self, key: str, value: str) -> None:
+        """Store ``value`` under ``key`` (header line, epoch seconds, then the value)."""
+        body = f"{_CACHE_HEAD}:{key}\n{int(time.time())}\n{value}"
+        self._client.add(
+            [{"role": "user", "content": body}],
+            user_id=self.user_id,
+            agent_id=self.agent_id,
+            infer=False,
+        )
+
+    def get(self, key: str, *, max_age_s: float | None = None) -> str | None:
+        """Return the newest non-expired value stored under ``key``, else None."""
+        header = f"{_CACHE_HEAD}:{key}"
+        payload = self._client.search(header, filters={"user_id": self.user_id}, top_k=5)
+        best: tuple[int, str] | None = None
+        for row in _rows(payload):
+            first, _, rest = _hit_text(row).partition("\n")
+            if first != header:
+                continue
+            stamp, sep, value = rest.partition("\n")
+            if not sep or not stamp.isdigit():
+                continue
+            if max_age_s is not None and time.time() - int(stamp) > max_age_s:
+                continue
+            if best is None or int(stamp) >= best[0]:
+                best = (int(stamp), value)
+        return best[1] if best else None
 
     def search_text(self, query: str, k: int) -> list[MemoryHit]:
         """Semantic search over Mem0 using the natural-language query."""

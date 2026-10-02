@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
+
+import yaml
 
 from swarm_sdk.agents.manifest import agents_root, load_all_agent_manifests
 from swarm_sdk.agents.validate import validate_coordination
@@ -130,3 +133,71 @@ def test_bundled_yaml_still_loads_and_defaults_unchanged() -> None:
     cfg = load_swarm_config()
     assert cfg.vectorstore.quantize == "none"
     assert cfg.router.structured_output is True
+
+
+_ENV_NAME = re.compile(r"[A-Z][A-Z0-9_]*")
+_SECRET_SHAPE = re.compile(
+    r"(sk|tp|ttp|xai|gsk|pk)-[A-Za-z0-9_-]{16,}|AQ\.[A-Za-z0-9_-]{20,}|[A-Za-z0-9+/_-]{40,}"
+)
+_SECRET_KEYS = ("api_key", "apikey", "token", "secret", "password")
+_ENV_REF = re.compile(r"\$\{[A-Z][A-Z0-9_]*(:?[?-][^}]*)?\}")  # compose substitution
+_NOT_SECRETS = {"id-token"}  # GitHub OIDC permission, value is read/write
+
+
+def _yaml_files() -> list[Path]:
+    root = agents_root().parent
+    skip = {".venv", "node_modules", ".git"}
+    return [
+        p for p in root.rglob("*.y*ml") if p.suffix in {".yaml", ".yml"} and not skip & set(p.parts)
+    ]
+
+
+def _secret_findings(node: object, trail: str = "") -> list[str]:
+    found: list[str] = []
+    if isinstance(node, dict):
+        for key, value in node.items():
+            here = f"{trail}.{key}"
+            if str(key).endswith("_env"):
+                if value is not None and not (
+                    isinstance(value, str) and _ENV_NAME.fullmatch(value)
+                ):
+                    found.append(f"{here}: not an env-var name")
+            elif (
+                any(s in str(key).lower() for s in _SECRET_KEYS)
+                and str(key) not in _NOT_SECRETS
+                and isinstance(value, str)
+                and value
+                and not _ENV_REF.fullmatch(value)
+            ):
+                found.append(f"{here}: holds a value, use an *_env name")
+            else:
+                found.extend(_secret_findings(value, here))
+    elif isinstance(node, list):
+        for i, item in enumerate(node):
+            found.extend(_secret_findings(item, f"{trail}[{i}]"))
+    elif isinstance(node, str) and _SECRET_SHAPE.fullmatch(node):
+        found.append(f"{trail}: looks like a secret")
+    return found
+
+
+def test_yaml_never_holds_secret_values() -> None:
+    files = _yaml_files()
+    assert files, "no YAML found; scan root is wrong"
+    problems = [
+        f"{path}: {finding}"  # path and location only, never the value
+        for path in files
+        for finding in _secret_findings(yaml.safe_load(path.read_text()))
+    ]
+    assert not problems, "\n".join(problems)
+
+
+def test_secret_scan_flags_values_without_echoing_them() -> None:
+    bad = {"api_key": "sk-abcdefghijklmnopqrstuvwx", "x": {"api_key_env": "not a name"}}
+    out = _secret_findings(bad)
+    assert len(out) == 2 and not any("abcdefgh" in line for line in out)
+
+
+def test_dotenv_is_owner_only_when_present() -> None:
+    env = agents_root().parent / ".env"
+    if env.exists():
+        assert env.stat().st_mode & 0o077 == 0, ".env must be chmod 600"

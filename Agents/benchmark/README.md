@@ -101,6 +101,34 @@ Mean measured improvement across the token metrics: **48.5% fewer tokens**; the
 two 0→100 metrics (delegation recovery, cache integrity) are percentage-point
 wins rather than ratios.
 
+### Cold import vs eager-import stack (`Tasks/cold_import/`)
+
+```bash
+PYTHONPATH=Agents uv run python -m benchmark.Tasks.cold_import.benchmark_cold_import
+uv run --extra dev pytest Agents/benchmark/Tasks/cold_import -q
+```
+
+Fresh-subprocess medians: `import swarm_sdk` today versus the same import plus
+the eager `langchain`/`langgraph`/`langgraph_swarm`/`tokenizers` stack the lazy
+imports replaced. Measured 2026-10-01 (3 runs, `results/`):
+
+| Metric            | Baseline    | Current    | Improvement   |
+| ----------------- | ----------: | ---------: | ------------: |
+| Cold import wall  | 1,636.30 ms | 672.02 ms  | **−58.93%**   |
+
+### Fail-fast wave abort vs `asyncio.gather` (`Tasks/wave_fail_fast/`)
+
+```bash
+PYTHONPATH=Agents uv run python -m benchmark.Tasks.wave_fail_fast.benchmark_wave_fail_fast
+uv run --extra dev pytest Agents/benchmark/Tasks/wave_fail_fast -q
+```
+
+The baseline runs the replaced `bounded_gather` body inline: one failing step
+(5 ms) in a 6-step wave (50 ms each, cap 3) and its siblings keep running to
+completion. Current SDK cancels them via `TaskGroup`. Measured 2026-10-01
+(5 runs): tokens burned **300 → 0 (−100%)**, sibling tasks still running after
+the failure **5 → 0 (−100 pp)**.
+
 ### Real Radeon run (2026-09-29)
 
 On the Intel MacBook Pro, OpenCL enumerated and executed on `AMD Radeon Pro 5300M

@@ -1,0 +1,8 @@
+name: evals
+sdk_entry: benchmark.Tasks.Evals.benchmark_evals.run
+metrics:
+  - evals_completed_pct
+  - parallel_wall_s
+models: scripted (no network, no API keys)
+pass:
+  improvement_pct_min: 25.0

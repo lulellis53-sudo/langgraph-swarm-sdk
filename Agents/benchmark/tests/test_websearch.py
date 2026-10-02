@@ -32,6 +32,7 @@ def test_load_providers_yaml() -> None:
         "context7",
         "bright_data",
         "brave",
+        "ddg",
         "tavily",
         "apify",
         "exa",
@@ -327,6 +328,7 @@ def test_google_ground_parses_chunks_and_tokens(monkeypatch) -> None:
     assert hits[1].snippet == "claim"
     assert (hits[0].api_tokens, hits[1].api_tokens) == (42, 0)
     monkeypatch.delenv("GEMINI_API_KEY")
+    monkeypatch.setattr(websearchers, "_keychain_secret", lambda name: "")
     assert frontend.search_google_ground("q", spec) == []
 
 
