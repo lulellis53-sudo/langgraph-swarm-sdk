@@ -20,6 +20,7 @@ from swarm_sdk.math.types import (
     ThinkLevel,
     VerificationResult,
 )
+from swarm_sdk.math.verify import verify_math_solution
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -296,4 +297,5 @@ __all__ = [
     "symbolic_cosine",
     "symbolic_rrf",
     "symbolic_softmax",
+    "verify_math_solution",
 ]

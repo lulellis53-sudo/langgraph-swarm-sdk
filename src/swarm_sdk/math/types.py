@@ -32,7 +32,8 @@ class VerificationResult(BaseModel):
     verified: bool
     method: str
     script_snippet: str = ""
-    error_bound: float = 0.0
+    error_bound: float | None = 0.0
+    detail: str = ""
 
 
 class MathDispatchDecision(BaseModel):
