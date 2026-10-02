@@ -21,6 +21,13 @@ class ParallelismConfig(BaseModel):
     synth_timeout_s: int = 60
 
 
+class ProviderEntry(BaseModel):
+    name: str
+    models: list[str] = Field(default_factory=list)
+    api_key_env: str = ""
+    priority: int = 100
+
+
 class EmbeddingConfig(BaseModel):
     model: str = "sentence-transformers/all-MiniLM-L6-v2"
     dim: int = 384

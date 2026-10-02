@@ -78,7 +78,7 @@ class Registry(BaseModel):
 class RegistryLoader:
     """Load registry YAML from disk."""
 
-    @Static
+    @staticmethod
     def load(path: str | Path | None = None) -> Registry:
         """Load and validate the model registry.
 

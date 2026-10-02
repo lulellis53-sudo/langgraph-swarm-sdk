@@ -90,24 +90,27 @@ class AgentManifest(BaseModel):
     capabilities: list[str] = Field(default_factory=list)
 
 
-def agents_root(start: Path | None = None) -> Path:
-    """Locate the ``Agents/`` directory from a starting path.
+class AgentManifestLoader:
+    """Load and index agent manifests from the ``Agents/`` tree."""
 
-    Checks ``start`` and its parent so callers running from a subdirectory
-    (or from ``src/``) still resolve the repo's agent personas.
+    @staticmethod
+    def agents_root(start: Path | None = None) -> Path:
+        """Resolve the ``Agents`` directory from cwd or a parent.
 
-    Args:
-        start: Directory to search from; defaults to the current working directory.
+        Args:
+            start: Starting directory; defaults to ``Path.cwd()``.
 
-    Returns:
-        The ``Agents`` path when found (in ``start`` or its parent), else
-        ``start / "Agents"`` as a best-effort default.
-    """
-    root = start or Path.cwd()
-    if (root / "Agents").is_dir():
+        Returns:
+            Path to the ``Agents`` folder (may not exist yet).
+        """
+        root = start or Path.cwd()
+        if (root / "Agents").is_dir():
+            return root / "Agents"
+        if (root.parent / "Agents").is_dir():
+            return root.parent / "Agents"
         return root / "Agents"
 
-    @Static
+    @staticmethod
     def load_one(path: Path) -> AgentManifest:
         """Load a single manifest file.
 
@@ -125,7 +128,7 @@ def agents_root(start: Path | None = None) -> Path:
             raise ValueError(f"agent manifest must be a mapping: {path}")
         return AgentManifest.model_validate(data)
 
-    @Static
+    @staticmethod
     def load_all(agents_dir: Path | None = None) -> dict[str, AgentManifest]:
         """Load every ``*/agent.yaml`` under the agents directory.
 
@@ -142,8 +145,7 @@ def agents_root(start: Path | None = None) -> Path:
             out[manifest.name] = manifest
         return out
 
-    @Static
-    @wrapper
+    @staticmethod
     def langgraph_by_node(manifests: dict[str, AgentManifest]) -> dict[str, AgentManifest]:
         """Index manifests that bind a LangGraph specialist node.
 
