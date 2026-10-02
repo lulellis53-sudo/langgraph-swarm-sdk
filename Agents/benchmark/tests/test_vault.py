@@ -97,10 +97,15 @@ def test_known_names_cover_the_four_provider_keys() -> None:
         "TAVILY_API_KEY",
         "BRAVE_API_KEY",
         "EXA_API_KEY",
+        "OPENAI_API_KEY",
+        "JEV_API_KEY",
     }
 
 
-def test_status_prints_source_never_value(capsys: pytest.CaptureFixture[str]) -> None:
+def test_status_prints_source_never_value(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("MEM0_API_KEY", raising=False)
     runner = FakeRunner({"security": "topsecret"})
     rc = vault.main(["status", "MEM0_API_KEY"], runner=runner)
     out = capsys.readouterr().out
@@ -152,11 +157,64 @@ def test_env_example_lists_only_names() -> None:
     assert all(r.partition("=")[2] == "" for r in rows)
 
 
-def test_http_entrypoint_loads_known_names(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_http_entrypoint_primes_referenced_names(monkeypatch: pytest.MonkeyPatch) -> None:
     import swarm_sdk.serving.http as http
 
     calls: list[list[str]] = []
-    monkeypatch.setattr(http, "load_into_env", lambda names, **_: calls.append(list(names)) or [])
+    monkeypatch.setattr(
+        http, "prime_runtime_secrets", lambda **_: calls.append(list(vault.referenced_names()))
+    )
     monkeypatch.setattr("uvicorn.run", lambda *a, **k: None)
     http.main()
-    assert calls == [list(vault.KNOWN_NAMES)]
+    assert calls == [list(vault.referenced_names())]
+
+
+def test_import_stores_via_stdin_never_argv_or_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    src = tmp_path / "keys.csv"
+    src.write_text(
+        'name,value\nTAVILY_API_KEY,tvly-SECRET1\nexport EXA_API_KEY="exa SECRET"\nbad name=x\n'
+    )
+    calls: list[tuple[list[str], str]] = []
+
+    class Done:
+        returncode = 0
+
+    def fake_run(argv: list[str], **kwargs: object) -> Done:
+        calls.append((argv, str(kwargs["input"])))
+        return Done()
+
+    monkeypatch.setattr(vault.subprocess, "run", fake_run)
+    assert vault.main(["import", str(src)]) == 1  # one skipped
+    out = capsys.readouterr().out
+    assert "stored: TAVILY_API_KEY" in out and "skipped: EXA_API_KEY, bad name" in out
+    assert "SECRET" not in out
+    assert len(calls) == 1
+    argv, stdin = calls[0]
+    assert argv == ["security", "-i"]  # no value on argv
+    assert "-s swarm/TAVILY_API_KEY" in stdin and "tvly-SECRET1" in stdin
+
+
+def test_prime_runtime_secrets_fills_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Priming resolves referenced names into the env exactly once."""
+    import swarm_sdk.vault as vault
+
+    monkeypatch.setattr(vault, "_PRIMED", False)
+    env: dict[str, str] = {}
+    unresolved = vault.prime_runtime_secrets(
+        runner=lambda argv: "kc-value" if any("MEM0_API_KEY" in a for a in argv) else None,
+        environ=env,
+    )
+    assert env.get("MEM0_API_KEY") == "kc-value"
+    assert "MEM0_API_KEY" not in unresolved
+    assert vault._PRIMED is True
+    assert vault.prime_runtime_secrets(environ=env) == []
+
+
+def test_referenced_names_cover_swarm_and_search() -> None:
+    import swarm_sdk.vault as vault
+
+    names = vault.referenced_names()
+    assert "OPENAI_API_KEY" in names  # swarm.yaml router
+    assert "TAVILY_API_KEY" in names and "MEM0_API_KEY" in names  # KNOWN_NAMES
