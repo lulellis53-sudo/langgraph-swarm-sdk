@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from swarm_sdk.gpu.lazy_dispatcher import VectorComputeDispatcher
 from swarm_sdk.gpu.opencl_math import (
     batch_cosine,
     batch_dot,
@@ -29,6 +30,7 @@ from swarm_sdk.gpu.opencl_math import (
 from swarm_sdk.gpu.report import acceleration_report, print_report
 
 __all__ = [
+    "VectorComputeDispatcher",
     "acceleration_report",
     "batch_cosine",
     "batch_dot",

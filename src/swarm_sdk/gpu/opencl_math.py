@@ -260,7 +260,12 @@ class _ClState:
         self._error: str | None = None
         self._buf_cache: dict[object, tuple[tuple[tuple[int, ...], ...], list[Any], int]] = {}
         self._buf_cache_bytes = 0
-        self._try_init()
+        self._initialized = False
+
+    def _ensure_init(self) -> None:
+        if not self._initialized:
+            self._initialized = True
+            self._try_init()
 
     def _try_init(self) -> None:
         try:
@@ -322,6 +327,7 @@ class _ClState:
 
     @property
     def available(self) -> bool:
+        self._ensure_init()
         return self.program is not None and self.queue is not None
 
     def _cl(self):
