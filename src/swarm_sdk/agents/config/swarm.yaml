@@ -1,0 +1,101 @@
+# Swarm runtime wiring: providers, fallbacks, parallelism, think levels,
+# embeddings, vector store, and hybrid search.
+# Consumed by swarm_sdk.config (SWARM_ env vars override these values).
+
+version: 1
+
+parallelism:
+  max_concurrency: 8          # specialists in flight per fan_out
+  task_queue_size: 128
+  synth_timeout_s: 60
+
+providers:
+  - name: openai
+    models: ["openai:gpt-4o", "openai:gpt-4o-mini"]
+    api_key_env: OPENAI_API_KEY
+    priority: 10
+  - name: anthropic
+    models: ["anthropic:claude-sonnet-4-5", "anthropic:claude-haiku-4-5"]
+    api_key_env: ANTHROPIC_API_KEY
+    priority: 20
+  - name: groq
+    models: ["groq:llama-3.3-70b-versatile"]
+    api_key_env: GROQ_API_KEY
+    priority: 30
+
+model_select:
+  default_level: medium       # off | low | medium | high | xhigh
+  routes:
+    # fast daily-driver for cheap think levels
+    - name: openai:gpt-4o-mini
+      provider: openai
+      think_levels: ["off", "low", "medium"]
+      priority: 10
+    # heavy reasoning goes to the strong model
+    - name: openai:gpt-4o
+      provider: openai
+      think_levels: ["medium", "high", "xhigh"]
+      priority: 20
+    # independent fallback route (different provider)
+    - name: anthropic:claude-sonnet-4-5
+      provider: anthropic
+      think_levels: ["medium", "high", "xhigh"]
+      priority: 30
+    - name: groq:llama-3.3-70b-versatile
+      provider: groq
+      think_levels: ["off", "low", "medium"]
+      priority: 40
+
+circuit_breaker:
+  failure_threshold: 3        # trips after 3 consecutive failures per provider
+  reset_timeout_s: 30         # half-open after 30s
+  half_open_max_probes: 1     # one probe call before reopening/closing
+
+embedding:
+  model: sentence-transformers/all-MiniLM-L6-v2  # FastEmbed MiniLM2 ONNX INT8 (CPU)
+  backend: fastembed            # fastembed | llama-cpp | hash
+  # Path to a GGUF embedding model when backend=llama-cpp, e.g.:
+  # llama_model: /path/to/all-MiniLM-L6-v2-q4_0.gguf
+  dim: 384
+  batch_size: 64
+  normalize: true
+  dedup_threshold: 0.98
+  quantization: int8
+
+vectorstore:
+  backend: sqlite-vec         # sqlite-vec | faiss | qdrant | opencl | mem0
+  path: swarm.sqlite
+  retrieve_k: 20
+  final_k: 10
+  # FAISS GPU requires CUDA (faiss-gpu). Radeon 5300, MoltenVK, and OpenCL are not backends.
+  gpu: false
+  quantization: int8          # sqlite-vec int8 columns; Qdrant scalar int8 when backend=qdrant
+  opencl_enabled: true        # allow OpenCL offloading for math/vector search
+  quantize: none              # OpenClVecStore precision: none | int8 | binary
+  # backend-specific
+  qdrant:
+    url_env: QDRANT_URL
+    collection: swarm_memory
+  mem0:
+    api_key_env: MEM0_API_KEY   # env var *name* only; never a secret value
+    user_id: swarm
+    agent_id: swarm-sdk
+    infer: false                # false = store Q/A as-is (no extra Mem0 LLM extract)
+
+hybrid_search:
+  enabled: true
+  dense_weight: 1.0           # RRF contribution of dense vector ranking
+  keyword_weight: 1.0         # RRF contribution of BM25 ranking
+  rrf_k: 60
+  final_k: 10
+
+rerank:
+  model: Xenova/ms-marco-MiniLM-L-6-v2
+  top_k: 4
+
+router:
+  router_model: openai:gpt-4o-mini
+  think_level: low
+  max_tokens: 2048
+  tool_cap: 128
+  structured_output: true     # ask the provider for JSON; falls back to regex parsing

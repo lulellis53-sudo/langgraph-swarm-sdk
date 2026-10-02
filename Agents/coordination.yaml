@@ -9,6 +9,11 @@ agents:
     contract: Agents/Orchestrator/AGENTS.md
     manifest: Agents/Orchestrator/agent.yaml
 
+  - name: ModelDelegate
+    role: model_delegation
+    contract: Agents/ModelDelegate/AGENTS.md
+    manifest: Agents/ModelDelegate/agent.yaml
+
   - name: Planner
     role: decompose goals into task graphs
     contract: Agents/Planner/AGENTS.md
@@ -69,8 +74,19 @@ agents:
     contract: Agents/Optimizer/AGENTS.md
     manifest: Agents/Optimizer/agent.yaml
 
+  - name: Refactor
+    role: safe incremental refactors
+    contract: Agents/Refactor/AGENTS.md
+    manifest: Agents/Refactor/agent.yaml
+
+  - name: TxtToCsv
+    role: convert text files to CSV
+    contract: Agents/TxtToCsv/AGENTS.md
+    manifest: Agents/TxtToCsv/agent.yaml
+
 # Task board — replace with tasks for the active project.
 # Each task must have: id, title, assigned agent(s), depends_on, and status.
+# Coder tasks that share a wave also need disjoint files (and usually task).
 # Example structure:
 #
 # tasks:
@@ -87,21 +103,58 @@ agents:
 #     status: todo
 #
 #   - id: T03
-#     title: "Implement: <feature or fix>"
+#     title: "Implement: module A (exclusive files)"
 #     assigned: [Coder]
+#     task: implement_in_files
+#     files: [src/a.py, tests/test_a.py]
 #     depends_on: [T02]
 #     status: todo
 #
 #   - id: T04
-#     title: "Test: write and run tests for T03"
-#     assigned: [Tester]
-#     depends_on: [T03]
+#     title: "Implement: module B (disjoint files, same wave as T03)"
+#     assigned: [Coder]
+#     task: implement_in_files
+#     files: [src/b.py, tests/test_b.py]
+#     depends_on: [T02]
 #     status: todo
 #
 #   - id: T05
-#     title: "Review: diff review for T03"
+#     title: "Test: write and run tests for T03+T04"
+#     assigned: [Tester]
+#     depends_on: [T03, T04]
+#     status: todo
+#
+#   - id: T06
+#     title: "Review: diff review for T03+T04"
 #     assigned: [Reviewer]
-#     depends_on: [T04]
+#     depends_on: [T05]
 #     status: todo
 
-tasks: []
+tasks:
+  - id: MD01
+    title: "Route: pick provider/model for a sub-task"
+    assigned: [ModelDelegate]
+    task: route_task
+    depends_on: []
+    status: todo
+
+  - id: MD02
+    title: "Fallback: pre-compute retry chain for the selected route"
+    assigned: [ModelDelegate]
+    task: resolve_fallback
+    depends_on: [MD01]
+    status: todo
+
+  - id: MD03
+    title: "Embed: dispatch embedding task to GPU or registry provider"
+    assigned: [ModelDelegate]
+    task: delegate_embedding
+    depends_on: []
+    status: todo
+
+  - id: MD04
+    title: "Math: dispatch numerical task to GPU or fast LLM"
+    assigned: [ModelDelegate]
+    task: delegate_math
+    depends_on: []
+    status: todo

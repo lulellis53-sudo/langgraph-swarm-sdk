@@ -13,10 +13,12 @@ tasks:
   - id: decompose_goal
     description: >-
       Break a high-level goal into a DAG of concrete, assignable tasks
-      with explicit dependencies and acceptance criteria.
+      with explicit dependencies, acceptance criteria, and — for Coder
+      work — disjoint files so independent steps can share a wave.
     outputs:
       - task_graph
       - dependency_map
+      - file_partition
 
   - id: revise_plan
     description: >-

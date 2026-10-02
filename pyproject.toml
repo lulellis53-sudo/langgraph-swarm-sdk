@@ -7,36 +7,59 @@ license = { text = "MIT" }
 authors = [{ name = "dantenho", email = "dantenho@gmail.com" }]
 requires-python = ">=3.14.5"
 dependencies = [
-    "aiohttp>=3.11",
-    # HTTP API (swarm-api entrypoint)
-    "fastapi>=0.115",
-    "grpcio>=1.71",
-    "grpcio-tools>=1.71",
-    "h2>=4.2",
-    "httpx2>=2.13",
+    # ## Swarm / LangGraph
     "langchain>=1.0",
     "langgraph>=1.0",
     "langgraph-swarm>=0.1",
-    "numpy>=2.1",
-    "orjson>=3.10",
-    "polars>=1.30",
-    "protobuf>=6.31",
-    "pyyaml>=6.0",
-    "pydantic-settings>=2.10",
+    "langchain-anthropic>=0.3",
+    "langchain-cohere>=0.3",
+    "langchain-google-genai>=2.0",
+    "langchain-groq>=0.2",
+    "langchain-mistralai>=0.2",
+    "langchain-openai>=0.3",
     "pydantic>=2.11",
-    "requests>=2.32",
-    "sqlite-vec>=0.1.6",
-    "tokenizers>=0.22",
+    "pydantic-settings>=2.10",
+    # ## Config & serialization
+    "pyyaml>=6.0",
+    "orjson>=3.10",
+    "protobuf>=6.31",
+    # ## HTTP API (swarm-api entrypoint)
+    "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "uvloop>=0.21; sys_platform != 'win32'",
-    # onnxruntime has no macOS x86_64 wheel, so FastEmbed cannot install there.
+    # ## HTTP clients
+    "httpx>=0.28",
+    "httpx2>=2.13",
+    "h2>=4.2",
+    "aiohttp>=3.11",
+    "requests>=2.32",
+    # ## gRPC (swarm-grpc)
+    "grpcio>=1.71",
+    "grpcio-tools>=1.71",
+    # ## Tokenization & token budgets
+    # tiktoken = default token counter (cl100k_base); tokenizers = HF Tokenizer packing
+    "tokenizers>=0.22",
+    "tiktoken>=0.9",
+    # ## Numerics, tables, and sklearn (CPU)
+    "numpy>=2.1",
+    "polars>=1.30",
+    "scikit-learn>=1.6",
+    "sqlite-vec>=0.1.6",
+    # ## Symbolic math for equation docs and numerical verification
+    "sympy>=1.13",
+    # ## Embeddings (FastEmbed default = MiniLM-L6-v2 ONNX INT8 on CPU)
+    # onnxruntime has no macOS x86_64 wheel; FastEmbed skips on Intel Mac unless ORT is installed elsewhere.
     "fastembed>=0.7; sys_platform != 'darwin' or platform_machine != 'x86_64'",
 ]
 
 [tool.uv]
 python-preference = "managed"
+# Jupyter AI → cryptography; source builds fail with custom LLVM (missing assert.h). Wheels only.
+no-build-package = ["cryptography"]
+constraint-dependencies = ["cryptography==48.0.1"]
 
 [project.optional-dependencies]
+# ## Testing & property tests
 dev = [
     "hypothesis>=6.135",
     "pytest>=8.4",
@@ -44,21 +67,66 @@ dev = [
     "ruff>=0.12",
     "taplo>=0.9",
     "ty>=0.0.1a0",
-    "yamllint>=1.35",
+
 ]
+# ## Observability (OTel traces for FastAPI / httpx)
+observability = [
+    "opentelemetry-api>=1.30",
+    "opentelemetry-sdk>=1.30",
+    "opentelemetry-exporter-otlp-proto-http>=1.30",
+    "opentelemetry-instrumentation-fastapi>=0.52b0",
+    "opentelemetry-instrumentation-httpx>=0.52b0",
+    "prometheus-client>=0.20",
+]
+# ## FAISS vector index (CPU wheels everywhere; GPU = CUDA only)
 faiss = ["faiss-cpu>=1.11"]
-# sympy/transformers/onnxruntime: local symbolic math + HF models for rerankers/embeddings.
-# onnxruntime has no macOS x86_64 wheel (same constraint as fastembed above).
+faiss-gpu = [
+    "faiss-gpu>=1.11; sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
+# ## FastEmbed + ONNX runtime (MiniLM-L6-v2 INT8; explicit when not in core deps)
+embed = [
+    "fastembed>=0.7",
+    "onnxruntime>=1.20; sys_platform != 'darwin' or platform_machine != 'x86_64'",
+]
+# ## ONNX Runtime GPU / CoreML execution providers (not Intel Mac x86_64)
+embed-gpu = [
+    "onnxruntime-gpu>=1.20; sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
+# ## MoltenVK / Vulkan + OpenCL (Intel Mac Radeon, llama.cpp GGUF embeddings)
+molten = [
+    "pyopencl>=2024.1",
+    "llama-cpp-python>=0.3.0",
+]
+opencl = ["pyopencl>=2024.1"]
+llama-cpp = ["llama-cpp-python>=0.3.0"]
+# ## ML rerankers / transformers (sympy + HF stack)
 ml = [
     "sympy>=1.13",
+    "scikit-learn>=1.6",
     "transformers>=4.51",
     "onnxruntime>=1.20; sys_platform != 'darwin' or platform_machine != 'x86_64'",
 ]
 qdrant = ["qdrant-client>=1.14"]
+# ## Mem0 Platform memory (MemoryClient; API key in MEM0_API_KEY)
+mem0 = ["mem0ai>=1.0"]
+jupyter = [
+    "cryptography==48.0.1",
+    "ipykernel>=6",
+    "jupyter-ai>=2",
+    "notebook>=7",
+    "pip>=25",
+]
+websearch = [
+    "selectolax>=0.3",
+    "trafilatura>=2.0",
+    "beautifulsoup4>=4.12",
+]
 
 [project.scripts]
-swarm-api = "swarm_sdk.api:main"
-swarm-grpc = "swarm_sdk.grpc_server:main"
+swarm-api = "swarm_sdk.serving.http:main"
+swarm-grpc = "swarm_sdk.serving.grpc:main"
+swarm-vault = "swarm_sdk.vault:main"
+low-swarm = "swarm_sdk.cli:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -67,23 +135,36 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/swarm_sdk"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"src/swarm_sdk/pb/swarm.proto" = "swarm_sdk/pb/swarm.proto"
+
 [tool.ruff]
 line-length = 100
 target-version = "py314"
-src = ["src", "tests"]
+src = ["src", "Agents/tests", "Agents/benchmark", "WebSearch"]
 extend-exclude = ["src/swarm_sdk/pb"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
 
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-testpaths = ["tests", "benchmark"]
-pythonpath = ["."]
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ty.environment]
+python = "./.venv"
+python-version = "3.14"
 
 [tool.ty.src]
 exclude = [
   "src/swarm_sdk/pb/**",
   "src/swarm_sdk/memory/faiss_store.py",
   "src/swarm_sdk/memory/qdrant_store.py",
+  "src/swarm_sdk/gpu/opencl_math.py",
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["Agents/tests", "Agents/benchmark"]
+pythonpath = [".", "Agents"]

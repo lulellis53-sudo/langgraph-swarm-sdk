@@ -4,17 +4,40 @@ from __future__ import annotations
 
 import numpy as np
 
-from swarm_sdk.embeddings import unit
 from swarm_sdk.memory.base import MemoryHit
+from swarm_sdk.retrieval.embeddings import unit
+
+
+def _try_cuda_index(faiss: object, index: object) -> tuple[object, str, object | None]:
+    """Move a CPU index to CUDA device 0.
+
+    FAISS GPU is CUDA-only. On AMD Radeon Pro 5300M (MoltenVK/OpenCL/Metal) this
+    path is a no-op and the caller keeps a CPU IndexFlatIP.
+    """
+    resources_cls = getattr(faiss, "StandardGpuResources", None)
+    to_gpu = getattr(faiss, "index_cpu_to_gpu", None)
+    if resources_cls is None or to_gpu is None:
+        return index, "cpu", None
+    try:
+        resources = resources_cls()
+        gpu_index = to_gpu(resources, 0, index)
+    except Exception:
+        return index, "cpu", None
+    return gpu_index, "cuda", resources
 
 
 class FaissStore:
-    def __init__(self, dim: int) -> None:
+    def __init__(self, dim: int, *, gpu: bool = False) -> None:
         import faiss
 
         self.dim = dim
         self._faiss = faiss
-        self._index = faiss.IndexFlatIP(dim)
+        self._gpu_resources: object | None = None
+        index = faiss.IndexFlatIP(dim)
+        self.device = "cpu"
+        if gpu:
+            index, self.device, self._gpu_resources = _try_cuda_index(faiss, index)
+        self._index = index
         self._texts: list[str] = []
 
     def add(self, text: str, vector: np.ndarray) -> int:

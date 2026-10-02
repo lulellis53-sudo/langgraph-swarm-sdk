@@ -1,0 +1,175 @@
+# SQL Pro benchmarkable suite — declarative cases for CI and local runs.
+# Run: uv run pytest benchmark/Tasks/sql_pro -q
+#      uv run python -m benchmark.sql_pro.run
+version: "1"
+dialect: sqlite
+skill: sql-pro
+fixtures_dir: fixtures
+
+cases:
+  - id: window_latest_completed_order
+    description: ROW_NUMBER CTE returns the latest completed order per customer
+    seed: default
+    query: |
+      WITH ranked AS (
+          SELECT
+              o.customer_id,
+              o.order_id,
+              o.total,
+              ROW_NUMBER() OVER (
+                  PARTITION BY o.customer_id
+                  ORDER BY o.order_date DESC
+              ) AS rn
+          FROM orders o
+          WHERE o.status = 'completed'
+      )
+      SELECT customer_id, order_id, total
+      FROM ranked
+      WHERE rn = 1
+      ORDER BY customer_id;
+    expect:
+      row_count: 100
+      columns: [customer_id, order_id, total]
+      plan_must_not_contain: []
+
+  - id: join_vs_correlated_subquery
+    description: Aggregated join matches correlated subquery results
+    seed: default
+    query_slow: |
+      SELECT o.order_id,
+             (SELECT SUM(oi.quantity)
+              FROM order_items oi
+              WHERE oi.order_id = o.order_id) AS item_count
+      FROM orders o
+      WHERE o.status = 'completed'
+      ORDER BY o.order_id;
+    query_fast: |
+      SELECT o.order_id, COALESCE(agg.item_count, 0) AS item_count
+      FROM orders o
+      LEFT JOIN (
+          SELECT order_id, SUM(quantity) AS item_count
+          FROM order_items
+          GROUP BY order_id
+      ) agg ON agg.order_id = o.order_id
+      WHERE o.status = 'completed'
+      ORDER BY o.order_id;
+    expect:
+      results_equal: true
+      fast_faster_than_slow: true
+
+  - id: covering_index_customer_orders
+    description: Composite index enables SEARCH on orders instead of full SCAN
+    seed: default
+    index_ddl: |
+      CREATE INDEX idx_orders_customer_date_status
+          ON orders (customer_id, order_date DESC, status);
+    query: |
+      SELECT order_id, order_date, total, status
+      FROM orders
+      WHERE customer_id = 42
+        AND status = 'completed'
+        AND order_date >= '2024-06-01'
+      ORDER BY order_date DESC;
+    expect:
+      min_rows: 1
+      plan_before_index_must_contain: [SCAN orders]
+      plan_after_index_must_contain: [SEARCH orders USING INDEX]
+
+  - id: exists_active_orders
+    description: EXISTS semantics for customers with active orders
+    seed: default
+    query: |
+      SELECT c.customer_id, c.name
+      FROM customers c
+      WHERE EXISTS (
+          SELECT 1
+          FROM orders o
+          WHERE o.customer_id = c.customer_id
+            AND o.status = 'active'
+      )
+      ORDER BY c.customer_id;
+    expect:
+      min_rows: 1
+      columns: [customer_id, name]
+
+  - id: not_exists_vs_anti_join
+    description: NOT EXISTS matches LEFT JOIN anti-join for customers without completed orders
+    seed: default
+    query_slow: |
+      SELECT c.customer_id, c.name
+      FROM customers c
+      WHERE NOT EXISTS (
+          SELECT 1
+          FROM orders o
+          WHERE o.customer_id = c.customer_id
+            AND o.status = 'completed'
+      )
+      ORDER BY c.customer_id;
+    query_fast: |
+      SELECT c.customer_id, c.name
+      FROM customers c
+      LEFT JOIN orders o
+          ON o.customer_id = c.customer_id
+         AND o.status = 'completed'
+      WHERE o.order_id IS NULL
+      ORDER BY c.customer_id;
+    expect:
+      results_equal: true
+
+  - id: having_vs_filtered_subquery
+    description: HAVING filter matches filtered aggregation subquery
+    seed: default
+    query_slow: |
+      SELECT customer_id
+      FROM orders
+      WHERE status = 'completed'
+      GROUP BY customer_id
+      HAVING COUNT(*) > 10
+      ORDER BY customer_id;
+    query_fast: |
+      SELECT customer_id
+      FROM (
+          SELECT customer_id, COUNT(*) AS n
+          FROM orders
+          WHERE status = 'completed'
+          GROUP BY customer_id
+      ) t
+      WHERE n > 10
+      ORDER BY customer_id;
+    expect:
+      results_equal: true
+
+  - id: keyset_vs_offset
+    description: Keyset pagination matches OFFSET page for a fixed customer
+    seed: default
+    query_slow: |
+      SELECT order_id, customer_id, order_date
+      FROM orders
+      WHERE customer_id = 42
+      ORDER BY order_id
+      LIMIT 10 OFFSET 10;
+    query_fast: |
+      SELECT order_id, customer_id, order_date
+      FROM orders
+      WHERE customer_id = 42
+        AND order_id > 2060
+      ORDER BY order_id
+      LIMIT 10;
+    expect:
+      results_equal: true
+
+  - id: orders_status_scan_without_index
+    description: Index on status turns SCAN into SEARCH for status-filtered lookup
+    seed: default
+    index_ddl: |
+      CREATE INDEX idx_orders_status ON orders (status);
+    query: |
+      SELECT order_id, customer_id, order_date, total
+      FROM orders
+      WHERE status = 'completed'
+      ORDER BY order_id
+      LIMIT 50;
+    expect:
+      min_rows: 1
+      plan_before_index_must_contain: [SCAN orders]
+      plan_after_index_must_contain: [SEARCH orders USING INDEX]

@@ -3,9 +3,9 @@
 import grpc
 import warnings
 
-from swarm_sdk.pb import swarm_pb2 as swarm__pb2
+from swarm_sdk.pb import swarm_pb2 as swarm__sdk_dot_pb_dot_swarm__pb2
 
-GRPC_GENERATED_VERSION = '1.84.0'
+GRPC_GENERATED_VERSION = '1.81.1'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -18,7 +18,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + ' but the generated code in swarm_pb2_grpc.py depends on'
+        + ' but the generated code in swarm_sdk/pb/swarm_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -36,13 +36,28 @@ class SwarmServiceStub:
         """
         self.Run = channel.unary_unary(
                 '/swarm.v1.SwarmService/Run',
-                request_serializer=swarm__pb2.RunRequest.SerializeToString,
-                response_deserializer=swarm__pb2.RunResponse.FromString,
+                request_serializer=swarm__sdk_dot_pb_dot_swarm__pb2.RunRequest.SerializeToString,
+                response_deserializer=swarm__sdk_dot_pb_dot_swarm__pb2.RunResponse.FromString,
                 _registered_method=True)
         self.Recall = channel.unary_unary(
                 '/swarm.v1.SwarmService/Recall',
-                request_serializer=swarm__pb2.RecallRequest.SerializeToString,
-                response_deserializer=swarm__pb2.RecallResponse.FromString,
+                request_serializer=swarm__sdk_dot_pb_dot_swarm__pb2.RecallRequest.SerializeToString,
+                response_deserializer=swarm__sdk_dot_pb_dot_swarm__pb2.RecallResponse.FromString,
+                _registered_method=True)
+        self.SpawnPlan = channel.unary_unary(
+                '/swarm.v1.SwarmService/SpawnPlan',
+                request_serializer=swarm__sdk_dot_pb_dot_swarm__pb2.SpawnRequest.SerializeToString,
+                response_deserializer=swarm__sdk_dot_pb_dot_swarm__pb2.PlanHandle.FromString,
+                _registered_method=True)
+        self.RunPlan = channel.unary_unary(
+                '/swarm.v1.SwarmService/RunPlan',
+                request_serializer=swarm__sdk_dot_pb_dot_swarm__pb2.PlanHandle.SerializeToString,
+                response_deserializer=swarm__sdk_dot_pb_dot_swarm__pb2.PlanResultMsg.FromString,
+                _registered_method=True)
+        self.PlanStatus = channel.unary_unary(
+                '/swarm.v1.SwarmService/PlanStatus',
+                request_serializer=swarm__sdk_dot_pb_dot_swarm__pb2.PlanHandle.SerializeToString,
+                response_deserializer=swarm__sdk_dot_pb_dot_swarm__pb2.PlanStatusMsg.FromString,
                 _registered_method=True)
 
 
@@ -61,18 +76,51 @@ class SwarmServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def SpawnPlan(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def RunPlan(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def PlanStatus(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_SwarmServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Run': grpc.unary_unary_rpc_method_handler(
                     servicer.Run,
-                    request_deserializer=swarm__pb2.RunRequest.FromString,
-                    response_serializer=swarm__pb2.RunResponse.SerializeToString,
+                    request_deserializer=swarm__sdk_dot_pb_dot_swarm__pb2.RunRequest.FromString,
+                    response_serializer=swarm__sdk_dot_pb_dot_swarm__pb2.RunResponse.SerializeToString,
             ),
             'Recall': grpc.unary_unary_rpc_method_handler(
                     servicer.Recall,
-                    request_deserializer=swarm__pb2.RecallRequest.FromString,
-                    response_serializer=swarm__pb2.RecallResponse.SerializeToString,
+                    request_deserializer=swarm__sdk_dot_pb_dot_swarm__pb2.RecallRequest.FromString,
+                    response_serializer=swarm__sdk_dot_pb_dot_swarm__pb2.RecallResponse.SerializeToString,
+            ),
+            'SpawnPlan': grpc.unary_unary_rpc_method_handler(
+                    servicer.SpawnPlan,
+                    request_deserializer=swarm__sdk_dot_pb_dot_swarm__pb2.SpawnRequest.FromString,
+                    response_serializer=swarm__sdk_dot_pb_dot_swarm__pb2.PlanHandle.SerializeToString,
+            ),
+            'RunPlan': grpc.unary_unary_rpc_method_handler(
+                    servicer.RunPlan,
+                    request_deserializer=swarm__sdk_dot_pb_dot_swarm__pb2.PlanHandle.FromString,
+                    response_serializer=swarm__sdk_dot_pb_dot_swarm__pb2.PlanResultMsg.SerializeToString,
+            ),
+            'PlanStatus': grpc.unary_unary_rpc_method_handler(
+                    servicer.PlanStatus,
+                    request_deserializer=swarm__sdk_dot_pb_dot_swarm__pb2.PlanHandle.FromString,
+                    response_serializer=swarm__sdk_dot_pb_dot_swarm__pb2.PlanStatusMsg.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -100,8 +148,8 @@ class SwarmService:
             request,
             target,
             '/swarm.v1.SwarmService/Run',
-            swarm__pb2.RunRequest.SerializeToString,
-            swarm__pb2.RunResponse.FromString,
+            swarm__sdk_dot_pb_dot_swarm__pb2.RunRequest.SerializeToString,
+            swarm__sdk_dot_pb_dot_swarm__pb2.RunResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -127,8 +175,89 @@ class SwarmService:
             request,
             target,
             '/swarm.v1.SwarmService/Recall',
-            swarm__pb2.RecallRequest.SerializeToString,
-            swarm__pb2.RecallResponse.FromString,
+            swarm__sdk_dot_pb_dot_swarm__pb2.RecallRequest.SerializeToString,
+            swarm__sdk_dot_pb_dot_swarm__pb2.RecallResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SpawnPlan(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/swarm.v1.SwarmService/SpawnPlan',
+            swarm__sdk_dot_pb_dot_swarm__pb2.SpawnRequest.SerializeToString,
+            swarm__sdk_dot_pb_dot_swarm__pb2.PlanHandle.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def RunPlan(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/swarm.v1.SwarmService/RunPlan',
+            swarm__sdk_dot_pb_dot_swarm__pb2.PlanHandle.SerializeToString,
+            swarm__sdk_dot_pb_dot_swarm__pb2.PlanResultMsg.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def PlanStatus(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/swarm.v1.SwarmService/PlanStatus',
+            swarm__sdk_dot_pb_dot_swarm__pb2.PlanHandle.SerializeToString,
+            swarm__sdk_dot_pb_dot_swarm__pb2.PlanStatusMsg.FromString,
             options,
             channel_credentials,
             insecure,
