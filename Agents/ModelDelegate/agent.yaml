@@ -40,6 +40,19 @@ tasks:
       - selected_route
       - gpu_enabled
 
+  - id: solve_math
+    description: >-
+      Delegate end-to-end math solving (derivation, LaTeX result, verification script) to MathWorker.
+    outputs:
+      - solution
+      - verification
+
+  - id: verify_math
+    description: >-
+      Delegate computational verification of a mathematical claim to MathWorker.
+    outputs:
+      - verification
+
 capabilities:
   - route
   - fallback
