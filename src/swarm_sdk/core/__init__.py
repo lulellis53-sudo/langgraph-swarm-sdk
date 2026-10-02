@@ -1,5 +1,11 @@
 """Core domain: SwarmSDK orchestrator facade."""
 
+from swarm_sdk.core.jev_router import (
+    ChoiceDecision,
+    JevRouter,
+    NoulDecision,
+    ScoreDecision,
+)
 from swarm_sdk.core.lifeguard_ast import (
     LifeguardAuditReport,
     LifeguardViolation,
@@ -17,13 +23,17 @@ from swarm_sdk.core.swarm import (
 )
 
 __all__ = [
+    "ChoiceDecision",
     "HostInvariants",
     "HostRuleEngine",
+    "JevRouter",
     "LifeguardAuditReport",
     "LifeguardViolation",
     "MetaLifeguardAuditor",
+    "NoulDecision",
     "RouteDecision",
     "RunResult",
+    "ScoreDecision",
     "SwarmSDK",
     "audit_code",
     "default_embedder",
