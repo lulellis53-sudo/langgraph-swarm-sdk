@@ -23,10 +23,22 @@ htmlcov/
 .superpowers/
 .idea/
 
-# --- Secrets ------------------------------------------------------------------
+# --- Secrets & Vaults ---------------------------------------------------------
 .env
 .env.*
 !.env.example
+.vault/
+.vaults/
+vault/
+vaults/
+*.vault
+*.vaults
+.keychain_backup/
+
+# --- Rust build artifacts (prevent large binary commits) ----------------------
+target/
+**/target/
+*.rlib
 
 # --- Databases ----------------------------------------------------------------
 *.db
