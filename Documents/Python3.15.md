@@ -1031,6 +1031,15 @@ RUSTFLAGS="-Cprofile-use=$PWD/merged.profdata" cargo build --release
 
 ### 7.5 Cross-Language LTO Invariants & Architectural Boundaries
 
+### 7.6 Machine-verified CPython 3.15 compile profiles (AVX2 + Polly + full LTO + mimalloc + zstd)
+
+| Prefix | GIL | Commit | LTO | Notes |
+| :--- | :---: | :--- | :--- | :--- |
+| `~/.local/opt/python-3.15-g6413901` | on | `6413901` | full | Daily interpreter / most `uv` work; see `~/Documentos/CompilePythonPlan.md` |
+| `~/.local/opt/python-3.15t-g6413901` | **off** (`3.15t`) | `6413901` | full | Free-threaded sibling built 2026-10-03 (Clang 23.1.1, ld64.lld, Polly, mimalloc, zstd); Phase 4 gate green; log `~/build/python-315t-g6413901.log`; BOLT not applied |
+
+Both use LLVM 23.1.1, ld64.lld, Polly, mimalloc, staged `-resource-dir` under `~/.local/src/cpython-3.15-avx2-lto/clang-resource-23.1.1`, and `LIBZSTD_*` so `import compression.zstd` succeeds. BOLT was not applied to either prefix on this host.
+
 ThinLTO within Clang (`-flto=thin`) or Rust (`lto = "thin"`) operates seamlessly across translation units within the same compiler driver. Attempting cross-language LTO between C/C++ and Rust translation units introduces fragile linker-plugin coupling. For public wheel distribution, enforcing clean C ABI boundaries or PyO3 interfaces is vastly more maintainable.
 
 ---
@@ -1539,10 +1548,12 @@ uv run --extra dev python -m benchmark.Tasks.python315_claims.benchmark_python31
 uv run --extra dev pytest Agents/benchmark/Tasks/python315_claims -q
 ```
 
-Optional interpreter for row **F**:
+Optional interpreter for row **F** (GIL or free-threaded 3.15 at the same commit pin):
 
 ```bash
 export SWARM_PY315="$HOME/.local/opt/python-3.15-g6413901/bin/python3.15"
+# free-threaded (PEP 703), same harness row F:
+# export SWARM_PY315="$HOME/.local/opt/python-3.15t-g6413901/bin/python3.15"
 ```
 
 Reports with `--write-results` land under `Agents/benchmark/results/python315_claims/` (gitignored). CI uses `--quick` medians; pytest asserts every row is measured or skipped with a reason (`test_python315_claims.py`).
