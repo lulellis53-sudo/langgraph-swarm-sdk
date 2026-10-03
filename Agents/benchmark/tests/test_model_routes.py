@@ -77,7 +77,9 @@ def test_hosted_route_reads_named_key_from_vault(
     fake_init, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
-    monkeypatch.setattr(vault, "get", lambda name: "vault-key" if name == "OPENROUTER_API_KEY" else None)
+    monkeypatch.setattr(
+        vault, "get", lambda name: "vault-key" if name == "OPENROUTER_API_KEY" else None
+    )
     chat.load_chat_model("openrouter:z-ai/glm-5.3-flash")
     assert fake_init[0][1]["api_key"] == "vault-key"
 
@@ -86,6 +88,8 @@ def test_google_route_reads_named_key_from_vault(
     fake_init, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    monkeypatch.setattr(vault, "get", lambda name: "vault-key" if name == "GEMINI_API_KEY" else None)
+    monkeypatch.setattr(
+        vault, "get", lambda name: "vault-key" if name == "GEMINI_API_KEY" else None
+    )
     chat.load_chat_model("google:gemini-3.8-flash")
     assert fake_init == [("google_genai:gemini-3.8-flash", {"google_api_key": "vault-key"})]

@@ -81,6 +81,8 @@ vectorstore:
 
 API keys (`MEM0_API_KEY`, `TAVILY_API_KEY`, `BRAVE_API_KEY`, `EXA_API_KEY`) live in the macOS Keychain, encrypted at rest. Store each with `uv run swarm-vault set <NAME>` (it prompts; nothing is echoed or written to disk) and check with `uv run swarm-vault status`. `swarm-api` and `swarm-grpc` load them at start; a variable already in the environment wins, and `~/.env` is a legacy fallback. YAML only names the env var; `.env.example` lists the names.
 
+WebSearch reads search credentials by the names in `WebSearch/providers.yaml` through the same vault. Exa and Tavily use `EXA_API_KEY` and `TAVILY_API_KEY`; Brave needs `BRAVE_API_KEY`. Bright Data uses `BRIGHTDATA_MCP_TOKEN` through its hosted MCP `search_engine` tool and is selected explicitly with `--searcher bright_data`. Install `uv sync --extra websearch` for the MCP client. The browser agent defaults to the registered OpenRouter route; `WEBSEARCH_LLM_MODEL` overrides it. Agent manifests keep only model routes and credential names; model loading resolves those names from the Keychain.
+
 To use a dedicated Keychain, set `SWARM_KEYCHAIN_PATH` to its absolute path in the owner-only `.env`. Vault reads and writes then target that Keychain. Its password is entered through macOS SecurityAgent when the Keychain is created; it is never passed on the command line.
 
 Inspect the host map and selected backends with:

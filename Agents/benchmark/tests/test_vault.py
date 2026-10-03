@@ -69,6 +69,18 @@ def test_owner_only_project_env_selects_dedicated_keychain(
     assert runner.calls[0][-1] == "/tmp/test.keychain"
 
 
+def test_shared_project_env_cannot_select_keychain(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    env = tmp_path / ".env"
+    env.write_text("SWARM_KEYCHAIN_PATH=/tmp/test.keychain\n")
+    env.chmod(0o644)
+    monkeypatch.setattr(vault, "_PROJECT_ENV", env)
+    runner = FakeRunner({"security": "from-kc"})
+    vault.get_with_source("MEM0_API_KEY", runner=runner, environ={})
+    assert runner.calls[0][-1] == "-w"
+
+
 def test_dotenv_fallback_parses_export_quotes_equals(tmp_path: Path) -> None:
     env = tmp_path / ".env"
     env.write_text('# c\nOTHER=1\nexport MEM0_API_KEY="a=b==c"\n')

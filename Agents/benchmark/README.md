@@ -116,6 +116,24 @@ imports replaced. Measured 2026-10-01 (3 runs, `results/`):
 | ----------------- | ----------: | ---------: | ------------: |
 | Cold import wall  | 1,636.30 ms | 672.02 ms  | **−58.93%**   |
 
+See also **Python 3.15 dossier §11.3** (`Documents/Python3.15.md`) for the separate
+PEP 810 `lazy import` micro-benchmark (`Tasks/python315_claims/`, workload **F**).
+
+### Python 3.15 dossier claims (`Tasks/python315_claims/`)
+
+Offline harness comparing **measured** speedups on this host to the **claimed**
+speedups in `Documents/Python3.15.md` §11.2. Rows that cannot run (mimalloc probe,
+free-threaded build, missing `SWARM_PY315`) are reported as `skipped` with a reason.
+
+```bash
+uv run --extra dev python -m benchmark.Tasks.python315_claims.benchmark_python315_claims --quick
+uv run --extra dev python -m benchmark.Tasks.python315_claims.benchmark_python315_claims --write-results
+uv run --extra dev pytest Agents/benchmark/Tasks/python315_claims -q
+export SWARM_PY315="$HOME/.local/opt/python-3.15-g6413901/bin/python3.15"   # optional, row F
+```
+
+Case definition: `benchmark/Tasks/python315_claims/task.yaml`. Methodology: §11.3 in the dossier.
+
 ### Fail-fast wave abort vs `asyncio.gather` (`Tasks/wave_fail_fast/`)
 
 ```bash

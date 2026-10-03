@@ -109,7 +109,9 @@ def load_chat_model(model_name: str) -> BaseChatModel:
 
     provider, _, model = model_name.partition(":")
     route_key_env, base_url_env = _route_index().get(model_name, ("", ""))
-    key_value = (os.environ.get(route_key_env, "") or vault.get(route_key_env)) if route_key_env else ""
+    key_value = ""
+    if route_key_env:
+        key_value = os.environ.get(route_key_env, "") or vault.get(route_key_env) or ""
     if provider == "google":
         kwargs = {"google_api_key": key_value} if key_value else {}
         chat_model = init_chat_model(f"google_genai:{model}", **kwargs)

@@ -90,6 +90,7 @@
 - [11. Runtime Hardware Benchmarks & Performance Deltas (Intel i7-9750H)](#11-runtime-hardware-benchmarks--performance-deltas-intel-i7-9750h)
   - [11.1 Workload Definitions & Test Rig](#111-workload-definitions--test-rig)
   - [11.2 Quantitative Hardware Metrics & Efficiency (Δ%)](#112-quantitative-hardware-metrics--efficiency-δ)
+  - [11.3 Swarm SDK measured verification (§11.2 vs this host)](#113-swarm-sdk-measured-verification-112-vs-this-host)
 - [12. Edge Cases, Pitfalls & Failure Modes](#12-edge-cases-pitfalls--failure-modes)
 - [13. Primary Citations & Authoritative Evidence Ledger](#13-primary-citations--authoritative-evidence-ledger)
 
@@ -1512,6 +1513,41 @@ $$\Delta\% = \frac{\text{Target} - \text{Baseline}}{\text{Baseline}} \times 100\
 | **Zstd State Compression** | `65,536 bytes` (raw text)| `1,520 bytes` (zstd frame)| **-97.7%** (saved) | **$43.12\times$ reduction**| Zero-copy `memoryview` |
 | **Peak Swarm Resident RAM** | `14.8 GB` (Spill to Swap) | `4.2 GB` (In-Memory) | **-71.6%** (less RAM) | **$3.52\times$ memory save** | Stays strictly under 13.6 GB cap |
 | **Host RSS Ceiling Violations**| 14 kernel swap events | **0 swap events** (Lifeguard) | **-100.0%** (stable) | Enforced < 13.6 GB cap | Zero macOS UI freezes |
+
+### 11.3 Swarm SDK measured verification (§11.2 vs this host)
+
+The §11.2 table mixes **design-target** and **literature** figures (PGO, Lifeguard RSS, full-stack swarm runs). Do not paste those cells into CI or agent prompts as if they were captured on the integration machine today. The LangGraph Swarm SDK instead ships an offline harness that records **measured** speedups next to the dossier’s **claimed** speedups and marks workloads **skipped** when prerequisites are missing (no mimalloc binding, GIL still enabled for thread scaling, no Python 3.15 binary for PEP 810 workload F).
+
+| §11.2 workload (§11.1) | Harness id | Swarm module |
+| :--- | :---: | :--- |
+| A — Dynamic allocation | `A` | skipped until a mimalloc throughput probe exists |
+| B — Multi-core scaling | `B` | `benchmark_python315_claims.bench_thread_scaling` |
+| C — Static buffer compaction | `C` | `swarm_sdk.core.minimalloc` |
+| D — Columnar stats | `D` | NumPy / PyArrow vs Python loop |
+| E — Zstd compression | `E` | `swarm_sdk.core.compression.ZstdStateCompressor` |
+| F — CLI lazy imports | `F` | Fresh subprocess on **`SWARM_PY315`** using PEP 810 `lazy import` ([PEP 810](https://peps.python.org/pep-0810/)) |
+| Native vector dot | `dot` | Python scalar loop vs `numpy.dot` (BLAS on this host) |
+
+**Related (not workload F):** [`Agents/benchmark/Tasks/cold_import/`](../Agents/benchmark/Tasks/cold_import/) measures **`import swarm_sdk`** on the project’s default Python (3.14.x) against the eager LangChain/LangGraph import stack the SDK no longer pulls at import time. That is Swarm product evidence; workload **F** is a separate 3.15 interpreter micro-benchmark.
+
+Run from the repo root (`uv` flags before the subcommand — [uv CLI](https://docs.astral.sh/uv/reference/cli/)):
+
+```bash
+cd ~/Swarm
+uv run --extra dev python -m benchmark.Tasks.python315_claims.benchmark_python315_claims --quick
+uv run --extra dev python -m benchmark.Tasks.python315_claims.benchmark_python315_claims --write-results
+uv run --extra dev pytest Agents/benchmark/Tasks/python315_claims -q
+```
+
+Optional interpreter for row **F**:
+
+```bash
+export SWARM_PY315="$HOME/.local/opt/python-3.15-g6413901/bin/python3.15"
+```
+
+Reports with `--write-results` land under `Agents/benchmark/results/python315_claims/` (gitignored). CI uses `--quick` medians; pytest asserts every row is measured or skipped with a reason (`test_python315_claims.py`).
+
+Personal mirror of this dossier: `~/Documentos/Python3.15.md` (keep §11.3 in sync). Doc index: `~/Documentos/SwarmSDK-Bridge.md` and `Documents/SWARM-DOC-MAP.md`.
 
 ---
 

@@ -7,6 +7,7 @@ from benchmark.Tasks.python315_claims.benchmark_python315_claims import format_t
 
 def test_report_rows_are_measured_or_skipped_with_reason() -> None:
     report = run(quick=True)
+    assert report["dossier"]["section"] == "Documents/Python3.15.md §11"
     assert {r["id"] for r in report["rows"]} == {"A", "B", "C", "D", "E", "F", "dot"}
     for row in report["rows"]:
         if row["status"] == "skipped":

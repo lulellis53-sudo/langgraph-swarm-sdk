@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from threading import Barrier
+
 from WebSearch import run_pipeline
 from WebSearch.backend import extract_and_normalize, normalize_text
 from WebSearch.frontend import (
@@ -16,8 +18,9 @@ from WebSearch.frontend import (
     searcher_ids,
 )
 from WebSearch.midend import crawl_then_scrape
-from swarm_sdk import vault
 from WebSearch.repeater import repeater
+
+from swarm_sdk import vault
 
 
 def test_load_providers_yaml() -> None:
@@ -29,15 +32,15 @@ def test_load_providers_yaml() -> None:
         "trafilatura",
         "bs4",
     )
-    assert cfg.crawl.crawler_order == ("httpx", "scrapy", "playwright", "crawlee")
+    assert cfg.crawl.crawler_order == ("httpx", "curl_cffi", "scrapy", "playwright", "crawlee")
     assert searcher_ids(cfg) == (
         "context7",
-        "bright_data",
         "brave",
         "ddg",
         "tavily",
         "apify",
         "exa",
+        "bright_data",
         "searxng",
         "google_ground",
     )
@@ -66,7 +69,9 @@ def test_bright_data_mcp_search_normalizes_google_hits(monkeypatch) -> None:
 
     async def fake_call(query: str, token: str, engine: str) -> object:
         assert (query, token, engine) == ("example", "synthetic-token", "google")
-        return {"organic": [{"title": "Example", "link": "https://example.com", "description": "ok"}]}
+        return {
+            "organic": [{"title": "Example", "link": "https://example.com", "description": "ok"}]
+        }
 
     monkeypatch.setattr(websearchers, "_bright_data_search", fake_call)
     spec = SearcherSpec(
@@ -75,6 +80,41 @@ def test_bright_data_mcp_search_normalizes_google_hits(monkeypatch) -> None:
     assert websearchers.search_bright_data("example", spec) == [
         SearchHit("Example", "https://example.com", "ok", "bright_data")
     ]
+
+
+def test_parallel_search_uses_each_provider_key(monkeypatch) -> None:
+    from WebSearch import parallel_search
+    from WebSearch.frontend import websearchers
+
+    ids = ("brave", "tavily", "exa", "bright_data")
+    names = ("BRAVE_API_KEY", "TAVILY_API_KEY", "EXA_API_KEY", "BRIGHTDATA_MCP_TOKEN")
+    for name in names:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr(vault, "get", lambda name: f"synthetic-{name}")
+    websearchers._keychain_secret.cache_clear()
+    barrier = Barrier(4)
+    seen: dict[str, str] = {}
+
+    def backend(query: str, spec: SearcherSpec) -> list[SearchHit]:
+        seen[spec.id] = websearchers.env_key(spec)
+        barrier.wait(timeout=5)
+        return [SearchHit(spec.id, f"https://{spec.id}.example/", query, spec.id)]
+
+    cfg = ProvidersConfig(
+        version=1,
+        searchers=tuple(
+            SearcherSpec(id=ident, kind="websearcher", api_key_env=name)
+            for ident, name in zip(ids, names, strict=True)
+        ),
+        extractor_order=("regex",),
+    )
+    hits = parallel_search(
+        "parallel-keys", config=cfg, backends=dict.fromkeys(ids, backend),
+        max_workers=4, timeout_s=6, cache_ttl_s=0,
+    )
+    assert set(seen) == set(ids)
+    assert seen == dict(zip(ids, (f"synthetic-{name}" for name in names), strict=True))
+    assert len(hits) == 4
 
 
 def test_http_apis_fail_closed_without_keys() -> None:

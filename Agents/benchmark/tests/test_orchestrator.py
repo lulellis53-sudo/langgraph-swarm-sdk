@@ -438,7 +438,9 @@ def test_resolve_api_key_from_vault(monkeypatch: pytest.MonkeyPatch, tmp_path: P
     from swarm_sdk import vault
 
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    monkeypatch.setattr(vault, "get", lambda name: "vault-key" if name == "OPENAI_API_KEY" else None)
+    monkeypatch.setattr(
+        vault, "get", lambda name: "vault-key" if name == "OPENAI_API_KEY" else None
+    )
     worker = WorkerAgent(manifest("Coder", api_key_env="OPENAI_API_KEY"), agents_root=str(tmp_path))
     worker._resolve_api_key()
     assert os.environ["OPENAI_API_KEY"] == "vault-key"

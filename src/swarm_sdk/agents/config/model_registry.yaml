@@ -224,6 +224,9 @@ providers:
     evidence: assumed (local Ollama instance #2)
 
 services:
+  - name: bright_data
+    api_key_env: BRIGHTDATA_MCP_TOKEN
+    agents: [Researcher, WebFetch]
   - name: tavily
     api_key_env: TAVILY_API_KEY
     agents: [WebFetch]
@@ -232,6 +235,9 @@ services:
     agents: [WebFetch]
   - name: exa
     api_key_env: EXA_API_KEY
+    agents: [WebFetch]
+  - name: apify
+    api_key_env: APIFY_API_KEY
     agents: [WebFetch]
   - name: mem0
     api_key_env: MEM0_API_KEY

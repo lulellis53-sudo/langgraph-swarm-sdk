@@ -7,7 +7,7 @@ metrics:
   - minimalloc_compaction_ratio
   - zstd_compression_ratio
   - lazy_import_startup_speedup
-models: none (offline, no API keys); measures the claims of Documentos/Python3.15.md §11
+models: none (offline, no API keys); measures §11.2 claims vs host — see Documents/Python3.15.md §11.3
 pass:
   minimalloc_verified: true
   every_row_measured_or_skipped_with_reason: true

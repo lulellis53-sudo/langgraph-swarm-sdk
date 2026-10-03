@@ -1,4 +1,7 @@
-"""Measure the runtime claims of Documentos/Python3.15.md §11 on this host.
+"""Measure the runtime claims of Documents/Python3.15.md §11 on this host.
+
+Canonical dossier paths: ``~/Swarm/Documents/Python3.15.md`` and personal mirror
+``~/Documentos/Python3.15.md``. Section §11.3 documents how to run this harness.
 
 Each workload prints *measured* numbers (median of several runs) next to the
 speedup the dossier claims. Nothing is hardcoded except the dossier's claimed
@@ -29,7 +32,8 @@ from swarm_sdk.core.compression import ZstdStateCompressor
 from swarm_sdk.core.minimalloc import Buffer, MiniMalloc
 
 SEED = 7
-PY315 = Path(os.environ.get("SWARM_PY315", "~/.local/opt/python-3.15-g6413901/bin/python3.15"))
+_RESULTS = Path(__file__).resolve().parents[2] / "results" / "python315_claims"
+_PY315 = Path(os.environ.get("SWARM_PY315", "~/.local/opt/python-3.15-g6413901/bin/python3.15")).expanduser()
 # Modules heavy enough for import cost to show; all stdlib so any interpreter runs them.
 LAZY_MODULES = ("asyncio", "decimal", "email.message", "http.client", "sqlite3", "unittest")
 
@@ -227,14 +231,14 @@ def _startup_ms(python: str, code: str, runs: int) -> float:
 
 def bench_lazy_imports(runs: int) -> dict[str, Any]:
     title = "Cold start: eager vs PEP 810 lazy imports"
-    python = PY315.expanduser()
-    if not python.exists():
+    python = str(_PY315)
+    if not _PY315.is_file():
         return _skipped("F", title, f"no Python 3.15 interpreter at {python}")
     eager = "".join(f"import {m}\n" for m in LAZY_MODULES)
     lazy = "".join(f"lazy import {m}\n" for m in LAZY_MODULES)
     try:
-        base = _startup_ms(str(python), eager, runs)
-        tgt = _startup_ms(str(python), lazy, runs)
+        base = _startup_ms(python, eager, runs)
+        tgt = _startup_ms(python, lazy, runs)
     except subprocess.CalledProcessError as exc:
         return _skipped("F", title, f"3.15 rejected the snippet: {exc.stderr[-200:]!r}")
     return _row(
@@ -246,8 +250,8 @@ def bench_lazy_imports(runs: int) -> dict[str, Any]:
         base,
         tgt,
         8.42,
-        f"interpreter {python.name}; stdlib modules {', '.join(LAZY_MODULES)}; "
-        "includes interpreter startup, so the ratio is diluted",
+        f"interpreter {_PY315.name}; stdlib modules {', '.join(LAZY_MODULES)}; "
+        "PEP 810 lazy import syntax; includes interpreter startup, so the ratio is diluted",
     )
 
 
@@ -271,13 +275,19 @@ def run(*, quick: bool = False) -> dict[str, Any]:
         bench_vector_dot(200_000 if quick else 1_000_000, repeats),
     ]
     return {
+        "dossier": {
+            "section": "Documents/Python3.15.md §11",
+            "mirror": "~/Documentos/Python3.15.md",
+            "verification": "§11.3",
+        },
         "host": {
             "machine": platform.machine(),
             "cpu_count": os.cpu_count(),
             "python": platform.python_version(),
             "gil_enabled": sys._is_gil_enabled(),
+            "py315": str(_PY315) if _PY315.is_file() else None,
         },
-        "method": "median of N runs, time.perf_counter; claimed_speedup is from Python3.15.md §11",
+        "method": "median of N runs, time.perf_counter; claimed_speedup is from Python3.15.md §11.2",
         "quick": quick,
         "rows": rows,
     }
@@ -299,9 +309,19 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--quick", action="store_true", help="small sizes for CI")
     parser.add_argument("--json", type=Path, help="also write the full report here")
+    parser.add_argument(
+        "--write-results",
+        action="store_true",
+        help="write JSON to Agents/benchmark/results/python315_claims/latest.json",
+    )
     args = parser.parse_args()
     report = run(quick=args.quick)
     print(format_table(report))
+    if args.write_results:
+        out = _RESULTS / "latest.json"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(report, indent=2))
+        print(f"wrote {out}")
     if args.json:
         args.json.write_text(json.dumps(report, indent=2))
     return 0

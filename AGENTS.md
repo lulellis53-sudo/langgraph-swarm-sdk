@@ -61,6 +61,7 @@ For swarm coordination: start from `[Agents/SKILLS.md](Agents/SKILLS.md)` and `[
 | `[.cursor/templates/](.cursor/templates/)`                   | Static scaffolds — `[python_static_template_lite.py](.cursor/templates/python_static_template_lite.py)` or full `[python_static_template.py](.cursor/templates/python_static_template.py)` |
 | `[.vscode/](.vscode/)`                                       | Workspace settings + extension recommendations (Cursor/VS Code)                                          |
 | `[.cursor/extensions.txt](.cursor/extensions.txt)`           | Install list mirroring recommended extensions                                                            |
+| `[Documents/](Documents/)`                                     | Architecture manuals; doc map: `[Documents/SWARM-DOC-MAP.md](Documents/SWARM-DOC-MAP.md)` ↔ `~/Documentos/SwarmSDK-Bridge.md` |
 
 Edit `[src/swarm_sdk/pb/swarm.proto](src/swarm_sdk/pb/swarm.proto)` then `uv run python -m swarm_sdk.pb` to regenerate stubs. Never commit `.env`.
 
@@ -70,6 +71,7 @@ Edit `[src/swarm_sdk/pb/swarm.proto](src/swarm_sdk/pb/swarm.proto)` then `uv run
 - Workspace layout: `[codeworkspace/swarm.code-workspace](codeworkspace/swarm.code-workspace)`
 - Benchmarks: `[Agents/benchmark/README.md](Agents/benchmark/README.md)`
 - Toolchains and CPython support: `[Toolchain.md](Toolchain.md)`
+- Personal ↔ repo doc bridge: `[Documents/SWARM-DOC-MAP.md](Documents/SWARM-DOC-MAP.md)`
 - Static template: [@.cursor/templates/python_static_template.py](.cursor/templates/python_static_template.py)
 
 ---

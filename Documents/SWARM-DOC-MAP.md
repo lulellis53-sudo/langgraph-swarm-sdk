@@ -10,6 +10,7 @@ Personal canonical bridge manual: **`~/Documentos/SwarmSDK-Bridge.md`**. Edit th
 | [CLI.md](../CLI.md) | `low-swarm`, `swarm-vault`, entrypoints |
 | [Documents/LangGraphSwarm.md](LangGraphSwarm.md) | Architecture manual (large) |
 | [Documents/RAGTECHNIQUES.MD](RAGTECHNIQUES.MD) | RAG research |
+| [Documents/Python3.15.md](Python3.15.md) | 3.15 dossier; §11.3 ↔ `Agents/benchmark/Tasks/python315_claims/` |
 | [Agents/RAG/AGENTS.md](../Agents/RAG/AGENTS.md) | RAG specialist contract |
 | [.cursor/skills/multi-lane-worktrees/SKILL.md](../.cursor/skills/multi-lane-worktrees/SKILL.md) | Three-lane worktrees |
 
