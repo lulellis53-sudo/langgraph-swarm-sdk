@@ -131,8 +131,19 @@ websearch = [
     "mcp>=2,<3",
 ]
 forecast = [
+    "fastembed>=0.7; sys_platform != 'darwin' or platform_machine != 'x86_64'",
     "lightgbm>=4.7.0",
     "mlforecast>=1.1.0",
+    "onnxruntime>=1.20; sys_platform != 'darwin' or platform_machine != 'x86_64'",
+    "pandas>=2.2",
+    "polars>=1.30",
+    "prophet>=1.1.6",
+    "pyarrow>=18.0",
+    "scikit-learn>=1.6",
+    "sentence-transformers>=5.0",
+    "sympy>=1.13",
+    "tokenizers>=0.22",
+    "transformers>=4.51",
 ]
 
 [project.scripts]
@@ -159,7 +170,7 @@ packages = ["src/swarm_sdk"]
 [tool.ruff]
 line-length = 100
 target-version = "py314"
-src = ["src", "Agents/tests", "Agents/benchmark", "WebSearch"]
+src = ["src", "Agents/tests", "Agents/benchmark", "WebSearch", "Prediction", "tests"]
 extend-exclude = ["src/swarm_sdk/pb"]
 
 [tool.ruff.lint]
