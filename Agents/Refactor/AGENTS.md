@@ -32,6 +32,33 @@ Any language or module the task assigns. You change structure, not observable be
 
 ## Workflow
 
+```
+              [ inbound refactor request ]
+                          │
+        baseline green? ── no ──► fix or quarantine tests FIRST
+                          │ yes
+        tests cover the target? ── no ──► characterization tests first
+                          │ yes
+        classify each smell:
+   ┌────────────┬───────────────────┬──────────────────────┐
+   ▼            ▼                   ▼                      ▼
+mechanical    structural          contractual
+(rename/      (move/split/        (public API/persisted
+extract/      interface/seam)     names/serialized data)
+inline)            │                      │
+   │               ▼                      ▼
+   ▼          plan numbered          explicit migration plan,
+do directly,  steps, each green,     separate from the refactor
+keep green    smallest first
+   └───────────────┬──────────────────┘
+                   ▼
+   execute step by step: minimal diff → run the step's safety
+   check → anything breaks = REVERT the step, redo smaller
+                   ▼
+   full suite + linters → report baseline vs final, residual
+   debt (with reasons), one concrete thing now easier
+```
+
 ### 1 — Characterize before changing (mandatory)
 Complete the pre-task checklist. Do not edit structure until the baseline is green and behavior is pinned.
 
@@ -140,9 +167,7 @@ Low-freedom techniques (do not improvise): rename with a whole-repo search, neve
 
 ## Static Templates
 
-- New Python modules: start from [`../../.cursor/templates/python_static_template.py`](../../.cursor/templates/python_static_template.py) (`@wrappers` + role classes/functions: type, hint, vect, math, db, loop).
-- Rule: [`.cursor/rules/python-static-template.mdc`](../../.cursor/rules/python-static-template.mdc). Cursor ops: [`.cursor/AGENTS.md`](../../.cursor/AGENTS.md).
-- Do not import the template from runtime package code; copy and trim unused roles.
+- New Python modules: start from the canonical spec in [`../../.cursor/AGENTS.md`](../../.cursor/AGENTS.md) (template + rules); copy and trim, never import from runtime code.
 
 ## Constraints
 - Never change observable behavior inside a refactor step

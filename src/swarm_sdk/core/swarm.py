@@ -42,12 +42,20 @@ from swarm_sdk.observability import metrics
 from swarm_sdk.observability.usage import UsageLog
 from swarm_sdk.prompting.budget import PackedPrompt, TokenBudget, count_text
 from swarm_sdk.retrieval.cache import SemanticCache
-from swarm_sdk.retrieval.embeddings import Embedder, FastEmbedder, HashEmbedder, LlamaCppEmbedder
-from swarm_sdk.retrieval.recall import recall_hits
+from swarm_sdk.retrieval.embeddings import (
+    Embedder,
+    FastEmbedder,
+    HashEmbedder,
+    LlamaCppEmbedder,
+    LlamaServerEmbedder,
+)
+from swarm_sdk.retrieval.ordering import order_for_prompt
+from swarm_sdk.retrieval.recall import recall_hits, recall_with_confidence
 from swarm_sdk.retrieval.rerank import FastEmbedReranker, KeywordReranker, Reranker
 
 if TYPE_CHECKING:
     from langchain_core.language_models.chat_models import BaseChatModel
+    from langgraph.checkpoint.base import BaseCheckpointSaver
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +85,8 @@ def _handoff(agent_name: str, description: str):
 
 
 class RunResult(BaseModel):
+    """Outcome of one swarm run: text, serving mode, active agent, and token cost."""
+
     text: str
     cached: bool
     active_agent: str
@@ -85,6 +95,8 @@ class RunResult(BaseModel):
 
 
 class RouteDecision(BaseModel):
+    """Router verdict: ``swarm`` handoff or ``parallel`` fan-out with task texts."""
+
     mode: Literal["parallel", "swarm"] = "swarm"
     tasks: list[str] = Field(default_factory=list)
 
@@ -147,6 +159,7 @@ def _fastembed_available() -> bool:
 
 
 def default_embedder(settings: Settings) -> Embedder:
+    """Build the embedder ``embed_backend`` selects (llama-cpp, hash, or FastEmbed)."""
     batch = settings.embed_batch_size
     if settings.embed_backend == "llama-cpp":
         model_path = settings.llama_embed_model or settings.embed_model
@@ -158,18 +171,27 @@ def default_embedder(settings: Settings) -> Embedder:
             n_gpu_layers=settings.llama_gpu_layers,
             n_batch=settings.llama_n_batch,
         )
+    if settings.embed_backend == "llama-server":
+        return LlamaServerEmbedder(
+            settings.llama_server_url,
+            model=settings.embed_model,
+            dim=settings.embed_dim,
+            batch_size=settings.llama_n_batch,
+        )
     if settings.embed_backend == "hash" or not _fastembed_available():
         return HashEmbedder(settings.embed_dim, batch, settings.embed_model)
     return FastEmbedder(settings.embed_model, settings.embed_dim, batch)
 
 
 def default_reranker(settings: Settings) -> Reranker:
+    """Build the reranker; keyword stand-in when FastEmbed is unavailable."""
     if not _fastembed_available():
         return KeywordReranker()
     return FastEmbedReranker(settings.rerank_model)
 
 
 def open_store(settings: Settings) -> MemoryStore:
+    """Open the vector memory store ``memory_backend`` selects (sqlite-vec default)."""
     if settings.memory_backend == "faiss":
         from swarm_sdk.memory.faiss_store import FaissStore
 
@@ -194,10 +216,14 @@ def open_store(settings: Settings) -> MemoryStore:
 
 
 class CompiledGraph(Protocol):
+    """Structural view of the compiled handoff-swarm graph."""
+
     def invoke(self, payload: dict[str, object], config: dict[str, object]) -> object: ...
 
 
 class SwarmSDK:
+    """Public entry point: routing, handoff swarm, fan-out, semantic cache, and memory."""
+
     def __init__(
         self,
         settings: Settings | None = None,
@@ -212,6 +238,23 @@ class SwarmSDK:
         budget: TokenBudget | None = None,
         max_threads: int = 200,
     ) -> None:
+        """Assemble the SDK: settings, models, embedder, memory, cache, checkpointer.
+
+        Args:
+            settings: Runtime settings; None loads merged defaults.
+            file_config: Parsed ``swarm.yaml``; None loads the packaged file.
+            router_model: Override the router chat model (tests).
+            specialist_model: Override all specialist chat models (tests).
+            embedder: Override the embedding backend.
+            reranker: Override the reranker.
+            memory: Pre-opened memory store.
+            cache: Pre-opened semantic cache.
+            budget: Token budget for prompt packing.
+            max_threads: Conversation-thread cap before LRU eviction (>= 2).
+
+        Raises:
+            ValueError: If ``max_threads`` is below 2.
+        """
         if max_threads < 2:
             raise ValueError("max_threads must be at least 2")
         from swarm_sdk.vault import prime_runtime_secrets
@@ -249,26 +292,37 @@ class SwarmSDK:
 
     @classmethod
     def from_settings(cls, settings: Settings | None = None) -> SwarmSDK:
+        """Build the SDK from merged settings (env + ``swarm.yaml``)."""
         if settings is None:
             merged, file_cfg = load_merged_settings()
             return cls(merged, file_config=file_cfg)
         return cls(settings, file_config=load_swarm_config())
 
     def provider_health(self) -> dict[str, str]:
+        """Circuit-breaker state per provider; the ``/v1/health`` payload."""
         return {name: breaker.state.value for name, breaker in self._fallback.breakers.items()}
 
-    def compiled_graph(self) -> CompiledGraph:
-        """The compiled handoff swarm graph (LangGraph Server entry point)."""
-        return self._graph()
+    def compiled_graph(self, *, with_checkpointer: bool = True) -> CompiledGraph:
+        """The compiled handoff swarm graph (LangGraph Server entry point).
+
+        Args:
+            with_checkpointer: ``False`` compiles without the SDK's own saver, for hosts
+                (LangGraph Server) that inject and manage persistence themselves.
+        """
+        if with_checkpointer:
+            return self._graph()
+        return self._build_graph(None)
 
     @property
     def memory(self) -> MemoryStore:
+        """Lazily opened vector memory store."""
         if self._memory is None:
             self._memory = open_store(self.settings)
         return self._memory
 
     @property
     def cache(self) -> SemanticCache:
+        """Lazily opened semantic cache (exact + cosine)."""
         if self._cache is None:
             self._cache = SemanticCache(
                 self.settings.cache_path,
@@ -292,6 +346,16 @@ class SwarmSDK:
         )
 
     async def run(self, text: str, thread_id: str = "default") -> RunResult:
+        """Run one user turn through cache, router, and the chosen engine.
+
+        Args:
+        text: User message.
+        thread_id: Conversation thread (checkpointer key).
+
+        Returns:
+        Reply text with mode, active agent, and token accounting.
+
+        """
         if self.settings.server_url:
             from swarm_sdk.serving.client import run_on_server
 
@@ -354,20 +418,38 @@ class SwarmSDK:
         )
 
     def recall(self, query: str, top_k: int | None = None) -> list[MemoryHit]:
+        """Hybrid-retrieval memory hits: recall, dedupe, rerank, capped at ``top_k``."""
+        retrieve_k = max(top_k or self.settings.rerank_k, self.settings.retrieve_k)
+        rerank_k = top_k or self.settings.rerank_k
+        gate = self.file_config.rag.gate
+        if gate.enabled:
+            return recall_with_confidence(
+                query,
+                self.memory,
+                self.embedder,
+                self.reranker,
+                retrieve_k=retrieve_k,
+                rerank_k=rerank_k,
+                dedup_threshold=self.settings.dedup_threshold,
+                gate=gate,
+                hybrid=self.file_config.hybrid_search,
+                hybrid_enabled=self.settings.hybrid_enabled,
+            ).hits
         return recall_hits(
             query,
             self.memory,
             self.embedder,
             self.reranker,
-            retrieve_k=max(top_k or self.settings.rerank_k, self.settings.retrieve_k),
-            rerank_k=top_k or self.settings.rerank_k,
+            retrieve_k=retrieve_k,
+            rerank_k=rerank_k,
             dedup_threshold=self.settings.dedup_threshold,
             hybrid=self.file_config.hybrid_search,
             hybrid_enabled=self.settings.hybrid_enabled,
         )
 
     def _recall(self, text: str) -> list[str]:
-        return [hit.text for hit in self.recall(text)]
+        texts = [hit.text for hit in self.recall(text)]
+        return order_for_prompt(texts, enabled=self.file_config.rag.u_shape_order)
 
     def _remember(self, question: str, answer: str) -> None:
         record = f"Q: {question[:200]}\nA: {answer[:400]}"
@@ -458,10 +540,11 @@ class SwarmSDK:
         user = packed.user or packed.system
         payload: dict[str, object] = {"messages": [{"role": "user", "content": user}]}
         self._register_thread(thread_id)
-        if self._is_new_thread(thread_id):
-            payload["active_agent"] = self._default_agent
 
         def _call() -> dict[str, object]:
+            # Checkpointer read is blocking disk I/O: keep it off the event loop.
+            if self._is_new_thread(thread_id):
+                payload["active_agent"] = self._default_agent
             state = graph.invoke(payload, self._run_config(thread_id))
             if not isinstance(state, dict):
                 raise TypeError("swarm state must be a dict")
@@ -524,42 +607,86 @@ class SwarmSDK:
             return [*_websearch_tools(), *handoffs]
         return handoffs
 
+    def _node_middleware(self) -> list[object]:
+        """Token-saving middleware for every swarm agent node.
+
+        Context editing (`ClearToolUsesEdit`) replaces old tool uses — handoff
+        results, tool outputs — with a placeholder once the replayed transcript
+        passes ``swarm_edit_trigger_tokens`` approximate tokens. It makes no
+        model calls. Summarization (opt-in via ``swarm_summarization``) instead
+        rewrites the old transcript into a model-generated summary, spending
+        one extra model call per trigger.
+
+        The transcript is replayed on every turn through the checkpointer, so
+        clearing stale tool outputs cuts the prompt tokens of *all subsequent
+        turns*, which is the main token lever of the handoff swarm.
+        """
+        from langchain.agents.middleware import ContextEditingMiddleware, SummarizationMiddleware
+        from langchain.agents.middleware.context_editing import ClearToolUsesEdit
+
+        if not self.settings.swarm_context_editing and not self.settings.swarm_summarization:
+            return []
+        middleware: list[object] = []
+        if self.settings.swarm_context_editing:
+            middleware.append(
+                ContextEditingMiddleware(
+                    edits=[
+                        ClearToolUsesEdit(
+                            trigger=self.settings.swarm_edit_trigger_tokens,
+                            keep=self.settings.swarm_edit_keep_tool_uses,
+                        )
+                    ]
+                )
+            )
+        if self.settings.swarm_summarization:
+            middleware.append(
+                SummarizationMiddleware(
+                    model=self._specialist(),
+                    trigger=("tokens", self.settings.swarm_edit_trigger_tokens * 2),
+                    keep=("messages", 6),
+                )
+            )
+        return middleware
+
     def _graph(self) -> CompiledGraph:
         if self._compiled is None:
-            from langchain.agents import create_agent
-            from langgraph_swarm import create_swarm
-
-            # Nodes come from the Agents/ catalog: every manifest that wires a
-            # ``langgraph_node`` becomes a specialist; prompts are that persona's
-            # role contract. Without a catalog the default trio stands in.
-            nodes = sorted(self._langgraph_manifests) or sorted(_DEFAULT_NODE_PROMPTS)
-            root = str(agents_root())
-            agents = []
-            for node in nodes:
-                manifest = self._langgraph_manifests.get(node)
-                prompt = (
-                    manifest_node_prompt(root, manifest)
-                    if manifest is not None
-                    else _DEFAULT_NODE_PROMPTS.get(node, f"You are the {node}. Be brief.")
-                )
-                peers = [peer for peer in nodes if peer != node]
-                agents.append(
-                    # Mixed handoff/websearch tool objects; the static overloads
-                    # only track the literal tool-list shape (cf. load_chat_model).
-                    create_agent(  # ty: ignore[no-matching-overload]
-                        self._model_for_node(node),
-                        tools=self._node_tools(manifest, peers),
-                        system_prompt=prompt,
-                        name=node,
-                    )
-                )
-            workflow = create_swarm(agents, default_active_agent=self._default_agent)
-            # Short-term: checkpointer (active_agent + messages per thread_id).
-            # Long-term recall is SwarmSDK.memory (sqlite-vec / mem0 / …), not this store.
-            self._compiled = cast(CompiledGraph, workflow.compile(checkpointer=self._checkpointer))
-        if self._compiled is None:
-            raise RuntimeError("swarm graph was not compiled")
+            self._compiled = self._build_graph(self._checkpointer)
         return self._compiled
+
+    def _build_graph(self, checkpointer: BaseCheckpointSaver | None) -> CompiledGraph:
+        from langchain.agents import create_agent
+        from langgraph_swarm import create_swarm
+
+        # Nodes come from the Agents/ catalog: every manifest that wires a
+        # ``langgraph_node`` becomes a specialist; prompts are that persona's
+        # role contract. Without a catalog the default trio stands in.
+        nodes = sorted(self._langgraph_manifests) or sorted(_DEFAULT_NODE_PROMPTS)
+        root = str(agents_root())
+        middleware = self._node_middleware()
+        agents = []
+        for node in nodes:
+            manifest = self._langgraph_manifests.get(node)
+            prompt = (
+                manifest_node_prompt(root, manifest)
+                if manifest is not None
+                else _DEFAULT_NODE_PROMPTS.get(node, f"You are the {node}. Be brief.")
+            )
+            peers = [peer for peer in nodes if peer != node]
+            agents.append(
+                # Mixed handoff/websearch tool objects; the static overloads
+                # only track the literal tool-list shape (cf. load_chat_model).
+                create_agent(  # ty: ignore[no-matching-overload]
+                    self._model_for_node(node),
+                    tools=self._node_tools(manifest, peers),
+                    system_prompt=prompt,
+                    middleware=middleware,
+                    name=node,
+                )
+            )
+        workflow = create_swarm(agents, default_active_agent=self._default_agent)
+        # Short-term: checkpointer (active_agent + messages per thread_id).
+        # Long-term recall is SwarmSDK.memory (sqlite-vec / mem0 / …), not this store.
+        return cast(CompiledGraph, workflow.compile(checkpointer=checkpointer))
 
 
 __all__ = [

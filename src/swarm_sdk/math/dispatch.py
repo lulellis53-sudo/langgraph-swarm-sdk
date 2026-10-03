@@ -82,10 +82,30 @@ def classify_math_task(
             notes="CPU BLAS: below crossover, empty shape or no GPU backend",
         )
     if problem.task_type in {"proof", "calculus", "optimization"}:
+        stmt = problem.problem_statement.lower()
+        symbolic_keywords = ("symbolic", "solve", "derivative", "integral", "diff")
+        if problem.mode == "solve" and any(k in stmt for k in symbolic_keywords):
+            return MathDispatchDecision(
+                backend="sympy",
+                gpu_enabled=False,
+                selected_route={"name": "sympy_engine", "provider": "local_cpu"},
+                think_level=problem.think_level or "medium",
+                notes="SymPy exact symbolic calculation engine",
+            )
         return _llm(
             _FRONTIER_ROUTE, problem.think_level or "high", "frontier reasoning + SymPy check"
         )
     if problem.task_type == "stats":
+        stmt = problem.problem_statement.lower()
+        stats_keywords = ("column", "arrow", "table", "quantile")
+        if problem.mode == "solve" and any(k in stmt for k in stats_keywords):
+            return MathDispatchDecision(
+                backend="pyarrow",
+                gpu_enabled=False,
+                selected_route={"name": "pyarrow_compute", "provider": "local_cpu"},
+                think_level=problem.think_level or "low",
+                notes="PyArrow zero-copy columnar statistical engine",
+            )
         return _llm(_BALANCED_ROUTE, problem.think_level or "medium", "balanced statistics route")
     return _llm(_FAST_ROUTE, problem.think_level or "low", "fast structured arithmetic route")
 

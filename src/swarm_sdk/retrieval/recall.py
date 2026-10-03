@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
+from dataclasses import dataclass
 from typing import cast
 
 from swarm_sdk.memory.base import MemoryHit, MemoryStore
 from swarm_sdk.retrieval.embeddings import Embedder, dedupe_texts
+from swarm_sdk.retrieval.gate import Confidence, GateConfig, classify
 from swarm_sdk.retrieval.hybrid import HybridSearchConfig, hybrid_search
-from swarm_sdk.retrieval.rerank import Reranker
+from swarm_sdk.retrieval.rerank import Reranker, ScoredReranker
 
 
 def _candidate_hits(
@@ -34,6 +36,35 @@ def _candidate_hits(
         wide = hybrid.model_copy(update={"final_k": max(retrieve_k, hybrid.final_k)})
         return hybrid_search(query, store, vector, retrieve_k=retrieve_k, config=wide)
     return store.search(vector, retrieve_k)
+
+
+def _unique_candidates(
+    query: str,
+    store: MemoryStore,
+    embedder: Embedder,
+    *,
+    retrieve_k: int,
+    dedup_threshold: float,
+    hybrid: HybridSearchConfig | None,
+    hybrid_enabled: bool,
+) -> tuple[list[str], dict[str, MemoryHit]]:
+    """Return deduplicated candidate texts and a text-to-hit index."""
+    hits = _candidate_hits(
+        query,
+        store,
+        embedder,
+        retrieve_k=retrieve_k,
+        hybrid=hybrid,
+        hybrid_enabled=hybrid_enabled,
+    )
+    if not hits:
+        return [], {}
+    texts = [hit.text for hit in hits]
+    unique = dedupe_texts(texts, embedder.embed(texts, query=False), dedup_threshold)
+    by_text: dict[str, MemoryHit] = {}
+    for hit in hits:
+        by_text.setdefault(hit.text, hit)
+    return unique, by_text
 
 
 def recall_hits(
@@ -64,23 +95,68 @@ def recall_hits(
     Returns:
         Up to ``rerank_k`` hits, highest relevance first.
     """
-    hits = _candidate_hits(
+    unique, by_text = _unique_candidates(
         query,
         store,
         embedder,
         retrieve_k=retrieve_k,
+        dedup_threshold=dedup_threshold,
         hybrid=hybrid,
         hybrid_enabled=hybrid_enabled,
     )
-    if not hits:
+    if not unique:
         return []
-    texts = [hit.text for hit in hits]
-    unique = dedupe_texts(texts, embedder.embed(texts, query=False), dedup_threshold)
-    by_text: dict[str, MemoryHit] = {}
-    for hit in hits:
-        by_text.setdefault(hit.text, hit)
     ranked = reranker.rerank(query, unique)
     return [by_text[text] for text in ranked[:rerank_k] if text in by_text]
+
+
+@dataclass(frozen=True, slots=True)
+class RecallResult:
+    """Recalled hits plus the gate's verdict (``None`` when no scores were available)."""
+
+    hits: list[MemoryHit]
+    confidence: Confidence | None
+
+
+def recall_with_confidence(
+    query: str,
+    store: MemoryStore,
+    embedder: Embedder,
+    reranker: Reranker,
+    *,
+    retrieve_k: int,
+    rerank_k: int,
+    dedup_threshold: float,
+    gate: GateConfig,
+    hybrid: HybridSearchConfig | None = None,
+    hybrid_enabled: bool = True,
+) -> RecallResult:
+    """Like :func:`recall_hits`, but drop the hits when retrieval confidence is LOW.
+
+    A reranker without ``rerank_scored`` cannot be gated: the plain reranked
+    hits come back with ``confidence=None``.
+    """
+    unique, by_text = _unique_candidates(
+        query,
+        store,
+        embedder,
+        retrieve_k=retrieve_k,
+        dedup_threshold=dedup_threshold,
+        hybrid=hybrid,
+        hybrid_enabled=hybrid_enabled,
+    )
+    if not unique:
+        return RecallResult([], Confidence.LOW if gate.enabled else None)
+    scored_fn = getattr(reranker, "rerank_scored", None)
+    if not callable(scored_fn):
+        ranked = reranker.rerank(query, unique)
+        return RecallResult([by_text[t] for t in ranked[:rerank_k] if t in by_text], None)
+    scored = cast(ScoredReranker, reranker).rerank_scored(query, unique)
+    confidence = classify([score for _, score in scored], gate)
+    if confidence is Confidence.LOW:
+        return RecallResult([], confidence)
+    hits = [by_text[text] for text, _ in scored[:rerank_k] if text in by_text]
+    return RecallResult(hits, confidence)
 
 
 def recall_texts(
@@ -118,4 +194,4 @@ def recall_texts(
     ]
 
 
-__all__ = ["recall_hits", "recall_texts"]
+__all__ = ["RecallResult", "recall_hits", "recall_texts", "recall_with_confidence"]

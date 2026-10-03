@@ -84,6 +84,11 @@ agents:
     contract: Agents/TxtToCsv/AGENTS.md
     manifest: Agents/TxtToCsv/agent.yaml
 
+  - name: Newsletter
+    role: digest_generation
+    contract: Agents/Newsletter/AGENTS.md
+    manifest: Agents/Newsletter/agent.yaml
+
 # Task board — replace with tasks for the active project.
 # Each task must have: id, title, assigned agent(s), depends_on, and status.
 # Coder tasks that share a wave also need disjoint files (and usually task).
@@ -172,3 +177,24 @@ tasks:
     task: verify_math
     depends_on: []
     status: todo
+
+  - id: websearch_pipeline
+    title: "WebSearch: search/scrape pipeline and offline tests"
+    assigned: [WebFetch]
+    task: fetch_render
+    depends_on: []
+    status: in_progress
+
+  - id: prediction_forecast
+    title: "Prediction: mlforecast engine and forecast extra"
+    assigned: [MLSpecialist]
+    task: pipeline_integration
+    depends_on: []
+    status: in_progress
+
+  - id: newsletter_mvp
+    title: "Newsletter: offline digest MVP and tests"
+    assigned: [Newsletter]
+    task: newsletter_mvp
+    depends_on: []
+    status: in_progress

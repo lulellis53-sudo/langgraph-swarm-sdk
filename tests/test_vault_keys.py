@@ -20,13 +20,21 @@ class FakeRunner:
         self.answers = answers or {}
         self.default = default
         self.calls: list[list[str]] = []
+        self.inputs: list[str] = []
 
-    def __call__(self, argv: Sequence[str]) -> str | None:
+    def __call__(self, argv: Sequence[str], input_text: str | None = None) -> str | None:
         self.calls.append(list(argv))
+        if input_text is not None:
+            self.inputs.append(input_text)
         cmd_key = argv[0]
         if cmd_key in self.answers:
             return self.answers[cmd_key]
         return self.default
+
+
+@pytest.fixture(autouse=True)
+def use_default_keychain(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("SWARM_KEYCHAIN_PATH", raising=False)
 
 
 def test_known_names_includes_openai_and_jev() -> None:
@@ -34,7 +42,8 @@ def test_known_names_includes_openai_and_jev() -> None:
     assert "JEV_API_KEY" in vault.KNOWN_NAMES
 
 
-def test_get_openai_key_from_keychain() -> None:
+def test_get_openai_key_from_keychain(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     runner = FakeRunner(default="sk-proj-openai-key-abc")
     key = vault.get_openai_key(runner=runner)
     assert key == "sk-proj-openai-key-abc"
@@ -70,14 +79,11 @@ def test_set_secret_success() -> None:
     secret = "sk-proj-123456789"
     ok = vault.set_secret("OPENAI_API_KEY", secret, runner=runner)
     assert ok is True
-    assert len(runner.calls) == 1
-    call = runner.calls[0]
-    assert call[0] == "/usr/bin/security"
-    assert call[1] == "add-generic-password"
-    assert "-s" in call and call[call.index("-s") + 1] == "swarm/OPENAI_API_KEY"
-    assert "-a" in call and call[call.index("-a") + 1] == user
-    assert "-w" in call and call[call.index("-w") + 1] == secret
-    assert "-U" in call
+    assert runner.calls == [["/usr/bin/security", "-i"]]
+    assert secret not in " ".join(runner.calls[0])
+    assert f"-a {user}" in runner.inputs[0]
+    assert "-s swarm/OPENAI_API_KEY" in runner.inputs[0]
+    assert f"-X {secret.encode().hex()}" in runner.inputs[0]
 
 
 def test_set_secret_failure() -> None:
@@ -108,7 +114,7 @@ def test_set_secret_rejects_invalid_name(bad_name: str) -> None:
 def test_set_secret_does_not_leak_secret_in_exception(monkeypatch: pytest.MonkeyPatch) -> None:
     secret = "SUPER_SENSITIVE_SECRET_XYZ987"
 
-    def broken_runner(argv: Sequence[str]) -> str | None:
+    def broken_runner(argv: Sequence[str], input_text: str) -> str | None:
         raise RuntimeError("Keychain write error")
 
     with pytest.raises(Exception) as exc_info:
@@ -135,9 +141,9 @@ def test_set_openai_key_convenience() -> None:
     ok = vault.set_openai_key("sk-new-openai-key", runner=runner)
     assert ok is True
     assert len(runner.calls) == 1
-    call = runner.calls[0]
-    assert call[call.index("-s") + 1] == "swarm/OPENAI_API_KEY"
-    assert call[call.index("-w") + 1] == "sk-new-openai-key"
+    assert runner.calls == [["/usr/bin/security", "-i"]]
+    assert "-s swarm/OPENAI_API_KEY" in runner.inputs[0]
+    assert f"-X {b'sk-new-openai-key'.hex()}" in runner.inputs[0]
 
 
 def test_set_jev_key_convenience() -> None:
@@ -145,9 +151,9 @@ def test_set_jev_key_convenience() -> None:
     ok = vault.set_jev_key("jev-new-key-123", runner=runner)
     assert ok is True
     assert len(runner.calls) == 1
-    call = runner.calls[0]
-    assert call[call.index("-s") + 1] == "swarm/JEV_API_KEY"
-    assert call[call.index("-w") + 1] == "jev-new-key-123"
+    assert runner.calls == [["/usr/bin/security", "-i"]]
+    assert "-s swarm/JEV_API_KEY" in runner.inputs[0]
+    assert f"-X {b'jev-new-key-123'.hex()}" in runner.inputs[0]
 
 
 def test_get_secret_fallback_env(monkeypatch: pytest.MonkeyPatch) -> None:

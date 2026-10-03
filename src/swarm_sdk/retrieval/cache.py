@@ -19,10 +19,13 @@ _INDEX_ROWS = 256
 
 
 def normalize(text: str) -> str:
+    """Lowercase and collapse whitespace: the cache's canonical text form."""
     return _SPACE.sub(" ", text.strip().lower())
 
 
 class SemanticCache:
+    """Response cache with an exact SHA-256 layer and a cosine semantic layer."""
+
     def __init__(
         self,
         path: str,
@@ -32,6 +35,7 @@ class SemanticCache:
         ttl_days: int | None = None,
         use_index: bool = False,
     ) -> None:
+        """Open (or create) the cache database with exact + semantic layers."""
         self.embedder = embedder
         self.threshold = threshold
         self.ttl_days = ttl_days
@@ -83,6 +87,7 @@ class SemanticCache:
         return index
 
     def lookup(self, text: str) -> str | None:
+        """Return the cached response for ``text`` or None (exact hit first)."""
         key = hashlib.sha256(normalize(text).encode()).hexdigest()
         with self._lock:
             row = self._conn.execute(
@@ -119,6 +124,7 @@ class SemanticCache:
         return None
 
     def store(self, text: str, response: str) -> None:
+        """Insert a response under both the exact key and its embedding."""
         key = hashlib.sha256(normalize(text).encode()).hexdigest()
         vector = np.ascontiguousarray(unit(self.embedder.embed([text])[0]), dtype=np.float32)
         blob = vector.tobytes()

@@ -192,6 +192,47 @@ def test_yaml_never_holds_secret_values() -> None:
     assert not problems, "\n".join(problems)
 
 
+def test_agent_models_use_registered_credential_names() -> None:
+    from swarm_sdk.models.registry import load_registry
+
+    routes = {entry.name: entry.api_key_env for entry in load_registry().providers}
+    agents_dir = agents_root()
+    for path in agents_dir.rglob("agent.yaml"):
+        manifest = yaml.safe_load(path.read_text(encoding="utf-8"))
+        model = manifest.get("model")
+        if model in (None, "inherit"):
+            continue
+        assert model in routes, f"{path}: model is not registered"
+        assert manifest.get("api_key_env") == routes[model], (
+            f"{path}: api_key_env differs from the registered model"
+        )
+
+
+def test_service_credentials_have_agents_and_are_primed() -> None:
+    from swarm_sdk.vault import referenced_names
+
+    registry_path = agents_root().parent / "Main/config/model_registry.yaml"
+    registry = yaml.safe_load(registry_path.read_text(encoding="utf-8"))
+    services = registry["services"]
+    assert {service["api_key_env"] for service in services} == {
+        "TAVILY_API_KEY",
+        "BRAVE_API_KEY",
+        "EXA_API_KEY",
+        "MEM0_API_KEY",
+        "JEV_API_KEY",
+    }
+    agents = load_all_agent_manifests()
+    assert all(
+        service["agents"] and set(service["agents"]) <= agents.keys() for service in services
+    )
+    configured = {
+        entry["api_key_env"]
+        for entry in [*registry["providers"], *services]
+        if "api_key_env" in entry
+    }
+    assert configured <= set(referenced_names())
+
+
 def test_secret_scan_flags_values_without_echoing_them() -> None:
     bad = {"api_key": "sk-abcdefghijklmnopqrstuvwx", "x": {"api_key_env": "not a name"}}
     out = _secret_findings(bad)

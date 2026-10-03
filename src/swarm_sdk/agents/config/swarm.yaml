@@ -41,7 +41,9 @@ circuit_breaker:
 
 embedding:
   model: sentence-transformers/all-MiniLM-L6-v2  # FastEmbed MiniLM2 ONNX INT8 (CPU)
-  backend: fastembed            # fastembed | llama-cpp | hash
+  backend: fastembed            # fastembed | llama-cpp | llama-server | hash
+  # llama-server: loopback `llama-server --embedding --device Vulkan0` (Molten.md §6.3);
+  # set llama_server_url (default http://127.0.0.1:8080) and llama_n_batch.
   # Path to a GGUF embedding model when backend=llama-cpp, e.g.:
   # llama_model: /path/to/all-MiniLM-L6-v2-q4_0.gguf
   dim: 384
@@ -87,3 +89,13 @@ router:
   max_tokens: 2048
   tool_cap: 128
   structured_output: true     # ask the provider for JSON; falls back to regex parsing
+
+rag:                            # opt-in techniques; all default to off
+  u_shape_order: false          # put the best recalled memories first and last in the prompt
+  parent_child: false           # RAGIngestionPipeline: index small children, return the parent
+  child_size: 400               # characters per child chunk when parent_child is true
+  gate:                         # CRAG-lite: drop recalled memories when confidence is low
+    enabled: false
+    high: 0.5                   # best reranker score >= high -> confident
+    low: 0.27                   # best score < low -> inject nothing; scale is per reranker
+    #                           # (KeywordReranker is 0..1, FastEmbedReranker is raw logits)

@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 
 
 def swarm_graph() -> CompiledStateGraph:
-    """Compiled manifest-driven handoff swarm (checkpointer per ``Settings``).
+    """Compiled manifest-driven handoff swarm (no own checkpointer; the server injects one).
 
     Returns:
         The graph served under the ``swarm`` id: input
@@ -48,7 +48,9 @@ def swarm_graph() -> CompiledStateGraph:
     """
     from swarm_sdk.core.swarm import SwarmSDK
 
-    return cast("CompiledStateGraph", SwarmSDK.from_settings().compiled_graph())
+    return cast(
+        "CompiledStateGraph", SwarmSDK.from_settings().compiled_graph(with_checkpointer=False)
+    )
 
 
 class _PlanGraphState(TypedDict):
@@ -83,6 +85,7 @@ def plan_graph(
     """
 
     async def plan_node(state: _PlanGraphState) -> dict[str, Any]:
+        """Decompose the goal into a validated plan (spawn)."""
         plan = await spawn(
             state["goal"],
             load_all_agent_manifests(),
@@ -91,6 +94,7 @@ def plan_graph(
         return {"goal": state["goal"], "plan": plan}
 
     async def execute_node(state: _PlanGraphState) -> dict[str, Any]:
+        """Run the plan's dependency waves and serialize the result."""
         plan = state.get("plan")
         if plan is None:
             raise ValueError("execute node reached without a plan")

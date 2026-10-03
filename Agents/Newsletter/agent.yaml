@@ -1,0 +1,23 @@
+version: "1"
+name: Newsletter
+role: digest_generation
+
+model: openai:gpt-4o-mini
+api_key_env: OPENAI_API_KEY
+think_level: low
+
+token_budget:
+  max_prompt: 4096
+  max_completion: 2048
+
+tasks:
+  - id: newsletter_mvp
+    description: >-
+      Build a Markdown newsletter digest from titled source snippets;
+      dedupe lines and return metadata (title, counts). No network send.
+    outputs:
+      - digest_markdown
+      - metadata
+
+capabilities:
+  - markdown

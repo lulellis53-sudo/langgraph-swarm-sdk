@@ -50,9 +50,7 @@ async def _legacy_gather(
 async def _scenario(*, use_legacy: bool) -> tuple[float, float]:
     """One failing wave; returns ``(tokens_burned, siblings_still_running)``."""
     burned: list[int] = []
-    factories = [
-        (lambda index=index: _call(burned, fail=index == 0)) for index in range(_STEPS)
-    ]
+    factories = [(lambda index=index: _call(burned, fail=index == 0)) for index in range(_STEPS)]
     try:
         if use_legacy:
             await _legacy_gather(factories, _MAX_CONCURRENCY)

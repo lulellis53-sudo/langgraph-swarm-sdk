@@ -4,9 +4,14 @@ from __future__ import annotations
 
 import hashlib
 import importlib
+import json
 import logging
+import urllib.error
+import urllib.request
 from collections.abc import Iterable
-from typing import Protocol, cast
+from email.message import Message
+from typing import IO, Protocol, cast
+from urllib.parse import urlsplit
 
 import numpy as np
 
@@ -16,6 +21,8 @@ logger = logging.getLogger(__name__)
 
 
 class Embedder(Protocol):
+    """Embedding backend protocol: batch texts to unit-normalized float32 rows."""
+
     dim: int
 
     def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray: ...
@@ -214,7 +221,92 @@ class LlamaCppEmbedder:
         return self._model
 
 
+class EmbeddingServerError(RuntimeError):
+    """Raised when the llama-server embedding endpoint fails or answers badly."""
+
+
+_LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+
+
+class _RefuseRedirect(urllib.request.HTTPRedirectHandler):
+    """Fail on any redirect so text never leaves the validated loopback host."""
+
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp: IO[bytes],
+        code: int,
+        msg: str,
+        headers: Message,
+        newurl: str,
+    ) -> None:
+        """Raise instead of following ``newurl``."""
+        raise urllib.error.HTTPError(req.full_url, code, "redirect refused", headers, fp)
+
+
+_NO_REDIRECT_OPENER = urllib.request.build_opener(_RefuseRedirect)
+
+
+class LlamaServerEmbedder:
+    """Embedder for a local ``llama-server --embedding`` (Vulkan0 on the Radeon 5300M).
+
+    Talks to the OpenAI-compatible ``/v1/embeddings`` route. Only loopback URLs are
+    accepted so repository text never leaves the machine.
+    """
+
+    def __init__(
+        self,
+        base_url: str = "http://127.0.0.1:8080",
+        *,
+        model: str = "bge-m3",
+        dim: int = 1024,
+        batch_size: int = 8,
+        timeout_s: float = 30.0,
+    ) -> None:
+        parts = urlsplit(base_url)
+        if parts.scheme != "http" or parts.hostname not in _LOOPBACK_HOSTS:
+            raise ValueError(f"llama-server URL must be an http loopback address: {base_url!r}")
+        self.url = f"{base_url.rstrip('/')}/v1/embeddings"
+        self.model = model
+        self.dim = dim
+        self.batch_size = batch_size
+        self.timeout_s = timeout_s
+
+    def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:
+        if not texts:
+            return np.zeros((0, self.dim), dtype=np.float32)
+        prepared = _prepare_texts(texts, query=query, bge_style=_bge_style(self.model))
+        rows = [vec for batch in _batched(prepared, self.batch_size) for vec in self._post(batch)]
+        return np.stack(rows)
+
+    def _post(self, batch: list[str]) -> list[np.ndarray]:
+        request = urllib.request.Request(
+            self.url,
+            data=json.dumps({"input": batch, "model": self.model}).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            with _NO_REDIRECT_OPENER.open(request, timeout=self.timeout_s) as response:
+                payload = json.loads(response.read())
+            items = sorted(payload["data"], key=lambda item: item["index"])
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            raise EmbeddingServerError(f"llama-server request failed: {exc}") from exc
+        except (ValueError, KeyError, TypeError) as exc:
+            raise EmbeddingServerError(f"unexpected llama-server response: {exc}") from exc
+        if len(items) != len(batch):
+            raise EmbeddingServerError(f"expected {len(batch)} embeddings, got {len(items)}")
+        vectors = [unit(np.asarray(item["embedding"], dtype=np.float32)) for item in items]
+        for vec in vectors:
+            if vec.shape[0] != self.dim:
+                raise EmbeddingServerError(
+                    f"embedding dimension {vec.shape[0]} != configured dim {self.dim}"
+                )
+        return vectors
+
+
 class TextEmbeddingProto(Protocol):
+    """Structural view of FastEmbed's TextEmbedding for type checking."""
+
     def embed(
         self,
         documents: list[str],
@@ -226,9 +318,11 @@ class TextEmbeddingProto(Protocol):
 
 __all__ = [
     "Embedder",
+    "EmbeddingServerError",
     "FastEmbedder",
     "HashEmbedder",
     "LlamaCppEmbedder",
+    "LlamaServerEmbedder",
     "cosine",
     "dedupe_texts",
     "unit",

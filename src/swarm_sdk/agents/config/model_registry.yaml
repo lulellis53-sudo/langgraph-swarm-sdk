@@ -1,14 +1,32 @@
 # Model registry: provider routes for the swarm.
-# ONE predefined model per provider; the priority chain is the fallback order.
+# Predefined models and credential env names; priority is the fallback order.
 # Free providers use low-token models at low effort; paid providers use
 # medium-tier models at medium effort. Every route covers all think levels.
 # `effort`: provider-side reasoning effort hint (low/medium/high).
 # `evidence`: user (user-specified), web (searched Sep 2026), assumed (verify),
 #             verified live 2026-10-01 (probe against the provider).
+# Provider routes are available to ModelDelegate; specialist assignments live
+# in Agents/*/agent.yaml. Services below use credentials without a chat model.
 version: 1
 
 providers:
   # ---- Paid: medium tier, medium effort ----
+  - name: openai:gpt-4o-mini
+    provider: openai
+    api_key_env: OPENAI_API_KEY
+    effort: low
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 73
+    evidence: existing agent manifests and provider catalog
+
+  - name: openai:gpt-4o
+    provider: openai
+    api_key_env: OPENAI_API_KEY
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 74
+    evidence: existing agent manifests and provider catalog
+
   - name: zai:glm-5.2
     provider: zai
     api_key_env: ZAI_API_KEY
@@ -108,6 +126,7 @@ providers:
   - name: openrouter:z-ai/glm-5.3-flash
     provider: openrouter
     api_key_env: OPENROUTER_API_KEY
+    base_url_env: OPENROUTER_BASE_URL
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 40
@@ -172,6 +191,7 @@ providers:
   - name: sambanova:Meta-Llama-3.3-70B-Instruct
     provider: sambanova
     api_key_env: SAMBANOVA_API_KEY
+    base_url_env: SAMBANOVA_BASE_URL
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 80
@@ -180,6 +200,7 @@ providers:
   - name: fireworks:accounts/fireworks/models/kimi-k2.7
     provider: fireworks
     api_key_env: FIREWORKS_API_KEY
+    base_url_env: FIREWORKS_BASE_URL
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 85
@@ -201,3 +222,20 @@ providers:
     think_levels: ["off", low, medium, high, xhigh]
     priority: 92
     evidence: assumed (local Ollama instance #2)
+
+services:
+  - name: tavily
+    api_key_env: TAVILY_API_KEY
+    agents: [WebFetch]
+  - name: brave
+    api_key_env: BRAVE_API_KEY
+    agents: [WebFetch]
+  - name: exa
+    api_key_env: EXA_API_KEY
+    agents: [WebFetch]
+  - name: mem0
+    api_key_env: MEM0_API_KEY
+    agents: [Persister]
+  - name: jev
+    api_key_env: JEV_API_KEY
+    agents: [Orchestrator]

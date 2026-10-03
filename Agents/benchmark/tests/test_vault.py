@@ -11,6 +11,12 @@ import pytest
 from swarm_sdk import vault
 
 
+@pytest.fixture(autouse=True)
+def use_default_keychain(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("SWARM_KEYCHAIN_PATH", raising=False)
+    monkeypatch.setattr(vault, "_PROJECT_ENV", Path("/no-project-env"))
+
+
 class FakeRunner:
     """Maps a CLI binary name to stdout; records every call."""
 
@@ -35,6 +41,32 @@ def test_keychain_lookup_argv() -> None:
     got = vault.get_with_source("MEM0_API_KEY", runner=runner, environ={}, dotenv=Path("/nope"))
     assert got == ("from-kc", "keychain")
     assert runner.calls == [["security", "find-generic-password", "-s", "swarm/MEM0_API_KEY", "-w"]]
+
+
+def test_dedicated_keychain_path_is_used_for_lookup(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    path = tmp_path / "vault.keyychain"
+    monkeypatch.setenv("SWARM_KEYCHAIN_PATH", str(path))
+    runner = FakeRunner({"security": "from-kc"})
+
+    assert vault.get_with_source("MEM0_API_KEY", runner=runner, environ={}) == (
+        "from-kc",
+        "keychain",
+    )
+    assert runner.calls[0][-1] == str(path)
+
+
+def test_owner_only_project_env_selects_dedicated_keychain(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    env = tmp_path / ".env"
+    env.write_text("SWARM_KEYCHAIN_PATH=/tmp/test.keychain\n")
+    env.chmod(0o600)
+    monkeypatch.setattr(vault, "_PROJECT_ENV", env)
+    runner = FakeRunner({"security": "from-kc"})
+    vault.get_with_source("MEM0_API_KEY", runner=runner, environ={})
+    assert runner.calls[0][-1] == "/tmp/test.keychain"
 
 
 def test_dotenv_fallback_parses_export_quotes_equals(tmp_path: Path) -> None:
@@ -218,3 +250,27 @@ def test_referenced_names_cover_swarm_and_search() -> None:
     names = vault.referenced_names()
     assert "OPENAI_API_KEY" in names  # swarm.yaml router
     assert "TAVILY_API_KEY" in names and "MEM0_API_KEY" in names  # KNOWN_NAMES
+
+
+def test_set_with_dedicated_keychain_sends_value_on_stdin(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("SWARM_KEYCHAIN_PATH", str(tmp_path / "swarm.keychain-db"))
+    monkeypatch.setattr(vault.getpass, "getpass", lambda prompt="": "s3cret")
+    seen: dict[str, object] = {}
+
+    class Done:
+        returncode = 0
+
+    def fake_run(argv: list[str], **kwargs: object) -> Done:
+        seen["argv"] = argv
+        seen["input"] = kwargs.get("input")
+        return Done()
+
+    monkeypatch.setattr(vault.subprocess, "run", fake_run)
+    monkeypatch.setattr(vault.sys, "platform", "darwin")
+    assert vault.main(["set", "MEM0_API_KEY"]) == 0
+    assert seen["argv"] == ["/usr/bin/security", "-i"]
+    command = str(seen["input"])
+    assert "s3cret" not in command  # hex-encoded, never plain
+    assert command.rstrip().endswith(f'"{tmp_path / "swarm.keychain-db"}"')

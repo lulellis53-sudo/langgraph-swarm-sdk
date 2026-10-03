@@ -140,9 +140,7 @@ BENCH_CASES: list[CodeBenchCase] = [
             "    return result\n"
         ),
         test_code=(
-            "from solution import factorial\n"
-            "assert factorial(0) == 1\n"
-            "assert factorial(5) == 120\n"
+            "from solution import factorial\nassert factorial(0) == 1\nassert factorial(5) == 120\n"
         ),
     ),
     _case(
@@ -204,8 +202,7 @@ BENCH_CASES: list[CodeBenchCase] = [
         effort="low",
         estimated_tokens=170,
         reference=(
-            "def count_vowels(s):\n"
-            "    return sum(1 for ch in s.lower() if ch in 'aeiou')\n"
+            "def count_vowels(s):\n    return sum(1 for ch in s.lower() if ch in 'aeiou')\n"
         ),
         test_code=(
             "from solution import count_vowels\n"
@@ -265,16 +262,14 @@ BENCH_CASES: list[CodeBenchCase] = [
         id="c11_parse_csv",
         title="Parse CSV line",
         prompt=(
-            "Write a function parse_csv_line(line) splitting on commas and "
-            "stripping whitespace."
+            "Write a function parse_csv_line(line) splitting on commas and stripping whitespace."
         ),
         difficulty="medium",
         think_level="medium",
         effort="low",
         estimated_tokens=180,
         reference=(
-            "def parse_csv_line(line):\n"
-            "    return [cell.strip() for cell in line.split(',')]\n"
+            "def parse_csv_line(line):\n    return [cell.strip() for cell in line.split(',')]\n"
         ),
         test_code=(
             "from solution import parse_csv_line\n"
@@ -422,8 +417,7 @@ BENCH_CASES: list[CodeBenchCase] = [
         id="c17_regex_emails",
         title="Extract emails",
         prompt=(
-            "Write a function extract_emails(text) returning a list of unique "
-            "emails found in text."
+            "Write a function extract_emails(text) returning a list of unique emails found in text."
         ),
         difficulty="hard",
         think_level="high",
@@ -445,8 +439,7 @@ BENCH_CASES: list[CodeBenchCase] = [
         id="c18_merge_sorted",
         title="Merge sorted lists",
         prompt=(
-            "Write a function merge_sorted(a, b) that merges two sorted lists "
-            "into one sorted list."
+            "Write a function merge_sorted(a, b) that merges two sorted lists into one sorted list."
         ),
         difficulty="hard",
         think_level="high",

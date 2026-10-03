@@ -259,6 +259,7 @@ class TokenBudget:
 
     def _fit(self, system_text: str, parts: list[str], line: str, *, append: bool) -> str | None:
         def assembled(piece: str) -> str:
+            """The packed prompt text after assembly."""
             ordered = [*parts, piece] if append else [piece, *parts]
             return PackedPrompt(system=system_text, user="\n".join(ordered)).text
 

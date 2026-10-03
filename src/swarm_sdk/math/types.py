@@ -10,7 +10,7 @@ type MathMode = Literal["dispatch", "solve", "verify"]
 type MathTaskType = Literal[
     "matrix", "vector", "stats", "calculus", "optimization", "arithmetic", "proof"
 ]
-type MathBackend = Literal["opencl", "molten", "numpy", "llm"]
+type MathBackend = Literal["opencl", "molten", "numpy", "llm", "sympy", "pyarrow"]
 type ThinkLevel = Literal["low", "medium", "high", "xhigh"]
 
 

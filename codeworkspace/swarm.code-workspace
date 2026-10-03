@@ -1,14 +1,15 @@
 {
   "folders": [
-    { "name": "SDK (root)", "path": ".." },
+    { "name": "SDK (integration)", "path": ".." },
     { "name": "Agents", "path": "../Agents" },
     { "name": "Main", "path": "../Main" },
-    { "name": "Config", "path": "../Main/config" },
     { "name": "Benchmark", "path": "../Agents/benchmark" },
-    { "name": "WebSearch", "path": "../WebSearch" }
+    { "name": "WebSearch", "path": "../WebSearch" },
+    { "name": "Prediction", "path": "../../Swarm-Prediction" },
+    { "name": "Newsletter", "path": "../../Newsletter" }
   ],
   "settings": {
-    "python.defaultInterpreterPath": "${workspaceFolder:SDK (root)}/.venv/bin/python",
+    "python.defaultInterpreterPath": "${workspaceFolder:SDK (integration)}/.venv/bin/python",
     "python.languageServer": "None",
     "python.analysis.typeCheckingMode": "off",
     "[python]": {
@@ -24,45 +25,10 @@
     "ruff.configuration": "pyproject.toml",
     "ruff.configurationPreference": "filesystemFirst",
     "ruff.importStrategy": "fromEnvironment",
-    "ruff.interpreter": ["${workspaceFolder:SDK (root)}/.venv/bin/python"],
+    "ruff.interpreter": ["${workspaceFolder:SDK (integration)}/.venv/bin/python"],
     "ty.importStrategy": "fromEnvironment",
-    "ty.interpreter": "${workspaceFolder:SDK (root)}/.venv/bin/python",
+    "ty.interpreter": "${workspaceFolder:SDK (integration)}/.venv/bin/python",
     "ty.diagnosticMode": "workspace",
-    "ty.experimental.useUv": "on",
-    "ty.disableLanguageServices": false,
-    "ty.showSyntaxErrors": true,
-    "ty.completions.autoImport": true,
-    "ty.completions.completeFunctionParentheses": true,
-    "ty.inlayHints.variableTypes": true,
-    "ty.inlayHints.callArgumentNames": true,
-    "editor.suggestOnTriggerCharacters": true,
-    "editor.inlineSuggest.enabled": true,
-    "editor.parameterHints.enabled": true,
-    "editor.wordBasedSuggestions": "off",
-    "jupyter.askForKernelRestart": false,
-    "notebook.formatOnSave.enabled": true,
-    "colab.logging.level": "info",
-    "colab.uploading": true,
-    "chatgpt.openOnStartup": false,
-    "chatgpt.composerEnterBehavior": "cmdIfMultiline",
-    "chatgpt.followUpQueueMode": "queue",
-    "chatgpt.reviewDelivery": "inline",
-    "chatgpt.commentCodeLensEnabled": true
-  },
-  "extensions": {
-    "recommendations": [
-      "ms-python.python",
-      "ms-toolsai.jupyter",
-      "ms-toolsai.jupyter-renderers",
-      "google.colab",
-      "openai.chatgpt",
-      "charliermarsh.ruff",
-      "astral-sh.ty",
-      "redhat.vscode-yaml",
-      "tamasfe.even-better-toml",
-      "eamodio.gitlens",
-      "davidanson.vscode-markdownlint",
-      "ms-azuretools.vscode-docker"
-    ]
+    "ty.experimental.useUv": "on"
   }
 }

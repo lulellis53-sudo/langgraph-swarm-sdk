@@ -141,6 +141,7 @@ class MetaLifeguardAuditor(ast.NodeVisitor):
     """AST visitor that checks for dangerous module-level calls and unlazy imports."""
 
     def __init__(self, enforce_lazy: bool = False) -> None:
+        """Initialize the AST auditor with the repo's lazy-import rules."""
         super().__init__()
         self.enforce_lazy = enforce_lazy
         self.source_code: str = ""

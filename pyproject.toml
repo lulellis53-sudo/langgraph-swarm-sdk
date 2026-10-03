@@ -40,10 +40,11 @@ dependencies = [
     # tiktoken = default token counter (cl100k_base); tokenizers = HF Tokenizer packing
     "tokenizers>=0.22",
     "tiktoken>=0.9",
-    # ## Numerics, tables, and sklearn (CPU)
+    # ## Numerics, tables, and vector stores
+    # scikit-learn lives in the `ml` extra: no swarm_sdk runtime module imports it
+    # (lifeguard_ast.py only audits its name in the lazy-import list).
     "numpy>=2.1",
     "polars>=1.30",
-    "scikit-learn>=1.6",
     "sqlite-vec>=0.1.6",
     # ## Symbolic math for equation docs and numerical verification
     "sympy>=1.13",
@@ -52,6 +53,8 @@ dependencies = [
     "fastembed>=0.7; sys_platform != 'darwin' or platform_machine != 'x86_64'",
     "langgraph-checkpoint-sqlite>=3.1.1",
     "langgraph-sdk>=0.4.5",
+    "python-dotenv>=1.2.3",
+    "rich>=15.0.0",
 ]
 
 [tool.uv]
@@ -123,6 +126,10 @@ websearch = [
     "trafilatura>=2.0",
     "beautifulsoup4>=4.12",
 ]
+forecast = [
+    "lightgbm>=4.7.0",
+    "mlforecast>=1.1.0",
+]
 
 [project.scripts]
 swarm-api = "swarm_sdk.serving.http:main"
@@ -173,5 +180,5 @@ exclude = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["Agents/benchmark"]
+testpaths = ["Agents/benchmark", "tests"]
 pythonpath = [".", "Agents"]

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+from benchmark.Tasks.cold_import import benchmark_cold_import
 from benchmark.Tasks.cold_import.benchmark_cold_import import run
 
 
@@ -14,3 +16,20 @@ def test_cold_import_report_has_measured_improvement() -> None:
     assert item["current"] < item["baseline"]
     assert item["improvement_pct"] > 10.0
     assert report["mean_improvement_pct"] is not None
+
+
+def test_paired_samples_interleave_the_runs(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Interleaving keeps machine drift from landing on only one side of the comparison."""
+    calls: list[str] = []
+
+    class _Done:
+        stdout = "1.0\n"
+
+    def fake_run(cmd: list[str], **_: object) -> _Done:
+        calls.append(cmd[-1])
+        return _Done()
+
+    monkeypatch.setattr(benchmark_cold_import.subprocess, "run", fake_run)
+    samples = benchmark_cold_import._paired_samples({"a": "A", "b": "B"}, runs=3)
+    assert calls == ["A", "B", "A", "B", "A", "B"]
+    assert samples == {"a": [1.0] * 3, "b": [1.0] * 3}

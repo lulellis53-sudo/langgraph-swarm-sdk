@@ -43,6 +43,16 @@ def test_swarm_graph_factory_builds_manifest_swarm(tmp_path: Path, monkeypatch) 
     assert {"researcher", "coder", "reviewer"} <= set(graph.nodes)
 
 
+def test_swarm_graph_for_server_carries_no_own_checkpointer(tmp_path: Path, monkeypatch) -> None:
+    sdk = _sdk(tmp_path, ScriptedModel(script=Script([answer("ok")])))
+    monkeypatch.setattr(SwarmSDK, "from_settings", classmethod(lambda cls: sdk))
+
+    served: Any = swarm_graph()
+    local: Any = sdk.compiled_graph()
+    assert served.checkpointer is None
+    assert local.checkpointer is not None
+
+
 def test_langgraph_json_maps_importable_factories() -> None:
     config = json.loads(Path("langgraph.json").read_text(encoding="utf-8"))
 

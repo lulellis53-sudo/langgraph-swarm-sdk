@@ -336,9 +336,7 @@ def test_binary_cosine_matches_symbolic_estimate() -> None:
     # arithmetic; compare against a float32 cosine, not a float64 one.
     np.testing.assert_allclose(
         np.cos(np.pi * (dim - scores) / dim).astype(np.float32),
-        np.array(
-            [sm.binary_cosine_estimate(int(dim - s), dim) for s in scores], dtype=np.float32
-        ),
+        np.array([sm.binary_cosine_estimate(int(dim - s), dim) for s in scores], dtype=np.float32),
         rtol=1e-4,
         atol=1e-6,
     )

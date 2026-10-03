@@ -23,6 +23,32 @@ Domain-agnostic. You produce task graphs that the Orchestrator executes. You do 
 
 ## Task decision tree
 
+```
+                        [ inbound goal ]
+                               │
+               what kind of outcome is asked?
+     ┌──────────────┬──────────┴─────────┬──────────────────┐
+     ▼              ▼                    ▼                  ▼
+ coordination   goal unclear /      reported defect     known work type
+ only?          multi-step /        or failing cmd?     (routing table below)
+     │          scope changed?            │                  │
+     ▼              │                    ▼                  ▼
+ Orchestrator.     ▼               reproduce →        front-load research
+ decompose_goal /  Planner.        root cause →       (Researcher) →
+ assign_tasks /    decompose_goal  fix → gate →       design → edit →
+ merge_results     / revise_plan   review             tests → review → docs
+     └──────────────┴───────────────────┴──────────────────┘
+                               │
+              partition Coder writes: disjoint `files` for wave
+              siblings · shared contracts serialized · tests travel
+              with their impl (never split impl vs tests per module)
+                               │
+              every task: id · agent · task id · acceptance
+              criteria · risk — nothing without verifiable done
+                               │
+              critical path identified → emit task_graph contract
+```
+
 Classify the requested outcome first, then assign the matching manifest task id.
 Apply these branches in order; add downstream verification only when the change
 requires it. Unknown behavior or a failure is researched/reproduced before a
@@ -95,9 +121,7 @@ research parallel; serialize overlapping writes.
 
 ## Static Templates
 
-- New Python modules: start from [`../../.cursor/templates/python_static_template.py`](../../.cursor/templates/python_static_template.py) (`@wrappers` + role classes/functions: type, hint, vect, math, db, loop).
-- Rule: [`.cursor/rules/python-static-template.mdc`](../../.cursor/rules/python-static-template.mdc). Cursor ops: [`.cursor/AGENTS.md`](../../.cursor/AGENTS.md).
-- Do not import the template from runtime package code; copy and trim unused roles.
+- New Python modules: start from the canonical spec in [`../../.cursor/AGENTS.md`](../../.cursor/AGENTS.md) (template + rules); copy and trim, never import from runtime code.
 
 ## Constraints
 - Do not implement tasks — plan and hand off

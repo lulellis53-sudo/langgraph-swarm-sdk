@@ -62,6 +62,8 @@ vectorstore:
 
 API keys (`MEM0_API_KEY`, `TAVILY_API_KEY`, `BRAVE_API_KEY`, `EXA_API_KEY`) live in the macOS Keychain, encrypted at rest. Store each with `uv run swarm-vault set <NAME>` (it prompts; nothing is echoed or written to disk) and check with `uv run swarm-vault status`. `swarm-api` and `swarm-grpc` load them at start; a variable already in the environment wins, and `~/.env` is a legacy fallback. YAML only names the env var; `.env.example` lists the names.
 
+To use a dedicated Keychain, set `SWARM_KEYCHAIN_PATH` to its absolute path in the owner-only `.env`. Vault reads and writes then target that Keychain. Its password is entered through macOS SecurityAgent when the Keychain is created; it is never passed on the command line.
+
 Inspect the host map and selected backends with:
 
 ```bash
@@ -103,9 +105,9 @@ With `SWARM_SERVER_URL` set, `SwarmSDK.run` delegates to the server via the `lan
 
 Token savings: shared role-contract prompt cached per process, exact + semantic step cache (`SemanticCache`), hard `max_prompt` packing, and per-step usage totals (`prompt_tokens`, `completion_tokens`, `llm_calls`, `cached_calls`) reported in `PlanResult.usage`.
 
-gRPC: `SwarmService.SpawnPlan` (goal → plan handle), `RunPlan` (handle → per-step outputs + usage), `PlanStatus` (poll for long plans). Manifests may set `api_key_env: SWARM_<NAME>_API_KEY` — the env var *name*, never the key value.
+gRPC: `SwarmService.SpawnPlan` (goal → plan handle), `RunPlan` (handle → per-step outputs + usage), `PlanStatus` (poll for long plans). Manifests set `api_key_env` to the provider variable named by their model route, such as `OPENAI_API_KEY`; secret values stay in the Keychain.
 
-Predefined providers and routes live in [`src/swarm_sdk/agents/config/swarm.yaml`](src/swarm_sdk/agents/config/swarm.yaml) (human-facing symlinks under [`Main/config/`](Main/config/)). Per-agent roles, models, and tasks live in [`Agents/{Name}/agent.yaml`](Agents/Tester/agent.yaml) (see [`Agents/README.md`](Agents/README.md)). [`WebSearch/`](WebSearch/) is a **symlink to the git worktree** `../Swarm-WebSearch` on `worktree/websearch` (search/scrape pipeline: `frontend/` → `midend.py` → `backend.py`, `providers.yaml`). After clone: `git worktree add ../Swarm-WebSearch worktree/websearch && ln -sfn ../Swarm-WebSearch WebSearch`. `SWARM_*` env vars override file defaults. Open [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace) for a multi-root editor layout.
+Predefined model routes, API key variable names, and service credential owners live in [`Main/config/model_registry.yaml`](Main/config/model_registry.yaml); it contains no credential values. Runtime defaults live in [`src/swarm_sdk/agents/config/swarm.yaml`](src/swarm_sdk/agents/config/swarm.yaml) (human-facing symlinks under [`Main/config/`](Main/config/)). Per-agent roles, models, and tasks live in [`Agents/{Name}/agent.yaml`](Agents/Tester/agent.yaml) (see [`Agents/README.md`](Agents/README.md)). [`WebSearch/`](WebSearch/) is a **git worktree** of this repo on branch `feature/websearch` (search/scrape pipeline: the packages `frontend/` → `midend/` → `backend/`, plus `providers.yaml`; see [`WebSearch/PIPELINE.md`](WebSearch/PIPELINE.md)). After clone: `git worktree add WebSearch feature/websearch` from the repo root (the worktree path *is* `WebSearch/`, no symlink). `SWARM_*` env vars override file defaults. Open [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace) for a multi-root editor layout.
 
 ## Token path
 
@@ -118,7 +120,32 @@ Predefined providers and routes live in [`src/swarm_sdk/agents/config/swarm.yaml
 
 HTTP peers use `httpx2` with HTTP/2 (`h2`). `aiohttp` and `requests` are the other clients.
 
+### RAG options
+
+Opt-in techniques under `rag:` in `swarm.yaml`; all default to off (design and measured results:
+`docs/superpowers/specs/2026-10-02-rag-techniques-design.md`).
+
+- `u_shape_order`: put the best recalled memories first and last in the prompt.
+- `gate`: drop recalled memories when the best reranker score is below `gate.low`. Thresholds are
+  in the reranker's score scale (`KeywordReranker` 0..1, `FastEmbedReranker` raw logits); recalibrate
+  them for your reranker.
+- `parent_child` / `child_size`: `swarm ingest` indexes small child chunks and returns the parent section.
+
+Measure them offline: `cd Agents && uv run python -m benchmark.Tasks.rag_quality.benchmark_rag_quality`.
+
+The model-effort suite reports exact-answer scores and provider token usage by
+task type, model, and configured effort. It measures provider-call time
+separately so the average local overhead excludes model wait. Run the scripted
+harness with `PYTHONPATH=Agents uv run python -m benchmark.model_effort`; see
+[`Agents/benchmark/README.md`](Agents/benchmark/README.md) for the opt-in
+autonomous LLM run (`--auto`) and live model selection.
+
 ## Checks
+
+Context7 MCP is configured for Cursor in [`.cursor/mcp.json`](.cursor/mcp.json)
+using the remote endpoint's keyless basic tier. Codex runs the official local
+server through its user MCP configuration (`codex mcp list` to inspect it).
+Refresh MCP servers or start a new editor session after changing this setting.
 
 `ty` resolves the optional-dependency imports (mem0, prometheus_client, OpenCL),
 so run the gate with the extras the SDK supports:

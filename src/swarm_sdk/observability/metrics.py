@@ -16,26 +16,31 @@ else:
 
 
 def record_request(mode: str, cached: bool) -> None:
+    """Count one swarm run by mode and cache status."""
     if ENABLED:
         _REQUESTS.labels(mode=mode, cached=str(cached).lower()).inc()
 
 
 def record_tokens(agent: str, model: str, tokens: int) -> None:
+    """Accumulate token usage per agent and model."""
     if ENABLED and tokens > 0:
         _TOKENS.labels(agent=agent, model=model or "unknown").inc(tokens)
 
 
 def record_cache_hit(kind: str) -> None:
+    """Count one cache hit by kind (exact or semantic)."""
     if ENABLED:
         _CACHE_HITS.labels(kind=kind).inc()
 
 
 def observe_step(step: str, seconds: float) -> None:
+    """Observe one step's wall time in the latency histogram."""
     if ENABLED:
         _STEP_SECONDS.labels(step=step).observe(seconds)
 
 
 def set_active_threads(count: int) -> None:
+    """Update the active-thread gauge."""
     if ENABLED:
         _THREADS.set(count)
 

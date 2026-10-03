@@ -16,6 +16,7 @@ from WebSearch.frontend import (
     searcher_ids,
 )
 from WebSearch.midend import crawl_then_scrape
+from swarm_sdk import vault
 from WebSearch.repeater import repeater
 
 
@@ -43,6 +44,15 @@ def test_load_providers_yaml() -> None:
     assert get_searcher(cfg, "tavily").api_key_env == "TAVILY_API_KEY"
     assert get_searcher(cfg, "searxng").engine == "duckduckgo,bing"
     assert "https" in cfg.crawl.schemes
+
+
+def test_searcher_reads_named_key_from_dedicated_vault(monkeypatch) -> None:
+    from WebSearch.frontend import websearchers
+
+    monkeypatch.delenv("APIFY_API_KEY", raising=False)
+    monkeypatch.setattr(vault, "get", lambda name: "vault-key" if name == "APIFY_API_KEY" else None)
+    spec = SearcherSpec(id="apify", kind="websearcher", api_key_env="APIFY_API_KEY")
+    assert websearchers.env_key(spec) == "vault-key"
 
 
 def test_http_apis_fail_closed_without_keys() -> None:
@@ -211,9 +221,7 @@ def test_parallel_search_ranks_consensus_first() -> None:
     fused = parallel_search("q", backends={"brave": brave, "tavily": tavily})
     assert [h.title for h in fused] == ["B", "X", "Y"]
 
-    unfused = parallel_search(
-        "q", backends={"brave": brave, "tavily": tavily}, fuse=False
-    )
+    unfused = parallel_search("q", backends={"brave": brave, "tavily": tavily}, fuse=False)
     assert [h.title for h in unfused] == ["X", "B", "Y"]
 
 
@@ -337,9 +345,9 @@ def test_normalize_dedupes_lines_and_entities() -> None:
     from WebSearch.backend import ExtractedDoc, dedupe_docs
 
     assert normalize_text("Menu\nHome\nmenu\nA&amp;B​\nCafé x") == "Menu Home A&B Café x"
-    a = ExtractedDoc("Same text", "regex", "https://a")
-    b = ExtractedDoc("same TEXT", "regex", "https://b")
-    assert dedupe_docs([a, b, ExtractedDoc("", "regex")]) == [a]
+    a = ExtractedDoc("https://a", "Same text", "regex", 9)
+    b = ExtractedDoc("https://b", "same TEXT", "regex", 9)
+    assert dedupe_docs([a, b, ExtractedDoc("https://c", "", "regex", 0)]) == [a]
 
 
 def test_midend_dedupes_urls_before_cap() -> None:

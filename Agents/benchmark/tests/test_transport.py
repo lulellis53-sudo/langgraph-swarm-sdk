@@ -46,6 +46,7 @@ async def test_aiohttp_post() -> None:
     except Exception as exc:
         if "Operation not permitted" in str(exc) or "not permitted" in str(exc):
             import pytest
+
             pytest.skip(f"Loopback socket connection restricted by sandbox: {exc}")
         raise
     finally:

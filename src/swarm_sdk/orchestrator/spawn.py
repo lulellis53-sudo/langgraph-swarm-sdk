@@ -243,6 +243,7 @@ def make_factory(
     root = str(agents_root())
 
     def factory(step: PlanStep) -> WorkerAgent:
+        """Build a fresh worker bound to the step's agent manifest."""
         return WorkerAgent(
             manifests[step.agent],
             agents_root=root,

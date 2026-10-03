@@ -15,7 +15,7 @@ import subprocess
 import sys
 from typing import Any, cast
 
-_RUNS = 3
+_RUNS = 9
 
 _TIMER = "import time; t0 = time.perf_counter()"
 _CURRENT = f"{_TIMER}; import swarm_sdk; print((time.perf_counter() - t0) * 1000)"
@@ -30,19 +30,25 @@ _EAGER_STACK = (
 _LEGACY = f"{_TIMER}; import swarm_sdk; {_EAGER_STACK}; print((time.perf_counter() - t0) * 1000)"
 
 
-def _median_ms(code: str) -> float:
-    """Median SDK import time in ms over fresh subprocess runs of ``code``."""
-    samples = []
-    for _ in range(_RUNS):
-        proc = subprocess.run(
-            [sys.executable, "-c", code],
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=300,
-        )
-        samples.append(float(proc.stdout.strip()))
-    return statistics.median(samples)
+def _paired_samples(codes: dict[str, str], runs: int = _RUNS) -> dict[str, list[float]]:
+    """Time each snippet in fresh subprocesses, interleaving the snippets round by round.
+
+    Interleaving spreads machine drift (thermal throttling, background load) over
+    both sides of the comparison instead of letting it land on whichever side ran
+    last, which is what made the improvement percentage swing by ~20 points.
+    """
+    samples: dict[str, list[float]] = {name: [] for name in codes}
+    for _ in range(runs):
+        for name, code in codes.items():
+            proc = subprocess.run(
+                [sys.executable, "-c", code],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=300,
+            )
+            samples[name].append(float(proc.stdout.strip()))
+    return samples
 
 
 def _metric(
@@ -73,8 +79,9 @@ def _metric(
 
 def run() -> dict[str, Any]:
     """Run the cold-import scenario and return the report dict."""
-    current = _median_ms(_CURRENT)
-    legacy_total = _median_ms(_LEGACY)
+    samples = _paired_samples({"current": _CURRENT, "legacy": _LEGACY})
+    current = statistics.median(samples["current"])
+    legacy_total = statistics.median(samples["legacy"])
     metrics = [
         _metric(
             "cold_import_ms",
@@ -84,6 +91,10 @@ def run() -> dict[str, Any]:
             detail={
                 "runs": _RUNS,
                 "reconstructed_eager_stack_ms": round(legacy_total - current, 1),
+                "current_min_ms": round(min(samples["current"]), 1),
+                "current_max_ms": round(max(samples["current"]), 1),
+                "legacy_min_ms": round(min(samples["legacy"]), 1),
+                "legacy_max_ms": round(max(samples["legacy"]), 1),
             },
         )
     ]

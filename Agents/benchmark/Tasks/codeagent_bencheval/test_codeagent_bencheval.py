@@ -23,8 +23,7 @@ MAX_TOTAL_TOKENS = 20000
 def _reference_agent(case: CodeBenchCase) -> tuple[str, str, str]:
     """Deterministic Coder agent that returns the reference solution."""
     prompt = (
-        f"You are a senior software engineer. {case.prompt}\n"
-        "Write only the code, no explanation."
+        f"You are a senior software engineer. {case.prompt}\nWrite only the code, no explanation."
     )
     completion = case.reference
     return prompt, completion, case.reference
@@ -105,9 +104,7 @@ def test_codeagent_bencheval_all_cases(scorer: CodeAgentScorer, tmp_path: Path) 
     assert summary["total_tokens"] <= MAX_TOTAL_TOKENS
 
 
-def _write_results(
-    tmp_path: Path, results: list[TaskMetrics], summary: dict[str, Any]
-) -> None:
+def _write_results(tmp_path: Path, results: list[TaskMetrics], summary: dict[str, Any]) -> None:
     out = {
         "task": "codeagent_bencheval",
         "summary": summary,

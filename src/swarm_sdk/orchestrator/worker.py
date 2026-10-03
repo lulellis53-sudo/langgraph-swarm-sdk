@@ -58,6 +58,14 @@ class WorkerAgent:
         cache: SemanticCache | None = None,
         model_override: BaseChatModel | None = None,
     ) -> None:
+        """Bind one agent manifest; heavy objects load lazily.
+
+        Args:
+            manifest: Validated ``agent.yaml`` for this persona.
+            agents_root: Directory holding the ``Agents/{Name}/`` folders.
+            cache: Optional semantic/exact cache for step answers.
+            model_override: Pre-built chat model (tests); None loads from the manifest.
+        """
         self.manifest = manifest
         self.agents_root = agents_root
         self.cache = cache
@@ -148,7 +156,9 @@ class WorkerAgent:
         if not env:
             return
         provider_env = f"{self._model_name().split(':', 1)[0].upper()}_API_KEY"
-        value = os.environ.get(env)
+        from swarm_sdk import vault
+
+        value = os.environ.get(env) or vault.get(env)
         if not value:
             # Per-agent override unset: the provider's own key (e.g. primed from the
             # Keychain by prime_runtime_secrets) is enough.

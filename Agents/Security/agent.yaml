@@ -3,6 +3,7 @@ name: Security
 role: security_review
 
 model: openai:gpt-4o
+api_key_env: OPENAI_API_KEY
 think_level: high
 
 token_budget:

@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 TIMEOUT_S = 5.0
 SERVICE_PREFIX = "swarm/"
+_PROJECT_ENV = Path(__file__).resolve().parents[2] / ".env"
 KNOWN_NAMES = (
     "MEM0_API_KEY",
     "TAVILY_API_KEY",
@@ -32,6 +33,21 @@ KNOWN_NAMES = (
 _NAME = re.compile(r"^[A-Z][A-Z0-9_]{0,63}$")
 
 type Runner = Callable[[Sequence[str]], str | None]
+type InputRunner = Callable[[Sequence[str], str], str | bool | None]
+
+
+def _keychain_args() -> list[str]:
+    """Select a dedicated Keychain when configured, otherwise use the search list."""
+    path = os.environ.get("SWARM_KEYCHAIN_PATH")
+    if path is None:
+        try:
+            if (_PROJECT_ENV.stat().st_mode & 0o077) == 0:
+                path = _from_dotenv("SWARM_KEYCHAIN_PATH", _PROJECT_ENV)
+        except OSError:
+            pass
+    if path and any(char in path for char in '\r\n"\\'):
+        raise VaultError("invalid Keychain path")
+    return [str(Path(path).expanduser())] if path else []
 
 
 class VaultError(ValueError):
@@ -109,12 +125,15 @@ def import_file(path: Path) -> tuple[list[str], list[str]]:
             if name.lower() != "name":  # header row of a CSV
                 skipped.append(name[:70])
             continue
+        keychain = _keychain_args()
+        command = (
+            f'add-generic-password -a {getpass.getuser()} -s {SERVICE_PREFIX}{name} -U -w "{value}"'
+        )
+        if keychain:
+            command += f' "{keychain[0]}"'
         proc = subprocess.run(
             ["security", "-i"],
-            input=(
-                f"add-generic-password -a {getpass.getuser()} "
-                f'-s {SERVICE_PREFIX}{name} -U -w "{value}"\n'
-            ),
+            input=command + "\n",
             capture_output=True,
             text=True,
             timeout=30,
@@ -141,7 +160,16 @@ def get_with_source(
     run = runner or run_cli
     if value := env.get(name):
         return value, "env"
-    if value := run(["security", "find-generic-password", "-s", f"{SERVICE_PREFIX}{name}", "-w"]):
+    if value := run(
+        [
+            "security",
+            "find-generic-password",
+            "-s",
+            f"{SERVICE_PREFIX}{name}",
+            "-w",
+            *_keychain_args(),
+        ]
+    ):
         return value, "keychain"
     if value := _from_dotenv(name, dotenv or Path.home() / ".env"):
         logger.warning(
@@ -195,35 +223,31 @@ def get_secret(
 def set_secret(
     name: str,
     secret_value: str,
-    runner: Runner | None = None,
+    runner: InputRunner | None = None,
 ) -> bool:
     """Store a secret in the macOS Keychain.
 
     Validates name via ``_check(name)``.
     Rejects empty or whitespace-only secret values by raising ValueError.
-    Runs ``/usr/bin/security add-generic-password -s "swarm/<NAME>"``
-    ``-a "<USER>" -w "<secret_value>" -U``.
+    Sends the value to ``security -i`` on stdin, never in process arguments.
     Secret values are never logged or echoed in exceptions.
     Returns True on success, False on failure.
     """
     _check(name)
     if not secret_value or not secret_value.strip():
         raise ValueError(f"Secret value for {name} cannot be empty")
-
-    cmd = [
-        "/usr/bin/security",
-        "add-generic-password",
-        "-s",
-        f"{SERVICE_PREFIX}{name}",
-        "-a",
-        getpass.getuser(),
-        "-w",
-        secret_value,
-        "-U",
-    ]
+    cmd = ["/usr/bin/security", "-i"]
+    command = (
+        f"add-generic-password -s {SERVICE_PREFIX}{name} -a {getpass.getuser()} "
+        f"-U -X {secret_value.encode().hex()}"
+    )
+    keychain = _keychain_args()
+    if keychain:
+        command += f' "{keychain[0]}"'
+    command += "\n"
 
     if runner is not None:
-        result = runner(cmd)
+        result = runner(cmd, command)
         if isinstance(result, bool):
             return result
         return result is not None
@@ -234,6 +258,7 @@ def set_secret(
     try:
         proc = subprocess.run(
             cmd,
+            input=command,
             capture_output=True,
             text=True,
             timeout=TIMEOUT_S,
@@ -254,12 +279,12 @@ def get_jev_key(*, runner: Runner | None = None) -> str | None:
     return resolve("JEV_API_KEY", runner=runner)
 
 
-def set_openai_key(key: str, *, runner: Runner | None = None) -> bool:
+def set_openai_key(key: str, *, runner: InputRunner | None = None) -> bool:
     """Store the OpenAI API key into the macOS Keychain."""
     return set_secret("OPENAI_API_KEY", key, runner=runner)
 
 
-def set_jev_key(key: str, *, runner: Runner | None = None) -> bool:
+def set_jev_key(key: str, *, runner: InputRunner | None = None) -> bool:
     """Store the Jev API key into the macOS Keychain."""
     return set_secret("JEV_API_KEY", key, runner=runner)
 
@@ -357,6 +382,14 @@ def main(argv: Sequence[str] | None = None, *, runner: Runner | None = None) -> 
                 print("usage: swarm-vault set NAME", file=sys.stderr)
                 return 2
             name = _check(names[0])
+            if _keychain_args():
+                # `security` stops option parsing at the Keychain positional, so a trailing
+                # `-w` prompt would be ignored: prompt here and send the value on stdin.
+                value = getpass.getpass(f"Value for {name}: ")
+                if not value.strip():
+                    print("empty value", file=sys.stderr)
+                    return 2
+                return 0 if set_secret(name, value) else 1
             # No value on argv: `security` prompts for it on the terminal.
             proc = subprocess.run(
                 [

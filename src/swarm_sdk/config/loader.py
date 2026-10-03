@@ -12,16 +12,21 @@ from pydantic import BaseModel, Field
 from swarm_sdk.config.settings import EmbedBackend, MemoryBackend, Settings, VectorQuantization
 from swarm_sdk.models.breaker import BreakerConfig
 from swarm_sdk.models.selection import ModelRoute, ModelSelectConfig, ThinkLevel
+from swarm_sdk.retrieval.gate import GateConfig
 from swarm_sdk.retrieval.hybrid import HybridSearchConfig
 
 
 class ParallelismConfig(BaseModel):
+    """Wave concurrency limits (the ``parallelism:`` block)."""
+
     max_concurrency: int = Field(default=8, ge=1)
     task_queue_size: int = 128
     synth_timeout_s: int = 60
 
 
 class ProviderEntry(BaseModel):
+    """One provider row from ``providers.yaml``."""
+
     name: str
     models: list[str] = Field(default_factory=list)
     api_key_env: str = ""
@@ -58,6 +63,8 @@ def load_provider_catalog(path: Path) -> ProviderCatalog:
 
 
 class EmbeddingConfig(BaseModel):
+    """Embedding model and batching configuration."""
+
     model: str = "sentence-transformers/all-MiniLM-L6-v2"
     dim: int = 384
     batch_size: int = 64
@@ -65,15 +72,18 @@ class EmbeddingConfig(BaseModel):
     dedup_threshold: float = 0.98
     # FastEmbed ships MiniLM-L6-v2 as ONNX INT8. Not a GPU flag.
     quantization: str = "int8"
-    # fastembed | llama-cpp | hash
+    # fastembed | llama-cpp | llama-server | hash
     backend: EmbedBackend = "fastembed"
     llama_model: str | None = None
     llama_gpu_layers: int = Field(default=0, ge=0)
     llama_n_ctx: int = Field(default=2048, ge=1)
     llama_n_batch: int = Field(default=8, ge=1)
+    llama_server_url: str = "http://127.0.0.1:8080"
 
 
 class QdrantStoreConfig(BaseModel):
+    """Remote Qdrant connection settings."""
+
     url_env: str = "QDRANT_URL"
     collection: str = "swarm_memory"
 
@@ -88,6 +98,8 @@ class Mem0StoreConfig(BaseModel):
 
 
 class VectorStoreConfig(BaseModel):
+    """Vector-store backend selection and store-specific settings."""
+
     backend: MemoryBackend = "sqlite-vec"
     path: str = "swarm.sqlite"
     retrieve_k: int = 20
@@ -104,11 +116,24 @@ class VectorStoreConfig(BaseModel):
 
 
 class RerankConfig(BaseModel):
+    """Reranker model configuration."""
+
     model: str = "Xenova/ms-marco-MiniLM-L-6-v2"
     top_k: int = 4
 
 
+class RagConfig(BaseModel):
+    """Opt-in RAG techniques; every flag defaults to the previous behavior."""
+
+    u_shape_order: bool = False
+    parent_child: bool = False
+    child_size: int = Field(default=400, ge=1)
+    gate: GateConfig = Field(default_factory=GateConfig)
+
+
 class RouterConfig(BaseModel):
+    """Router model selection (think level)."""
+
     router_model: str = "openai:gpt-4o-mini"
     think_level: ThinkLevel = "low"
     max_tokens: int = 2048
@@ -122,6 +147,8 @@ _BUNDLED_SWARM_CONFIG = Path(__file__).resolve().parent.parent / "agents" / "con
 
 
 class SwarmFileConfig(BaseModel):
+    """Parsed ``swarm.yaml``: providers, routes, parallelism, stores."""
+
     version: int = 1
     parallelism: ParallelismConfig = Field(default_factory=ParallelismConfig)
     providers: list[ProviderEntry] = Field(default_factory=list)
@@ -131,6 +158,7 @@ class SwarmFileConfig(BaseModel):
     vectorstore: VectorStoreConfig = Field(default_factory=VectorStoreConfig)
     hybrid_search: HybridSearchConfig = Field(default_factory=HybridSearchConfig)
     rerank: RerankConfig = Field(default_factory=RerankConfig)
+    rag: RagConfig = Field(default_factory=RagConfig)
     router: RouterConfig = Field(default_factory=RouterConfig)
 
 
@@ -183,6 +211,18 @@ def _parse_routes(raw: object) -> list[ModelRoute]:
 
 
 def load_swarm_config(path: Path | None = None) -> SwarmFileConfig:
+    """Load and validate ``swarm.yaml`` (packaged default or explicit path).
+
+    Args:
+    path: Explicit config path; defaults to the packaged swarm.yaml.
+
+    Returns:
+    The parsed file configuration.
+
+    Raises:
+    ValueError: If the file is not a YAML mapping.
+
+    """
     cfg_path = path or default_config_path()
     if not cfg_path.is_file():
         return SwarmFileConfig()
@@ -229,6 +269,7 @@ def load_swarm_config(path: Path | None = None) -> SwarmFileConfig:
         vectorstore=VectorStoreConfig.model_validate(data.get("vectorstore", {})),
         hybrid_search=hybrid,
         rerank=RerankConfig.model_validate(data.get("rerank", {})),
+        rag=RagConfig.model_validate(data.get("rag", {})),
         router=RouterConfig.model_validate(data.get("router", {})),
     )
 
@@ -250,6 +291,7 @@ def settings_from_file(file_cfg: SwarmFileConfig, env: Settings | None = None) -
         "llama_gpu_layers": file_cfg.embedding.llama_gpu_layers,
         "llama_n_ctx": file_cfg.embedding.llama_n_ctx,
         "llama_n_batch": file_cfg.embedding.llama_n_batch,
+        "llama_server_url": file_cfg.embedding.llama_server_url,
         "rerank_model": file_cfg.rerank.model,
         "memory_backend": file_cfg.vectorstore.backend,
         "memory_path": file_cfg.vectorstore.path,
@@ -282,6 +324,7 @@ def settings_from_file(file_cfg: SwarmFileConfig, env: Settings | None = None) -
 
 
 def load_settings(config_path: Path | None = None) -> tuple[Settings, SwarmFileConfig]:
+    """Load ``Settings`` merged with the YAML file config."""
     file_cfg = load_swarm_config(config_path)
     return settings_from_file(file_cfg), file_cfg
 

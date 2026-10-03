@@ -206,6 +206,7 @@ class JevRouter:
         http_client: Any = None,
         fallback_on_error: bool = True,
     ) -> None:
+        """Initialize the router with its rules and breaker state."""
         self.endpoint: str | None = endpoint or os.environ.get("JEV_ENDPOINT")
         self.timeout_s: float = timeout_s
         self.http_client: Any = http_client

@@ -5,13 +5,12 @@ from __future__ import annotations
 import ast
 import inspect
 import logging
-import resource
-import sys
 import time
-from typing import Any, Optional, TypedDict, cast
+from typing import Any, TypedDict, cast
 
 from langgraph.graph import END, StateGraph
 
+from swarm_sdk.core.allocator import AllocatorManager
 from swarm_sdk.core.jev_router import JevRouter, NoulDecision, ScoreDecision
 from swarm_sdk.core.lifeguard_ast import MetaLifeguardAuditor
 from swarm_sdk.core.rules import HostRuleEngine
@@ -33,7 +32,7 @@ class SwarmState(TypedDict, total=False):
     iteration: int
     metrics: dict[str, float]
     status: str
-    error: Optional[str]
+    error: str | None
 
 
 class LowSwarmEngine:
@@ -47,6 +46,7 @@ class LowSwarmEngine:
         custom_synthesizer: Any = None,
         test_runner: Any = None,
     ) -> None:
+        """Initialize the low-level swarm state machine (JevRouter + Lifeguard rules)."""
         self.rule_engine: HostRuleEngine = rule_engine or HostRuleEngine()
         self.jev_router: JevRouter = jev_router or JevRouter()
         self.rag_pipeline: Any = rag_pipeline
@@ -62,12 +62,7 @@ class LowSwarmEngine:
 
     def get_current_rss_gb(self) -> float:
         """Returns the current process resident set size (RSS) in gigabytes."""
-        usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        if sys.platform == "darwin":
-            # macOS ru_maxrss is returned in bytes
-            return usage / (1024**3)
-        # Linux / Unix ru_maxrss is returned in kilobytes
-        return usage / (1024**2)
+        return AllocatorManager.get_current_rss_gb()
 
     def check_memory_ceiling(self) -> float:
         """Enforces that process RSS does not exceed the host ceiling (< 13.6 GB)."""
@@ -218,9 +213,7 @@ class LowSwarmEngine:
                 elif num_params == 3:
                     raw_res = self.custom_synthesizer(task, target_files, context_chunks)
                 else:
-                    raw_res = self.custom_synthesizer(
-                        task, target_files, context_chunks, iteration
-                    )
+                    raw_res = self.custom_synthesizer(task, target_files, context_chunks, iteration)
             except TypeError:
                 raw_res = self.custom_synthesizer(state)
 
@@ -315,7 +308,8 @@ class LowSwarmEngine:
         # Handle rejection & resynthesis routing feedback
         next_iter = iteration + 1
         feedback_lines = [
-            f"{v.get('file')}:{v.get('line')}:{v.get('col')} [{v.get('category')}]: {v.get('message')}"
+            f"{v.get('file')}:{v.get('line')}:{v.get('col')} "
+            f"[{v.get('category')}]: {v.get('message')}"
             for v in all_violations
         ]
         feedback = "Lifeguard audit violations:\n" + "\n".join(feedback_lines)
@@ -477,7 +471,11 @@ class LowSwarmEngine:
                     state_res["metrics"] = {}
                 state_res["metrics"]["wall_clock_ms"] = (time.perf_counter() - start_time) * 1000.0
                 state_res["metrics"]["cpu_time_ms"] = (time.process_time() - start_cpu) * 1000.0
-                state_res["metrics"]["rss_gb"] = state_res["metrics"].get("rss_gb", self.get_current_rss_gb())
+                state_res["metrics"]["rss_gb"] = state_res["metrics"].get(
+                    "rss_gb", self.get_current_rss_gb()
+                )
+                alloc_stats = AllocatorManager().get_memory_stats()
+                state_res["metrics"]["free_threaded"] = 1.0 if alloc_stats.free_threaded else 0.0
             return state_res
         except MemoryError as exc:
             elapsed_ms = (time.perf_counter() - start_time) * 1000.0

@@ -8,7 +8,7 @@ Instructions for humans and AI assistants working in this repository. Read this 
 | --------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | [Project overview](#topic-project-overview)               | What LangGraph Swarm SDK is; coding assistant vs swarm specialists               |
 | [Repository layout](#topic-repository-layout)             | Path map; protobuf note; quick links                                             |
-| [Development environment](#topic-development-environment) | Python/uv, services, quality gate, Colab/Codex, extensions                       |
+| [Development environment](#topic-development-environment) | Python/uv, services, quality gate, Colab, extensions                       |
 | [Workflow](#topic-workflow)                               | How to change code; when stuck                                                   |
 | [Benchmarks](#topic-benchmarks)                           | Task layout; SQL Pro suite                                                       |
 | [Security and compliance](#topic-security-and-compliance) | Secrets; network exfiltration                                                    |
@@ -48,7 +48,9 @@ For swarm coordination: start from `[Agents/SKILLS.md](Agents/SKILLS.md)` and `[
 | `[src/swarm_sdk/pb/](src/swarm_sdk/pb/)`                     | gRPC: `swarm.proto` + generated `swarm_pb2*` stubs                                                       |
 | `[Main/config/swarm.yaml](Main/config/swarm.yaml)`           | Provider registry, routes, defaults (`SWARM_*` env overrides)                                            |
 | `[Main/](Main/)`                                             | Embeddings/vectorstore re-exports, YAML, Essentials                                                      |
-| `[WebSearch/](WebSearch/)`                                   | Symlink to git worktree `../Swarm-WebSearch` (`worktree/websearch`): search pipeline |
+| `[WebSearch/](WebSearch/)`                                   | Git worktree (`feature/websearch`): search pipeline — see `[WebSearch/PIPELINE.md](WebSearch/PIPELINE.md)` |
+| `[Prediction/](../Swarm-Prediction/Prediction/)`               | Git worktree (`feat/prediction-engine`): mlforecast engine — sibling `../Swarm-Prediction` |
+| `[Newsletter/](../Newsletter/Newsletter/)`                   | Git worktree (`feat/newsletter`): offline digest MVP — sibling `../Newsletter` |
 | `[Agents/](Agents/)`                                         | Specialist **swarm personas** (`AGENTS.md` + `agent.yaml` per role)                                      |
 | `[Agents/coordination.yaml](Agents/coordination.yaml)`       | Task graph for multi-agent workflows                                                                     |
 | `[Agents/SKILLS.md](Agents/SKILLS.md)`                       | Specialist catalog: persona → handoff node/plan-worker wiring, how to add a specialist                    |
@@ -59,7 +61,6 @@ For swarm coordination: start from `[Agents/SKILLS.md](Agents/SKILLS.md)` and `[
 | `[.cursor/templates/](.cursor/templates/)`                   | Static scaffolds — `[python_static_template_lite.py](.cursor/templates/python_static_template_lite.py)` or full `[python_static_template.py](.cursor/templates/python_static_template.py)` |
 | `[.vscode/](.vscode/)`                                       | Workspace settings + extension recommendations (Cursor/VS Code)                                          |
 | `[.cursor/extensions.txt](.cursor/extensions.txt)`           | Install list mirroring recommended extensions                                                            |
-| `[.codex/config.toml](.codex/config.toml)`                   | Codex IDE/CLI defaults for this repo (`file_opener = cursor`)                                            |
 
 Edit `[src/swarm_sdk/pb/swarm.proto](src/swarm_sdk/pb/swarm.proto)` then `uv run python -m swarm_sdk.pb` to regenerate stubs. Never commit `.env`.
 
@@ -98,10 +99,10 @@ uv run --extra dev --extra observability --extra opencl --extra faiss --extra me
 uv run python -m swarm_sdk.agents.validate
 ```
 
-### Subtopic: Colab and Codex
+### Subtopic: Colab
 
 - **Colab** (`google.colab`): open a `.ipynb` → **Select Kernel** → **Colab** → sign in with Google. Requires `uv sync --extra jupyter` for local kernels; Colab runs remotely.
-- **Codex** (`openai.chatgpt`): open the Codex sidebar and sign in with ChatGPT. Repo defaults: `[.codex/config.toml](.codex/config.toml)`. For LangChain Codex routes, set `CODEX_OAUTH_TOKEN` in `.env` (see `[Main/config/model_registry.yaml](Main/config/model_registry.yaml)`).
+- **LangChain Codex routes:** set `CODEX_OAUTH_TOKEN` in `.env` (see `[Main/config/model_registry.yaml](Main/config/model_registry.yaml)`).
 
 ### Subtopic: Editor extensions
 
@@ -161,7 +162,7 @@ uv run python -m swarm_sdk.agents.validate
 ### Subtopic: Commits
 
 - **Commits:** only when the user asks; do not force-push `main`.
-- **Branches / worktrees:** do not create them. Stay on the current checkout. Use an existing worktree only if it is already linked.
+- **Branches / worktrees:** use only the three fixed agent lanes plus `integration/all-branches` at repo root. See [`.cursor/skills/multi-lane-worktrees/SKILL.md`](.cursor/skills/multi-lane-worktrees/SKILL.md).
 
 ### Subtopic: Documentation
 

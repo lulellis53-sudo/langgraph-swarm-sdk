@@ -134,6 +134,7 @@ def acceleration_report() -> dict[str, str]:
 
 
 def print_report() -> None:
+    """Print the GPU and environment capability report."""
     for key, value in acceleration_report().items():
         print(f"{key}: {value}")
     if shutil.which("vulkaninfo"):

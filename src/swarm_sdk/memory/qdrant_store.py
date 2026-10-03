@@ -18,7 +18,10 @@ def _quantization(mode: str) -> object | None:
 
 
 class QdrantStore:
+    """Qdrant-backed memory store (remote host over gRPC/HTTP)."""
+
     def __init__(self, path: str, dim: int, *, quantization: str = "none") -> None:
+        """Connect to the Qdrant host and open ``collection``."""
         from qdrant_client import QdrantClient
         from qdrant_client.models import Distance, VectorParams
 
@@ -36,6 +39,7 @@ class QdrantStore:
         self._next_id = 1
 
     def add(self, text: str, vector: np.ndarray) -> int:
+        """Upsert one record into the collection."""
         from qdrant_client.models import PointStruct
 
         row_id = self._next_id
@@ -53,6 +57,7 @@ class QdrantStore:
         return row_id
 
     def search(self, vector: np.ndarray, k: int) -> list[MemoryHit]:
+        """Query the collection with the given vector."""
         if k < 1:
             return []
         response = self._client.query_points(

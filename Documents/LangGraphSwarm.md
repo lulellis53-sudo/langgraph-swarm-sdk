@@ -16,21 +16,23 @@
   - 1.3 [Architectural Triad: Swarms vs. Teams vs. Barrier DAGs](#13-architectural-triad-swarms-vs-teams-vs-barrier-dags)
 - 2. [The Three Core Multiagent Coworking Patterns](#2-the-three-core-multiagent-coworking-patterns)
   - 2.1 [Pattern A: Peer-to-Peer Swarms & Dynamic Handoffs (`langgraph-swarm`)](#21-pattern-a-peer-to-peer-swarms--dynamic-handoffs-langgraph-swarm)
-  - 2.2 [Pattern B: Hierarchical Supervisor & Subgraph Teams](#22-pattern-b-hierarchical-supervisor--subgraph-teams)
+  - 2.2 [Pattern B: Hierarchical Supervisor & Subgraph Teams (`langgraph-supervisor`)](#22-pattern-b-hierarchical-supervisor--subgraph-teams-langgraph-supervisor)
   - 2.3 [Pattern C: Topological Wave-Barrier Coworking (`swarm_sdk`)](#23-pattern-c-topological-wave-barrier-coworking-swarm_sdk)
+  - 2.4 [Pattern D: Composite Hybrid Topologies (Supervisor-Orchestrated Swarms)](#24-pattern-d-composite-hybrid-topologies-supervisor-orchestrated-swarms)
 - 3. [State Management, Channels, Memory & Checkpointing](#3-state-management-channels-memory--checkpointing)
   - 3.1 [State Schemas, Reducers & Channel Scoping](#31-state-schemas-reducers--channel-scoping)
   - 3.2 [Durable Checkpointing & Time-Travel Debugging](#32-durable-checkpointing--time-travel-debugging)
   - 3.3 [Human-in-the-Loop: Dynamic Interrupts & Resumption](#33-human-in-the-loop-dynamic-interrupts--resumption)
-  - 3.4 [Tiered Memory: Working Scratchpad, Long-Term Vectors & Mem0](#34-tiered-memory-working-scratchpad-long-term-vectors--mem0)
+  - 3.4 [Tiered Memory: Working Scratchpad, Durable Threads & Cross-Session Vector Store (`BaseStore` & `InMemoryStore`)](#34-tiered-memory-working-scratchpad-durable-threads--cross-session-vector-store-basestore--inmemorystore)
 
 ### [Part II: End-to-End Implementation & Production Serving](#part-ii-end-to-end-implementation--production-serving)
 - 4. [Complete End-to-End Implementation (Python)](#4-complete-end-to-end-implementation-python)
   - 4.1 [Exhaustive Imports & Type Definitions](#41-exhaustive-imports--type-definitions)
   - 4.2 [Specialist Agent Definitions & Tool Contracts](#42-specialist-agent-definitions--tool-contracts)
-  - 4.3 [Dynamic Handoff Tools with Command Dispatches](#43-dynamic-handoff-tools-with-command-dispatches)
-  - 4.4 [StateGraph Construction, Checkpoint Binding & Compilation](#44-stategraph-construction-checkpoint-binding--compilation)
-  - 4.5 [Execution Loop with Subgraph Event Streaming](#45-execution-loop-with-subgraph-event-streaming)
+  - 4.3 [Native Swarm & Supervisor Implementations (`langgraph-swarm` & `langgraph-supervisor`)](#43-native-swarm--supervisor-implementations-langgraph-swarm--langgraph-supervisor)
+  - 4.4 [Low-Level StateGraph Construction & Typed Command Dispatches](#44-low-level-stategraph-construction--typed-command-dispatches)
+  - 4.5 [Multi-Mode Event Streaming (`messages`, `updates`, `custom`) & `StreamWriter`](#45-multi-mode-event-streaming-messages-updates-custom--streamwriter)
+  - 4.6 [Dynamic Primitives: Command, Send (Map-Reduce) & Functional API Workflows (`@entrypoint`, `@task`)](#46-dynamic-primitives-command-send-map-reduce--functional-api-workflows-entrypoint-task)
 - 5. [Production Serving Architectures: HTTP, gRPC & Vault](#5-production-serving-architectures-http-grpc--vault)
   - 5.1 [High-Throughput HTTP API Service (`swarm-api`)](#51-high-throughput-http-api-service-swarm-api)
   - 5.2 [Low-Latency gRPC Streaming Service (`swarm-grpc`)](#52-low-latency-grpc-streaming-service-swarm-grpc)
@@ -82,10 +84,13 @@
 - 15. [Distributed Tracing, Observability & OpenTelemetry](#15-distributed-tracing-observability-opentelemetry)
   - 15.1 [Trace Context Propagation across Dynamic Agent Handoffs](#151-trace-context-propagation-across-dynamic-agent-handoffs)
   - 15.2 [Prometheus Metrics & Health Monitoring](#152-prometheus-metrics--health-monitoring)
+  - 15.3 [LangSmith Distributed Micro-Tracing, Evaluation & Run Hooks](#153-langsmith-distributed-micro-tracing-evaluation--run-hooks)
+  - 15.4 [OpenTelemetry GenAI Semantic Conventions (gen_ai.agent.*) Integration](#154-opentelemetry-genai-semantic-conventions-gen_aiagent-integration)
 - 16. [Automated Self-Healing & Pre-Flight Verification with Lifeguard](#16-automated-self-healing--pre-flight-verification-with-lifeguard)
   - 16.1 [Meta Lifeguard: Static Analysis Pipeline for PEP 810 Lazy Imports](#161-meta-lifeguard-static-analysis-pipeline-for-pep-810-lazy-imports)
   - 16.2 [Operational Self-Healing Daemon with LifeguardSystem](#162-operational-self-healing-daemon-with-lifeguardsystem)
   - 16.3 [Complete Runnable Lifeguard Monitoring Script](#163-complete-runnable-lifeguard-monitoring-script)
+  - 16.4 [Graph-Level Fault Tolerance: `set_node_defaults`, `RetryPolicy` & `TimeoutPolicy`](#164-graph-level-fault-tolerance-set_node_defaults-retrypolicy--timeoutpolicy)
 - 17. [Failure Modes, Debugging & Production Hardening](#17-failure-modes-debugging--production-hardening)
   - 17.1 [Circular Handoff Ping-Pong Traps](#171-circular-handoff-ping-pong-traps)
   - 17.2 [State Channel Bloat & Quadratic Cost Explosions](#172-state-channel-bloat--quadratic-cost-explosions)
@@ -179,21 +184,57 @@ Multiagent systems in LangGraph are formalized through three computer science fo
 
 ### 2.1 Pattern A: Peer-to-Peer Swarms & Dynamic Handoffs (`langgraph-swarm`)
 
-In a pure Swarm architecture, there is no centralized supervisor dictating the conversation. Instead, specialized agents hold "handoff tools" that allow them to transfer control directly to another peer when a task exceeds their specialization.
+In a pure Swarm architecture, there is no centralized supervisor dictating each turn of the conversation. Instead, specialized agents hold "handoff tools" that allow them to transfer control directly to a peer when a task exceeds their specialization. The swarm maintains conversation continuity by remembering which specialist was active last, resuming subsequent user turns directly with that agent.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> TriageAgent: User Input
-    TriageAgent --> ResearchAgent: handoff_to_researcher()
-    TriageAgent --> CoderAgent: handoff_to_coder()
-    ResearchAgent --> CoderAgent: handoff_to_coder(specs)
-    CoderAgent --> ReviewerAgent: handoff_to_reviewer(diff)
-    ReviewerAgent --> CoderAgent: handoff_to_coder(remediation)
-    ReviewerAgent --> [*]: Return Final Solution
+    [*] --> TriageAgent: Inbound User Prompt
+    TriageAgent --> ResearchAgent: transfer_to_researcher()
+    TriageAgent --> CoderAgent: transfer_to_coder()
+    ResearchAgent --> CoderAgent: transfer_to_coder(specs)
+    CoderAgent --> ReviewerAgent: transfer_to_reviewer(diff)
+    ReviewerAgent --> CoderAgent: transfer_to_coder(remediation)
+    ReviewerAgent --> [*]: Return Final Response to User
 ```
 
-#### The Handoff Primitive: `Command`
-In modern LangGraph, handoffs are powered by `langgraph.types.Command`. When an agent invokes a handoff tool, the tool does not simply return a text string; it returns an instruction to the graph engine:
+#### The Official `langgraph-swarm` Engine
+The official `langgraph-swarm` package (`langchain-ai/langgraph-swarm-py`) formalizes this pattern through four core components:
+1. `SwarmState`: Base state schema subclassing `MessagesState` with an `active_agent: str | None` channel. At graph compile time, `create_swarm` dynamically inspects registered agent names and rewrites `active_agent` into `Literal[<agent_names>]`.
+2. `create_handoff_tool`: Factory function generating a typed `BaseTool` that outputs a `Command(goto=target_agent, graph=Command.PARENT)` dispatch.
+3. `add_active_agent_router`: Configures an entry router from `START` to whichever agent is currently recorded in `state["active_agent"]` (or falls back to `default_active_agent`).
+4. `create_swarm`: Assembles an uncompiled `StateGraph` linking all registered `Pregel` agents into a fully interconnected handoff web.
+
+```python
+from langchain.agents import create_agent
+from langchain_openai import ChatOpenAI
+from langgraph.checkpoint.memory import InMemorySaver
+from langgraph_swarm import create_handoff_tool, create_swarm
+
+model = ChatOpenAI(model="gpt-4o", temperature=0.0)
+
+# 1. Define specialist agents equipped with peer handoff tools
+alice = create_agent(
+    model,
+    tools=[add, create_handoff_tool(agent_name="Bob", description="Transfer to Bob for pirate-style text synthesis")],
+    system_prompt="You are Alice, a senior numerical calculation expert.",
+    name="Alice",
+)
+
+bob = create_agent(
+    model,
+    tools=[create_handoff_tool(agent_name="Alice", description="Transfer to Alice for mathematical problems")],
+    system_prompt="You are Bob, a senior technical writer who speaks like a pirate.",
+    name="Bob",
+)
+
+# 2. Assemble the multi-agent swarm graph
+workflow = create_swarm([alice, bob], default_active_agent="Alice")
+checkpointer = InMemorySaver()
+app = workflow.compile(checkpointer=checkpointer)
+```
+
+#### Under the Hood: The `Command` Handoff Primitive
+Every handoff tool in modern LangGraph returns `langgraph.types.Command`. The command transfers control in the parent graph (`graph=Command.PARENT`), appends the synthetic `ToolMessage`, and sets the active agent pointer:
 
 ```python
 from typing import Annotated
@@ -202,46 +243,68 @@ from langchain_core.tools import InjectedToolCallId, tool
 from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
 
-
-def create_handoff_tool(*, agent_name: str, description: str):
-  """Builds a tool that transfers execution to another agent in the parent swarm graph."""
+def create_custom_handoff_tool(*, agent_name: str, description: str):
+  """Builds a typed handoff tool that passes rich structured context between agents."""
 
   @tool(f"transfer_to_{agent_name.lower()}", description=description)
   def handoff(
-      task_description: str,
+      task_description: Annotated[str, "Detailed instructions and context for the next specialist"],
       state: Annotated[dict, InjectedState],
       tool_call_id: Annotated[str, InjectedToolCallId],
   ) -> Command:
     tool_msg = ToolMessage(
         content=f"Transferred control to {agent_name}. Reason: {task_description}",
         tool_call_id=tool_call_id,
+        name=f"transfer_to_{agent_name.lower()}",
     )
     return Command(
         goto=agent_name,
-        graph=Command.PARENT,  # Navigate in the parent swarm graph
+        graph=Command.PARENT,  # Dispatches control in the enclosing swarm graph
         update={
             "messages": state["messages"] + [tool_msg],
             "active_agent": agent_name,
+            "task_description": task_description,
         },
     )
 
   return handoff
 ```
 
-#### Active Agent Routing
-To enable multi-turn conversations without forcing the user to re-engage the initial triage agent every turn, the swarm tracks the `active_agent` in its state. When a new user message arrives, the entry router immediately forwards the prompt to whoever was speaking last:
+#### State Isolation via Message Adapters
+By default, all swarm agents communicate over the parent `messages` channel, causing total message history to accumulate linearly across handoffs. To eliminate prompt contamination and token bloat, agents can maintain private state schemas (e.g., `alice_messages`) and use bidirectional adapter wrappers:
 
 ```python
-def active_agent_router(state: dict) -> str:
-  """Routes inbound user messages to whichever agent was last active."""
-  return state.get("active_agent", "TriageAgent")
+from langgraph.graph import StateGraph
+from langgraph_swarm import SwarmState, add_active_agent_router
+
+# Private agent with isolated message channel
+class AliceState(TypedDict):
+  alice_messages: Annotated[list[AnyMessage], add_messages]
+
+alice_internal_graph = StateGraph(AliceState).add_node("model", ...).compile()
+
+# Bidirectional adapter function
+def call_alice(state: SwarmState) -> dict:
+  # Transform parent swarm state -> private agent state (filter or project)
+  response = alice_internal_graph.invoke({"alice_messages": state["messages"]})
+  # Transform private agent output -> parent swarm update
+  return {"messages": response["alice_messages"]}
+
+# Assemble manual swarm with isolated nodes
+workflow = (
+    StateGraph(SwarmState)
+    .add_node("Alice", call_alice, destinations=("Bob",))
+    .add_node("Bob", call_bob, destinations=("Alice",))
+)
+workflow = add_active_agent_router(workflow, route_to=["Alice", "Bob"], default_active_agent="Alice")
+app = workflow.compile()
 ```
 
 ---
 
-### 2.2 Pattern B: Hierarchical Supervisor & Subgraph Teams
+### 2.2 Pattern B: Hierarchical Supervisor & Subgraph Teams (`langgraph-supervisor`)
 
-For enterprise engineering workflows, peer-to-peer swarms can be susceptible to circular handoffs. Hierarchical teams solve this through a **Supervisor** node that sits at the root of a team.
+While peer-to-peer swarms excel in open-ended conversations, complex multi-domain systems can suffer from circular handoff ping-pong traps. The **Hierarchical Supervisor** pattern resolves this by placing a central orchestrator model at the root of the team.
 
 ```
 +===================================================================================================+
@@ -270,10 +333,81 @@ For enterprise engineering workflows, peer-to-peer swarms can be susceptible to 
                                     +-----------------------+
 ```
 
-1. **State Isolation via Subgraphs**:
-   The supervisor communicates with worker subgraphs through schema translation. The parent graph holds `SupervisorState`, while the child graph executes inside `WorkerState`.
-2. **Deterministic Completion**:
-   The worker subgraph returns control to the supervisor upon finishing its task. The supervisor inspects the outcome and decides whether to invoke another specialist or finalize the answer.
+#### The Official `langgraph-supervisor` Engine
+The `langgraph-supervisor` library (`langchain-ai/langgraph-supervisor-py`) provides high-level construction for supervisor workflows:
+
+```python
+from langchain_openai import ChatOpenAI
+from langgraph_supervisor import create_supervisor, create_handoff_tool
+
+model = ChatOpenAI(model="gpt-4o", temperature=0.0)
+
+# Build supervisor workflow with custom tools and output modes
+workflow = create_supervisor(
+    agents=[research_agent, coding_agent, database_agent],
+    model=model,
+    prompt="You are the Technical Lead. Decompose user requests and assign them to specialist agents.",
+    output_mode="last_message",       # 'last_message' returns terminal node output; 'full_history' returns all
+    add_handoff_messages=True,        # Appends (AIMessage, ToolMessage) audit trail
+    supervisor_name="supervisor",
+)
+app = workflow.compile()
+```
+
+#### Single vs. Parallel Handoffs via `Send`
+A key distinction between `langgraph-swarm` and `langgraph-supervisor` is **parallel fan-out**:
+- **Single Handoff**: If the supervisor invokes a single handoff tool, `create_handoff_tool` returns `Command(goto=agent_name, graph=Command.PARENT, update={...})`.
+- **Parallel Multi-Handoff**: When the supervisor LLM outputs multiple tool calls in a single response (e.g., delegating to both `research_agent` and `database_agent` simultaneously), `create_handoff_tool` automatically detects sibling calls and emits:
+  $$Command\Big(\text{graph}=\text{Command.PARENT}, \; \text{goto}=\big[\text{Send}(\text{agent}_1, \text{state}_1), \; \text{Send}(\text{agent}_2, \text{state}_2)\big]\Big)$$
+  LangGraph executes both child agents concurrently, synchronizing their outputs at the supervisor return edge!
+
+---
+
+### 2.3 Pattern C: Topological Wave-Barrier Coworking (`swarm_sdk`)
+
+For large-scale autonomous codebase engineering, neither pure handoff swarms nor conversational supervisors offer sufficient speed or deterministic safety. The **Wave-Barrier Coworking** architecture (implemented in `swarm_sdk.orchestrator.graph`) bridges LangGraph with high-performance async concurrency.
+
+```mermaid
+graph TD
+    subgraph Wave0 ["Wave 0: Discovery & Contract (Parallel)"]
+        S1["Step 1: Researcher (Map APIs)"]
+        S2["Step 2: DataEngineer (Extract Schema)"]
+    end
+
+    subgraph Wave1 ["Wave 1: Partitioned Implementation (Parallel)"]
+        S3["Step 3: Coder A (Write src/core.py)"]
+        S4["Step 4: Coder B (Write src/utils.py)"]
+    end
+
+    subgraph Wave2 ["Wave 2: Verification & Review (Sequential)"]
+        S5["Step 5: Tester (Run Pytest Suite)"]
+        S6["Step 6: Reviewer (Audit Git Diff)"]
+    end
+
+    START --> Wave0
+    Wave0 -->|Wave Barrier Sync| Wave1
+    Wave1 -->|Wave Barrier Sync| Wave2
+    Wave2 --> END
+```
+
+#### Core Mechanics of Wave-Barrier Coworking
+1. **Goal Decomposition**: An Orchestrator LLM breaks a goal into a `Plan` of explicit `PlanStep` items. Each step declares its `depends_on` list, assigned `agent`, and claimed `files`.
+2. **Linear StateGraph of Waves**: The plan computes its dependency waves. A LangGraph `StateGraph` is assembled where each node represents an entire wave (`wave_0 -> wave_1 -> ... -> END`).
+3. **Intra-Wave Concurrency via `bounded_gather`**: Inside a wave node, steps are dispatched asynchronously up to `max_concurrency` using `bounded_gather`. On free-threaded Python 3.14/3.15 (PEP 703), blocking provider SDK calls parallelize across native OS threads without GIL contention.
+4. **Disjoint Write Invariant**: Sibling Coder steps executing in the same wave must assert disjoint file paths:
+   $$\text{files}(s_i) \cap \text{files}(s_j) = \emptyset \quad \forall s_i, s_j \in W_k \; (i \neq j)$$
+   This mathematically eliminates file-write race conditions and merge conflicts during parallel code generation.
+5. **Selective Input Filtering**: A step receives **only** the outputs of the specific step IDs declared in its `inputs` (or `depends_on`), completely eliminating transcript bloat:
+   $$\text{Prompt Context}(s) = \text{Contract}(s.\text{agent}) + s.\text{description} + \sum_{d \in s.\text{inputs}} \text{Output}(d)$$
+
+---
+
+### 2.4 Pattern D: Composite Hybrid Topologies (Supervisor-Orchestrated Swarms)
+
+Production enterprise deployments combine these topologies into composite hierarchies:
+1. **Top-Level Supervisor Router**: Receives broad enterprise goals, manages security clearance, audits compliance, and handles human-in-the-loop approvals.
+2. **Specialized Swarm Subgraphs**: The supervisor delegates complex multi-turn sub-domains to autonomous swarms (e.g., an autonomous "Bug Remediation Swarm" consisting of `CoderAgent <-> TesterAgent <-> ReviewerAgent`). Inside the sub-swarm, agents hand off control dynamically without supervisor overhead.
+3. **Deterministic Completion Barrier**: Once the sub-swarm reaches consensus or satisfies its acceptance criteria, it invokes a handoff tool that targets `supervisor`, returning consolidated outcomes to the root graph.
 
 ---
 
@@ -443,7 +577,7 @@ await app.ainvoke(
 
 ---
 
-### 3.4 Tiered Memory: Working Scratchpad, Long-Term Vectors & Mem0
+### 3.4 Tiered Memory: Working Scratchpad, Durable Threads & Cross-Session Vector Store (`BaseStore` & `InMemoryStore`)
 
 Multiagent coworking requires a three-tier memory hierarchy:
 
@@ -452,20 +586,111 @@ Multiagent coworking requires a three-tier memory hierarchy:
 |                                  TIERED MEMORY HIERARCHY                                          |
 +---------------------------------------------------------------------------------------------------+
 
-  [Tier 1: Ephemeral Scratchpad]
+  [Tier 1: Ephemeral Scratchpad & State Channels]
   • Lifetime: Current execution wave / turn
-  • Storage: LangGraph State channels (`TypedDict`)
-  • Latency: < 0.1 ms (In-memory Python dict)
+  • Storage: In-memory LangGraph State channels (`TypedDict`)
+  • Latency: < 0.1 ms (Pure Python dict mutation)
 
-  [Tier 2: Short-Term Checkpoint Memory]
+  [Tier 2: Short-Term Checkpoint Memory (Within-Thread)]
   • Lifetime: Thread session (multi-turn conversation)
-  • Storage: `AsyncSqliteSaver` / `PostgresSaver`
-  • Access: Keyed by `thread_id` + `checkpoint_id`
+  • Storage: `AsyncSqliteSaver` / `AsyncPostgresSaver`
+  • Access: Keyed by `(thread_id, checkpoint_ns, checkpoint_id)`
 
-  [Tier 3: Long-Term Semantic Recall]
-  • Lifetime: Cross-session persistent storage
-  • Storage: `sqlite-vec` (INT8 quantized), Qdrant, FAISS, or Mem0 Platform API
-  • Access: Embedding distance search (Cosine / Dot product)
+  [Tier 3: Long-Term Semantic Recall (Cross-Thread / Cross-Session)]
+  • Lifetime: Permanent cross-session persistent storage
+  • Storage: LangGraph `BaseStore` (`InMemoryStore`, `AsyncPostgresStore`) with Vector Indexing,
+             or external engines (Mem0 Platform API, `sqlite-vec`, Qdrant, FAISS)
+  • Access: Semantic vector search (`store.search(namespace, query=...)`) + KV lookup (`store.get`)
+```
+
+#### LangGraph Native `BaseStore` with Vector Indexing
+While checkpointers persist conversation history strictly within a single `thread_id`, LangGraph's `BaseStore` enables knowledge sharing **across threads and across agents**. When configured with an embedding model, the store indexes structured memory dictionaries for semantic retrieval:
+
+```python
+from langchain.embeddings import init_embeddings
+from langgraph.store.memory import InMemoryStore
+
+# 1. Initialize store with semantic vector index over specific fields
+embeddings = init_embeddings("openai:text-embedding-3-small")
+store = InMemoryStore(
+    index={
+        "embed": embeddings,                # Text embedding provider
+        "dims": 1536,                       # Embedding vector dimensions
+        "fields": ["summary", "code_snippet", "$"]  # Fields to embed ('$' embeds whole payload)
+    }
+)
+
+# 2. Namespace design: Hierarchical isolation (tenant -> entity -> domain)
+user_memory_namespace = ("tenant_alpha", "user_101", "preferences")
+agent_skill_namespace = ("swarm_core", "CoderAgent", "learned_patterns")
+
+# 3. Store learned architectural pattern across sessions
+import uuid
+
+pattern_id = str(uuid.uuid4())
+store.put(
+    agent_skill_namespace,
+    pattern_id,
+    {
+        "summary": "Free-threaded CPython requires avoiding global mutable dicts without mutex locks.",
+        "code_snippet": "from concurrent.futures import ThreadPoolExecutor",
+        "tag": "pep703_concurrency",
+    }
+)
+
+# 4. Semantic similarity search across memories
+matched_memories = store.search(
+    agent_skill_namespace,
+    query="How to safely handle multithreading in Python 3.14 without GIL?",
+    limit=3,
+)
+```
+
+#### Injecting `Runtime[Context]` into Swarm Nodes
+LangGraph nodes can automatically receive the execution `Runtime` to query and write memories without hardcoding global database connections:
+
+```python
+from dataclasses import dataclass
+from typing import Annotated
+from langchain_core.messages import AnyMessage, SystemMessage
+from langgraph.graph import add_messages
+from langgraph.runtime import Runtime
+from typing_extensions import TypedDict
+
+@dataclass
+class SwarmContext:
+  tenant_id: str
+  user_id: str
+  session_role: str
+
+class SwarmMemoryState(TypedDict):
+  messages: Annotated[list[AnyMessage], add_messages]
+  active_agent: str
+
+async def researcher_node_with_memory(
+    state: SwarmMemoryState,
+    runtime: Runtime[SwarmContext],
+) -> dict:
+  """Queries cross-session memory store before dispatching model inference."""
+  tenant = runtime.context.tenant_id
+  user = runtime.context.user_id
+  ns = (tenant, user, "memories")
+
+  # 1. Retrieve past user instructions and constraints from BaseStore
+  latest_query = state["messages"][-1].content
+  recalled_items = await runtime.store.asearch(ns, query=str(latest_query), limit=2)
+
+  recalled_context = "\n".join([f"- {item.value.get('summary', '')}" for item in recalled_items])
+  memory_prompt = SystemMessage(
+      content=f"Context from past sessions:\n{recalled_context}" if recalled_context else ""
+  )
+
+  # 2. Persist new observed insight back into BaseStore asynchronously
+  if "remember:" in str(latest_query).lower():
+    clean_fact = str(latest_query).split("remember:", 1)[1].strip()
+    await runtime.store.aput(ns, str(uuid.uuid4()), {"summary": clean_fact})
+
+  return {"messages": [memory_prompt]}
 ```
 
 ---
@@ -569,7 +794,114 @@ def run_test_suite(test_target: str) -> str:
 
 ---
 
-### 4.3 Dynamic Handoff Tools with Command Dispatches
+### 4.3 Native Swarm & Supervisor Implementations (`langgraph-swarm` & `langgraph-supervisor`)
+
+Modern LangGraph provides dedicated high-level libraries for both peer-to-peer swarms and hierarchical teams:
+
+#### 1. Peer-to-Peer Swarm (`langgraph-swarm`)
+```python
+"""Production multi-agent swarm using the official langgraph-swarm package."""
+
+from langchain.embeddings import init_embeddings
+from langchain_openai import ChatOpenAI
+from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.prebuilt import create_react_agent
+from langgraph.store.memory import InMemoryStore
+from langgraph_swarm import create_handoff_tool, create_swarm
+
+model = ChatOpenAI(model="gpt-4o", temperature=0.0)
+
+# Configure cross-thread long-term semantic store
+store = InMemoryStore(
+    index={
+        "embed": init_embeddings("openai:text-embedding-3-small"),
+        "dims": 1536,
+        "fields": ["summary", "$"],
+    }
+)
+checkpointer = InMemorySaver()
+
+# Specialist 1: Lead Researcher
+researcher = create_react_agent(
+    model=model,
+    tools=[
+        search_documentation,
+        create_handoff_tool(
+            agent_name="CoderAgent",
+            description="Transfer to CoderAgent once API contracts and documentation are analyzed.",
+        ),
+    ],
+    prompt="You are Lead Researcher. Find specifications and hand off to CoderAgent.",
+    name="ResearcherAgent",
+)
+
+# Specialist 2: Senior Coder
+coder = create_react_agent(
+    model=model,
+    tools=[
+        write_workspace_file,
+        create_handoff_tool(
+            agent_name="TesterAgent",
+            description="Transfer to TesterAgent to execute verification test suites.",
+        ),
+        create_handoff_tool(
+            agent_name="ResearcherAgent",
+            description="Transfer back to ResearcherAgent if missing documentation.",
+        ),
+    ],
+    prompt="You are Senior Coder. Write verified Python code in authorized directories.",
+    name="CoderAgent",
+)
+
+# Specialist 3: Test Engineer
+tester = create_react_agent(
+    model=model,
+    tools=[
+        run_test_suite,
+        create_handoff_tool(
+            agent_name="CoderAgent",
+            description="Transfer back to CoderAgent with error stack traces if tests fail.",
+        ),
+    ],
+    prompt="You are Test Engineer. Run pytest. If tests fail, hand off to CoderAgent.",
+    name="TesterAgent",
+)
+
+# Compile swarm StateGraph with automatic active agent routing and dual memory
+swarm_workflow = create_swarm(
+    [researcher, coder, tester],
+    default_active_agent="ResearcherAgent",
+)
+swarm_app = swarm_workflow.compile(checkpointer=checkpointer, store=store)
+```
+
+#### 2. Hierarchical Supervisor (`langgraph-supervisor`)
+```python
+"""Production hierarchical team with automated parallel fan-out using langgraph-supervisor."""
+
+from langgraph_supervisor import create_supervisor
+
+# Assemble supervised workflow where the supervisor dispatches work
+supervisor_workflow = create_supervisor(
+    agents=[researcher, coder, tester],
+    model=model,
+    prompt=(
+        "You are the Technical Project Lead. Analyze incoming requests. Delegate "
+        "sub-tasks to ResearcherAgent, CoderAgent, or TesterAgent. If multiple tasks "
+        "are independent, call their handoff tools in parallel."
+    ),
+    output_mode="last_message",     # Returns terminal output to caller
+    add_handoff_messages=True,      # Maintains explicit handoff audit trail
+    supervisor_name="Supervisor",
+)
+supervisor_app = supervisor_workflow.compile(checkpointer=checkpointer, store=store)
+```
+
+---
+
+### 4.4 Low-Level StateGraph Construction & Typed Command Dispatches
+
+When extreme customization of channels, reducers, and conditional branch jumps is required, you can construct the swarm directly using `StateGraph` and `Command`:
 
 ```python
 def build_handoff_tool(
@@ -608,13 +940,8 @@ def build_handoff_tool(
     )
 
   return handoff_tool
-```
 
----
 
-### 4.4 StateGraph Construction, Checkpoint Binding & Compilation
-
-```python
 def create_coworking_swarm(model_name: str = "gpt-4o") -> StateGraph:
   """Builds and compiles a three-agent coworking swarm:
 
@@ -641,46 +968,32 @@ def create_coworking_swarm(model_name: str = "gpt-4o") -> StateGraph:
 
   async def researcher_node(state: SwarmState) -> Command:
     system_prompt = SystemMessage(
-        content=(
-            "You are the Lead Researcher. Investigate architecture and specs."
-            " When done, hand off to CoderAgent."
-        )
+        content="You are Lead Researcher. Investigate specs. Hand off to CoderAgent."
     )
     response = await researcher_llm.ainvoke([system_prompt] + state["messages"])
     return Command(goto="Researcher_Tools", update={"messages": [response]})
 
   async def coder_node(state: SwarmState) -> Command:
     system_prompt = SystemMessage(
-        content=(
-            "You are the Senior Coder. Write clean, modular Python files."
-            " When finished, hand off to TesterAgent."
-        )
+        content="You are Senior Coder. Write clean code. Hand off to TesterAgent."
     )
     response = await coder_llm.ainvoke([system_prompt] + state["messages"])
     return Command(goto="Coder_Tools", update={"messages": [response]})
 
   async def tester_node(state: SwarmState) -> Command:
     system_prompt = SystemMessage(
-        content=(
-            "You are the Test Engineer. Run tests. If tests pass, finish."
-            " If failed, hand off back to CoderAgent."
-        )
+        content="You are Test Engineer. Run tests. If failed, hand off to CoderAgent."
     )
     response = await tester_llm.ainvoke([system_prompt] + state["messages"])
     return Command(goto="Tester_Tools", update={"messages": [response]})
 
   builder = StateGraph(SwarmState)
-
   builder.add_node("ResearcherAgent", researcher_node)
   builder.add_node("CoderAgent", coder_node)
   builder.add_node("TesterAgent", tester_node)
 
-  builder.add_node(
-      "Researcher_Tools", ToolNode([search_documentation, to_coder])
-  )
-  builder.add_node(
-      "Coder_Tools", ToolNode([write_workspace_file, to_tester, to_researcher])
-  )
+  builder.add_node("Researcher_Tools", ToolNode([search_documentation, to_coder]))
+  builder.add_node("Coder_Tools", ToolNode([write_workspace_file, to_tester, to_researcher]))
   builder.add_node("Tester_Tools", ToolNode([run_test_suite, to_coder]))
 
   builder.add_edge("Researcher_Tools", "ResearcherAgent")
@@ -696,49 +1009,180 @@ def create_coworking_swarm(model_name: str = "gpt-4o") -> StateGraph:
 
 ---
 
-### 4.5 Execution Loop with Subgraph Event Streaming
+### 4.5 Multi-Mode Event Streaming (`messages`, `updates`, `custom`) & `StreamWriter`
+
+Production swarms require simultaneous visibility into LLM token generation, graph node transitions, and real-time tool telemetry. LangGraph supports multi-mode streaming with `StreamWriter`:
 
 ```python
-async def run_swarm_demo():
+"""Production multi-mode streaming loop for Swarm executions."""
+
+from langgraph.types import StreamWriter
+from langgraph.config import get_stream_writer
+
+# 1. Custom tool emitting real-time telemetry via StreamWriter
+@tool("instrumented_code_writer", parse_docstring=True)
+def instrumented_code_writer(file_path: str, content: str) -> str:
+  """Writes workspace code while emitting real-time progress events."""
+  writer = get_stream_writer()
+  if writer:
+    writer({"type": "progress", "action": "validating_path", "target": file_path})
+  
+  clean_path = os.path.normpath(file_path)
+  if clean_path.startswith("..") or os.path.isabs(clean_path):
+    return f"Error: Security violation: '{file_path}'"
+
+  if writer:
+    writer({"type": "progress", "action": "writing_disk", "bytes": len(content)})
+
+  with open(clean_path, "w", encoding="utf-8") as f:
+    f.write(content)
+
+  return f"Successfully wrote {len(content)} bytes to {clean_path}"
+
+
+# 2. Asynchronous execution loop consuming multi-mode stream
+async def run_multi_mode_streaming():
   builder = create_coworking_swarm()
-  checkpointer = MemorySaver()
-  app = builder.compile(checkpointer=checkpointer)
+  app = builder.compile(checkpointer=MemorySaver())
 
-  session_config = {"configurable": {"thread_id": "coworking-thread-101"}}
-  initial_prompt = (
-      "Build a vectorized cosine similarity utility in 'src/math_simd.py' and"
-      " verify it with tests."
-  )
-
-  print(f"[DEMO] Initiating Swarm Coworking Workflow: {initial_prompt}\n")
-  input_payload = {
-      "messages": [HumanMessage(content=initial_prompt)],
+  config = {"configurable": {"thread_id": "thread-stream-404"}}
+  payload = {
+      "messages": [HumanMessage(content="Implement math_simd.py and verify with tests.")],
       "active_agent": "ResearcherAgent",
       "claimed_files": [],
       "task_summary": "Initial goal intake",
       "token_count": 0,
   }
 
-  async for event in app.astream_events(
-      input_payload, config=session_config, version="v2"
+  print("[STREAM START] Listening to messages, updates, and custom telemetry:\n")
+  
+  # stream_mode accepts a list of modes simultaneously!
+  async for mode, chunk in app.astream(
+      payload,
+      config=config,
+      stream_mode=["messages", "updates", "custom"],
   ):
-    kind = event["event"]
-    node_name = event.get("metadata", {}).get("langgraph_node", "")
-
-    if kind == "on_chat_model_stream":
-      content = event["data"]["chunk"].content
-      if content:
-        sys.stdout.write(content)
+    if mode == "messages":
+      # Token-by-token LLM output
+      message_chunk, metadata = chunk
+      if message_chunk.content:
+        sys.stdout.write(str(message_chunk.content))
         sys.stdout.flush()
-    elif kind == "on_tool_start":
-      tool_name = event.get("name", "tool")
-      print(f"\n[TOOL START] Agent at node '{node_name}' invoked: {tool_name}")
-    elif kind == "on_tool_end":
-      print(f"[TOOL END] Node '{node_name}' finished tool execution.")
+
+    elif mode == "updates":
+      # State dictionary emitted when a graph node completes
+      for node_name, state_update in chunk.items():
+        print(f"\n[NODE COMPLETED] {node_name} -> active_agent={state_update.get('active_agent')}")
+
+    elif mode == "custom":
+      # Custom telemetry emitted via StreamWriter
+      print(f"\n[TELEMETRY] {chunk.get('type')}: {chunk.get('action')} ({chunk.get('target', '')})")
+```
+
+---
+
+### 4.6 Dynamic Primitives: Command, Send (Map-Reduce) & Functional API Workflows (`@entrypoint`, `@task`)
+
+The LangGraph ecosystem provides two distinct modeling paradigms: the **Graph API** (`StateGraph`) and the **Functional API** (`@entrypoint` and `@task`). Both compile down to standard `Pregel` runtimes and interoperate seamlessly within swarms:
+
+```python
+"""Functional API agents interoperating with LangGraph Swarms and Map-Reduce Send."""
+
+from typing import Annotated, Literal
+from langchain_core.messages import BaseMessage, HumanMessage, ToolMessage
+from langchain_core.tools import tool
+from langgraph.func import entrypoint, task
+from langgraph.graph import END, START, MessagesState, StateGraph
+from langgraph.types import Command, Send
+from langgraph_swarm import create_swarm, create_handoff_tool
 
 
-if __name__ == "__main__":
-  asyncio.run(run_swarm_demo())
+# ---------------------------------------------------------------------------
+# 1. Building a Functional API Specialist Agent (@entrypoint & @task)
+# ---------------------------------------------------------------------------
+
+@task
+def analyze_ast_task(source_code: str) -> dict:
+  """Discrete task executed asynchronously with automatic checkpointing."""
+  has_syntax_error = "SyntaxError" in source_code
+  return {"valid": not has_syntax_error, "token_est": len(source_code) // 4}
+
+@task
+def lint_rules_task(source_code: str) -> list[str]:
+  """Performs rule checks on Python code string."""
+  violations = []
+  if "import *" in source_code:
+    violations.append("PEP8: wildcard import detected")
+  return violations
+
+@entrypoint()
+def code_auditor_agent(inputs: dict) -> dict:
+  """Autonomous agent defined using imperative control flow.
+
+  Returns a Pregel object that can be passed directly to create_swarm()!
+  """
+  code = inputs.get("code", "")
+  ast_future = analyze_ast_task(code)
+  lint_future = lint_rules_task(code)
+
+  # Resolve futures concurrently
+  ast_result = ast_future.result()
+  lint_result = lint_future.result()
+
+  return {
+      "audit_passed": ast_result["valid"] and len(lint_result) == 0,
+      "violations": lint_result,
+      "tokens": ast_result["token_est"],
+  }
+
+
+# ---------------------------------------------------------------------------
+# 2. Dynamic Fan-Out Map-Reduce via Send()
+# ---------------------------------------------------------------------------
+
+class SwarmWorkerState(MessagesState):
+  subtask: str
+  worker_id: str
+  result_summary: str
+
+class OrchestratorState(MessagesState):
+  goal: str
+  subtasks: list[str]
+  aggregated_results: Annotated[list[str], lambda a, b: a + b]
+
+def orchestrator_fanout(state: OrchestratorState):
+  """Spawns an arbitrary count of parallel worker subgraphs dynamically."""
+  return [
+      Send(
+          "worker_agent",
+          {
+              "subtask": task_text,
+              "worker_id": f"worker_{i}",
+              "messages": [HumanMessage(content=task_text)],
+          },
+      )
+      for i, task_text in enumerate(state.get("subtasks", []))
+  ]
+
+def worker_agent_node(
+    state: SwarmWorkerState,
+) -> Command[Literal["aggregator", "debugger"]]:
+  """Executes subtask and dynamically branches using Command."""
+  task_text = state["subtask"]
+
+  if "error" in task_text.lower():
+    return Command(
+        goto="debugger",
+        update={"messages": [ToolMessage(f"Failed: {task_text}", tool_call_id="call_err")]},
+    )
+
+  return Command(
+      goto="aggregator",
+      update={
+          "aggregated_results": [f"Passed: {task_text}"],
+          "messages": [ToolMessage(f"Passed: {task_text}", tool_call_id="call_ok")],
+      },
+  )
 ```
 
 ---
@@ -1995,6 +2439,83 @@ ACTIVE_WORKERS = Gauge(
 
 ---
 
+### 15.3 LangSmith Distributed Micro-Tracing, Evaluation & Run Hooks
+
+LangSmith provides enterprise-grade observability and dataset evaluation for complex multi-agent swarms. In LangGraph, every agent node, tool call, and handoff jump can automatically stream telemetry to a centralized LangSmith project:
+
+```python
+"""LangSmith distributed micro-tracing and custom evaluation hooks."""
+
+import os
+from langsmith import Client, evaluate
+from langsmith.schemas import Example, Run
+
+# Configure LangSmith environment
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+os.environ["LANGCHAIN_PROJECT"] = "swarm-production-eval"
+
+client = Client()
+
+
+def evaluate_agent_trajectory(run: Run, example: Example) -> dict:
+  """Custom evaluator: assesses trajectory conciseness and tool precision."""
+  messages = run.outputs.get("messages", [])
+  tool_calls = [m for m in messages if hasattr(m, "tool_calls")]
+  handoffs = [
+      m
+      for m in messages
+      if "Transferred" in getattr(m, "content", "")
+  ]
+
+  # Penalize trajectories with excessive ping-pong loops
+  score = 1.0
+  if len(handoffs) > 3:
+    score -= 0.3 * (len(handoffs) - 3)
+
+  return {
+      "key": "trajectory_efficiency",
+      "score": max(0.0, score),
+      "comment": (
+          f"Executed {len(tool_calls)} tool calls and {len(handoffs)} handoffs."
+      ),
+  }
+```
+
+---
+
+### 15.4 OpenTelemetry GenAI Semantic Conventions (`gen_ai.agent.*`) Integration
+
+As of 2026, the OpenTelemetry GenAI Special Interest Group has formalized dedicated semantic conventions for multi-agent workflows (`open-telemetry/semantic-conventions-genai`). Swarm instruments spans with native `gen_ai.*` attributes:
+
+```python
+"""OpenTelemetry 2026 GenAI Semantic Conventions instrumentation for Swarm."""
+
+from opentelemetry import trace
+from opentelemetry.trace import Status, StatusCode
+
+tracer = trace.get_tracer("swarm.multiagent", "2026.10")
+
+
+def record_agent_span(agent_id: str, agent_name: str, role: str, prompt: str):
+  """Starts a span adhering to the official OpenTelemetry gen_ai.agent conventions."""
+  with tracer.start_as_current_span(
+      f"agent {agent_name}",
+      kind=trace.SpanKind.INTERNAL,
+  ) as span:
+    # Standard 2026 GenAI attributes
+    span.set_attribute("gen_ai.agent.id", agent_id)
+    span.set_attribute("gen_ai.agent.name", agent_name)
+    span.set_attribute("gen_ai.agent.role", role)
+    span.set_attribute("gen_ai.agent.version", "1.0.0")
+    span.set_attribute("gen_ai.workflow.name", "swarm_orchestrator")
+
+    # Metrics on prompt payload without leaking sensitive data
+    span.set_attribute("gen_ai.usage.prompt_tokens", len(prompt) // 4)
+    span.set_status(Status(StatusCode.OK))
+```
+
+---
+
 ## 16. Automated Self-Healing & Pre-Flight Verification with Lifeguard
 
 In production multiagent systems where autonomous agents continuously synthesize Python plugins, execute toolchains, and coordinate across asynchronous worker clusters, system reliability requires two distinct layers of automated defense:
@@ -2281,6 +2802,62 @@ lifeguard &
 
 ---
 
+### 16.4 Graph-Level Fault Tolerance: `set_node_defaults`, `RetryPolicy` & `TimeoutPolicy`
+
+Beyond operating system sentinels, the LangGraph runtime engine natively supports declarative, graph-wide resilience policies via `set_node_defaults` (LangGraph v1.2+). Rather than wrapping every agent node in repetitive retry and try-except blocks, resilience is declared at graph compilation:
+
+```python
+"""Graph-wide automated fault tolerance and recovery policies."""
+
+from langgraph.errors import NodeError
+from langgraph.graph import StateGraph
+from langgraph.types import RetryPolicy, TimeoutPolicy
+
+
+def swarm_default_error_handler(state: SwarmState, error: NodeError) -> dict:
+  """Catches unexpected exceptions from any agent node, logs diagnostics, and routes to recovery."""
+  failed_node = error.node
+  error_msg = str(error.error)
+  
+  error_diagnostic = (
+      f"[SYSTEM ALERT] Unhandled exception in node '{failed_node}': {error_msg}. "
+      "Routing to Supervisor for fault remediation."
+  )
+  return {
+      "messages": [ToolMessage(content=error_diagnostic, tool_call_id="fault_recovery")],
+      "active_agent": "Supervisor",
+  }
+
+
+# Apply graph-wide resilience policies across all specialist agent nodes
+resilient_workflow = (
+    StateGraph(SwarmState)
+    .set_node_defaults(
+        # 1. Automated exponential backoff for transient provider timeouts and rate limits
+        retry_policy=RetryPolicy(
+            max_attempts=3,
+            initial_interval=1.0,
+            backoff_factor=2.0,
+            retry_on=(TimeoutError, ConnectionError, OSError),
+        ),
+        # 2. Strict timeout budget per node turn to prevent hanging LLM streams
+        timeout=TimeoutPolicy(run_timeout=60.0),
+        # 3. Centralized error boundary catching fatal unhandled crashes
+        error_handler=swarm_default_error_handler,
+    )
+    .add_node("ResearcherAgent", researcher_node)
+    .add_node("CoderAgent", coder_node)
+    .add_node("TesterAgent", tester_node)
+)
+```
+
+#### Key Reliability Guarantees
+- **Unified Retry Semantics**: Transient network partition or provider 503 errors trigger deterministic exponential backoff without polluting the LLM message history.
+- **Runaway Stream Prevention**: `TimeoutPolicy(run_timeout=60.0)` guarantees that a stalled LLM streaming connection cannot block the graph or consume worker thread slots indefinitely.
+- **Graceful Fault Degradation**: The `error_handler` intercepts unhandled exceptions, constructs a diagnostic `ToolMessage`, and dynamically reroutes execution to the `Supervisor` or arbitrator node rather than aborting the entire user session.
+
+---
+
 ## 17. Failure Modes, Debugging & Production Hardening
 
 ### 17.1 Circular Handoff Ping-Pong Traps
@@ -2423,3 +3000,20 @@ Ensure all state values conform strictly to standard Pydantic models or primitiv
 16. **LifeguardSystem Operational Self-Healing Daemon**:  
     [https://github.com/LifeguardSystem/lifeguard](https://github.com/LifeguardSystem/lifeguard)  
     *Verified distributed validation decorators, automated remediation actions, and worker process lifecycle monitoring.*
+
+17. **LangGraph Supervisor Official Repository**:  
+    [https://github.com/langchain-ai/langgraph-supervisor-py](https://github.com/langchain-ai/langgraph-supervisor-py)  
+    *Verified hierarchical supervisor orchestration, parallel multi-handoff dispatches via Send, and output_mode formatting.*
+
+18. **LangGraph Long-Term Store & Runtime Context**:  
+    [https://docs.langchain.com/oss/python/langgraph/stores](https://docs.langchain.com/oss/python/langgraph/stores)  
+    *Verified BaseStore, InMemoryStore semantic vector indexing (`init_embeddings`), hierarchical namespaces, and Runtime[Context] injection.*
+
+19. **LangGraph Functional API Workflows (`@entrypoint`, `@task`)**:  
+    [https://docs.langchain.com/oss/python/langgraph/functional-api](https://docs.langchain.com/oss/python/langgraph/functional-api)  
+    *Verified imperative workflow decorators compiling to native Pregel runtimes for multi-agent swarm interop.*
+
+20. **OpenTelemetry Semantic Conventions for Generative AI & Agents**:  
+    [https://opentelemetry.io/docs/specs/semconv/gen-ai/](https://opentelemetry.io/docs/specs/semconv/gen-ai/)  
+    *Verified standardized telemetry attributes (`gen_ai.agent.name`, `gen_ai.operation.name`, `gen_ai.usage.prompt_tokens`) across agent handoffs.*
+

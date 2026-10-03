@@ -83,6 +83,7 @@ class Mem0Store:
         agent_id: str = "swarm-sdk",
         infer: bool = False,
     ) -> None:
+        """Initialize the store from settings (platform client or local table)."""
         self._client = client
         self.user_id = user_id
         self.agent_id = agent_id
@@ -114,6 +115,7 @@ class Mem0Store:
         )
 
     def add(self, text: str, vector: np.ndarray) -> int:
+        """Store a memory via the Mem0 Platform client."""
         del vector
         payload = self._client.add(
             [{"role": "user", "content": text}],

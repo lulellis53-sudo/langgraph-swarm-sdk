@@ -47,6 +47,7 @@ token budget, tasks, capabilities). Validation: `uv run python -m swarm_sdk.agen
 | [Tester](Tester/AGENTS.md) | write_and_run_tests | - | write_tests, run_gate |
 | [TxtToCsv](TxtToCsv/AGENTS.md) | convert_text_files_to_csv | - | infer_format, convert |
 | [WebFetch](WebFetch/AGENTS.md) | fetch_render | - | fetch_render |
+| [Newsletter](Newsletter/AGENTS.md) | digest_generation | - | newsletter_mvp |
 
 The `benchmark/` directory holds the primary test suite and evals; the
 `code-review/`, `deep-research/`, and `math/` directories are mirrored prompt

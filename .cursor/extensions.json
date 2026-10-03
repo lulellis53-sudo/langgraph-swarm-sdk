@@ -3,8 +3,11 @@
     "charliermarsh.ruff",
     "ms-python.python",
     "ms-python.debugpy",
+    "astral-sh.ty",
+    "meta.pyrefly",
+    "njqdev.vscode-python-typehint",
     "redhat.vscode-yaml",
     "tamasfe.even-better-toml",
-    "github.vscode-github-actions"
+    "davidanson.vscode-markdownlint"
   ]
 }

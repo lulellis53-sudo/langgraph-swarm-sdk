@@ -5,7 +5,7 @@ role: coordinate_swarm
 model: openai:gpt-4o-mini
 think_level: low
 effort: low
-api_key_env: SWARM_ORCHESTRATOR_API_KEY
+api_key_env: OPENAI_API_KEY
 
 token_budget:
   max_prompt: 2048

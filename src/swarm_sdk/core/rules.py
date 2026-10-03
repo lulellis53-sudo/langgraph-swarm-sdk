@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 import re
 import shlex
-from typing import Any, Callable, ClassVar, TypeVar
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any, ClassVar, TypeVar
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -68,12 +69,11 @@ class HostInvariants(BaseModel):
     ram_total_gb: float = 16.0
     ram_ceiling_gb: float = 13.6
     max_subagents: int = 3
-    modern_cli_tools: dict[str, str] = Field(
-        default_factory=lambda: dict(DEFAULT_MODERN_CLI_TOOLS)
-    )
+    modern_cli_tools: dict[str, str] = Field(default_factory=lambda: dict(DEFAULT_MODERN_CLI_TOOLS))
 
     @model_validator(mode="after")
     def validate_simd_constraints(self) -> HostInvariants:
+        """Validate that SIMD flags match this host's actual CPU capabilities."""
         supported_upper = [s.upper() for s in self.simd_supported]
         prohibited_upper = [s.upper() for s in self.simd_prohibited]
 
@@ -98,6 +98,7 @@ class HostRuleEngine:
         rules_path: str | Path | None = None,
         invariants: HostInvariants | None = None,
     ) -> None:
+        """Initialize the rule engine with the host invariants."""
         self.root_dir: Path | None = Path(root_dir) if root_dir is not None else None
         if rules_path is not None:
             self.rules_path: Path | None = Path(rules_path)
@@ -143,7 +144,8 @@ class HostRuleEngine:
         # Parse subagent concurrency cap
         max_subagents = 3
         subagents_match = re.search(
-            r"(?i)(?:concurrency cap:\s*(?:never\s+spawn\s+more\s+than\s+)?|never\s+spawn\s+more\s+than\s+(?:\d+\s+to\s+)?|max_subagents:\s*)(\d+)",
+            r"(?i)(?:concurrency cap:\s*(?:never\s+spawn\s+more\s+than\s+)?"
+            r"|never\s+spawn\s+more\s+than\s+(?:\d+\s+to\s+)?|max_subagents:\s*)(\d+)",
             content,
         )
         if subagents_match:
@@ -174,7 +176,7 @@ class HostRuleEngine:
 
         try:
             content = target_path.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
+        except OSError, UnicodeDecodeError:
             return HostInvariants()
 
         return self._parse_invariants_content(content)
@@ -195,8 +197,10 @@ class HostRuleEngine:
             f"- Target Architecture: `{invariants.cpu_arch}`\n"
             f"- CPU Model: `{invariants.cpu_model}`\n"
             f"- Supported SIMD: {simd_sup}\n"
-            f"- Strictly Prohibited SIMD: {simd_prohib} (STRICTLY PROHIBITED: Host hardware lacks AVX-512 support)\n"
-            f"- RAM Budget: {invariants.ram_total_gb} GB total, {invariants.ram_ceiling_gb} GB hard ceiling\n"
+            f"- Strictly Prohibited SIMD: {simd_prohib} "
+            "(STRICTLY PROHIBITED: Host hardware lacks AVX-512 support)\n"
+            f"- RAM Budget: {invariants.ram_total_gb} GB total, "
+            f"{invariants.ram_ceiling_gb} GB hard ceiling\n"
             f"- Concurrency Cap: Maximum {invariants.max_subagents} concurrent active subagents\n\n"
             "## Mandated Modern CLI Tooling (Legacy Unix Commands Prohibited)\n"
             "Always use the modern replacements; do NOT fall back to legacy commands:\n"
@@ -212,17 +216,21 @@ class HostRuleEngine:
         """Checks if a command enables or targets prohibited SIMD instructions."""
         for simd in self.invariants.simd_prohibited:
             if simd.upper() == "AVX-512":
-                # Look for flags like -mavx512, +avx512, --enable-avx512, CFLAGS="-mavx512", -DENABLE_AVX512
-                flag_match = re.search(r"(?i)(?:-m|\+|--enable-|-enable-|-D[A-Za-z0-9_]*?)avx-?512\w*", command_line)
+                # Look for flags like -mavx512, +avx512, --enable-avx512, -DENABLE_AVX512
+                flag_match = re.search(
+                    r"(?i)(?:-m|\+|--enable-|-enable-|-D[A-Za-z0-9_]*?)avx-?512\w*", command_line
+                )
                 if flag_match:
-                    prefix = command_line[max(0, flag_match.start() - 5):flag_match.start()]
+                    prefix = command_line[max(0, flag_match.start() - 5) : flag_match.start()]
                     if not prefix.endswith("-mno-") and not prefix.endswith("-no-"):
                         return f"Command attempts to use prohibited SIMD instruction set: {simd}"
 
                 # Look for word matches like avx512 / AVX-512 unless preceded by negation
-                for m in re.finditer(r"(?i)(?:^|[^a-zA-Z0-9_-])(?:[A-Za-z0-9_]+_)?avx-?512\w*", command_line):
+                for m in re.finditer(
+                    r"(?i)(?:^|[^a-zA-Z0-9_-])(?:[A-Za-z0-9_]+_)?avx-?512\w*", command_line
+                ):
                     start = m.start()
-                    prefix = command_line[max(0, start - 10):start]
+                    prefix = command_line[max(0, start - 10) : start]
                     if re.search(r"(?i)(?:-mno-?|no[-_\s]+)$", prefix):
                         continue
                     return f"Command attempts to use prohibited SIMD instruction set: {simd}"
@@ -289,7 +297,11 @@ class HostRuleEngine:
                 tokens.pop(0)
                 while tokens and tokens[0].startswith("-"):
                     flag = tokens.pop(0)
-                    if flag in {"-u", "-n", "-I", "-s", "-P", "-C"} and tokens and not tokens[0].startswith("-"):
+                    if (
+                        flag in {"-u", "-n", "-I", "-s", "-P", "-C"}
+                        and tokens
+                        and not tokens[0].startswith("-")
+                    ):
                         tokens.pop(0)
 
             if not tokens:

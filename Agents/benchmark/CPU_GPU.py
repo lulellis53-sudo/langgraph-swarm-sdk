@@ -25,9 +25,7 @@ from benchmark.metrics import Timer  # noqa: E402
 
 RESULTS_DIR = Path(__file__).resolve().parent / "results" / "cpu_gpu"
 DEFAULT_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-DEFAULT_SNIPPET = (
-    "Hybrid search combines dense embeddings with BM25 keywords for retrieval."
-)
+DEFAULT_SNIPPET = "Hybrid search combines dense embeddings with BM25 keywords for retrieval."
 
 
 def _require_fastembed() -> Any:
@@ -36,9 +34,7 @@ def _require_fastembed() -> Any:
     try:
         module = importlib.import_module("fastembed")
     except ImportError as exc:
-        raise SystemExit(
-            "fastembed is not installed. Run: uv sync --extra jupyter"
-        ) from exc
+        raise SystemExit("fastembed is not installed. Run: uv sync --extra jupyter") from exc
     return getattr(module, "TextEmbedding")
 
 

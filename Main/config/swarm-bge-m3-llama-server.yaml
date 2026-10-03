@@ -1,0 +1,22 @@
+# BGE-M3 via a local Vulkan llama-server (Molten.md §6.3, Recipe A).
+# Start: llama-server -m <bge-m3-q8_0.gguf> --device Vulkan0 -ngl 99 --embedding \
+#          -b 512 -ub 512 -c 4096 --host 127.0.0.1 --port 8080
+# Activate with SWARM_CONFIG_PATH=Main/config/swarm-bge-m3-llama-server.yaml.
+version: 1
+
+embedding:
+  model: bge-m3
+  backend: llama-server
+  llama_server_url: http://127.0.0.1:8080
+  llama_n_batch: 8
+  dim: 1024
+  batch_size: 8
+  normalize: true
+
+vectorstore:
+  backend: sqlite-vec
+  path: Main/Essentials/llama/bge-m3-int8.sqlite
+  retrieve_k: 20
+  final_k: 10
+  quantization: int8
+  opencl_enabled: true

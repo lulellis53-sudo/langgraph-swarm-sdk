@@ -7,10 +7,7 @@ import sys
 
 
 def _loaded_after_import(*names: str) -> set[str]:
-    code = (
-        "import sys, swarm_sdk; "
-        f"print(','.join(n for n in {names!r} if n in sys.modules))"
-    )
+    code = f"import sys, swarm_sdk; print(','.join(n for n in {names!r} if n in sys.modules))"
     out = subprocess.run(
         [sys.executable, "-c", code],
         capture_output=True,
@@ -30,9 +27,7 @@ def test_import_swarm_sdk_does_not_load_embedding_backends() -> None:
 
 
 def test_import_swarm_sdk_does_not_load_langgraph_stack() -> None:
-    assert not _loaded_after_import(
-        "langchain", "langchain_core", "langgraph", "langgraph_swarm"
-    )
+    assert not _loaded_after_import("langchain", "langchain_core", "langgraph", "langgraph_swarm")
 
 
 def test_import_swarm_sdk_does_not_load_tokenizers() -> None:
@@ -52,3 +47,7 @@ def test_import_serving_http_does_not_build_app() -> None:
         check=True,
     ).stdout.strip()
     assert not out
+
+
+def test_import_swarm_sdk_does_not_load_faiss() -> None:
+    assert "faiss" not in _loaded_after_import("faiss")

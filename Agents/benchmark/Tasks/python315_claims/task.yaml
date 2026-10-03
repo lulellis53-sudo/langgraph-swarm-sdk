@@ -1,0 +1,13 @@
+name: python315_claims
+sdk_entry: benchmark.Tasks.python315_claims.benchmark_python315_claims.run
+metrics:
+  - thread_scaling_speedup
+  - dot_product_speedup
+  - columnar_stats_speedup
+  - minimalloc_compaction_ratio
+  - zstd_compression_ratio
+  - lazy_import_startup_speedup
+models: none (offline, no API keys); measures the claims of Documentos/Python3.15.md §11
+pass:
+  minimalloc_verified: true
+  every_row_measured_or_skipped_with_reason: true

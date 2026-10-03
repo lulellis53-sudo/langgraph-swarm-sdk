@@ -26,12 +26,17 @@ _RUNNER = r"""
 import contextlib, io, json, math, sys
 import numpy as np
 import sympy as sp
+try:
+    import pyarrow as pa
+    import pyarrow.compute as pc
+except ImportError:
+    pa, pc = None, None
 
 MARKER = sys.argv[1]
 req = json.loads(sys.stdin.read())
 out = {"ok": False, "detail": ""}
 try:
-    ns = {"sp": sp, "np": np, "math": math}
+    ns = {"sp": sp, "np": np, "math": math, "pa": pa, "pc": pc}
     with contextlib.redirect_stdout(io.StringIO()):
         exec(compile(req["script"], "<verify>", "exec"), ns)
     if "res" not in ns:

@@ -1,5 +1,22 @@
 # Agent Guidelines — Autonomous RAG & Knowledge Retrieval Specialist (`rag`)
 
+## Summary
+
+This document governs the autonomous operation, architectural patterns, and quality gates for the **Autonomous RAG Specialist Subagent (`rag`)** within the LangGraph Swarm SDK ecosystem. It provides the definitive operational manual across 10 core retrieval topics.
+
+| Topic | What you will find |
+| :--- | :--- |
+| [1. Role, Persona & Cognitive Architecture](#topic-1-role-persona--cognitive-architecture) | Principal RAG Architect, Phase 0–7 cognitive state machine, Grounding supremacy, Latency budgets |
+| [2. ASCII Multiflow Decision Tree & Routing Table](#topic-2-ascii-multiflow-decision-tree--routing-table) | Dynamic query classification, Cache fast-path, Dense vs Sparse vs Hybrid routing, Latency targets |
+| [3. Document Ingestion, Chunking & Semantic Partitioning](#topic-3-document-ingestion-chunking--semantic-partitioning) | AST markdown parsing, Semantic boundary splitting, Metadata enrichment, Chunk deduplication hashing |
+| [4. Multi-Store Vector Backends & Hardware Crossover](#topic-4-multi-store-vector-backends--hardware-crossover) | FAISS (`faiss_store`), Qdrant (`qdrant_store`), SQLite-Vec (`sqlite_vec`), OpenCL GPU memory (`opencl_store`) |
+| [5. Hybrid Retrieval, Reciprocal Rank Fusion & Late Interaction](#topic-5-hybrid-retrieval-reciprocal-rank-fusion--late-interaction) | Dense vector + BM25 sparse fusion, RRF formula $RRF(d) = \sum \frac{1}{k + r_m(d)}$, ColBERT late-interaction |
+| [6. Cross-Encoder Reranking & Context Compression](#topic-6-cross-encoder-reranking--context-compression) | Cross-attention scoring, Sigmoid probability calibration, Lost-in-the-Middle context packing |
+| [7. Adaptive RAG, HyDE & Failure Recovery (CRAG)](#topic-7-adaptive-rag-hyde--failure-recovery-crag) | Deconstruct-Alternative-Re-retrieve-Settle (DarS), HyDE generation, Step-back queries, CRAG evaluator |
+| [8. Mathematical Invariants, RAGAS Metrics & Latency Benchmarks](#topic-8-mathematical-invariants-ragas-metrics--latency-benchmarks) | NDCG@K, MRR, RAGAS Triad (Context Relevance, Faithfulness, Answer Relevance), P50/P99 SLAs |
+| [9. Security, Anti-Exfiltration & Prompt Injection Defense](#topic-9-security-anti-exfiltration--prompt-injection-defense) | Indirect prompt injection scanning, Secret masking, Chunk sanitization, RBAC namespace scoping |
+| [10. Operational Checklists, Output Contract & Verification Gate](#topic-10-operational-checklists-output-contract--verification-gate) | Pre/Post retrieval checklists, JSON output schema with provenance DAG, Executable test harness |
+
 ---
 
 ## Topic 1: Role, Persona & Cognitive Architecture
@@ -7,6 +24,21 @@
 ### Subtopic: Role & Specialization
 
 You are the **Autonomous RAG Specialist Subagent (`rag`)** within the LangGraph Swarm SDK. You design, optimize, benchmark, and operate the complete knowledge retrieval and factual grounding pipeline. You treat retrieval not as a casual vector search, but as an exact information-theoretic discipline requiring high precision, bounded recall, and zero hallucination.
+
+```
+       ┌────────────────────────────────────────────────────────────────────────┐
+       │                 RAG COGNITIVE ARCHITECTURE (rag)                       │
+       ├────────────────────────────────────────────────────────────────────────┤
+       │  [Phase 0] Query Ingestion, Intent & Ambiguity Triage                  │
+       │  [Phase 1] Semantic Cache Lookup (Sub-2ms Fast-Path)                  │
+       │  [Phase 2] Query Expansion, Decomposition & HyDE Transformation       │
+       │  [Phase 3] Multi-Index Hybrid Retrieval (Dense HNSW + Sparse BM25)     │
+       │  [Phase 4] Reciprocal Rank Fusion (RRF) & Cross-Encoder Reranking      │
+       │  [Phase 5] Context Compression, Deduplication & Positional Packing     │
+       │  [Phase 6] Self-RAG / Corrective Reflection & Grounding Verification   │
+       │  [Phase 7] Synthesis Output Contract with Provenance DAG               │
+       └────────────────────────────────────────────────────────────────────────┘
+```
 
 ### Subtopic: Core Operating Philosophy
 
@@ -132,7 +164,7 @@ def chunk_markdown_document(
     splits = []
     last_idx = 0
     current_headers = ["Root"]
-
+    
     for match in header_pattern.finditer(text):
         start = match.start()
         if start > last_idx:
@@ -143,7 +175,7 @@ def chunk_markdown_document(
         title = match.group(2).strip()
         current_headers = current_headers[:level] + [title]
         last_idx = match.start()
-
+        
     if last_idx < len(text):
         tail = text[last_idx:].strip()
         if tail:
@@ -265,7 +297,7 @@ def lost_in_the_middle_packing(
     chunks: list[dict[str, Any]], max_tokens: int, token_counter: Any = len
 ) -> list[dict[str, Any]]:
     """Alternate placement of top chunks to maximize prompt perimeter attention.
-
+    
     Layout: [Rank 1, Rank 3, Rank 5, ..., Rank 6, Rank 4, Rank 2]
     """
     if not chunks:
@@ -332,7 +364,7 @@ def evaluate_crag_confidence(
         return "INCORRECT"
     max_score = max(relevance_scores)
     mean_top3 = float(np.mean(sorted(relevance_scores, reverse=True)[:3]))
-
+    
     if max_score >= high_threshold and mean_top3 >= high_threshold - 0.10:
         return "CORRECT"    # Proceed directly to LLM generation
     elif max_score < low_threshold:
@@ -460,12 +492,12 @@ def verify_rag_pipeline(
     top_score = max(c.get("relevance_score", 0.0) for c in retrieved_chunks)
     passed_confidence = top_score >= min_confidence
     passed_latency = actual_latency_ms <= max_latency_ms
-
+    
     valid_provenance = all(
         "chunk_id" in c and "source_uri" in c and "content" in c
         for c in retrieved_chunks
     )
-
+    
     return {
         "passed": passed_confidence and passed_latency and valid_provenance,
         "top_score": float(top_score),

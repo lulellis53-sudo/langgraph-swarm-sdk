@@ -96,6 +96,7 @@ class SwarmServicer(swarm_pb2_grpc.SwarmServiceServicer):
     three orchestration RPCs (spawn a plan, execute it, poll its status)."""
 
     def __init__(self, sdk: SwarmSDK) -> None:
+        """Bind the servicer to an ``SwarmSDK`` instance."""
         self.sdk = sdk
 
     def Run(
@@ -123,9 +124,7 @@ class SwarmServicer(swarm_pb2_grpc.SwarmServiceServicer):
         del context
         hits = self.sdk.recall(request.query, request.top_k or 4)
         return swarm_pb2.RecallResponse(
-            hits=[
-                swarm_pb2.MemoryHit(id=hit.id, text=hit.text, score=hit.score) for hit in hits
-            ]
+            hits=[swarm_pb2.MemoryHit(id=hit.id, text=hit.text, score=hit.score) for hit in hits]
         )
 
     def SpawnPlan(

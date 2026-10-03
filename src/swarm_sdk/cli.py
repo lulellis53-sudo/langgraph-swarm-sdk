@@ -12,6 +12,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from swarm_sdk.config.loader import load_swarm_config
 from swarm_sdk.core.rules import HostRuleEngine
 from swarm_sdk.orchestrator.low_swarm import LowSwarmEngine
 from swarm_sdk.retrieval.rag_ingest import RAGIngestionPipeline
@@ -46,14 +47,17 @@ class PlainTable:
     """Lightweight plain-text table formatter fallback when Rich is unavailable."""
 
     def __init__(self, title: str = "") -> None:
+        """Initialize an empty table with the given column headers."""
         self.title = title
         self.columns: list[str] = []
         self.rows: list[list[str]] = []
 
     def add_column(self, header: str, **kwargs: Any) -> None:
+        """Add a column header."""
         self.columns.append(header)
 
     def add_row(self, *args: Any, **kwargs: Any) -> None:
+        """Append one row of cells."""
         cleaned_cells = [
             re.sub(
                 r"\[/?(?:bold|italic|underline|green|red|yellow|blue|cyan|magenta|dim|white)[^\]]*\]",
@@ -96,6 +100,7 @@ class PlainPanel:
     """Lightweight plain-text panel fallback when Rich is unavailable."""
 
     def __init__(self, content: Any, title: str = "", **kwargs: Any) -> None:
+        """Initialize the panel with its title and body lines."""
         self.content = content
         self.title = title
 
@@ -114,9 +119,11 @@ class PlainConsole:
     """Lightweight plain-text console fallback writing to stdout."""
 
     def __init__(self, file: Any = None) -> None:
+        """Initialize the fallback console (no rich required)."""
         self.file = file or sys.stdout
 
     def print(self, *args: Any, **kwargs: Any) -> None:
+        """Render the table to stdout."""
         if not args:
             print(file=self.file)
             return
@@ -135,6 +142,7 @@ class PlainConsole:
         print(" ".join(out_parts), file=self.file)
 
     def rule(self, title: str = "") -> None:
+        """Render a horizontal rule."""
         if title:
             self.print(f"--- {title} ---")
         else:
@@ -376,13 +384,12 @@ def handle_ingest(args: argparse.Namespace, console: Any) -> int:
         console.print(f"[red]Error: Source path '{source_path}' does not exist.[/red]")
         return 1
 
-    pipeline = RAGIngestionPipeline()
     try:
+        rag = load_swarm_config().rag
+        pipeline = RAGIngestionPipeline(child_size=rag.child_size if rag.parent_child else None)
         count = pipeline.ingest_files([source_path])
         pipeline.save(output_path)
-        console.print(
-            f"[green]Successfully ingested {count} chunks into {output_path}[/green]"
-        )
+        console.print(f"[green]Successfully ingested {count} chunks into {output_path}[/green]")
         return 0
     except Exception as exc:
         console.print(f"[red]Error during RAG ingestion: {exc}[/red]")

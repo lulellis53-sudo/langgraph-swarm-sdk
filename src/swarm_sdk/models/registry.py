@@ -100,6 +100,7 @@ class RegistryLoader:
 
 
 def load_registry(path: str | Path | None = None) -> Registry:
+    """Load ``model_registry.yaml`` from the explicit path or packaged fallbacks."""
     candidates = (
         [Path(path)]
         if path

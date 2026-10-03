@@ -59,7 +59,7 @@ Before editing code:
 - Inspect local instructions and the nearest applicable `GEMINI.md`.
 - Check repository state before modifying tracked files.
 - Read only the files needed to answer the current question.
-- Prefer targeted discovery (`rg`, file-specific reads, focused diffs) over broad recursive dumps.
+- Prefer targeted discovery (`fd` for files/paths, `rg` for text/code search, `bat` for viewing file contents) over broad recursive dumps or legacy `find`/`grep`/`cat`.
 - Do not scan the entire home directory, system volume, `.git`, dependency caches, build output, or generated trees unless directly required.
 - Do not reread unchanged files without a concrete reason.
 - Treat the repository, tests, lockfiles, and local configuration as stronger evidence than assumptions.
@@ -68,7 +68,7 @@ For large files or logs:
 
 - Locate relevant symbols/lines first.
 - Read a bounded surrounding range.
-- Use `head`, `tail`, `sed -n`, `rg`, or equivalent focused tools.
+- Use `bat` (with line ranges), `rg`, `head`, `tail`, `sd`, or `sed -n`.
 - Summarize large outputs instead of echoing them back in full.
 
 ---
@@ -80,6 +80,7 @@ Assume macOS semantics unless the environment proves otherwise.
 - Expect an interactive `zsh` environment, but inspect the actual shell when it matters.
 - Remember macOS commonly ships BSD userland; do not assume GNU-only flags or behavior.
 - Do not assume availability of GNU `sed`, `readlink -f`, `timeout`, or Linux-specific `/proc`.
+- Always prioritize installed, high-performance modern CLI tools (`rg`, `bat`, `fd`, `btm` / `bottom`, `eza`, `sd`, `dust`, `duf`, `procs`, `delta`, `jq`, `hyperfine`) located in `/Users/usuario/.cargo/bin` and `/usr/local/bin` over slower BSD/GNU utilities (`grep`, `cat`, `find`, `top`, `ls`, `sed`, `du`, `df`, `ps`).
 - Quote paths and variables safely, especially paths containing spaces.
 - Prefer deterministic, non-interactive commands.
 - Use temporary directories/files for experiments and clean them up when safe.
@@ -194,6 +195,17 @@ Search behavior:
 - Separate sourced fact from inference.
 - Stop searching when the evidence is sufficient to answer the actual question. Do not browse indefinitely in pursuit of impossible certainty.
 
+### 9.1 Research & Extraction Hierarchy (Context7, Tavily, Exa, Google Search)
+
+Strictly enforce this retrieval precedence:
+
+1. **Code & Library Search (Primary: Context7)**:
+   - Always query **Context7 MCP** (`resolve-library-id` -> `query-docs`) first when researching programming languages, frameworks, library APIs, flags, types, and CLI command syntax.
+2. **Web Scraping, Content Fetching & JSON Parsing (Tavily & Exa)**:
+   - Use **Tavily** (`tavily_search`, `tavily_extract`, `tavily_crawl`, `tavily_map`) and **Exa** (`web_search_exa`, `web_fetch_exa`) for automated scraping, deep content extraction, batch URL processing, and structured JSON parsing.
+3. **Google Web Search (Secondary Fallback Only)**:
+   - Use Google Websearch (`search_web`) **strictly as a second option**, only after Context7 has been consulted or when Context7 does not yield the required technical documentation.
+
 ---
 
 ## 10. Accuracy and Epistemic Discipline
@@ -225,7 +237,8 @@ Optimize for useful information per token and per tool call.
 - Use the cheapest reliable source of truth first.
 - Prefer focused reads to entire-file dumps.
 - Prefer targeted tests to full suites until targeted validation succeeds.
-- Batch independent, safe read-only checks when doing so reduces overhead.
+- Avoid multi-tool calls: strictly execute one single bounded tool call per turn; never issue multiple concurrent or speculative tool calls at once.
+- Avoid looping and senseless tasks: never generate filler tasks, speculative probes, or ungrounded exploratory loops. Every action must have an immediate, verifiable justification.
 - Do not execute a tool call whose result cannot change the next decision.
 - Do not repeat facts already established in the current session.
 - Do not generate long plans for trivial tasks.
@@ -258,6 +271,27 @@ Choose the tool that directly matches the evidence needed.
 
 Do not use the web to guess what the local repository already contains.
 Do not use shell commands as a substitute for a safer direct file operation when the direct operation is available.
+
+### 12.1 Fast CLI Tools Mandate
+
+Always use modern, high-performance Unix CLI tools over legacy counterparts:
+
+| Task / Domain | Fast CLI Tool (Mandatory) | Legacy / Deprecated Tool | Rationale & Capabilities |
+| :--- | :--- | :--- | :--- |
+| **File & Directory Search** | `fd` | `find` | Parallel directory traversal, smart-case regex, respects `.gitignore` |
+| **Code & Content Search** | `rg` (ripgrep) | `grep`, `egrep`, `ack` | Multi-threaded regex search, memory-mapped files, ultra-fast |
+| **File Display & Paging** | `bat` | `cat`, `more`, `less` | Syntax highlighting, line numbers, automatic git modifications |
+| **Process & System Monitor** | `bottom` (`btm`), `procs` | `top`, `htop`, `ps` | Terminal graphical monitor (`btm`), typed structured process listing (`procs`) |
+| **Stream / String Editing** | `sd` | `sed` | Clean intuitive syntax (`sd 'find' 'replace'`), fast Rust engine |
+| **Directory Listing** | `eza` | `ls` | Fast tree listing, metadata, file permissions, git status |
+| **Disk Space Usage** | `dust`, `duf` | `du`, `df` | Interactive tree disk usage (`dust`), modern block/mount table (`duf`) |
+| **Git Diffs & Patches** | `delta` | `diff`, plain `git diff` | Syntax-highlighting pager, side-by-side diffs, word-level diffing |
+| **JSON Stream Processing** | `jq` | python -m json.tool | Fast native stream parser, filtering, slicing, transformation |
+| **CLI Benchmarking** | `hyperfine` | `time` loops | Statistical warmup runs, variance calculation, multi-command compare |
+
+**Anti-Monolith Directive**:
+- Never propose monolithic, slow multi-agent frameworks or heavy multi-step scripts when pure, fast Unix CLI tools can accomplish the task instantly.
+- One-liner Unix pipelines (`rg`, `fd`, `jq`, `sd`, `bat`) are strictly preferred over writing custom Python scripts for basic search, replace, and inspection.
 
 ---
 
@@ -326,6 +360,11 @@ Do not:
 - claim tests were run when they were not,
 - claim external facts are current without checking when freshness matters,
 - produce excessive boilerplate, comments, or explanation that does not improve correctness,
+- use slow legacy utilities (`grep`, `cat`, `find`, `top`, `sed`, `ls`, `du`, `df`, `ps`) when fast modern CLI equivalents (`rg`, `bat`, `fd`, `btm`, `sd`, `eza`, `dust`, `duf`, `procs`) are available,
+- propose monolithic multi-agent frameworks or heavy script pipelines when pure Unix CLI tools can solve the problem directly and immediately,
+- issue multi-tool calls or batch parallel speculative tool calls in a single turn,
+- generate senseless tasks, speculative exploration, or repetitive polling loops,
+- execute git commands (status, diff, log, commit, add, checkout, etc.) unless explicitly ordered by the user (avoid Git at all costs),
 - continue using tools after the acceptance criteria are already satisfied.
 
 ---
@@ -377,9 +416,9 @@ uv run --extra dev --extra observability --extra opencl --extra faiss --extra me
 uv run python -m swarm_sdk.agents.validate
 ```
 
-### 18.4 Post-Activity Retrospective & Self-Criticism (`Howicanupdate.md`)
+### 18.4 Post-Activity Retrospective & Self-Criticism (`Howicanupdate.md` & `Howicanupdate.json`)
 
-After completing an activity, a complete task, or major milestone, write or update `Howicanupdate.md` in the project root containing **only 4 lines of criticism**:
+After completing an activity, a complete task, or major milestone, write or update `Howicanupdate.md` and `Howicanupdate.json` in the project root containing **only 4 lines of criticism**:
 1. Stalled on sandbox boundaries by probing paths outside workspace before proactively enabling bypass.
 2. Incurred search round-trips by proposing monolithic agent frameworks instead of pure Unix CLI tools.
 3. Executed broad shell probes across TCC-protected home roots instead of targeted project subdirectories.
@@ -387,5 +426,22 @@ After completing an activity, a complete task, or major milestone, write or upda
 
 Followed by:
 - **Concrete Update & Improvement Actions (How I Can Update)**: Clear, prioritized action items to update the system and optimize performance in the next iteration.
+- **Output Policy**: Do NOT echo repetitive self-criticism in conversational plain text. Provide structured self-criticism and retrospective updates in `.json` format.
+
+### 18.5 Fast CLI Toolchain Standards
+
+All development, diagnostic, and exploration tasks in this repository must systematically leverage installed fast Unix CLI tools (`/Users/usuario/.cargo/bin` and `/usr/local/bin`):
+- `fd` for file discovery
+- `rg` for text and code pattern search
+- `bat` for code reading and syntax display
+- `btm` / `bottom` and `procs` for process and resource inspection
+- `sd` for fast stream/text replacements
+- `eza` for directory tree inspection
+- `dust` / `duf` for storage analysis
+- `delta` for git diff review
+- `jq` for JSON data processing
+- `hyperfine` for benchmarking
+Never spawn slow python scripts or monolithic agent loops when a single-line invocation of these tools provides the definitive answer in milliseconds.
+
 
 

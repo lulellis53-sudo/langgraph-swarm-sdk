@@ -3,6 +3,7 @@ name: DataEngineer
 role: data_pipeline_and_storage
 
 model: openai:gpt-4o-mini
+api_key_env: OPENAI_API_KEY
 think_level: medium
 
 token_budget:

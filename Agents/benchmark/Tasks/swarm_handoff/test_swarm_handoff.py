@@ -14,9 +14,7 @@ from swarm_sdk.retrieval.rerank import IdentityReranker
 @pytest.mark.asyncio
 async def test_swarm_handoff(tmp_path: Path) -> None:
     router = ScriptedModel(script=Script([answer('{"mode":"swarm","tasks":[]}')]))
-    specialist = ScriptedModel(
-        script=Script([handoff("coder"), answer("patched"), answer("done")])
-    )
+    specialist = ScriptedModel(script=Script([handoff("coder"), answer("patched"), answer("done")]))
     settings = Settings(
         memory_path=str(tmp_path / "mem.db"),
         cache_path=str(tmp_path / "cache.db"),

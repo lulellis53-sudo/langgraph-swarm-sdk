@@ -8,7 +8,7 @@ langgraph_node: researcher
 model: openai:gpt-4o-mini
 think_level: medium
 effort: medium
-api_key_env: SWARM_RESEARCHER_API_KEY
+api_key_env: OPENAI_API_KEY
 
 token_budget:
   max_prompt: 4096

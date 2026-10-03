@@ -19,30 +19,38 @@ if TYPE_CHECKING:
 
 
 class RunIn(BaseModel):
+    """Request body for ``POST /v1/runs``."""
+
     text: str = Field(min_length=1)
     thread_id: str = "default"
 
 
 class RecallIn(BaseModel):
+    """Request body for ``POST /v1/recall``."""
+
     query: str = Field(min_length=1)
     top_k: int = Field(default=4, ge=1, le=50)
 
 
 def create_app(sdk: SwarmSDK | None = None) -> FastAPI:
+    """Build the FastAPI app around ``sdk`` (default: built from settings)."""
     application = FastAPI(title="LangGraph Swarm SDK")
     application.state.sdk = sdk if sdk is not None else SwarmSDK.from_settings()
 
     @application.get("/healthz")
     async def healthz() -> dict[str, str]:
+        """Liveness probe: never touches providers."""
         return {"status": "ok"}
 
     @application.get("/v1/health")
     async def health(request: Request) -> dict[str, object]:
+        """Readiness probe with per-provider breaker state."""
         sdk_obj: SwarmSDK = request.app.state.sdk
         return {"status": "ok", "providers": sdk_obj.provider_health()}
 
     @application.post("/v1/runs", response_model=RunResult)
     async def runs(body: RunIn, request: Request) -> RunResult:
+        """Run one swarm turn; handoff loops map to HTTP 508."""
         sdk_obj: SwarmSDK = request.app.state.sdk
         try:
             return await sdk_obj.run(body.text, body.thread_id)
@@ -53,6 +61,7 @@ def create_app(sdk: SwarmSDK | None = None) -> FastAPI:
 
     @application.post("/v1/recall")
     async def recall(body: RecallIn, request: Request) -> Response:
+        """Hybrid-retrieval memory hits as JSON."""
         sdk_obj: SwarmSDK = request.app.state.sdk
         hits = sdk_obj.recall(body.query, body.top_k)
         payload = {"hits": [hit.model_dump() for hit in hits]}
@@ -79,6 +88,7 @@ def __getattr__(name: str) -> object:
 
 
 def main() -> None:
+    """Serve the app with uvicorn (uvloop installed, secrets primed)."""
     import uvicorn
 
     install_uvloop()

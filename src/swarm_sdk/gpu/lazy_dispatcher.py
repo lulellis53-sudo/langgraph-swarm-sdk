@@ -186,9 +186,7 @@ class VectorComputeDispatcher:
         a = np.asarray(vec_a, dtype=np.float32).reshape(-1)
         b = np.asarray(vec_b, dtype=np.float32).reshape(-1)
         if a.shape[0] != b.shape[0]:
-            raise ValueError(
-                f"Vector dimension mismatch: {a.shape[0]} vs {b.shape[0]}"
-            )
+            raise ValueError(f"Vector dimension mismatch: {a.shape[0]} vs {b.shape[0]}")
         return float(np.dot(a, b))
 
     def _cpu_batch_dot(self, matrix_a: np.ndarray, matrix_b: np.ndarray) -> np.ndarray:
@@ -275,9 +273,7 @@ class VectorComputeDispatcher:
         self._queue.finish()
         return out
 
-    def compute_batch_dot_product(
-        self, matrix_a: np.ndarray, matrix_b: np.ndarray
-    ) -> np.ndarray:
+    def compute_batch_dot_product(self, matrix_a: np.ndarray, matrix_b: np.ndarray) -> np.ndarray:
         """Batch dot product with dynamic routing: CPU for small, OpenCL for large."""
         a = np.asarray(matrix_a, dtype=np.float32)
         b = np.asarray(matrix_b, dtype=np.float32)
@@ -286,9 +282,7 @@ class VectorComputeDispatcher:
         dim_a = a.shape[-1]
         dim_b = b.shape[-1]
         if dim_a != dim_b:
-            raise ValueError(
-                f"Feature dimension mismatch: {dim_a} vs {dim_b}"
-            )
+            raise ValueError(f"Feature dimension mismatch: {dim_a} vs {dim_b}")
 
         # Determine total vector pairs
         if a.ndim == 1 and b.ndim == 1:
@@ -303,9 +297,7 @@ class VectorComputeDispatcher:
             total_pairs = a.shape[0]
         else:
             if a.shape[0] != b.shape[0]:
-                raise ValueError(
-                    f"Batch dimension mismatch: {a.shape[0]} vs {b.shape[0]}"
-                )
+                raise ValueError(f"Batch dimension mismatch: {a.shape[0]} vs {b.shape[0]}")
             total_pairs = a.shape[0]
 
         # Route to CPU if pairs < threshold
@@ -320,9 +312,7 @@ class VectorComputeDispatcher:
             try:
                 return self._run_opencl_batch_dot(a, b)
             except Exception as exc:
-                logger.warning(
-                    "OpenCL batch dot failed (%s), falling back to CPU", exc
-                )
+                logger.warning("OpenCL batch dot failed (%s), falling back to CPU", exc)
 
         return self._cpu_batch_dot(a, b)
 

@@ -127,9 +127,7 @@ def test_run_plan_rejects_unknown_agent_before_execution(tmp_path: Path, monkeyp
     handle = swarm_pb2.PlanHandle(
         plan_id="untrusted-plan",
         steps=[
-            swarm_pb2.PlanStepMsg(
-                id="S1", title="step", description="do anything", agent="Unknown"
-            )
+            swarm_pb2.PlanStepMsg(id="S1", title="step", description="do anything", agent="Unknown")
         ],
     )
 
@@ -171,11 +169,7 @@ def test_spawn_plan_returns_handle_and_registers_plan(
 
     async def fake_spawn(goal: str, manifests: dict[str, object]) -> Plan:
         del goal, manifests
-        return Plan(
-            steps=[
-                PlanStep(id="S1", title="step", description="do it", agent="Tester")
-            ]
-        )
+        return Plan(steps=[PlanStep(id="S1", title="step", description="do it", agent="Tester")])
 
     monkeypatch.setattr(grpc_server, "spawn", fake_spawn)
     grpc_server._PLANS.clear()
@@ -195,9 +189,7 @@ def test_spawn_plan_returns_handle_and_registers_plan(
         reranker=IdentityReranker(),
     )
     servicer = SwarmServicer(sdk)
-    handle = servicer.SpawnPlan(
-        swarm_pb2.SpawnRequest(goal="test goal"), None
-    )
+    handle = servicer.SpawnPlan(swarm_pb2.SpawnRequest(goal="test goal"), None)
     assert handle.plan_id
     assert len(handle.steps) == 1
     assert handle.steps[0].id == "S1"
@@ -217,11 +209,7 @@ def test_spawn_plan_filters_agents_and_rejects_unknown(
     async def fake_spawn(goal: str, manifests: dict[str, object]) -> Plan:
         called_with["goal"] = goal
         called_with["manifests"] = set(manifests)
-        return Plan(
-            steps=[
-                PlanStep(id="S1", title="step", description="do it", agent="Tester")
-            ]
-        )
+        return Plan(steps=[PlanStep(id="S1", title="step", description="do it", agent="Tester")])
 
     monkeypatch.setattr(grpc_server, "spawn", fake_spawn)
     grpc_server._PLANS.clear()
@@ -242,16 +230,12 @@ def test_spawn_plan_filters_agents_and_rejects_unknown(
     )
     servicer = SwarmServicer(sdk)
 
-    handle = servicer.SpawnPlan(
-        swarm_pb2.SpawnRequest(goal="g", agents=["Tester"]), None
-    )
+    handle = servicer.SpawnPlan(swarm_pb2.SpawnRequest(goal="g", agents=["Tester"]), None)
     assert handle.plan_id
     assert called_with["manifests"] == {"Tester"}
 
     with pytest.raises(ValueError, match="no matching agent manifests"):
-        servicer.SpawnPlan(
-            swarm_pb2.SpawnRequest(goal="g", agents=["NotAnAgent"]), None
-        )
+        servicer.SpawnPlan(swarm_pb2.SpawnRequest(goal="g", agents=["NotAnAgent"]), None)
 
 
 def test_run_plan_reuses_existing_plan_and_reports_status(
@@ -301,21 +285,15 @@ def test_run_plan_reuses_existing_plan_and_reports_status(
         ]
     )
 
-    running = servicer.PlanStatus(
-        swarm_pb2.PlanHandle(plan_id=plan_id), None
-    )
+    running = servicer.PlanStatus(swarm_pb2.PlanHandle(plan_id=plan_id), None)
     assert running.status == "running"
     assert running.steps_total == 2
 
-    result = servicer.RunPlan(
-        swarm_pb2.PlanHandle(plan_id=plan_id), None
-    )
+    result = servicer.RunPlan(swarm_pb2.PlanHandle(plan_id=plan_id), None)
     assert result.plan_id == plan_id
     assert len(result.outputs) == 2
 
-    done = servicer.PlanStatus(
-        swarm_pb2.PlanHandle(plan_id=plan_id), None
-    )
+    done = servicer.PlanStatus(swarm_pb2.PlanHandle(plan_id=plan_id), None)
     assert done.status == "done"
     assert done.steps_done == 2
 
@@ -328,9 +306,7 @@ def test_plan_status_unknown_plan_is_failed() -> None:
     grpc_server._RESULTS.clear()
 
     servicer = SwarmServicer(None)  # type: ignore
-    status = servicer.PlanStatus(
-        swarm_pb2.PlanHandle(plan_id="missing"), None
-    )
+    status = servicer.PlanStatus(swarm_pb2.PlanHandle(plan_id="missing"), None)
     assert status.plan_id == "missing"
     assert status.status == "failed"
     assert status.steps_done == 0

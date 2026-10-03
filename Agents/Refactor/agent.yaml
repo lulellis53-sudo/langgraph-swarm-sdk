@@ -5,7 +5,7 @@ role: safe_incremental_refactor
 model: openai:gpt-4o
 think_level: high
 effort: high
-api_key_env: SWARM_REFACTOR_API_KEY
+api_key_env: OPENAI_API_KEY
 
 token_budget:
   max_prompt: 8192

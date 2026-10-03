@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 import yaml
 
+from swarm_sdk import vault
 from swarm_sdk.execution.executor import offload
 from swarm_sdk.prompting.budget import count_text
 
@@ -65,7 +66,14 @@ def _route_index() -> dict[str, tuple[str, str]]:
 
 # OpenAI-compatible providers: their routes carry a ``base_url_env`` in the
 # registry instead of a native LangChain integration.
-_COMPAT_PROVIDERS = frozenset({"zai", "minimax", "moonshot", "xiaomi", "nvidia"})
+_COMPAT_PROVIDERS = frozenset(
+    {"zai", "minimax", "moonshot", "xiaomi", "nvidia", "openrouter", "sambanova", "fireworks"}
+)
+_DEFAULT_BASE_URLS = {
+    "openrouter": "https://openrouter.ai/api/v1",
+    "sambanova": "https://api.sambanova.ai/v1",
+    "fireworks": "https://api.fireworks.ai/inference/v1",
+}
 
 _KEY_KWARG = {
     "openai": "api_key",
@@ -81,10 +89,10 @@ _KEY_KWARG = {
 def load_chat_model(model_name: str) -> BaseChatModel:
     """Initialize a LangChain chat model from a provider:name string.
 
-    OpenAI-compatible providers (``zai``, ``minimax``, ``moonshot``,
-    ``xiaomi``) are constructed as ``ChatOpenAI`` with the base URL taken
-    from their registry ``base_url_env``; ``google:`` routes to the
-    ``google_genai`` integration.
+    OpenAI-compatible providers (including ``zai``, ``openrouter``,
+    ``sambanova`` and ``fireworks``) are constructed as ``ChatOpenAI``.
+    Their base URL comes from the registry env name or a documented public
+    default for hosted endpoints; ``google:`` routes to ``google_genai``.
 
     Args:
         model_name: e.g. ``"openai:gpt-4o-mini"`` or ``"zai:glm-5.3"``.
@@ -100,13 +108,16 @@ def load_chat_model(model_name: str) -> BaseChatModel:
     from langchain_core.language_models.chat_models import BaseChatModel
 
     provider, _, model = model_name.partition(":")
+    route_key_env, base_url_env = _route_index().get(model_name, ("", ""))
+    key_value = (os.environ.get(route_key_env, "") or vault.get(route_key_env)) if route_key_env else ""
     if provider == "google":
-        chat_model = init_chat_model(f"google_genai:{model}")
+        kwargs = {"google_api_key": key_value} if key_value else {}
+        chat_model = init_chat_model(f"google_genai:{model}", **kwargs)
     elif provider == "groq":
-        chat_model = init_chat_model(model, model_provider="groq")
+        kwargs = {"groq_api_key": key_value} if key_value else {}
+        chat_model = init_chat_model(model, model_provider="groq", **kwargs)
     elif provider in _COMPAT_PROVIDERS:
-        api_key_env, base_url_env = _route_index().get(model_name, ("", ""))
-        base_url = os.environ.get(base_url_env, "").strip()
+        base_url = os.environ.get(base_url_env, "").strip() or _DEFAULT_BASE_URLS.get(provider, "")
         if not base_url:
             raise ValueError(
                 f"{provider} routes need {base_url_env or 'a base URL env'} "
@@ -116,16 +127,13 @@ def load_chat_model(model_name: str) -> BaseChatModel:
             model,
             model_provider="openai",
             base_url=base_url,
-            api_key=os.environ.get(api_key_env, ""),
+            api_key=key_value,
         )
     else:
         kwargs: dict[str, object] = {}
-        route_key_env, _ = _route_index().get(model_name, ("", ""))
         key_kwarg = _KEY_KWARG.get(provider)
-        if route_key_env and key_kwarg:
-            value = os.environ.get(route_key_env, "")
-            if value:
-                kwargs[key_kwarg] = value
+        if key_value and key_kwarg:
+            kwargs[key_kwarg] = key_value
         # kwargs dict cannot match init_chat_model's static overloads;
         # the shapes are covered by test_model_routes.py.
         chat_model = init_chat_model(model_name, **kwargs)  # ty: ignore[no-matching-overload]

@@ -94,7 +94,7 @@ async def _spawn_legacy(
             continue
         try:
             plan = Plan.model_validate(json.loads(match.group(0)))
-        except (ValidationError, json.JSONDecodeError):
+        except ValidationError, json.JSONDecodeError:
             continue
         try:
             _validate_plan(plan, manifests)
@@ -110,12 +110,10 @@ def scenario_plan_recovery() -> dict[str, Any]:
 
     step_coder = '{"id": "S1", "title": "t", "description": "d", "agent": "Coder"}'
     step_coder_s2 = (
-        '{"id": "S2", "title": "u", "description": "e", "agent": "Coder", '
-        '"depends_on": ["S1"]}'
+        '{"id": "S2", "title": "u", "description": "e", "agent": "Coder", "depends_on": ["S1"]}'
     )
     step_coder_dep_s2 = (
-        '{"id": "S1", "title": "t", "description": "d", "agent": "Coder", '
-        '"depends_on": ["S2"]}'
+        '{"id": "S1", "title": "t", "description": "d", "agent": "Coder", "depends_on": ["S2"]}'
     )
     step_coder_b = '{"id": "S2", "title": "u", "description": "e", "agent": "Coder"}'
     step_ghost = '{"id": "S1", "title": "t", "description": "d", "agent": "Ghost"}'

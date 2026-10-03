@@ -12,9 +12,9 @@ from __future__ import annotations
 
 import time
 from collections.abc import Awaitable, Callable
+from typing import TypedDict
 
 from langgraph.graph import END, StateGraph
-from typing_extensions import TypedDict
 
 from swarm_sdk.models.selection import bounded_gather
 
@@ -77,7 +77,10 @@ async def _run_wave(
     """
 
     def one_factory(step: PlanStep) -> Callable[[], Awaitable[StepOutput]]:
+        """Build the per-step coroutine factory for this wave."""
+
         async def run_step() -> StepOutput:
+            """Execute one plan step with its declared dependency inputs."""
             worker = factory(step)
             return await worker.run(
                 step.id,
@@ -132,6 +135,7 @@ def build_graph(
     for index, steps in enumerate(waves):
 
         async def node(state: PlanState, _steps: list[PlanStep] = steps) -> PlanState:
+            """Run one wave's steps concurrently and fold outputs into state."""
             # Default-arg binding: captures this wave's steps, not the loop variable.
             await _run_wave(_steps, factory, state, max_concurrency=max_concurrency)
             return state

@@ -24,7 +24,10 @@ def _fts_match_query(query: str) -> str:
 
 
 class SqliteVecStore:
+    """SQLite + sqlite-vec store with an FTS5 keyword-search fallback."""
+
     def __init__(self, path: str, dim: int) -> None:
+        """Open the SQLite database and load the sqlite-vec extension."""
         self.dim = dim
         self._lock = threading.Lock()
         Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -224,6 +227,7 @@ class SqliteVecStore:
             return best
 
     def keyword_search(self, query: str, k: int) -> list[MemoryHit]:
+        """BM25 keyword search over the FTS5 mirror (score mapped to 0-1)."""
         if k < 1 or not query.strip():
             return []
         if not self._fts:
@@ -264,4 +268,5 @@ class SqliteVecStore:
         return scored[:k]
 
     def close(self) -> None:
+        """Close the database connection."""
         self._conn.close()

@@ -3,6 +3,7 @@ name: Debugger
 role: root_cause_failures
 
 model: openai:gpt-4o-mini
+api_key_env: OPENAI_API_KEY
 think_level: high
 
 token_budget:

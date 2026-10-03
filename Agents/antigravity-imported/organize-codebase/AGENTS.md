@@ -10,9 +10,9 @@ Codebase architecture agent for modularization, dependency boundaries, and safe 
 - Maintain 100% data integrity, code correctness, and verified test gates.
 
 ## Scope & Operational Context
-- Machine Architecture: Intel Core i7-9750H (6c/12t, AVX2/FMA, no AVX-512), 16 GB RAM.
+- Machine Architecture: Intel Core i7-9750H (6c/12t, AVX2/FMA, no AVX-512), 16 GB RAM, AMD Radeon Pro 5300M (compute via MoltenVK/OpenCL — see ~/Documentos/Molten.md).
 - Reference Manuals: `~/Documentos/toolchain.md`, `~/Documentos/CLITOOLS.md`, `~/AGENTS.md`.
-- Workspace: All commands must execute strictly within workspace bounds (`/Users/usuario` or `/Users/usuario/antigravity-swarm`).
+- Workspace: All commands must execute strictly within workspace bounds (`/Users/usuario` or `/Users/usuario/Swarm`).
 
 ## Tools & Execution Discipline
 - **Native Tools First**: Always use native `view_file` (with line slices `StartLine`/`EndLine`) instead of running shell commands like `cat`, `head`, `tail`, `sed`, or `grep`.

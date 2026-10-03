@@ -55,6 +55,7 @@ class OpenClVecStore:
         chunk_rows: int = 256,
         quantize: Quantize = "none",
     ) -> None:
+        """Initialize the resident GPU buffer for ``dim``-d vectors."""
         if dim < 1 or max_vectors < 1 or chunk_rows < 1:
             raise ValueError("dim, max_vectors, and chunk_rows must be >= 1")
         if quantize not in ("none", "int8", "binary"):
@@ -116,6 +117,7 @@ class OpenClVecStore:
             self._vectors[slot] = row[0]
 
     def add(self, text: str, vector: np.ndarray) -> int:
+        """Append a record to the resident GPU buffer."""
         row = unit(vector).reshape(1, -1).astype(np.float32)
         if row.shape[1] != self.dim:
             raise ValueError(f"expected dim {self.dim}, got {row.shape[1]}")
@@ -175,6 +177,7 @@ class OpenClVecStore:
         return topk_ip(query, self._chunk("_vectors", slots), k, cache_key=cache_key)
 
     def search(self, vector: np.ndarray, k: int) -> list[MemoryHit]:
+        """Cosine-score the resident buffer on the GPU; return the top hits."""
         if k < 1:
             return []
         query = unit(vector).reshape(-1).astype(np.float32)

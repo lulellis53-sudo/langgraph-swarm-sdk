@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import functools
+import importlib
 import json
 import logging
 import re
@@ -11,17 +13,18 @@ from typing import Any
 import numpy as np
 from pydantic import BaseModel, Field
 
-from swarm_sdk.retrieval.embeddings import Embedder, HashEmbedder
+from swarm_sdk.retrieval.embeddings import HashEmbedder
 
 logger = logging.getLogger(__name__)
 
-try:
-    import faiss
 
-    _FAISS_AVAILABLE = True
-except ImportError:  # pragma: no cover
-    faiss = None
-    _FAISS_AVAILABLE = False
+@functools.cache
+def _faiss() -> Any | None:
+    """Import FAISS on first use (about 95 ms); ``None`` when it is not installed."""
+    try:
+        return importlib.import_module("faiss")
+    except ImportError:  # pragma: no cover
+        return None
 
 
 class DocumentChunk(BaseModel):
@@ -42,14 +45,42 @@ class RetrievalResult(BaseModel):
     score: float
 
 
+def split_children(content: str, child_size: int) -> list[str]:
+    """Split ``content`` into whitespace-aligned pieces of at most ``child_size`` characters.
+
+    A single word longer than ``child_size`` is kept whole rather than cut.
+
+    Raises:
+        ValueError: If ``child_size`` is below 1.
+    """
+    if child_size < 1:
+        raise ValueError("child_size must be >= 1")
+    parts: list[str] = []
+    current: list[str] = []
+    length = 0
+    for word in content.split():
+        extra = len(word) + (1 if current else 0)
+        if current and length + extra > child_size:
+            parts.append(" ".join(current))
+            current, length = [word], len(word)
+        else:
+            current.append(word)
+            length += extra
+    if current:
+        parts.append(" ".join(current))
+    return parts
+
+
 class _NumpyVectorStore:
     """In-memory vector store using NumPy dot-product for cosine similarity."""
 
     def __init__(self, dim: int) -> None:
+        """Initialize the in-memory brute-force store for ``dim``-d vectors."""
         self.dim = dim
         self.vectors: np.ndarray = np.empty((0, dim), dtype=np.float32)
 
     def add(self, vectors: np.ndarray) -> None:
+        """Append one vector with its payload id."""
         if vectors.size == 0:
             return
         arr = np.asarray(vectors, dtype=np.float32)
@@ -76,6 +107,7 @@ class _NumpyVectorStore:
 
     @property
     def ntotal(self) -> int:
+        """Number of indexed vectors."""
         return len(self.vectors)
 
 
@@ -96,7 +128,13 @@ class RAGIngestionPipeline:
         embedder: Any = None,
         *,
         force_numpy: bool = False,
+        child_size: int | None = None,
     ) -> None:
+        """Initialize the ingestion pipeline (embedder + vector store)."""
+        if child_size is not None and child_size < 1:
+            raise ValueError("child_size must be >= 1")
+        self.child_size = child_size
+        self._parents: dict[str, DocumentChunk] = {}
         self.embedding_dim = embedding_dim
         self._force_numpy = force_numpy
         if embedder is not None:
@@ -111,7 +149,8 @@ class RAGIngestionPipeline:
 
     def _init_index(self) -> None:
         """Initialize the vector index with FAISS or fallback to NumPy."""
-        if not self._force_numpy and _FAISS_AVAILABLE and faiss is not None:
+        faiss = None if self._force_numpy else _faiss()
+        if faiss is not None:
             try:
                 self.index = faiss.IndexFlatIP(self.embedding_dim)
                 self._is_faiss = True
@@ -246,11 +285,35 @@ class RAGIngestionPipeline:
         emit_section(header_stack, current_body)
         return chunks
 
+    def _index_units(self, parents: list[DocumentChunk]) -> list[DocumentChunk]:
+        """Return the chunks to embed: the parents, or their children in parent-child mode."""
+        if self.child_size is None:
+            return parents
+        units: list[DocumentChunk] = []
+        for parent in parents:
+            parent_id = f"{parent.chunk_id}@{len(self._parents)}"
+            self._parents[parent_id] = parent
+            pieces = split_children(parent.content, self.child_size) or [parent.content]
+            for index, piece in enumerate(pieces):
+                full = f"{parent.header_context}\n{piece}" if parent.header_context else piece
+                units.append(
+                    DocumentChunk(
+                        chunk_id=f"{parent_id}#c{index}",
+                        source_file=parent.source_file,
+                        header_context=parent.header_context,
+                        content=piece,
+                        full_text=full,
+                        metadata={**parent.metadata, "parent_id": parent_id, "child_index": index},
+                    )
+                )
+        return units
+
     def ingest_text(self, text: str, source_file: str = "text") -> int:
         """Chunk a text string, generate embeddings, and index them."""
         chunks = self.chunk_markdown(text, source_file=source_file)
         if not chunks:
             return 0
+        chunks = self._index_units(chunks)
         full_texts = [c.full_text for c in chunks]
         vectors = self._embed(full_texts, query=False)
         self.index.add(vectors)
@@ -278,6 +341,7 @@ class RAGIngestionPipeline:
         if not all_new_chunks:
             return 0
 
+        all_new_chunks = self._index_units(all_new_chunks)
         full_texts = [c.full_text for c in all_new_chunks]
         vectors = self._embed(full_texts, query=False)
         self.index.add(vectors)
@@ -293,18 +357,28 @@ class RAGIngestionPipeline:
         k = min(top_k, len(self.chunks))
         if k <= 0:
             return []
+        if self.child_size is not None:
+            k = len(self.chunks)  # children share parents: search them all, group, then cut
 
         q_vec = self._embed([cleaned], query=True)
         scores, indices = self.index.search(q_vec, k)
 
         results: list[RetrievalResult] = []
+        seen_parents: set[str] = set()
         for score, idx in zip(scores[0], indices[0], strict=False):
             if idx < 0 or idx >= len(self.chunks):
                 continue
-            results.append(RetrievalResult(chunk=self.chunks[idx], score=float(score)))
+            chunk = self.chunks[idx]
+            parent_id = chunk.metadata.get("parent_id")
+            if parent_id is not None and parent_id in self._parents:
+                if parent_id in seen_parents:
+                    continue  # results arrive best-first, so the first child wins
+                seen_parents.add(parent_id)
+                chunk = self._parents[parent_id]
+            results.append(RetrievalResult(chunk=chunk, score=float(score)))
 
         results.sort(key=lambda r: r.score, reverse=True)
-        return results
+        return results[:top_k]
 
     def save(self, directory: str | Path) -> None:
         """Serialize index and chunk metadata to disk."""
@@ -319,16 +393,26 @@ class RAGIngestionPipeline:
             encoding="utf-8",
         )
 
+        if self._parents:
+            (target_dir / "parents.json").write_text(
+                json.dumps(
+                    {k: v.model_dump() for k, v in self._parents.items()}, ensure_ascii=False
+                ),
+                encoding="utf-8",
+            )
+
         # 2. Pipeline metadata
         meta = {
             "embedding_dim": self.embedding_dim,
             "backend": "faiss" if self._is_faiss else "numpy",
             "num_chunks": len(self.chunks),
+            "child_size": self.child_size,
         }
         (target_dir / "meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
 
         # 3. Vector Index
-        if self._is_faiss and faiss is not None:
+        faiss = _faiss() if self._is_faiss else None
+        if faiss is not None:
             faiss.write_index(self.index, str(target_dir / "index.faiss"))
             # Also save vectors.npy as universal fallback
             if hasattr(self.index, "reconstruct_n"):
@@ -354,19 +438,37 @@ class RAGIngestionPipeline:
 
         meta = json.loads(meta_file.read_text(encoding="utf-8"))
         self.embedding_dim = int(meta.get("embedding_dim", self.embedding_dim))
+        if "child_size" in meta:
+            saved = meta["child_size"]
+            if self.child_size is None and saved is not None:
+                self.child_size = int(saved)  # adopt the index's mode
+            elif saved != self.child_size:
+                raise ValueError(
+                    f"index was built with child_size={saved}, pipeline has {self.child_size}"
+                )
 
         chunks_data = json.loads(chunks_file.read_text(encoding="utf-8"))
         self.chunks = [DocumentChunk.model_validate(c) for c in chunks_data]
+        parents_file = target_dir / "parents.json"
+        self._parents = (
+            {
+                k: DocumentChunk.model_validate(v)
+                for k, v in json.loads(parents_file.read_text(encoding="utf-8")).items()
+            }
+            if parents_file.exists()
+            else {}
+        )
 
         faiss_file = target_dir / "index.faiss"
         numpy_file = target_dir / "vectors.npy"
 
-        if not self._force_numpy and _FAISS_AVAILABLE and faiss is not None and faiss_file.exists():
+        faiss = None if self._force_numpy else _faiss()
+        if faiss is not None and faiss_file.exists():
             self.index = faiss.read_index(str(faiss_file))
             self._is_faiss = True
         elif numpy_file.exists():
             vectors = np.load(numpy_file)
-            if not self._force_numpy and _FAISS_AVAILABLE and faiss is not None:
+            if faiss is not None:
                 self.index = faiss.IndexFlatIP(self.embedding_dim)
                 if len(vectors) > 0:
                     self.index.add(np.ascontiguousarray(vectors, dtype=np.float32))

@@ -127,5 +127,3 @@ def test_former_flat_modules_fail_to_import() -> None:
     for mod in former_flat:
         with pytest.raises(ModuleNotFoundError):
             importlib.import_module(mod)
-
-

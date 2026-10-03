@@ -153,6 +153,58 @@ uv run python -m benchmark.run --task model_delegation
 
 Case definitions: `benchmark/model_delegation/suite.yaml`.
 
+## Model effort and task scores
+
+`Tasks/model_effort/task.yaml` defines six small classification, extraction, and
+arithmetic cases. The suite records exact-answer score, provider-reported input
+and output tokens, total wall time, model-call time, and local overhead (wall
+minus model-call time). Summary rows group by task type, registry model, and
+configured effort; their `average_overhead_ms` excludes provider wait. Missing
+provider usage stays `null`, never a guessed token count. Scripted mode checks
+the harness and reports reference answers; its scores do not measure model quality.
+
+```bash
+PYTHONPATH=Agents uv run python -m benchmark.model_effort --write-results
+PYTHONPATH=Agents uv run python -m benchmark.model_effort --live --model openai:gpt-4o-mini --write-results
+PYTHONPATH=Agents uv run python -m benchmark.model_effort --codex-profile PROFILE --model openai:gpt-6-luna --write-results
+PYTHONPATH=Agents uv run python -m benchmark.model_effort --auto --write-results
+uv run pytest Agents/benchmark/Tasks/model_effort -q
+```
+
+Live mode uses the model and effort assigned in the registry. Effort is a route
+label; the benchmark does not send a reasoning-effort parameter to providers
+whose API may not support it. Live mode requires a selected model and resolves
+its named credential from the macOS Keychain via `swarm_sdk.vault`. Set it with
+`uv run swarm-vault set OPENAI_API_KEY` (or the selected route's `api_key_env`).
+The report contains no prompts, replies, or credentials. Results written with
+`--write-results` go to the gitignored `results/model_effort/latest.json`.
+Use `--json` to print the full per-case report instead of the grouped table.
+`--auto` selects one low-effort registry API model whose named credential is
+available in the environment or Keychain; if none is available, it uses the
+`Comand` Codex profile configured in `task.yaml` when installed. It runs the
+fixed cases in round-robin task-type order and stops before a projected token
+budget breach (default 50,000 reported tokens). The cap uses prior usage and
+can be exceeded by a single unexpectedly large call. The report marks partial
+runs with `complete: false` and `stopped_reason`; change the cap with
+`--max-total-tokens`. Provider errors also stop the run with only the exception
+type in the report, avoiding credential-bearing exception text. The mode makes
+real calls only when `--auto` is explicit.
+The Codex mode calls `codex exec -p PROFILE` as the benchmark agent with the
+registry model and effort. It runs read-only in a temporary directory and reads
+Codex CLI usage events. The profile must already exist under `CODEX_HOME`; CLI
+authentication is managed by Codex rather than an API key in source code.
+
+On 2026-10-03, `Comand` with `openai:gpt-6-luna` at medium effort scored 6/6
+on this small suite. Codex reported 82,055 tokens across those calls and the
+CLI invocation intervals totaled 24.7 seconds; mean local overhead was 0.011 ms.
+These token counts include the Codex agent context, so this route is costly for
+single-answer tasks despite its perfect score here. The detailed local report
+is `results/model_effort/codex_full_2026-10-03.json` (gitignored). The subsequent
+`--auto` run selected that route without a manual profile flag, covered all
+three task types in three cases, and stopped before the next projected call at
+41,028 reported tokens. Its 3/3 score and `projected_token_budget` stop are in
+`results/model_effort/latest.json` (gitignored).
+
 ## SQL Pro benchmarkable suite
 
 Skill-aligned SQLite cases under `sql_pro/` (correctness, join rewrites, index plans). No LLM required.

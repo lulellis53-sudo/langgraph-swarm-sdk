@@ -55,6 +55,14 @@ class AgentValidator:
 
 
 def validate_coordination(agents_dir: Path) -> list[str]:
+    """Cross-check ``coordination.yaml`` against the on-disk agent manifests.
+
+    Args:
+        agents_dir: Path to the ``Agents`` folder.
+
+    Returns:
+        Human-readable validation errors; empty list means valid.
+    """
     errors: list[str] = []
     repo_root = agents_dir.parent
     coord_path = agents_dir / "coordination.yaml"

@@ -27,7 +27,10 @@ def _try_cuda_index(faiss: object, index: object) -> tuple[object, str, object |
 
 
 class FaissStore:
+    """In-memory FAISS index store (CPU AVX2; CUDA only on Linux)."""
+
     def __init__(self, dim: int, *, gpu: bool = False) -> None:
+        """Create the flat index for ``dim``-dimensional vectors."""
         import faiss
 
         self.dim = dim
@@ -41,12 +44,14 @@ class FaissStore:
         self._texts: list[str] = []
 
     def add(self, text: str, vector: np.ndarray) -> int:
+        """Append one record to the index."""
         row = unit(vector).reshape(1, -1).astype(np.float32)
         self._index.add(row)
         self._texts.append(text)
         return len(self._texts) - 1
 
     def search(self, vector: np.ndarray, k: int) -> list[MemoryHit]:
+        """Exact k-NN search over the flat index."""
         total = int(self._index.ntotal)
         if total == 0 or k < 1:
             return []

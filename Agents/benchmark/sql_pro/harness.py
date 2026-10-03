@@ -105,9 +105,7 @@ def _run_timed(
     return rows, elapsed_ms, columns
 
 
-def _check_expect_columns(
-    expect: dict[str, Any], columns: list[str], notes: list[str]
-) -> bool:
+def _check_expect_columns(expect: dict[str, Any], columns: list[str], notes: list[str]) -> bool:
     expected = expect.get("columns")
     if expected is None:
         return True

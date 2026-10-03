@@ -1,4 +1,4 @@
-
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -10,7 +10,6 @@ from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import SwarmSDK
 from swarm_sdk.retrieval.embeddings import HashEmbedder
 from swarm_sdk.retrieval.rerank import IdentityReranker
-import sqlite3
 from swarm_sdk.serving.http import create_app
 
 

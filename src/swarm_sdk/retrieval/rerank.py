@@ -8,10 +8,20 @@ from typing import Protocol, cast
 
 
 class Reranker(Protocol):
+    """Reranker protocol: return documents ordered best-first for the query."""
+
     def rerank(self, query: str, documents: list[str]) -> list[str]: ...
 
 
+class ScoredReranker(Protocol):
+    """Reranker protocol that also exposes relevance scores."""
+
+    def rerank_scored(self, query: str, documents: list[str]) -> list[tuple[str, float]]: ...
+
+
 class IdentityReranker:
+    """No-op reranker preserving input order (tests, offline runs)."""
+
     def rerank(self, query: str, documents: list[str]) -> list[str]:
         del query
         return list(documents)
@@ -29,8 +39,21 @@ class KeywordReranker:
         ranked = sorted(documents, key=score, reverse=True)
         return ranked
 
+    def rerank_scored(self, query: str, documents: list[str]) -> list[tuple[str, float]]:
+        """Return documents best-first with the fraction of query words each contains."""
+        needles = set(query.lower().split())
+        if not needles:
+            return [(document, 0.0) for document in documents]
+
+        def score(document: str) -> float:
+            return len(needles & set(document.lower().split())) / len(needles)
+
+        return sorted(((d, score(d)) for d in documents), key=lambda pair: pair[1], reverse=True)
+
 
 class FastEmbedReranker:
+    """ONNX cross-encoder reranker (FastEmbed, MiniLM by default)."""
+
     def __init__(self, model_name: str = "Xenova/ms-marco-MiniLM-L-6-v2") -> None:
         self.model_name = model_name
         self._model: CrossEncoderProto | None = None
@@ -42,6 +65,14 @@ class FastEmbedReranker:
         scores = list(encoder.rerank(query, documents))
         order = sorted(range(len(documents)), key=lambda index: scores[index], reverse=True)
         return [documents[index] for index in order]
+
+    def rerank_scored(self, query: str, documents: list[str]) -> list[tuple[str, float]]:
+        """Return documents best-first with raw cross-encoder scores (unbounded logits)."""
+        if not documents:
+            return []
+        scores = [float(s) for s in self._load().rerank(query, documents)]
+        order = sorted(range(len(documents)), key=lambda index: scores[index], reverse=True)
+        return [(documents[index], scores[index]) for index in order]
 
     def _load(self) -> CrossEncoderProto:
         if self._model is None:
@@ -57,6 +88,8 @@ class FastEmbedReranker:
 
 
 class CrossEncoderProto(Protocol):
+    """Structural view of the loaded cross-encoder for type checking."""
+
     def rerank(self, query: str, documents: list[str]) -> Iterable[float]: ...
 
 
@@ -66,4 +99,5 @@ __all__ = [
     "IdentityReranker",
     "KeywordReranker",
     "Reranker",
+    "ScoredReranker",
 ]

@@ -327,6 +327,7 @@ class _ClState:
 
     @property
     def available(self) -> bool:
+        """Whether an OpenCL context is ready."""
         self._ensure_init()
         return self.program is not None and self.queue is not None
 
@@ -337,12 +338,14 @@ class _ClState:
 
     @property
     def context(self) -> cl.Context:
+        """The OpenCL context (initialized on first access)."""
         if self.ctx is None:
             raise RuntimeError("OpenCL context is unavailable")
         return self.ctx
 
     @property
     def cmd_queue(self) -> cl.CommandQueue:
+        """The command queue for kernel dispatch."""
         if self.queue is None:
             raise RuntimeError("OpenCL command queue is unavailable")
         return self.queue
@@ -388,14 +391,17 @@ def set_enabled(enabled: bool) -> None:
 
 
 def is_enabled() -> bool:
+    """Whether GPU math is enabled (``SWARM_GPU_BACKEND``)."""
     return _ENABLED
 
 
 def opencl_available() -> bool:
+    """Whether pyopencl and a usable device are present."""
     return _STATE.available
 
 
 def opencl_status() -> dict[str, str]:
+    """One-line GPU status for diagnostics."""
     return {
         "available": str(_STATE.available),
         "device": _STATE._device_name or "none",
@@ -517,9 +523,7 @@ def batch_dot(
     cl = _STATE._cl()
     mf = cl.mem_flags
     buf_m = _STATE.cached_buffers(cache_key, [matrix])[0]
-    buf_q = cl.Buffer(
-        _STATE.context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=query
-    )
+    buf_q = cl.Buffer(_STATE.context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=query)
     if cols % 4 == 0:
         return _run2d("dot2d4", [buf_m, buf_q], rows, _wgs_for(cols), rows, cols // 4)
     return _run2d("dot2d", [buf_m, buf_q], rows, _wgs_for(cols), rows, cols)

@@ -1,5 +1,15 @@
 """Core domain: SwarmSDK orchestrator facade."""
 
+from swarm_sdk.core.allocator import AllocatorManager, GuardReport, MemoryStats
+from swarm_sdk.core.compression import (
+    CompressedScratchpadPool,
+    LazyModule,
+    SwarmBufferEntry,
+    ZstdStateCompressor,
+    hybrid_jit,
+    is_jit_disabled,
+    lazy_import,
+)
 from swarm_sdk.core.jev_router import (
     ChoiceDecision,
     JevRouter,
@@ -12,6 +22,7 @@ from swarm_sdk.core.lifeguard_ast import (
     MetaLifeguardAuditor,
     audit_code,
 )
+from swarm_sdk.core.minimalloc import Buffer, Configuration, MiniMalloc, Solution, SolverType
 from swarm_sdk.core.rules import HostInvariants, HostRuleEngine
 from swarm_sdk.core.swarm import (
     RouteDecision,
@@ -23,20 +34,35 @@ from swarm_sdk.core.swarm import (
 )
 
 __all__ = [
+    "AllocatorManager",
+    "Buffer",
     "ChoiceDecision",
+    "CompressedScratchpadPool",
+    "Configuration",
+    "GuardReport",
     "HostInvariants",
     "HostRuleEngine",
     "JevRouter",
+    "LazyModule",
     "LifeguardAuditReport",
     "LifeguardViolation",
+    "MemoryStats",
     "MetaLifeguardAuditor",
+    "MiniMalloc",
     "NoulDecision",
     "RouteDecision",
     "RunResult",
     "ScoreDecision",
+    "Solution",
+    "SolverType",
+    "SwarmBufferEntry",
     "SwarmSDK",
+    "ZstdStateCompressor",
     "audit_code",
     "default_embedder",
     "default_reranker",
+    "hybrid_jit",
+    "is_jit_disabled",
+    "lazy_import",
     "open_store",
 ]

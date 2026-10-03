@@ -63,3 +63,6 @@ docs/superpowers/*
 
 # --- Jupyter scratch ----------------------------------------------------------
 notebooks/.ipynb_checkpoints/
+
+# Playwright MCP page snapshots (server-side artifacts)
+.playwright-mcp/

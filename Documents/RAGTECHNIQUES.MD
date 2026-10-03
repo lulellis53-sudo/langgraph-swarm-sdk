@@ -21,6 +21,7 @@
   - [3. Advanced Chunking Strategies: Semantic, Hierarchical & Propositional](#3-advanced-chunking-strategies-semantic-hierarchical--propositional)
   - [4. Anthropic Contextual Retrieval: Contextual Embeddings & BM25](#4-anthropic-contextual-retrieval-contextual-embeddings--bm25)
   - [5. Multi-Modal Late-Interaction Ingestion with ColPali](#5-multi-modal-late-interaction-ingestion-with-colpali)
+  - [5.1 Late Chunking: Token-Level Embeddings Before Pooling](#51-late-chunking-token-level-embeddings-before-pooling)
 - [Part III: Query Processing, Representation & Multi-Stage Re-Ranking](#part-iii-query-processing-representation--multi-stage-re-ranking)
   - [6. Dense, Sparse & Multi-Vector Representation (MTEB, SPLADE, ColBERTv2)](#6-dense-sparse--multi-vector-representation-mteb-splade-colbertv2)
   - [7. Query Transformation & Sub-30ms System-1 Routing](#7-query-transformation--sub-30ms-system-1-routing)
@@ -29,6 +30,7 @@
   - [9. Knowledge-Graph-Augmented Retrieval: Microsoft GraphRAG, LightRAG, HippoRAG & Cognee](#9-knowledge-graph-augmented-retrieval-microsoft-graphrag-lightrag-hipporag--cognee)
   - [10. Self-Reflective RAG (Self-RAG) with Introspection Tokens](#10-self-reflective-rag-self-rag-with-introspection-tokens)
   - [11. Corrective RAG (CRAG) & Agentic Dynamic Search Loops](#11-corrective-rag-crag--agentic-dynamic-search-loops)
+  - [11.1 Agent Memory Layers: Mem0, Zep/Graphiti & Temporal Knowledge Graphs](#111-agent-memory-layers-mem0-zepgraphiti--temporal-knowledge-graphs)
 - [Part V: Performance Engineering, Token Economics & Hardware Acceleration](#part-v-performance-engineering-token-economics--hardware-acceleration)
   - [12. Long-Context Compression (LLMLingua-2) & Cache-Augmented Generation (CAG vs RAG)](#12-long-context-compression-llmlingua-2--cache-augmented-generation-cag-vs-rag)
   - [13. Two-Tier Semantic Vector Caching (Exact SHA-256 + INT8 Cosine)](#13-two-tier-semantic-vector-caching-exact-sha-256--int8-cosine)
@@ -324,6 +326,36 @@ def compute_maxsim(query_embeddings: list[list[float]], doc_embeddings: list[lis
 ```
 
 This enables direct visual retrieval of charts, schematics, and chemical structures with zero text-extraction loss.
+
+### 5.1 Late Chunking: Token-Level Embeddings Before Pooling
+**Late Chunking** (Günther et al., Jina AI; arXiv:2409.04701) inverts the standard ingest order and, for long-context encoder models, replaces per-chunk LLM contextualization (§4) entirely:
+
+| | Standard pipeline | Late Chunking |
+| :--- | :--- | :--- |
+| Embed unit | Each chunk in isolation (context-blind) | Whole document in **one** encoder pass |
+| Pooling | Pooled token vector = chunk only | Pool token-level embeddings **after** the full pass, per chunk span |
+| Chunk vector carries | Local context only | Full-document context (pronouns, entities, section intent) |
+| Extra cost | 1 LLM contextualization call per chunk | Zero — same total encoder FLOPs as naive chunking |
+
+```python
+# Minimal late-chunking sketch (any long-context encoder: jina-embeddings-v3/v5, BGE-M3;
+# verify the model's max sequence length actually covers your document)
+from transformers import AutoModel, AutoTokenizer
+import numpy as np
+
+tok = AutoTokenizer.from_pretrained(model_name)
+enc = AutoModel.from_pretrained(model_name)
+
+inputs = tok(full_document, return_tensors="pt", truncation=True, max_length=8192)
+token_embs = enc(**inputs).last_hidden_state[0]          # (n_tokens, d) — BEFORE pooling
+
+# Pool per chunk using precomputed token spans (offsets from
+# tok(..., return_offsets_mapping=True) mapped through an offset->index table)
+chunk_vecs = [token_embs[s:e].mean(dim=0).numpy() for s, e in chunk_token_spans]
+chunk_vecs = [v / np.linalg.norm(v) for v in chunk_vecs]  # L2-normalize per chunk
+```
+
+**When to choose which:** Late Chunking wins on cost/latency (single encoder pass, no LLM in the loop), offline batch ingestion, and multilingual corpora; Anthropic-style contextual retrieval (§4) still wins when documents exceed the encoder's context window or when a short-context embedding model must be squeezed for quality. Both compose with the hybrid + RRF pipeline in §8 unchanged — only the ingestion stage changes. Matryoshka-truncated models pair naturally with late chunking because token-level vectors support dimension pruning without re-embedding.
 
 ---
 
@@ -733,6 +765,35 @@ def generate_node(state: CRAGState) -> dict[str, Any]:
     context = "\n".join(state.retained_knowledge)
     return {"final_answer": f"Synthesized answer using context: {context[:50]}..."}
 ```
+
+### 11.1 Agent Memory Layers: Mem0, Zep/Graphiti & Temporal Knowledge Graphs
+Sections §9–§11 index *documents*; agentic systems additionally need memory that persists *across sessions* — episodic interaction state, evolving user facts, prior tool outcomes. This is a distinct layer that feeds the RAG loop as structured context:
+
+| Framework | Architecture | Distinguishing property |
+| :--- | :--- | :--- |
+| **Mem0** | Extraction + consolidation pipeline over a vector store; optional graph mode | Low per-retrieval token footprint (vendor-reported ~1.7K tokens vs. full-history baselines); fact add/update/forget API |
+| **Zep (Graphiti)** | Temporal (bi-temporal) knowledge graph: event time vs. ingestion time, with invalidation edges | Answers "what was true **when**" — facts are versioned, not overwritten |
+| **Letta (MemGPT)** | Self-editing memory blocks + archival store | The agent manages its own context window the way an OS manages RAM |
+| **Cognee** | Open-source knowledge-graph memory | Peer-reviewable multi-hop QA evaluation (rare in this space) |
+
+```python
+# Integration point: memory nodes beside the CRAG loop above (LangGraph)
+from mem0 import Memory
+
+mem = Memory()  # local config: embedder=BGE-M3 (§6), vector store=sqlite-vec or Redis (§15–16)
+
+def memory_write_node(state: CRAGState) -> dict:
+    mem.add([{"role": "user", "content": state.query},
+             {"role": "assistant", "content": state.final_answer}],
+            user_id=state.user_id, run_id=state.session_id)
+    return {}
+
+def memory_read_node(state: CRAGState) -> dict:
+    recalled = mem.search(state.query, user_id=state.user_id, limit=5)
+    return {"retained_knowledge": [h["memory"] for h in recalled] + state.retained_knowledge}
+```
+
+**Skepticism requirement:** most cross-framework numbers in this space (token footprints, accuracy deltas) are **vendor-published** and shift release-to-release; Cognee's peer-reviewed multi-hop evaluation is the notable exception. Benchmark any memory layer on your own query distribution with the §19 hallucination-audit harness before committing, and treat the store as PII-bearing state — it persists user facts by design, so it inherits the same retention policy as your vector store.
 
 ---
 

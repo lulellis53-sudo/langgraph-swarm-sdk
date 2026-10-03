@@ -33,6 +33,8 @@ class ModelRoute(BaseModel):
 
 
 class ModelSelectConfig(BaseModel):
+    """Think-level routing table (the ``model_select:`` block)."""
+
     default_level: ThinkLevel = "medium"
     routes: list[ModelRoute] = Field(default_factory=list)
 
@@ -169,7 +171,12 @@ async def bounded_gather[T](
 
     Returns:
         Results in the same order as ``coro_factories``.
+
+    Raises:
+        ValueError: If ``max_concurrency`` is less than 1.
     """
+    if max_concurrency < 1:
+        raise ValueError("max_concurrency must be >= 1")
     semaphore = asyncio.Semaphore(max_concurrency)
 
     async def run(factory: Callable[[], Awaitable[T]]) -> T:

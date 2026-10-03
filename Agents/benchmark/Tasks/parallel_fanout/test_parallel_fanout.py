@@ -12,9 +12,7 @@ from swarm_sdk.retrieval.rerank import IdentityReranker
 
 @pytest.mark.asyncio
 async def test_parallel_fanout(tmp_path: Path) -> None:
-    router = ScriptedModel(
-        script=Script([answer('{"mode":"parallel","tasks":["alpha","beta"]}')])
-    )
+    router = ScriptedModel(script=Script([answer('{"mode":"parallel","tasks":["alpha","beta"]}')]))
     specialist_script = Script([answer("ok")] * 4)
     specialist = ScriptedModel(script=specialist_script)
     settings = Settings(
