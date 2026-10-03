@@ -19,6 +19,7 @@
 | [Refactor](Refactor/AGENTS.md) | safe incremental refactors | gpt-4o | high | [agent.yaml](Refactor/agent.yaml) |
 | [TxtToCsv](TxtToCsv/AGENTS.md) | convert text files to CSV | gpt-4o-mini | low | [agent.yaml](TxtToCsv/agent.yaml) |
 | [RAG](RAG/AGENTS.md) | semantic caching, hybrid search, reranking & grounding | inherit | high | [agent.yaml](RAG/agent.yaml) |
+| [DeepResearch](DeepResearch/AGENTS.md) | deep technical research & evidence graphs | inherit | high | [agent.yaml](DeepResearch/agent.yaml) |
 | [math](math/AGENTS.md) | symbolic/numerical solving and verification | mistral:ministral-3-8b-latest | high | [agent.yaml](math/agent.yaml) |
 | [WebFetch](WebFetch/AGENTS.md) | deterministic pipeline stage: fetch/render | none (no LLM) | - | [agent.yaml](WebFetch/agent.yaml) |
 | [Normalizer](Normalizer/AGENTS.md) | deterministic pipeline stage: normalize + dedupe | none (no LLM) | - | [agent.yaml](Normalizer/agent.yaml) |
@@ -27,7 +28,9 @@
 Imported reference catalog: [`antigravity-imported/`](antigravity-imported/) holds 21 Antigravity personas
 (`AGENTS.md` + `agent.md`, frontmatter contracts) — reference material for prompt design, **not** active
 swarm manifests; they are not loaded by `swarm_sdk.agents` and are excluded from the table above.
-Mirrored catalogs: `code-review/`, `deep-research/`, `math/` companion docs, `benchmark/` (tests + evals).
+
+**Actuation:** [`_shared/ACTUATION.md`](_shared/ACTUATION.md) · [`AgentMethods.md`](AgentMethods.md).  
+Canonical research/review personas: [DeepResearch](DeepResearch/AGENTS.md), [Reviewer](Reviewer/AGENTS.md) (duplicate `code-review/` / `deep-research/` folders removed).
 
 ## How to use this swarm
 

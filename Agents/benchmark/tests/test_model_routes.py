@@ -21,6 +21,12 @@ class _Dummy(BaseChatModel):
 @pytest.fixture()
 def fake_init(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, dict]]:
     calls: list[tuple[str, dict]] = []
+    # Never read the real Keychain from a test: a failing assertion would print the secret.
+    monkeypatch.setattr(chat.vault, "get", lambda *args, **kwargs: None)
+    # Earlier tests may have primed real keys into os.environ; a route test must start clean.
+    for key_env, base_env in chat._route_index().values():
+        monkeypatch.delenv(key_env, raising=False)
+        monkeypatch.delenv(base_env, raising=False)
     monkeypatch.setattr(
         "langchain.chat_models.init_chat_model",
         lambda model, **kwargs: calls.append((model, kwargs)) or _Dummy(),
@@ -56,9 +62,16 @@ def test_compat_provider_requires_base_url(fake_init, monkeypatch: pytest.Monkey
     ("route", "key_name", "base_url"),
     [
         ("openrouter:z-ai/glm-5.3-flash", "OPENROUTER_API_KEY", "https://openrouter.ai/api/v1"),
-        ("sambanova:Meta-Llama-3.3-70B-Instruct", "SAMBANOVA_API_KEY", "https://api.sambanova.ai/v1"),
-        ("fireworks:accounts/fireworks/models/kimi-k2.7", "FIREWORKS_API_KEY",
-         "https://api.fireworks.ai/inference/v1"),
+        (
+            "sambanova:Meta-Llama-3.3-70B-Instruct",
+            "SAMBANOVA_API_KEY",
+            "https://api.sambanova.ai/v1",
+        ),
+        (
+            "fireworks:accounts/fireworks/models/kimi-k2.7",
+            "FIREWORKS_API_KEY",
+            "https://api.fireworks.ai/inference/v1",
+        ),
     ],
 )
 def test_hosted_compat_routes_use_provider_endpoint(
@@ -68,9 +81,7 @@ def test_hosted_compat_routes_use_provider_endpoint(
     chat.load_chat_model(route)
     ((model, kwargs),) = fake_init
     assert model == route.split(":", 1)[1]
-    assert kwargs == {
-        "model_provider": "openai", "base_url": base_url, "api_key": "synthetic-key"
-    }
+    assert kwargs == {"model_provider": "openai", "base_url": base_url, "api_key": "synthetic-key"}
 
 
 def test_hosted_route_reads_named_key_from_vault(

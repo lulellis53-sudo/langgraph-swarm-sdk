@@ -13,7 +13,7 @@ description: >-
 | `WebSearch/` (under repo root) | `feature/websearch` | Search/scrape pipeline |
 | `../Swarm-Prediction` | `feat/prediction-engine` | `Prediction/` + forecast tests |
 | `../Newsletter` | `feat/newsletter` | `Newsletter/` MVP |
-| Repo root `Swarm/` | `main` (integration merges here) | SDK + coordination |
+| Repo root `Swarm/` | `integration/all-branches` (integration merges; then `main`) | SDK + coordination |
 
 ## Setup (once)
 
