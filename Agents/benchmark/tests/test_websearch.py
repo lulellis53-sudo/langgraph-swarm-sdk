@@ -42,6 +42,10 @@ def test_load_providers_yaml() -> None:
         "google_ground",
     )
     assert get_searcher(cfg, "tavily").api_key_env == "TAVILY_API_KEY"
+    assert get_searcher(cfg, "exa").api_key_env == "EXA_API_KEY"
+    assert get_searcher(cfg, "brave").api_key_env == "BRAVE_API_KEY"
+    assert get_searcher(cfg, "bright_data").api_key_env == "BRIGHTDATA_MCP_TOKEN"
+    assert cfg.llm.model == "openrouter:z-ai/glm-5.3-flash"
     assert get_searcher(cfg, "searxng").engine == "duckduckgo,bing"
     assert "https" in cfg.crawl.schemes
 
@@ -53,6 +57,24 @@ def test_searcher_reads_named_key_from_dedicated_vault(monkeypatch) -> None:
     monkeypatch.setattr(vault, "get", lambda name: "vault-key" if name == "APIFY_API_KEY" else None)
     spec = SearcherSpec(id="apify", kind="websearcher", api_key_env="APIFY_API_KEY")
     assert websearchers.env_key(spec) == "vault-key"
+
+
+def test_bright_data_mcp_search_normalizes_google_hits(monkeypatch) -> None:
+    from WebSearch.frontend import websearchers
+
+    monkeypatch.setenv("BRIGHTDATA_MCP_TOKEN", "synthetic-token")
+
+    async def fake_call(query: str, token: str, engine: str) -> object:
+        assert (query, token, engine) == ("example", "synthetic-token", "google")
+        return {"organic": [{"title": "Example", "link": "https://example.com", "description": "ok"}]}
+
+    monkeypatch.setattr(websearchers, "_bright_data_search", fake_call)
+    spec = SearcherSpec(
+        id="bright_data", kind="websearcher", api_key_env="BRIGHTDATA_MCP_TOKEN", engine="google"
+    )
+    assert websearchers.search_bright_data("example", spec) == [
+        SearchHit("Example", "https://example.com", "ok", "bright_data")
+    ]
 
 
 def test_http_apis_fail_closed_without_keys() -> None:

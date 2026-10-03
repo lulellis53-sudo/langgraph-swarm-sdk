@@ -74,7 +74,7 @@ Repo (outside .cursor/) that agents must respect:
 Operate in this loop. Do **not** skip **Check**. Do **not** skip **Context7 after editing** on library/API work.
 
 ```text
-Think → Check → Plan (multitasks) → Act → Context7 (after edit) → Tighten → re-Check
+Think → Check → Plan (multitasks) → Act → Context7 / Context.dev (after edit) → Tighten → re-Check
 ```
 
 ### 1. Think
@@ -105,10 +105,10 @@ Think → Check → Plan (multitasks) → Act → Context7 (after edit) → Tigh
 - Update docs/commands only when behavior or install steps change.
 - If a fix fails once with a clear error, analyse — do not loop blindly.
 
-### 5. Context7 (after editing)
+### 5. Context7 / Context.dev (after editing)
 
-- After the edit lands, query **Context7 MCP** for current docs (resolve library id → query-docs).
-- Fall back to **Tavily** or **Exa** when Context7 has no coverage or you need live web confirmation.
+- After the edit lands, query **Context7 MCP** (`resolve-library-id` → `query-docs`) for CLI flags and API args.
+- If Context7 misses, use **Context.dev MCP** (`web-scrape` highlights on the official doc URL, or `web-search`), then Tavily or Exa.
 - Apply only what improves correctness, security, or maintainability — do not bloat the diff.
 
 ### 6. Think / Tighten

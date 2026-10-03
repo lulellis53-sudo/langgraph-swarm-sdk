@@ -13,18 +13,40 @@ description: >-
 | `WebSearch/` (under repo root) | `feature/websearch` | Search/scrape pipeline |
 | `../Swarm-Prediction` | `feat/prediction-engine` | `Prediction/` + forecast tests |
 | `../Newsletter` | `feat/newsletter` | `Newsletter/` MVP |
-| Repo root `Swarm/` | `integration/all-branches` | Merge integration only |
+| Repo root `Swarm/` | `main` (integration merges here) | SDK + coordination |
 
 ## Setup (once)
 
+From repo root, keep **one branch per worktree** (Git refuses the same branch in two trees unless `--force`).
+
 ```bash
-git checkout integration/all-branches
-git branch feat/newsletter integration/all-branches   # if missing
+git checkout main
+git branch feat/newsletter main   # if missing
 git worktree add ../Swarm-Prediction feat/prediction-engine
 git worktree add ../Newsletter feat/newsletter
+git worktree list
 ```
 
-WebSearch worktree: `git worktree add WebSearch feature/websearch` from repo root (already present in this project).
+Existing branch on a new path (official form: `git worktree add <path> <branch>`):
+
+- [git-worktree(1)](https://git-scm.com/docs/git-worktree)
+
+WebSearch worktree (already present):
+
+```bash
+git worktree add WebSearch feature/websearch
+```
+
+## Quality gates (uv)
+
+Project options go **before** the subcommand; repeat `--extra` for each optional group:
+
+```bash
+uv run --extra forecast pytest tests/test_prediction_engine.py -q
+uv lock
+```
+
+- [uv CLI reference](https://docs.astral.sh/uv/reference/cli/) (`--extra`, `uv run`, `uv lock`)
 
 ## Cursor lane prompts
 
@@ -36,4 +58,4 @@ WebSearch worktree: `git worktree add WebSearch feature/websearch` from repo roo
 
 - Lane agents edit only their **May edit** paths (see each lane file).
 - Only one lane changes root `uv.lock` per integration window.
-- Merge order: lane branches → `integration/all-branches` → `main`.
+- Merge order: lane branches → `main` (or `integration/all-branches` then `main`).

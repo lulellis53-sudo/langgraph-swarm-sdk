@@ -17,7 +17,7 @@ Think → Check → Plan (multitasks) → Act → Context7 → Tighten → re-Ch
 2. **Check** — read callers, tests, config before editing; report `blocked` with exact error after one retry.
 3. **Plan** — split independent vs dependent work; parallelize independent tool/subagent tasks.
 4. **Act** — smallest diff; use `uv run …`; no secrets.
-5. **Context7** — after editing library/API code, query Context7 (else Tavily/Exa); see `context7-after-edit` rule.
+5. **Context7 / Context.dev** — after editing library/API code, query Context7; else Context.dev `web-scrape`/`web-search` (see `context7-after-edit` rule).
 6. **Tighten / re-Check** — apply doc-backed fixes; run the quality gate for touched areas.
 
 ## Python modules (agents)
