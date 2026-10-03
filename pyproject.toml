@@ -56,6 +56,9 @@ dependencies = [
     "python-dotenv>=1.2.3",
     "rich>=15.0.0",
 ]
+langchain = [
+    "langchain-core>=1.6",
+]
 
 [tool.uv]
 python-preference = "managed"

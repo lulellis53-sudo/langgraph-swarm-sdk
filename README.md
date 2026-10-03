@@ -8,8 +8,8 @@ Parallel multi-LLM swarm on [LangGraph Swarm](https://github.com/langchain-ai/la
 - [uv](https://docs.astral.sh/uv/)
 
 ```bash
-uv sync --extra dev --extra faiss --extra qdrant --extra mem0 
-``` 
+uv sync --extra dev --extra faiss --extra qdrant --extra mem0
+```
 
 Optional **Jupyter Notebook + Jupyter AI** (uses prebuilt `cryptography` wheels; see `[tool.uv]` in `pyproject.toml`):
 
@@ -47,6 +47,25 @@ vectorstore:
   backend: opencl
   opencl_enabled: true
 ```
+
+### Use with LangChain
+
+From the Swarm checkout (LangGraph already depends on LangChain):
+
+```python
+from langchain.agents import create_agent
+from WebSearch.langchain_tools import websearch_langchain_tools
+
+tools = websearch_langchain_tools()
+agent = create_agent("openai:gpt-4o-mini", tools=tools)
+agent.invoke({"messages": [("user", "What changed in LangGraph swarm handoffs lately?")]})
+```
+
+Bind tools on an existing graph node with ``model.bind_tools(websearch_langchain_tools())``. Pass ``backends=`` when testing so no API keys are required (same injectable ``SearchFn`` as :func:`search_hits`).
+
+**Pydantic AI:** wrap a single tool with ``pydantic_ai.ext.langchain.tool_from_langchain`` or attach a LangChain toolkit via ``LangChainToolset`` — see [Pydantic AI third-party tools](https://ai.pydantic.dev/toolsets/#langchain-tools). Swarm’s runtime stays on LangGraph; use Pydantic AI for standalone agents and bridge tools as needed.
+
+Env var **names** only in yaml (`BRAVE_API_KEY`, `TAVILY_API_KEY`, `APIFY_TOKEN`, `EXA_API_KEY`, `SEARXNG_URL`). Install deps: `uv sync --extra dev`. Inject `SearchFn` / `FetchFn` in tests so no live network is required.
 
 Mem0 Platform long-term memory (optional extra; does not replace the LangGraph checkpointer):
 
