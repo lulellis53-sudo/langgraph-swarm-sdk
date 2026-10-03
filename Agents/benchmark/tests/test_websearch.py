@@ -108,10 +108,17 @@ def test_parallel_search_uses_each_provider_key(monkeypatch) -> None:
         ),
         extractor_order=("regex",),
     )
-    hits = parallel_search(
-        "parallel-keys", config=cfg, backends=dict.fromkeys(ids, backend),
-        max_workers=4, timeout_s=6, cache_ttl_s=0,
-    )
+    try:
+        hits = parallel_search(
+            "parallel-keys",
+            config=cfg,
+            backends=dict.fromkeys(ids, backend),
+            max_workers=4,
+            timeout_s=6,
+            cache_ttl_s=0,
+        )
+    finally:
+        websearchers._keychain_secret.cache_clear()
     assert set(seen) == set(ids)
     assert seen == dict(zip(ids, (f"synthetic-{name}" for name in names), strict=True))
     assert len(hits) == 4
