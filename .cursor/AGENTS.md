@@ -53,7 +53,9 @@ Repo (outside .cursor/) that agents must respect:
 ├── AGENTS.md           # Project-wide coding / Swarm map
 ├── Agents/             # Swarm personas, tests/, shared benchmark/
 ├── Main/               # Embeddings/vectorstore re-exports, YAML, Essentials
-├── WebSearch/          # Git worktree (branch feature/websearch): search/scrape pipeline
+├── WebSearch/          # Worktree: feature/websearch
+├── ../Swarm-Prediction # Worktree: feat/prediction-engine
+├── ../Newsletter       # Worktree: feat/newsletter
 ├── src/swarm_sdk/      # Library (pb/, orchestrator/, …)
 └── pyproject.toml      # Project metadata (stays at repo root)
 ```

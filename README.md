@@ -107,7 +107,17 @@ Token savings: shared role-contract prompt cached per process, exact + semantic 
 
 gRPC: `SwarmService.SpawnPlan` (goal → plan handle), `RunPlan` (handle → per-step outputs + usage), `PlanStatus` (poll for long plans). Manifests set `api_key_env` to the provider variable named by their model route, such as `OPENAI_API_KEY`; secret values stay in the Keychain.
 
-Predefined model routes, API key variable names, and service credential owners live in [`Main/config/model_registry.yaml`](Main/config/model_registry.yaml); it contains no credential values. Runtime defaults live in [`src/swarm_sdk/agents/config/swarm.yaml`](src/swarm_sdk/agents/config/swarm.yaml) (human-facing symlinks under [`Main/config/`](Main/config/)). Per-agent roles, models, and tasks live in [`Agents/{Name}/agent.yaml`](Agents/Tester/agent.yaml) (see [`Agents/README.md`](Agents/README.md)). [`WebSearch/`](WebSearch/) is a **git worktree** of this repo on branch `feature/websearch` (search/scrape pipeline: the packages `frontend/` → `midend/` → `backend/`, plus `providers.yaml`; see [`WebSearch/PIPELINE.md`](WebSearch/PIPELINE.md)). After clone: `git worktree add WebSearch feature/websearch` from the repo root (the worktree path *is* `WebSearch/`, no symlink). `SWARM_*` env vars override file defaults. Open [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace) for a multi-root editor layout.
+Predefined model routes, API key variable names, and service credential owners live in [`Main/config/model_registry.yaml`](Main/config/model_registry.yaml); it contains no credential values. Runtime defaults live in [`src/swarm_sdk/agents/config/swarm.yaml`](src/swarm_sdk/agents/config/swarm.yaml) (human-facing symlinks under [`Main/config/`](Main/config/)). Per-agent roles, models, and tasks live in [`Agents/{Name}/agent.yaml`](Agents/Tester/agent.yaml) (see [`Agents/README.md`](Agents/README.md)).
+
+**Three parallel agent lanes** (fixed git worktrees; see [`.cursor/skills/multi-lane-worktrees/SKILL.md`](.cursor/skills/multi-lane-worktrees/SKILL.md)):
+
+| Lane | Worktree | Branch |
+|------|----------|--------|
+| WebSearch | [`WebSearch/`](WebSearch/) | `feature/websearch` — [`PIPELINE.md`](WebSearch/PIPELINE.md) |
+| Prediction | `../Swarm-Prediction` | `feat/prediction-engine` — [`Prediction/`](Prediction/) |
+| Newsletter | `../Newsletter` | `feat/newsletter` — [`Newsletter/`](Newsletter/) |
+
+Repo root stays on `integration/all-branches` for merges. Open [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace) for a multi-root editor layout. `SWARM_*` env vars override file defaults.
 
 ## Token path
 
