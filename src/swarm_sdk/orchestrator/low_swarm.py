@@ -79,7 +79,9 @@ class LowSwarmEngine:
     # ---------------------------------------------------------------------------
 
     def _build_graph(self) -> StateGraph:
-        builder = StateGraph(SwarmState)
+        # ty cannot narrow typing.TypedDict to langgraph's TypedDictLike protocol
+        # (same limitation as swarm_sdk.server.graphs).
+        builder = StateGraph(SwarmState)  # ty: ignore[invalid-argument-type]
 
         builder.add_node("jev_router_node", self.node_jev_router)
         builder.add_node("coder_node", self.node_coder)

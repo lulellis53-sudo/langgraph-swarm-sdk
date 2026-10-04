@@ -10,10 +10,12 @@ import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
 
+from swarm_sdk.observability import metrics
+
 _DEFAULT_TIKTOKEN = "cl100k_base"
 _ENCODING_CACHE: dict[str, Any] = {}
 _ENCODING_MISSING: set[str] = set()
-_COUNT_CACHE: dict[tuple[int, int], int] = {}
+_COUNT_CACHE: dict[tuple[int, str], int] = {}
 _COUNT_CACHE_MAX = 512
 _COUNT_LOCK = threading.Lock()
 _whitespace_pre: Any | None = None
@@ -25,7 +27,8 @@ if TYPE_CHECKING:
 class _HasEncode(Protocol):
     """Anything with an ``encode`` method (HF Tokenizer or tiktoken Encoding)."""
 
-    def encode(self, text: str, /, *args: Any, **kwargs: Any) -> Any: ...
+    def encode(self, text: str, /, *args: Any, **kwargs: Any) -> Any:
+        """Tokenize ``text`` into the backend's encoding object."""
 
 
 def _whitespace() -> Any:
@@ -98,9 +101,14 @@ def count_text(text: str, tokenizer: _HasEncode | None = None) -> int:
     """
     if not text:
         return 0
-    key = (hash(text), id(tokenizer) if tokenizer is not None else 0)
+    # Use the tokenizer identity and the text itself as the cache key. Hash
+    # collisions on ``hash(text)`` could silently return the wrong count, and
+    # the cache is small enough (512 entries) that storing the string is cheap.
+    tokenizer_id = id(tokenizer) if tokenizer is not None else 0
+    key = (tokenizer_id, text)
     cached = _COUNT_CACHE.get(key)
     if cached is not None:
+        metrics.record_cache_hit("token_count")
         return cached
     if tokenizer is not None:
         count = _count_with(tokenizer, text)

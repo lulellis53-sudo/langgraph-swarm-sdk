@@ -233,6 +233,10 @@ class VectorComputeDispatcher:
         rows, cols = a.shape
         is_broadcast_b = b.shape[0] == 1
 
+        queue, kernel, kernel4 = self._queue, self._kernel, self._kernel4
+        if queue is None or kernel is None or kernel4 is None:
+            raise RuntimeError("OpenCL backend is not initialised")
+
         mf = cl.mem_flags
         buf_a = cl.Buffer(self._ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=a)
         buf_b = cl.Buffer(self._ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=b)
@@ -243,8 +247,8 @@ class VectorComputeDispatcher:
             vcols = cols // 4
             wgs = _wgs_for(vcols, self._max_wg)
             b_stride = 0 if is_broadcast_b else vcols
-            self._kernel4(
-                self._queue,
+            kernel4(
+                queue,
                 (rows, wgs),
                 (1, wgs),
                 buf_a,
@@ -257,8 +261,8 @@ class VectorComputeDispatcher:
         else:
             wgs = _wgs_for(cols, self._max_wg)
             b_stride = 0 if is_broadcast_b else cols
-            self._kernel(
-                self._queue,
+            kernel(
+                queue,
                 (rows, wgs),
                 (1, wgs),
                 buf_a,
@@ -269,8 +273,8 @@ class VectorComputeDispatcher:
                 np.uint32(b_stride),
             )
 
-        cl.enqueue_copy(self._queue, out, buf_out)
-        self._queue.finish()
+        cl.enqueue_copy(queue, out, buf_out)
+        queue.finish()
         return out
 
     def compute_batch_dot_product(self, matrix_a: np.ndarray, matrix_b: np.ndarray) -> np.ndarray:

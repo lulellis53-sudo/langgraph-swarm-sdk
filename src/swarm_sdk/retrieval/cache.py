@@ -73,6 +73,9 @@ class SemanticCache:
                 )
         self._conn.commit()
         self._index = self._warm_index() if use_index else None
+        self._scan_generation: tuple[int, int] | None = None
+        self._scan_vectors: np.ndarray | None = None
+        self._scan_responses: list[str] = []
 
     def _warm_index(self) -> OpenClVecStore:
         """Load the newest rows into an in-memory index (older rows stay in SQLite)."""
@@ -103,25 +106,49 @@ class SemanticCache:
                 return hits[0].text
             return None
         with self._lock:
-            stored = self._conn.execute("SELECT vector, response FROM semantic_cache").fetchall()
-        if not stored:
+            matrix, responses = self._scan_matrix()
+        if matrix.shape[0] == 0:
             return None
-
-        candidates: list[np.ndarray] = []
-        responses: list[str] = []
-        for blob, response in stored:
-            other = np.frombuffer(blob, dtype=np.float32)
-            if other.shape == vector.shape:
-                candidates.append(other)
-                responses.append(str(response))
-        if not candidates:
-            return None
-
-        scores = batch_cosine(vector, np.stack(candidates))
+        scores = batch_cosine(vector, matrix)
         best_idx = int(scores.argmax())
         if float(scores[best_idx]) >= self.threshold:
             return responses[best_idx]
         return None
+
+    def _scan_matrix(self) -> tuple[np.ndarray, list[str]]:
+        """Return the contiguous semantic matrix, reloading only when rows change.
+
+        The caller holds ``_lock``. ``COUNT`` plus ``MAX(id)`` is the generation:
+        a repeat lookup in this process does not ``SELECT`` every blob again.
+        Blobs are copied out of SQLite's buffer. A wrong-dimension blob is skipped.
+        """
+        row = self._conn.execute(
+            "SELECT COUNT(*), COALESCE(MAX(id), 0) FROM semantic_cache"
+        ).fetchone()
+        generation = (int(row[0]), int(row[1])) if row is not None else (0, 0)
+        if self._scan_generation == generation and self._scan_vectors is not None:
+            return self._scan_vectors, self._scan_responses
+        stored = self._conn.execute("SELECT vector, response FROM semantic_cache").fetchall()
+        dim = self.embedder.dim
+        vectors: list[np.ndarray] = []
+        responses: list[str] = []
+        for blob, response in stored:
+            other = np.frombuffer(blob, dtype=np.float32)
+            if other.shape == (dim,):
+                vectors.append(other)
+                responses.append(str(response))
+        if not vectors:
+            matrix = np.empty((0, dim), dtype=np.float32)
+        else:
+            # Preallocate the result matrix and copy each vector exactly once.
+            matrix = np.empty((len(vectors), dim), dtype=np.float32)
+            for i, vector in enumerate(vectors):
+                matrix[i] = vector
+            matrix = np.ascontiguousarray(matrix)
+        self._scan_vectors = matrix
+        self._scan_responses = responses
+        self._scan_generation = generation
+        return matrix, responses
 
     def store(self, text: str, response: str) -> None:
         """Insert a response under both the exact key and its embedding."""

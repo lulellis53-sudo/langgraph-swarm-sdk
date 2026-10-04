@@ -10,19 +10,22 @@ from typing import Protocol, cast
 class Reranker(Protocol):
     """Reranker protocol: return documents ordered best-first for the query."""
 
-    def rerank(self, query: str, documents: list[str]) -> list[str]: ...
+    def rerank(self, query: str, documents: list[str]) -> list[str]:
+        """Return ``documents`` ordered best-first for ``query``."""
 
 
 class ScoredReranker(Protocol):
     """Reranker protocol that also exposes relevance scores."""
 
-    def rerank_scored(self, query: str, documents: list[str]) -> list[tuple[str, float]]: ...
+    def rerank_scored(self, query: str, documents: list[str]) -> list[tuple[str, float]]:
+        """Return ``(document, score)`` pairs ordered best-first for ``query``."""
 
 
 class IdentityReranker:
     """No-op reranker preserving input order (tests, offline runs)."""
 
     def rerank(self, query: str, documents: list[str]) -> list[str]:
+        """Return ``documents`` ordered best-first for ``query``."""
         del query
         return list(documents)
 
@@ -31,6 +34,7 @@ class KeywordReranker:
     """Lexical stand-in used when the ONNX cross-encoder is not installed."""
 
     def rerank(self, query: str, documents: list[str]) -> list[str]:
+        """Return ``documents`` ordered best-first for ``query``."""
         needles = set(query.lower().split())
 
         def score(document: str) -> int:
@@ -59,6 +63,7 @@ class FastEmbedReranker:
         self._model: CrossEncoderProto | None = None
 
     def rerank(self, query: str, documents: list[str]) -> list[str]:
+        """Return ``documents`` ordered best-first for ``query``."""
         if not documents:
             return []
         encoder = self._load()
@@ -90,7 +95,8 @@ class FastEmbedReranker:
 class CrossEncoderProto(Protocol):
     """Structural view of the loaded cross-encoder for type checking."""
 
-    def rerank(self, query: str, documents: list[str]) -> Iterable[float]: ...
+    def rerank(self, query: str, documents: list[str]) -> Iterable[float]:
+        """Return one relevance score per document, in input order."""
 
 
 __all__ = [

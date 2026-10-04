@@ -55,6 +55,11 @@ dependencies = [
     "langgraph-sdk>=0.4.5",
     "python-dotenv>=1.2.3",
     "rich>=15.0.0",
+    # ## Web search / extraction (WebSearch.backend extractors, MCP server)
+    "selectolax>=0.3",
+    "trafilatura>=2.0",
+    "beautifulsoup4>=4.12",
+    "mcp>=2,<3",
 ]
 langchain = [
     "langchain-core>=1.6",
@@ -144,6 +149,16 @@ forecast = [
     "sympy>=1.13",
     "tokenizers>=0.22",
     "transformers>=4.51",
+]
+# ## Scraping / crawling stack (heavy: Twisted via scrapy; playwright needs `playwright install chromium`)
+scrape = [
+    "playwright",
+    "crawlee",
+    "scrapy",
+    "curl-cffi",
+    "parsel",
+    "cssselect",
+    "extruct",
 ]
 
 [project.scripts]

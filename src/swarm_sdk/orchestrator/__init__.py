@@ -1,5 +1,7 @@
 """Parallel multi-agent orchestration: plan → spawn → LangGraph execution."""
 
+from __future__ import annotations
+
 from swarm_sdk.orchestrator.graph import build_graph, run_plan
 from swarm_sdk.orchestrator.low_swarm import LowSwarmEngine, SwarmState
 from swarm_sdk.orchestrator.plan import (

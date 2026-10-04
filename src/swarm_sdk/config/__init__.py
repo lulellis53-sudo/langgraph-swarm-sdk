@@ -1,5 +1,7 @@
 """Configuration domain: runtime settings and file config loader."""
 
+from __future__ import annotations
+
 from swarm_sdk.config.loader import (
     EmbeddingConfig,
     Mem0StoreConfig,

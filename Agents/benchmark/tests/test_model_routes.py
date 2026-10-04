@@ -21,6 +21,17 @@ class _Dummy(BaseChatModel):
 @pytest.fixture()
 def fake_init(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, dict]]:
     calls: list[tuple[str, dict]] = []
+    # Never read the real Keychain from a test: a failing assertion would print the secret.
+    monkeypatch.setattr(chat.vault, "get", lambda *args, **kwargs: None)
+    # Earlier tests may have primed real keys into os.environ; a route test must start clean.
+    for route in chat._route_index().values():
+        monkeypatch.delenv(route.api_key_env, raising=False)
+        monkeypatch.delenv(route.base_url_env, raising=False)
+        for extra in route.key_fallbacks:
+            monkeypatch.delenv(extra, raising=False)
+    # Model instances are cached across calls; clear the cache so each route
+    # test observes fresh ``init_chat_model`` invocations.
+    chat.load_chat_model_cache_clear()
     monkeypatch.setattr(
         "langchain.chat_models.init_chat_model",
         lambda model, **kwargs: calls.append((model, kwargs)) or _Dummy(),
@@ -46,19 +57,83 @@ def test_compat_provider_uses_registry_base_url(fake_init, monkeypatch: pytest.M
 
 
 def test_compat_provider_requires_base_url(fake_init, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("MINIMAX_BASE_URL", raising=False)
-    with pytest.raises(ValueError, match="MINIMAX_BASE_URL"):
-        chat.load_chat_model("minimax:minimax-2.7-high-speed")
+    monkeypatch.delenv("MIMO_BASE_URL", raising=False)
+    with pytest.raises(ValueError, match="MIMO_BASE_URL"):
+        chat.load_chat_model("xiaomi:mimo-v2.5-pro")
     assert fake_init == []
+
+
+def test_minimax_and_zai_use_documented_hosts(fake_init, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        vault,
+        "get",
+        lambda name: {"MINIMAX_API_KEY": "mini", "ZHIPU_API_KEY": "zhipu"}.get(name),
+    )
+    chat.load_chat_model("minimax:minimax-2.7-high-speed")
+    chat.load_chat_model("zai:glm-5.2")
+    assert fake_init[0][1]["base_url"] == "https://api.minimax.io/v1"
+    assert fake_init[0][1]["api_key"] == "mini"
+    assert fake_init[1] == (
+        "glm-5.2",
+        {
+            "model_provider": "openai",
+            "base_url": "https://api.z.ai/api/paas/v4",
+            "api_key": "zhipu",
+        },
+    )
+
+
+def test_second_key_alias_keeps_the_upstream_model_id(
+    fake_init, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        vault,
+        "get",
+        lambda name: {
+            "GEMINI_API_KEY_DUPLICATE_1": "g2",
+            "KIMI_API_KEY_DUPLICATE_1": "k2",
+        }.get(name),
+    )
+    chat.load_chat_model("google:gemini-3.8-flash-b")
+    chat.load_chat_model("moonshot:kimi-k2.7-code-b")
+    assert fake_init[0] == ("google_genai:gemini-3.8-flash", {"google_api_key": "g2"})
+    model, kwargs = fake_init[1]
+    assert model == "kimi-k2.7-code"
+    assert kwargs["base_url"] == "https://api.moonshot.ai/v1"
+    assert kwargs["api_key"] == "k2"
+
+
+def test_mistral_keys_stay_on_their_own_models(fake_init, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        vault,
+        "get",
+        lambda name: {
+            "MISTRAL_API_KEY": "m-unsuffixed",
+            "MISTRAL_API_KEY_DUPLICATE_1": "m-dup",
+        }.get(name),
+    )
+    chat.load_chat_model("mistral:mistral-large-latest")
+    chat.load_chat_model("mistral:ministral-3-8b-latest")
+    assert fake_init == [
+        ("mistral:mistral-large-latest", {"mistral_api_key": "m-unsuffixed"}),
+        ("mistral:ministral-3-8b-latest", {"mistral_api_key": "m-dup"}),
+    ]
 
 
 @pytest.mark.parametrize(
     ("route", "key_name", "base_url"),
     [
         ("openrouter:z-ai/glm-5.3-flash", "OPENROUTER_API_KEY", "https://openrouter.ai/api/v1"),
-        ("sambanova:Meta-Llama-3.3-70B-Instruct", "SAMBANOVA_API_KEY", "https://api.sambanova.ai/v1"),
-        ("fireworks:accounts/fireworks/models/kimi-k2.7", "FIREWORKS_API_KEY",
-         "https://api.fireworks.ai/inference/v1"),
+        (
+            "sambanova:Meta-Llama-3.3-70B-Instruct",
+            "SAMBANOVA_API_KEY",
+            "https://api.sambanova.ai/v1",
+        ),
+        (
+            "fireworks:accounts/fireworks/models/kimi-k2.7",
+            "FIREWORKS_API_KEY",
+            "https://api.fireworks.ai/inference/v1",
+        ),
     ],
 )
 def test_hosted_compat_routes_use_provider_endpoint(
@@ -68,9 +143,7 @@ def test_hosted_compat_routes_use_provider_endpoint(
     chat.load_chat_model(route)
     ((model, kwargs),) = fake_init
     assert model == route.split(":", 1)[1]
-    assert kwargs == {
-        "model_provider": "openai", "base_url": base_url, "api_key": "synthetic-key"
-    }
+    assert kwargs == {"model_provider": "openai", "base_url": base_url, "api_key": "synthetic-key"}
 
 
 def test_hosted_route_reads_named_key_from_vault(

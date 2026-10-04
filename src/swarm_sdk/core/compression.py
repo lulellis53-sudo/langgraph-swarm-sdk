@@ -35,9 +35,9 @@ class LazyModule(types.ModuleType):
             self._loaded_module = importlib.import_module(self._module_name)
         return self._loaded_module
 
-    def __getattr__(self, item: str) -> Any:
+    def __getattr__(self, name: str) -> Any:
         module = self._load()
-        return getattr(module, item)
+        return getattr(module, name)
 
     def __repr__(self) -> str:
         status = "loaded" if self._loaded_module is not None else "unloaded"
@@ -81,7 +81,8 @@ def hybrid_jit(
             return fn
 
         try:
-            import numba  # type: ignore
+            # Optional dependency, absent from the dev environment.
+            import numba  # ty: ignore[unresolved-import]
 
             # Apply Numba njit with free-threaded / nogil support
             compiled_fn = numba.njit(
@@ -91,7 +92,7 @@ def hybrid_jit(
             )(fn)
             setattr(compiled_fn, "__jit_compiled__", True)
             return cast(F, compiled_fn)
-        except ImportError, Exception:
+        except Exception:
             # Graceful NoJIT fallback
             setattr(fn, "__jit_compiled__", False)
             return fn
@@ -120,13 +121,13 @@ class ZstdStateCompressor:
 
     def _init_backend(self) -> None:
         try:
-            import compression.zstd as zstd  # type: ignore
+            import compression.zstd as zstd
 
             self._zstd_mod = zstd
             self._has_native_zstd = True
         except ImportError:
             try:
-                import zstandard as zstd  # type: ignore
+                import zstandard as zstd
 
                 self._zstd_mod = zstd
                 self._has_native_zstd = False  # external library mode

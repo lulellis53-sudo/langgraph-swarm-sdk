@@ -18,7 +18,9 @@ from WebSearch.frontend import (
     searcher_ids,
 )
 from WebSearch.midend import crawl_then_scrape
-from WebSearch.repeater import repeater
+
+# WebSearch.repeater / .langchain_tools are sys.modules aliases that ty cannot follow.
+from WebSearch.repeater import repeater  # ty: ignore[unresolved-import]
 
 from swarm_sdk import vault
 
@@ -108,10 +110,17 @@ def test_parallel_search_uses_each_provider_key(monkeypatch) -> None:
         ),
         extractor_order=("regex",),
     )
-    hits = parallel_search(
-        "parallel-keys", config=cfg, backends=dict.fromkeys(ids, backend),
-        max_workers=4, timeout_s=6, cache_ttl_s=0,
-    )
+    try:
+        hits = parallel_search(
+            "parallel-keys",
+            config=cfg,
+            backends=dict.fromkeys(ids, backend),
+            max_workers=4,
+            timeout_s=6,
+            cache_ttl_s=0,
+        )
+    finally:
+        websearchers._keychain_secret.cache_clear()
     assert set(seen) == set(ids)
     assert seen == dict(zip(ids, (f"synthetic-{name}" for name in names), strict=True))
     assert len(hits) == 4
@@ -423,7 +432,9 @@ def test_midend_dedupes_urls_before_cap() -> None:
 
 
 def test_langchain_tools_use_injected_backend() -> None:
-    from WebSearch.langchain_tools import websearch_langchain_tools
+    from WebSearch.langchain_tools import (
+        websearch_langchain_tools,  # ty: ignore[unresolved-import]
+    )
 
     def backend(query: str, spec: SearcherSpec) -> list[SearchHit]:
         del query

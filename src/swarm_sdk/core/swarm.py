@@ -55,6 +55,7 @@ from swarm_sdk.retrieval.rerank import FastEmbedReranker, KeywordReranker, Reran
 
 if TYPE_CHECKING:
     from langchain_core.language_models.chat_models import BaseChatModel
+    from langchain_core.runnables import RunnableConfig
     from langgraph.checkpoint.base import BaseCheckpointSaver
 
 logger = logging.getLogger(__name__)
@@ -218,7 +219,8 @@ def open_store(settings: Settings) -> MemoryStore:
 class CompiledGraph(Protocol):
     """Structural view of the compiled handoff-swarm graph."""
 
-    def invoke(self, payload: dict[str, object], config: dict[str, object]) -> object: ...
+    def invoke(self, payload: dict[str, object], config: dict[str, object]) -> object:
+        """Run the compiled graph on ``payload`` and return its final state."""
 
 
 class SwarmSDK:
@@ -517,7 +519,7 @@ class SwarmSDK:
 
     def _is_new_thread(self, thread_id: str) -> bool:
         """True when the checkpointer holds no state for ``thread_id`` (survives restarts)."""
-        config = {"configurable": {"thread_id": thread_id}}
+        config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
         return self._checkpointer.get_tuple(config) is None
 
     def _register_thread(self, thread_id: str) -> bool:

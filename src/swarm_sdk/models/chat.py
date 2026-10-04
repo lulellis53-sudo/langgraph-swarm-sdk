@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 from functools import lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import yaml
 
 from swarm_sdk import vault
 from swarm_sdk.execution.executor import offload
+from swarm_sdk.observability import metrics
 from swarm_sdk.prompting.budget import count_text
 
 if TYPE_CHECKING:
@@ -46,20 +48,37 @@ def message_text(message: object) -> str:
     return str(content)
 
 
+class Route(NamedTuple):
+    """One registry row. ``model_id`` overrides the name suffix when a second key aliases it."""
+
+    api_key_env: str
+    base_url_env: str
+    model_id: str = ""
+    key_fallbacks: tuple[str, ...] = ()
+
+
+def _name_list(value: object) -> tuple[str, ...]:
+    if not isinstance(value, list):
+        return ()
+    return tuple(text for item in value if isinstance(item, str) and (text := item.strip()))
+
+
 @lru_cache(maxsize=1)
-def _route_index() -> dict[str, tuple[str, str]]:
-    """Model name -> ``(api_key_env, base_url_env)`` from the packaged registry."""
+def _route_index() -> dict[str, Route]:
+    """Model name -> route from the packaged registry."""
     path = Path(__file__).resolve().parent.parent / "agents" / "config" / "model_registry.yaml"
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     except OSError:
         return {}
-    index: dict[str, tuple[str, str]] = {}
+    index: dict[str, Route] = {}
     for entry in data.get("providers") or []:
         if isinstance(entry, dict) and isinstance(entry.get("name"), str):
-            index[entry["name"]] = (
+            index[entry["name"]] = Route(
                 entry.get("api_key_env") or "",
                 entry.get("base_url_env") or "",
+                entry.get("model_id") or "",
+                _name_list(entry.get("api_key_fallbacks")),
             )
     return index
 
@@ -69,10 +88,14 @@ def _route_index() -> dict[str, tuple[str, str]]:
 _COMPAT_PROVIDERS = frozenset(
     {"zai", "minimax", "moonshot", "xiaomi", "nvidia", "openrouter", "sambanova", "fireworks"}
 )
+# Public OpenAI-compatible hosts. A vault or env base URL still wins.
 _DEFAULT_BASE_URLS = {
     "openrouter": "https://openrouter.ai/api/v1",
     "sambanova": "https://api.sambanova.ai/v1",
     "fireworks": "https://api.fireworks.ai/inference/v1",
+    "zai": "https://api.z.ai/api/paas/v4",
+    "minimax": "https://api.minimax.io/v1",
+    "moonshot": "https://api.moonshot.ai/v1",
 }
 
 _KEY_KWARG = {
@@ -86,8 +109,65 @@ _KEY_KWARG = {
 }
 
 
+def _present(name: str) -> bool:
+    """True when ``name`` is set. The value is not returned."""
+    if not name:
+        return False
+    if os.environ.get(name):
+        return True
+    try:
+        return vault.get(name) is not None
+    except (vault.VaultError, OSError):
+        return False
+
+
+def _value(name: str) -> str:
+    """Secret or base URL for ``name``. Callers must not log the result."""
+    if not name:
+        return ""
+    return os.environ.get(name, "") or vault.get(name) or ""
+
+
+def _first_value(names: tuple[str, ...]) -> str:
+    for name in names:
+        if found := _value(name):
+            return found
+    return ""
+
+
+def _base_url(provider: str, route: Route) -> str:
+    configured = _value(route.base_url_env).strip() if route.base_url_env else ""
+    return configured or _DEFAULT_BASE_URLS.get(provider, "")
+
+
+def route_is_ready(model_name: str) -> bool:
+    """True when the route's key and, for hosted endpoints, a base URL are present.
+
+    Presence only. Secret values are not returned.
+    """
+    provider, _, _ = model_name.partition(":")
+    route = _route_index().get(model_name)
+    if route is None:
+        return False
+    names = (route.api_key_env, *route.key_fallbacks)
+    if route.api_key_env and not any(_present(name) for name in names):
+        return False
+    if provider in _COMPAT_PROVIDERS and not _base_url(provider, route):
+        return False
+    return True
+
+
+_MODEL_CACHE: dict[str, BaseChatModel] = {}
+_MODEL_CACHE_LOCK = threading.Lock()
+_MODEL_CACHE_MAX = 32
+
+
 def load_chat_model(model_name: str) -> BaseChatModel:
     """Initialize a LangChain chat model from a provider:name string.
+
+    Results are cached so repeated calls for the same ``model_name`` reuse the
+    same model instance. Call ``load_chat_model.cache_clear()`` to force refresh
+    (e.g. after rotating API keys at runtime).
 
     OpenAI-compatible providers (including ``zai``, ``openrouter``,
     ``sambanova`` and ``fireworks``) are constructed as ``ChatOpenAI``.
@@ -104,14 +184,40 @@ def load_chat_model(model_name: str) -> BaseChatModel:
         TypeError: If ``init_chat_model`` does not return a chat model.
         ValueError: If an OpenAI-compatible route has no base URL configured.
     """
+    with _MODEL_CACHE_LOCK:
+        cached = _MODEL_CACHE.get(model_name)
+        if cached is not None:
+            metrics.record_cache_hit("chat_model")
+            return cached
+
+    chat_model = _build_chat_model(model_name)
+
+    with _MODEL_CACHE_LOCK:
+        if len(_MODEL_CACHE) >= _MODEL_CACHE_MAX:
+            _MODEL_CACHE.pop(next(iter(_MODEL_CACHE)))
+        _MODEL_CACHE[model_name] = chat_model
+    return chat_model
+
+
+def load_chat_model_cache_clear() -> None:
+    """Clear the chat-model cache (useful in tests and after key rotation)."""
+    with _MODEL_CACHE_LOCK:
+        _MODEL_CACHE.clear()
+
+
+# Expose the same ``cache_clear`` attribute tests and callers expect from ``lru_cache``.
+load_chat_model.cache_clear = load_chat_model_cache_clear  # type: ignore
+
+
+def _build_chat_model(model_name: str) -> BaseChatModel:
+    """Construct a fresh chat-model instance for ``model_name``."""
     from langchain.chat_models import init_chat_model
     from langchain_core.language_models.chat_models import BaseChatModel
 
-    provider, _, model = model_name.partition(":")
-    route_key_env, base_url_env = _route_index().get(model_name, ("", ""))
-    key_value = ""
-    if route_key_env:
-        key_value = os.environ.get(route_key_env, "") or vault.get(route_key_env) or ""
+    provider, _, suffix = model_name.partition(":")
+    route = _route_index().get(model_name, Route("", ""))
+    model = route.model_id or suffix
+    key_value = _first_value((route.api_key_env, *route.key_fallbacks))
     if provider == "google":
         kwargs = {"google_api_key": key_value} if key_value else {}
         chat_model = init_chat_model(f"google_genai:{model}", **kwargs)
@@ -119,10 +225,10 @@ def load_chat_model(model_name: str) -> BaseChatModel:
         kwargs = {"groq_api_key": key_value} if key_value else {}
         chat_model = init_chat_model(model, model_provider="groq", **kwargs)
     elif provider in _COMPAT_PROVIDERS:
-        base_url = os.environ.get(base_url_env, "").strip() or _DEFAULT_BASE_URLS.get(provider, "")
+        base_url = _base_url(provider, route)
         if not base_url:
             raise ValueError(
-                f"{provider} routes need {base_url_env or 'a base URL env'} "
+                f"{provider} routes need {route.base_url_env or 'a base URL env'} "
                 "(OpenAI-compatible endpoint); store it with `swarm-vault set`"
             )
         chat_model = init_chat_model(

@@ -1,5 +1,7 @@
 """Serving domain: HTTP (FastAPI), gRPC, and peer transport."""
 
+from __future__ import annotations
+
 from swarm_sdk.serving.grpc import SwarmServicer, serve
 from swarm_sdk.serving.http import RecallIn, RunIn, app, create_app
 from swarm_sdk.serving.peer import async_post_json, post_json

@@ -48,10 +48,20 @@ token budget, tasks, capabilities). Validation: `uv run python -m swarm_sdk.agen
 | [TxtToCsv](TxtToCsv/AGENTS.md) | convert_text_files_to_csv | - | infer_format, convert |
 | [WebFetch](WebFetch/AGENTS.md) | fetch_render | - | fetch_render |
 | [Newsletter](Newsletter/AGENTS.md) | digest_generation | - | newsletter_mvp |
+| [math](math/AGENTS.md) | symbolic/numerical solving | - | (see manifest) |
 
-The `benchmark/` directory holds the primary test suite and evals; the
-`code-review/`, `deep-research/`, and `math/` directories are mirrored prompt
-catalogs consumed as reference material, not running agents.
+The `benchmark/` directory holds the primary test suite and evals.
+
+**Actuation (all personas):** [`_shared/ACTUATION.md`](_shared/ACTUATION.md) · depth [`AgentMethods.md`](AgentMethods.md) · shape [`TEMPLATE.md`](TEMPLATE.md) · shared gates [`_shared/COMMON.md`](_shared/COMMON.md).
+
+Removed duplicate prompt mirrors (`code-review/`, `deep-research/`): use **Reviewer** and **DeepResearch** manifests instead. Antigravity copies remain under [`antigravity-imported/`](antigravity-imported/) for reference only.
+
+Re-sync shared sections after editing manifests:
+
+```bash
+uv run python Agents/_shared/strip_template_map.py   # remove TEMPLATE map if reintroduced
+uv run python Agents/_shared/sync_agents_template.py
+```
 
 ## Coordination
 

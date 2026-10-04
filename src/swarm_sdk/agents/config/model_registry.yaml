@@ -30,6 +30,7 @@ providers:
   - name: zai:glm-5.2
     provider: zai
     api_key_env: ZAI_API_KEY
+    api_key_fallbacks: [ZHIPU_API_KEY]
     base_url_env: ZAI_BASE_URL   # https://api.z.ai/api/paas/v4
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
@@ -46,20 +47,41 @@ providers:
 
   - name: moonshot:kimi-k2.7-code
     provider: moonshot
-    api_key_env: KIMI_CODE_PLAN_API_KEY
+    api_key_env: KIMI_API_KEY
+    api_key_fallbacks: [KIMI_API_KEY_DUPLICATE_1, KIMI_CODE_PLAN_API_KEY]
     base_url_env: MOONSHOT_BASE_URL   # https://api.moonshot.ai/v1
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 10
-    evidence: user (Kimi 2.7 Code Plan); fallback key KIMI_CODE_PLAN_API_KEY_2 reserved
+    evidence: user (Kimi, two vault keys; OpenAI-compatible host api.moonshot.ai/v1)
+
+  - name: moonshot:kimi-k2.7-code-b
+    provider: moonshot
+    model_id: kimi-k2.7-code
+    api_key_env: KIMI_API_KEY_DUPLICATE_1
+    base_url_env: MOONSHOT_BASE_URL   # https://api.moonshot.ai/v1
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 11
+    evidence: user (second Kimi key, same model id)
 
   - name: google:gemini-3.8-flash
     provider: google
     api_key_env: GEMINI_API_KEY
+    api_key_fallbacks: [GEMINI_API_KEY_DUPLICATE_1]
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 12
     evidence: user (Gemini 3.8 Flash = Google medium tier)
+
+  - name: google:gemini-3.8-flash-b
+    provider: google
+    model_id: gemini-3.8-flash
+    api_key_env: GEMINI_API_KEY_DUPLICATE_1
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 13
+    evidence: user (second Gemini key, same model id)
 
   - name: xiaomi:mimo-v2.5-pro
     provider: xiaomi
@@ -143,6 +165,7 @@ providers:
   - name: cohere:command-a
     provider: cohere-1
     api_key_env: COHERE_API_KEY_1
+    api_key_fallbacks: [COHERE_API_KEY]
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 60
@@ -159,6 +182,7 @@ providers:
   - name: mistral:mistral-large-latest
     provider: mistral-1
     api_key_env: MISTRAL_API_KEY_1
+    api_key_fallbacks: [MISTRAL_API_KEY]
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 65
@@ -167,6 +191,7 @@ providers:
   - name: mistral:ministral-3-8b-latest
     provider: mistral-2
     api_key_env: MISTRAL_API_KEY_2
+    api_key_fallbacks: [MISTRAL_API_KEY_DUPLICATE_1]
     effort: low
     think_levels: ["off", low, medium, high, xhigh]
     priority: 67
@@ -183,6 +208,7 @@ providers:
   - name: groq:openai/gpt-oss-20b
     provider: groq-2
     api_key_env: GROQ_API_KEY_2
+    api_key_fallbacks: [GROQ_API_KEY_DUPLICATE_1]
     effort: low
     think_levels: ["off", low, medium, high, xhigh]
     priority: 72
@@ -241,7 +267,7 @@ services:
     agents: [WebFetch]
   - name: mem0
     api_key_env: MEM0_API_KEY
-    agents: [Persister]
+    agents: [Persister]          # memory provider
   - name: jev
     api_key_env: JEV_API_KEY
-    agents: [Orchestrator]
+    agents: [Orchestrator]       # decision maker

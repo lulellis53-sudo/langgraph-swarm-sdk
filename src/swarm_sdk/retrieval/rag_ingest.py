@@ -8,7 +8,7 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 from pydantic import BaseModel, Field
@@ -77,27 +77,37 @@ class _NumpyVectorStore:
     def __init__(self, dim: int) -> None:
         """Initialize the in-memory brute-force store for ``dim``-d vectors."""
         self.dim = dim
+        self._capacity = 0
+        self._size = 0
         self.vectors: np.ndarray = np.empty((0, dim), dtype=np.float32)
 
     def add(self, vectors: np.ndarray) -> None:
-        """Append one vector with its payload id."""
+        """Append vectors, growing a geometrically-sized buffer to avoid O(n²) copies."""
         if vectors.size == 0:
             return
         arr = np.asarray(vectors, dtype=np.float32)
         if arr.ndim == 1:
             arr = arr.reshape(1, -1)
-        if self.vectors.size == 0:
-            self.vectors = arr
-        else:
-            self.vectors = np.vstack([self.vectors, arr])
+        n = arr.shape[0]
+        if n == 0:
+            return
+        if self._size + n > self._capacity:
+            new_capacity = max(1, self._capacity * 2 if self._capacity else 1, self._size + n)
+            grown = np.empty((new_capacity, self.dim), dtype=np.float32)
+            if self._size > 0:
+                grown[: self._size] = self.vectors[: self._size]
+            self.vectors = grown
+            self._capacity = new_capacity
+        self.vectors[self._size : self._size + n] = arr
+        self._size += n
 
     def search(self, query_vector: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
         """Search top-k nearest neighbors by cosine similarity."""
-        if len(self.vectors) == 0:
+        if self._size == 0:
             return np.empty((1, 0), dtype=np.float32), np.empty((1, 0), dtype=np.int64)
         query = np.asarray(query_vector, dtype=np.float32).reshape(1, -1)
         # Assuming query and self.vectors are L2-normalized:
-        scores = np.dot(self.vectors, query.T).reshape(-1)
+        scores = np.dot(self.vectors[: self._size], query.T).reshape(-1)
         k = min(k, len(scores))
         if k <= 0:
             return np.empty((1, 0), dtype=np.float32), np.empty((1, 0), dtype=np.int64)
@@ -108,7 +118,7 @@ class _NumpyVectorStore:
     @property
     def ntotal(self) -> int:
         """Number of indexed vectors."""
-        return len(self.vectors)
+        return self._size
 
 
 class RAGIngestionPipeline:
@@ -171,10 +181,12 @@ class RAGIngestionPipeline:
         arr = np.asarray(vecs, dtype=np.float32)
         if arr.ndim == 1:
             arr = arr.reshape(1, -1)
-        # Normalize vectors so dot-product equals cosine similarity
+        # Normalize vectors so dot-product equals cosine similarity.
+        # Use an explicit output buffer to avoid the temporary from arr / norms.
         norms = np.linalg.norm(arr, axis=1, keepdims=True)
-        norms[norms == 0.0] = 1.0
-        return np.ascontiguousarray(arr / norms, dtype=np.float32)
+        out = np.zeros_like(arr)
+        np.divide(arr, norms, out=out, where=norms != 0.0)
+        return np.ascontiguousarray(out, dtype=np.float32)
 
     def chunk_markdown(
         self,
@@ -417,12 +429,12 @@ class RAGIngestionPipeline:
             # Also save vectors.npy as universal fallback
             if hasattr(self.index, "reconstruct_n"):
                 try:
-                    vecs = self.index.reconstruct_n(0, self.index.ntotal)
+                    vecs = cast(Any, self.index).reconstruct_n(0, self.index.ntotal)
                     np.save(target_dir / "vectors.npy", vecs)
                 except Exception as exc:  # pragma: no cover
                     logger.debug("Could not reconstruct FAISS vectors for numpy backup: %s", exc)
         else:
-            np.save(target_dir / "vectors.npy", self.index.vectors)
+            np.save(target_dir / "vectors.npy", self.index.vectors[: self.index.ntotal])
 
     def load(self, directory: str | Path) -> None:
         """Deserialize index and chunk metadata from disk."""

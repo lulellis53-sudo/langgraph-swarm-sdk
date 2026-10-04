@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 import yaml
@@ -67,7 +68,7 @@ def test_graph_nodes_follow_manifests(tmp_path: Path, monkeypatch) -> None:
     _solo_catalog(tmp_path)
     sdk = _sdk(tmp_path, ScriptedModel(script=Script([answer("ok")])))
 
-    nodes = set(sdk._graph().nodes)
+    nodes = set(cast(Any, sdk._graph()).nodes)
 
     assert "researcher" in nodes
     assert "coder" not in nodes
@@ -78,7 +79,7 @@ def test_missing_catalog_falls_back_to_default_trio(tmp_path: Path, monkeypatch)
     monkeypatch.chdir(tmp_path)
     sdk = _sdk(tmp_path, ScriptedModel(script=Script([answer("ok")])))
 
-    nodes = set(sdk._graph().nodes)
+    nodes = set(cast(Any, sdk._graph()).nodes)
 
     assert {"researcher", "coder", "reviewer"} <= nodes
 
@@ -182,5 +183,5 @@ def test_bundled_websearch_bridge_importable_when_installed() -> None:
     pytest.importorskip("WebSearch.agent_tools")
     from swarm_sdk.core.swarm import _websearch_tools
 
-    names = [tool.name for tool in _websearch_tools()]
+    names = [cast(Any, tool).name for tool in _websearch_tools()]
     assert "web_search_brief" in names and "web_search_hits" in names

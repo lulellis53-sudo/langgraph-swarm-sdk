@@ -82,13 +82,15 @@ def run_cowork_pipeline(
         dict: ``stored`` rows added, ``docs`` unique docs kept after dedupe,
         ``fetched`` number of fetch steps, ``wall_s`` wall time.
     """
-    from swarm_sdk.orchestrator import Plan, run_plan
-
     from WebSearch.midend import fetch_playwright
 
+    from swarm_sdk.orchestrator import Plan, run_plan
+
     cfg = config or load_providers()
-    do_fetch: FetchFn = fetch if fetch is not None else (
-        lambda url: fetch_playwright(url, timeout_s=cfg.crawl.timeout_s)
+    do_fetch: FetchFn = (
+        fetch
+        if fetch is not None
+        else (lambda url: fetch_playwright(url, timeout_s=cfg.crawl.timeout_s))
     )
 
     scratch: dict[str, Any] = {"docs": []}

@@ -89,6 +89,36 @@ agents:
     contract: Agents/Newsletter/AGENTS.md
     manifest: Agents/Newsletter/agent.yaml
 
+  - name: DeepResearch
+    role: deep_technical_research
+    contract: Agents/DeepResearch/AGENTS.md
+    manifest: Agents/DeepResearch/agent.yaml
+
+  - name: Normalizer
+    role: normalize_dedupe
+    contract: Agents/Normalizer/AGENTS.md
+    manifest: Agents/Normalizer/agent.yaml
+
+  - name: Persister
+    role: store_documents
+    contract: Agents/Persister/AGENTS.md
+    manifest: Agents/Persister/agent.yaml
+
+  - name: RAG
+    role: knowledge_retrieval
+    contract: Agents/RAG/AGENTS.md
+    manifest: Agents/RAG/agent.yaml
+
+  - name: WebFetch
+    role: fetch_render
+    contract: Agents/WebFetch/AGENTS.md
+    manifest: Agents/WebFetch/agent.yaml
+
+  - name: math
+    role: mathematical_modeling
+    contract: Agents/math/AGENTS.md
+    manifest: Agents/math/agent.yaml
+
 # Task board — replace with tasks for the active project.
 # Each task must have: id, title, assigned agent(s), depends_on, and status.
 # Coder tasks that share a wave also need disjoint files (and usually task).
