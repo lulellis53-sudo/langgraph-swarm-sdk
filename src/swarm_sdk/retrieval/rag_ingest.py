@@ -8,7 +8,7 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 from pydantic import BaseModel, Field
@@ -417,7 +417,7 @@ class RAGIngestionPipeline:
             # Also save vectors.npy as universal fallback
             if hasattr(self.index, "reconstruct_n"):
                 try:
-                    vecs = self.index.reconstruct_n(0, self.index.ntotal)
+                    vecs = cast(Any, self.index).reconstruct_n(0, self.index.ntotal)
                     np.save(target_dir / "vectors.npy", vecs)
                 except Exception as exc:  # pragma: no cover
                     logger.debug("Could not reconstruct FAISS vectors for numpy backup: %s", exc)

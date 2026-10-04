@@ -155,8 +155,9 @@ def bench_stats(n: int, repeats: int) -> dict[str, Any]:
         return float(arr.mean()), float(arr.var()), float(np.quantile(arr, 0.5))
 
     try:
-        import pyarrow  # noqa: F401
-        import pyarrow.compute as pc
+        # Optional benchmark dependency, absent from the dev environment.
+        import pyarrow  # noqa: F401  # ty: ignore[unresolved-import]
+        import pyarrow.compute as pc  # ty: ignore[unresolved-import]
 
         table = pyarrow.array(arr)
 

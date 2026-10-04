@@ -4,27 +4,22 @@
 DuckDuckGo Websearch MCP Server.
 Provides tools to search DuckDuckGo, fetch instant encyclopedic answers,
 and extract full webpage markdown content without API keys.
-Compatible with MCP 1.x (FastMCP) and MCP 2.x (MCPServer).
+Requires MCP 2.x (``MCPServer``, pinned in ``pyproject.toml``).
 """
 
 from __future__ import annotations
 
 import json
 
-try:
-    from mcp.server.mcpserver import MCPServer
-
-    server = MCPServer("duckduckgo-search")
-except ImportError, ModuleNotFoundError:
-    from mcp.server.fastmcp import FastMCP
-
-    server = FastMCP("duckduckgo-search")
+from mcp.server.mcpserver import MCPServer
 
 from swarm_sdk.search.duckduckgo import (
     duckduckgo_instant_answer,
     duckduckgo_search,
     extract_webpage_content,
 )
+
+server = MCPServer("duckduckgo-search")
 
 
 @server.tool(

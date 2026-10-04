@@ -18,7 +18,9 @@ from WebSearch.frontend import (
     searcher_ids,
 )
 from WebSearch.midend import crawl_then_scrape
-from WebSearch.repeater import repeater
+
+# WebSearch.repeater / .langchain_tools are sys.modules aliases that ty cannot follow.
+from WebSearch.repeater import repeater  # ty: ignore[unresolved-import]
 
 from swarm_sdk import vault
 
@@ -430,7 +432,9 @@ def test_midend_dedupes_urls_before_cap() -> None:
 
 
 def test_langchain_tools_use_injected_backend() -> None:
-    from WebSearch.langchain_tools import websearch_langchain_tools
+    from WebSearch.langchain_tools import (
+        websearch_langchain_tools,  # ty: ignore[unresolved-import]
+    )
 
     def backend(query: str, spec: SearcherSpec) -> list[SearchHit]:
         del query

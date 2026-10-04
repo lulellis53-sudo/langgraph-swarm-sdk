@@ -68,7 +68,7 @@ def test_import_execution_and_gpu() -> None:
 def test_import_numpy_polars_sklearn() -> None:
     import numpy as np
     import polars as pl
-    import sklearn
+    import sklearn  # ty: ignore[unresolved-import]  # optional extra, probed on purpose
 
     assert np.__version__
     assert pl.__version__

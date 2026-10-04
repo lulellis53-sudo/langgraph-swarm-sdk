@@ -15,7 +15,7 @@ from urllib.parse import urlsplit
 
 import numpy as np
 
-from swarm_sdk.gpu import batch_cosine
+from swarm_sdk.observability import metrics
 
 logger = logging.getLogger(__name__)
 
@@ -30,18 +30,25 @@ class Embedder(Protocol):
 
 
 def unit(vector: np.ndarray) -> np.ndarray:
-    r"""L2-normalize a vector.
+    r"""L2-normalize a vector or each row of a 2-D matrix.
 
     .. math::
         \hat{x} = \frac{x}{\|x\|_2}
 
-    Zero vectors are returned unchanged to avoid division by zero.
+    Zero vectors are returned unchanged to avoid division by zero. A 1-D input
+    returns a 1-D normalized vector; a 2-D input returns row-wise normalized
+    rows.
     """
-    array = np.asarray(vector, dtype=np.float32).reshape(-1)
-    norm = float(np.linalg.norm(array))
-    if norm == 0.0:
-        return array
-    return array / norm
+    array = np.asarray(vector, dtype=np.float32)
+    if array.ndim == 1:
+        norm = float(np.linalg.norm(array))
+        if norm == 0.0:
+            return array
+        return array / norm
+    # Row-wise normalization for matrices; avoid divide-by-zero on zero rows.
+    norms = np.linalg.norm(array, axis=1, keepdims=True)
+    norms = np.where(norms == 0, 1.0, norms)
+    return (array / norms).astype(np.float32, copy=False)
 
 
 def cosine(left: np.ndarray, right: np.ndarray) -> float:
@@ -53,7 +60,14 @@ def cosine(left: np.ndarray, right: np.ndarray) -> float:
 
     Returns a value in :math:`[-1, 1]`. Zero vectors yield ``0.0``.
     """
-    return float(np.dot(unit(left), unit(right)))
+    u = np.asarray(left, dtype=np.float32).reshape(-1)
+    v = np.asarray(right, dtype=np.float32).reshape(-1)
+    dot = float(np.dot(u, v))
+    norm_u = float(np.linalg.norm(u))
+    norm_v = float(np.linalg.norm(v))
+    if norm_u == 0.0 or norm_v == 0.0:
+        return 0.0
+    return float(np.clip(dot / (norm_u * norm_v), -1.0, 1.0))
 
 
 def dedupe_texts(texts: list[str], vectors: np.ndarray, threshold: float) -> list[str]:
@@ -66,17 +80,29 @@ def dedupe_texts(texts: list[str], vectors: np.ndarray, threshold: float) -> lis
         \operatorname{sim}(u, v) = \frac{u \cdot v}{\|u\|_2 \cdot \|v\|_2}
         \ge \theta
     """
+    if not texts:
+        return []
+    normalized = unit(vectors)
+    if normalized.ndim == 1:
+        normalized = normalized.reshape(1, -1)
+    n, dim = normalized.shape
     kept_text: list[str] = []
-    kept_vectors: list[np.ndarray] = []
-    for text, vector in zip(texts, vectors, strict=True):
-        current = unit(vector)
-        if kept_vectors:
-            kept_matrix = np.stack(kept_vectors)
-            similarities = batch_cosine(current, kept_matrix)
+    kept_count = 0
+    # Preallocate a buffer for kept vectors so we never re-stack or reallocate
+    # as the kept set grows. Each vector is copied exactly once.
+    kept_buffer = np.empty((n, dim), dtype=np.float32)
+    for i, text in enumerate(texts):
+        current = normalized[i]
+        if kept_count > 0:
+            similarities = np.dot(kept_buffer[:kept_count], current)
             if float(similarities.max()) >= threshold:
                 continue
         kept_text.append(text)
-        kept_vectors.append(current)
+        kept_buffer[kept_count] = current
+        kept_count += 1
+    dropped = len(texts) - len(kept_text)
+    if dropped > 0:
+        metrics.record_retrieval_savings("dedupe", dropped)
     return kept_text
 
 

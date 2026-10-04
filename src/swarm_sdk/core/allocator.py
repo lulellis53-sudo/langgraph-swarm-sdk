@@ -163,7 +163,7 @@ class AllocatorManager:
             rss_mb=round(rss_mb, 2),
             rss_gb=round(rss_gb, 4),
             free_threaded=free_threaded,
-            gil_enabled=gil_enabled,
+            gil_enabled=gil_on,
             platform=sys.platform,
         )
 

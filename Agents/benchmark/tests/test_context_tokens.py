@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, cast
 
 from langchain.agents.middleware import ContextEditingMiddleware, SummarizationMiddleware
 
@@ -25,14 +26,14 @@ class RecordingModel(ScriptedModel):
         return super()._generate(messages, stop, run_manager, **kwargs)
 
 
-def _sdk(tmp_path: Path, **overrides: object) -> SwarmSDK:
+def _sdk(tmp_path: Path, **overrides: Any) -> SwarmSDK:
     settings = Settings(
         memory_path=str(tmp_path / "mem.db"),
         cache_path=str(tmp_path / "cache.db"),
         embed_dim=32,
         max_tokens=4096,
         memory_backend="opencl",
-        **overrides,  # type: ignore[arg-type]
+        **overrides,
     )
     model = ScriptedModel(script=Script([answer('{"mode":"swarm","tasks":[]}')]))
     return SwarmSDK(
@@ -76,7 +77,7 @@ async def test_stale_handoff_results_are_cleared(tmp_path: Path) -> None:
         swarm_edit_keep_tool_uses=1,
     )
     # ScriptedModel records only the last message; record the full transcript.
-    recorder = RecordingModel(script=sdk._specialist_model.script)  # type: ignore[attr-defined]
+    recorder = RecordingModel(script=cast(Any, sdk._specialist_model).script)
     sdk._specialist_model = recorder
     sdk._compiled = None  # rebuild the graph with the recording specialist
 
@@ -97,7 +98,7 @@ async def test_stale_handoff_results_are_cleared(tmp_path: Path) -> None:
 async def test_small_conversations_are_untouched(tmp_path: Path) -> None:
     """Below the trigger nothing is edited (default trigger, small ping-pong)."""
     sdk = _sdk(tmp_path)
-    specialist_script = sdk._specialist_model.script  # type: ignore[attr-defined]
+    specialist_script = cast(Any, sdk._specialist_model).script
 
     await sdk.run("please code this", "thread")
 

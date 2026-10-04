@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-FastMCP Server for Perplexity AI Search.
+MCP server for Perplexity AI Search.
 Allows Antigravity, Swarm, and LLM Agents to use Perplexity as an MCP tool.
 """
 
@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import json
 
-from mcp.server.fastmcp import FastMCP
-from src.swarm_sdk.search.perplexity import ask_perplexity
+from mcp.server.mcpserver import MCPServer
 
-# Create FastMCP server
-mcp = FastMCP("perplexity-search")
+from swarm_sdk.search.perplexity import ask_perplexity
+
+# Create the MCP server (mcp 2.x renamed FastMCP to MCPServer)
+mcp = MCPServer("perplexity-search")
 
 
 @mcp.tool(

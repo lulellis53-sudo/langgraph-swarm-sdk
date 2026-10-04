@@ -75,7 +75,7 @@ async def duckduckgo_search(
             if not a_tag:
                 continue
 
-            raw_href = a_tag.attributes.get("href", "")
+            raw_href = a_tag.attributes.get("href") or ""
             if "uddg=" in raw_href:
                 parsed = parse_qs(urlparse(raw_href).query)
                 clean_url = unquote(parsed.get("uddg", [raw_href])[0])

@@ -18,7 +18,7 @@ class _State(TypedDict):
 
 
 def _app(saver):
-    graph = StateGraph(_State)
+    graph = StateGraph(_State)  # ty: ignore[invalid-argument-type]
     graph.add_node("step", lambda state: {"log": ["x"]})
     graph.add_edge(START, "step")
     graph.add_edge("step", END)
