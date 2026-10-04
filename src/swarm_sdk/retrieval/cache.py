@@ -130,18 +130,21 @@ class SemanticCache:
             return self._scan_vectors, self._scan_responses
         stored = self._conn.execute("SELECT vector, response FROM semantic_cache").fetchall()
         dim = self.embedder.dim
-        kept: list[np.ndarray] = []
+        vectors: list[np.ndarray] = []
         responses: list[str] = []
         for blob, response in stored:
             other = np.frombuffer(blob, dtype=np.float32)
             if other.shape == (dim,):
-                kept.append(np.array(other, dtype=np.float32, copy=True))
+                vectors.append(other)
                 responses.append(str(response))
-        matrix = (
-            np.ascontiguousarray(np.stack(kept))
-            if kept
-            else np.empty((0, dim), dtype=np.float32)
-        )
+        if not vectors:
+            matrix = np.empty((0, dim), dtype=np.float32)
+        else:
+            # Preallocate the result matrix and copy each vector exactly once.
+            matrix = np.empty((len(vectors), dim), dtype=np.float32)
+            for i, vector in enumerate(vectors):
+                matrix[i] = vector
+            matrix = np.ascontiguousarray(matrix)
         self._scan_vectors = matrix
         self._scan_responses = responses
         self._scan_generation = generation
