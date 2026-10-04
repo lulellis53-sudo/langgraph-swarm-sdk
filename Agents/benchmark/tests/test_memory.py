@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import types
 from pathlib import Path
 from typing import cast
 
@@ -183,8 +184,31 @@ def test_mem0_from_settings_requires_key(monkeypatch: pytest.MonkeyPatch) -> Non
     from swarm_sdk.memory.mem0_store import Mem0Store
 
     monkeypatch.delenv("MEM0_API_KEY", raising=False)
+    monkeypatch.setattr("swarm_sdk.vault.get", lambda *_args, **_kwargs: None)
     with pytest.raises(RuntimeError, match="MEM0_API_KEY"):
         Mem0Store.from_settings(Settings(memory_backend="mem0"))
+
+
+def test_mem0_from_settings_reads_the_vault_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    from swarm_sdk.config.settings import Settings
+    from swarm_sdk.memory.mem0_store import Mem0Store
+
+    monkeypatch.delenv("MEM0_API_KEY", raising=False)
+    monkeypatch.setattr(
+        "swarm_sdk.vault.get",
+        lambda name, *_args, **_kwargs: "synthetic-key" if name == "MEM0_API_KEY" else None,
+    )
+
+    class _Client:
+        def __init__(self, *, api_key: str) -> None:
+            self.api_key = api_key
+
+    module = types.ModuleType("mem0")
+    setattr(module, "MemoryClient", _Client)
+    monkeypatch.setitem(sys.modules, "mem0", module)
+    store = Mem0Store.from_settings(Settings(memory_backend="mem0"))
+    assert isinstance(store._client, _Client)
+    assert store._client.api_key == "synthetic-key"
 
 
 def test_recall_texts_uses_search_text() -> None:

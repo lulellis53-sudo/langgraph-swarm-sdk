@@ -257,6 +257,28 @@ def test_indexed_cache_skips_wrong_dim_blobs(tmp_path: Path) -> None:
     assert other.lookup("something else entirely") is None
 
 
+def test_scan_matrix_reloads_only_when_rows_change(tmp_path: Path) -> None:
+    path = str(tmp_path / "c.db")
+    cache = SemanticCache(path, HashEmbedder(16), threshold=0.97)
+    cache.store("stored question", "stored answer")
+    sql: list[str] = []
+    cache._conn.set_trace_callback(sql.append)
+
+    assert cache.lookup("different question") is None
+    full = [line for line in sql if "SELECT vector, response FROM semantic_cache" in line]
+    assert len(full) == 1
+
+    sql.clear()
+    assert cache.lookup("another different question") is None
+    assert not any("SELECT vector, response FROM semantic_cache" in line for line in sql)
+    assert any("COUNT(*)" in line for line in sql)
+
+    cache.store("topic extra", "extra")
+    sql.clear()
+    assert cache.lookup("yet another question") is None
+    assert any("SELECT vector, response FROM semantic_cache" in line for line in sql)
+
+
 def test_indexed_cache_empty_db(tmp_path: Path) -> None:
     cache = SemanticCache(str(tmp_path / "c.db"), HashEmbedder(16), use_index=True)
     assert cache.lookup("x") is None
