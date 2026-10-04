@@ -117,6 +117,7 @@ def _bge_style(model_name: str) -> bool:
 
 
 def _prepare_texts(texts: list[str], *, query: bool, bge_style: bool) -> list[str]:
+    """Add the BGE ``query:``/``passage:`` prefix when the model expects one."""
     if not bge_style:
         return texts
     if query:
@@ -125,6 +126,7 @@ def _prepare_texts(texts: list[str], *, query: bool, bge_style: bool) -> list[st
 
 
 def _batched(texts: list[str], batch_size: int) -> Iterable[list[str]]:
+    """Yield ``texts`` in consecutive slices of at most ``batch_size``."""
     for start in range(0, len(texts), batch_size):
         yield texts[start : start + batch_size]
 
@@ -133,6 +135,7 @@ class HashEmbedder:
     """Deterministic unit vectors for tests and for machines without FastEmbed."""
 
     def __init__(self, dim: int = 384, batch_size: int = 64, model_name: str = "") -> None:
+        """Configure the hash embedder's dimension, batch size and prefix style."""
         self.dim = dim
         self.batch_size = batch_size
         self._bge = _bge_style(model_name)
@@ -148,6 +151,7 @@ class HashEmbedder:
         return out
 
     def _one(self, text: str) -> np.ndarray:
+        """Derive a deterministic unit vector from the SHA-256 of the normalised text."""
         seed = text.strip().lower().encode()
         digest = hashlib.sha256(seed).digest()
         rng = np.random.default_rng(int.from_bytes(digest[:8], "little"))
@@ -164,6 +168,7 @@ class FastEmbedder:
         dim: int = 384,
         batch_size: int = 64,
     ) -> None:
+        """Configure the FastEmbed model name, dimension and batch size."""
         self.model_name = model_name
         self.dim = dim
         self.batch_size = batch_size
@@ -184,6 +189,7 @@ class FastEmbedder:
         return np.vstack(rows)
 
     def _load(self) -> TextEmbeddingProto:
+        """Import fastembed and build the model on first use."""
         if self._model is None:
             try:
                 module = importlib.import_module("fastembed")
@@ -198,8 +204,10 @@ class FastEmbedder:
 
 
 class _LlamaEmbedProto(Protocol):
+    """Structural view of ``llama_cpp.Llama`` limited to its embedding call."""
+
     def embed(self, input: list[str], normalize: bool = True) -> Iterable[list[float]]:
-        """Embed ``texts`` into one row per text; ``query`` selects query-side prefixing."""
+        """Return one embedding vector per input string."""
 
 
 class LlamaCppEmbedder:
@@ -213,6 +221,7 @@ class LlamaCppEmbedder:
         n_ctx: int = 8192,
         **kwargs: object,
     ) -> None:
+        """Configure the GGUF model path, dimension, batch size and context window."""
         self.model_path = model_path
         self.dim = dim
         self.batch_size = batch_size
@@ -232,6 +241,7 @@ class LlamaCppEmbedder:
         return np.vstack(rows) if rows else np.zeros((0, self.dim), dtype=np.float32)
 
     def _load(self) -> _LlamaEmbedProto:
+        """Import llama-cpp-python and load the GGUF model on first use."""
         if self._model is None:
             try:
                 module = importlib.import_module("llama_cpp")
@@ -294,6 +304,7 @@ class LlamaServerEmbedder:
         batch_size: int = 8,
         timeout_s: float = 30.0,
     ) -> None:
+        """Configure the llama-server endpoint, model, dimension, batch size and timeout."""
         parts = urlsplit(base_url)
         if parts.scheme != "http" or parts.hostname not in _LOOPBACK_HOSTS:
             raise ValueError(f"llama-server URL must be an http loopback address: {base_url!r}")
@@ -314,6 +325,7 @@ class LlamaServerEmbedder:
         return np.vstack(rows) if rows else np.zeros((0, self.dim), dtype=np.float32)
 
     def _post(self, batch: list[str]) -> list[np.ndarray]:
+        """POST one batch to the embeddings endpoint and return its vectors."""
         request = urllib.request.Request(
             self.url,
             data=json.dumps({"input": batch, "model": self.model}).encode(),

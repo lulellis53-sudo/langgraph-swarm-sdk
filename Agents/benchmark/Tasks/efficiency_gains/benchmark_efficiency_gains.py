@@ -66,6 +66,7 @@ def _metric(
 
 
 def _manifest(name: str) -> AgentManifest:
+    """Build a minimal valid manifest named ``name`` for the plan-validation scenario."""
     return AgentManifest.model_validate(
         {
             "name": name,
@@ -94,7 +95,7 @@ async def _spawn_legacy(
             continue
         try:
             plan = Plan.model_validate(json.loads(match.group(0)))
-        except (ValidationError, json.JSONDecodeError):
+        except ValidationError, json.JSONDecodeError:
             continue
         try:
             _validate_plan(plan, manifests)
@@ -268,6 +269,7 @@ def scenario_recall_dedupe(memories: int = 24) -> dict[str, Any]:
 
 
 def _identity_reranker() -> Any:
+    """Return an order-preserving reranker (imported lazily to keep startup cheap)."""
     from swarm_sdk.retrieval.rerank import IdentityReranker
 
     return IdentityReranker()
@@ -320,6 +322,7 @@ def scenario_fts5_fallback(docs: int = 120, queries: int = 8) -> dict[str, Any]:
 
 
 def _one_hot(dim: int, index: int) -> np.ndarray:
+    """Return a unit vector with a single 1.0 at ``index``."""
     vector = np.zeros(dim, dtype=np.float32)
     vector[index] = 1.0
     return vector
@@ -349,6 +352,7 @@ def run(answers: int = 60, texts: int = 24, docs: int = 120) -> dict[str, Any]:
 
 
 def main() -> None:
+    """Parse CLI flags, run every scenario and print the JSON report."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--answers", type=int, default=200)
     parser.add_argument("--texts", type=int, default=48)

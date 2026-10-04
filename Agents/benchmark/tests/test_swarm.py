@@ -5,10 +5,13 @@ from __future__ import annotations
 import sqlite3
 import time
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pytest
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.callbacks import CallbackManagerForLLMRun
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.outputs import ChatResult
 
 from benchmark.tests.fakes import (
     ROUTER_OUTPUTS,
@@ -47,6 +50,8 @@ class SemanticBucketEmbedder:
 
 
 class SpyEmbedder:
+    """Embedder wrapper that counts calls to the inner embedder."""
+
     def __init__(self, inner: HashEmbedder | SemanticBucketEmbedder) -> None:
         self.inner = inner
         self.calls = 0
@@ -329,7 +334,15 @@ async def test_complete_with_usage_estimates_when_provider_silent() -> None:
 
 
 class _RejectsResponseFormat(ScriptedModel):
-    def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+    """Model that rejects ``response_format`` to exercise the JSON-mode fallback."""
+
+    def _generate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: CallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> ChatResult:
         if "response_format" in kwargs:
             raise ValueError("response_format unsupported")
         return super()._generate(messages, stop, run_manager, **kwargs)
@@ -340,7 +353,9 @@ async def test_json_mode_falls_back_when_provider_rejects() -> None:
     assert await complete_with_usage(model, "s", "u", json_mode=True) == ("plain", 5)
 
 
-async def test_fallback_chain_reports_usage_and_complete_stays_str(monkeypatch) -> None:
+async def test_fallback_chain_reports_usage_and_complete_stays_str(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     model = ScriptedModel(script=Script([_ai("hi", 7)]))
     monkeypatch.setattr("swarm_sdk.models.selection.load_chat_model", lambda name: model)
     chain = FallbackChain(ModelSelectConfig(routes=[ModelRoute(name="x:y", provider="x")]))
@@ -372,7 +387,9 @@ async def test_run_tokens_are_provider_reported_parallel(tmp_path: Path) -> None
 
 
 @pytest.mark.parametrize(("raw", "mode", "tasks"), ROUTER_OUTPUTS)
-async def test_route_survives_adversarial_router_output(tmp_path, raw, mode, tasks) -> None:
+async def test_route_survives_adversarial_router_output(
+    tmp_path: Path, raw: str, mode: str, tasks: list[str]
+) -> None:
     sdk = sdk_with_router(tmp_path, raw, structured=False)
     decision, _ = await sdk._route(sdk.budget.pack(system="s", memories=[], turns=["q"]))
     assert (decision.mode, decision.tasks) == (mode, tasks)
@@ -382,7 +399,15 @@ _FORMAT_SEEN: list[bool] = []
 
 
 class _FormatSpyModel(ScriptedModel):
-    def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+    """Model recording whether ``response_format`` was passed."""
+
+    def _generate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: CallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> ChatResult:
         _FORMAT_SEEN.append("response_format" in kwargs)
         return super()._generate(messages, stop, run_manager, **kwargs)
 
@@ -393,7 +418,7 @@ class _FormatSpyModel(ScriptedModel):
     ids=["structured-then-json-fallback", "plain-regex-path"],
 )
 async def test_route_requests_json_mode_only_when_enabled(
-    tmp_path, structured: bool, expected_format_calls: list[bool]
+    tmp_path: Path, structured: bool, expected_format_calls: list[bool]
 ) -> None:
     """Structured routing tries tool-calling first; only the fallback binds JSON mode."""
     _FORMAT_SEEN.clear()
@@ -460,7 +485,9 @@ def test_evicted_thread_can_start_again(tmp_path: Path) -> None:
     assert sdk._register_thread("t0") is True
 
 
-def test_eviction_deletes_checkpointer_state(tmp_path: Path, monkeypatch) -> None:
+def test_eviction_deletes_checkpointer_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     sdk = _capped_sdk(tmp_path, 4)
     deleted: list[str] = []
     monkeypatch.setattr(sdk._checkpointer, "delete_thread", deleted.append)

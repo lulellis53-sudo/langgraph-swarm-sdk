@@ -36,6 +36,7 @@ class _ActionWorker:
     """Deterministic worker: runs a bound action instead of calling an LLM."""
 
     def __init__(self, agent: str, action: Callable[[], str]) -> None:
+        """Bind a worker to its agent name and the zero-argument action it runs."""
         self._agent = agent
         self._action = action
 
@@ -48,6 +49,7 @@ class _ActionWorker:
         files: list[str] | None = None,
         task: str = "",
     ) -> StepOutput:
+        """Run the bound action in a worker thread and wrap its text as a ``StepOutput``."""
         from swarm_sdk.orchestrator.plan import StepOutput
 
         del description, dep_outputs, files, task
@@ -108,7 +110,10 @@ def run_cowork_pipeline(
         sid = f"F{index}"
 
         def make_fetch_action(target: str = url, tag: str = sid) -> Callable[[], str]:
+            """Bind ``target``/``tag`` per iteration so each action keeps its own URL."""
+
             def action() -> str:
+                """Fetch the page and stash its decoded HTML under ``html:<tag>``."""
                 html = do_fetch(target)
                 scratch[f"html:{tag}"] = html.decode("utf-8", errors="replace")
                 return f"fetched {target} ({len(html)} bytes)"
@@ -119,6 +124,7 @@ def run_cowork_pipeline(
         fetch_ids.append(sid)
 
     def normalize_action() -> str:
+        """Extract, normalise and stash the text of every fetched page."""
         docs = [
             ExtractedDoc(
                 text=normalize_text(extract_text("selectolax", scratch[f"html:{sid}"])),
@@ -144,6 +150,7 @@ def run_cowork_pipeline(
     )
 
     def persist_action() -> str:
+        """Write the normalised documents to SQLite and report stored/total counts."""
         conn = connect(db_path)
         stored = put_documents(conn, scratch["docs"])
         total = count_documents(conn)
@@ -156,6 +163,7 @@ def run_cowork_pipeline(
     )
 
     def factory(step: PlanStep) -> _ActionWorker:
+        """Return the worker that runs the action registered for ``step``."""
         _sid, agent, _desc, action, _deps, _files = step_by_id[step.id]
         return _ActionWorker(agent, action)
 

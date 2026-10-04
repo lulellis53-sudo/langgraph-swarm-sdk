@@ -12,6 +12,8 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class CodeBenchCase:
+    """One coding-benchmark case: prompt, difficulty and acceptance data."""
+
     id: str
     title: str
     prompt: str

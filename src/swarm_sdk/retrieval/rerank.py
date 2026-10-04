@@ -38,6 +38,7 @@ class KeywordReranker:
         needles = set(query.lower().split())
 
         def score(document: str) -> int:
+            """Count the query words that appear in ``document``."""
             return len(needles & set(document.lower().split()))
 
         ranked = sorted(documents, key=score, reverse=True)
@@ -50,6 +51,7 @@ class KeywordReranker:
             return [(document, 0.0) for document in documents]
 
         def score(document: str) -> float:
+            """Return the fraction of query words that appear in ``document``."""
             return len(needles & set(document.lower().split())) / len(needles)
 
         return sorted(((d, score(d)) for d in documents), key=lambda pair: pair[1], reverse=True)
@@ -59,6 +61,7 @@ class FastEmbedReranker:
     """ONNX cross-encoder reranker (FastEmbed, MiniLM by default)."""
 
     def __init__(self, model_name: str = "Xenova/ms-marco-MiniLM-L-6-v2") -> None:
+        """Set the cross-encoder model; it is loaded lazily on first rerank."""
         self.model_name = model_name
         self._model: CrossEncoderProto | None = None
 
@@ -80,6 +83,7 @@ class FastEmbedReranker:
         return [(documents[index], scores[index]) for index in order]
 
     def _load(self) -> CrossEncoderProto:
+        """Import fastembed and build the cross-encoder on first use."""
         if self._model is None:
             try:
                 module = importlib.import_module("fastembed.rerank.cross_encoder")

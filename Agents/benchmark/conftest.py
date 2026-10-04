@@ -1,3 +1,5 @@
+"""Shared fixtures for the benchmark suite (file config and scripted SDK)."""
+
 from pathlib import Path
 
 import pytest

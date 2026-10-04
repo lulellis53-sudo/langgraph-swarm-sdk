@@ -20,6 +20,7 @@ class SympyCalcs:
 
     @staticmethod
     def _sp() -> Any:
+        """Import sympy on first use."""
         import sympy as sp
 
         return sp

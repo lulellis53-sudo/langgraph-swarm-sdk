@@ -200,6 +200,8 @@ def test_mem0_from_settings_reads_the_vault_name(monkeypatch: pytest.MonkeyPatch
     )
 
     class _Client:
+        """Fake Mem0 client that stores its API key."""
+
         def __init__(self, *, api_key: str) -> None:
             self.api_key = api_key
 
@@ -237,6 +239,8 @@ def test_recall_texts_uses_search_text() -> None:
 
 
 class MemoryStub:
+    """In-memory ``MemoryStore`` returning a fixed hit list."""
+
     def __init__(self, hits: list[MemoryHit]) -> None:
         self._hits = hits
 

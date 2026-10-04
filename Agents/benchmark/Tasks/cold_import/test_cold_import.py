@@ -23,6 +23,8 @@ def test_paired_samples_interleave_the_runs(monkeypatch: pytest.MonkeyPatch) -> 
     calls: list[str] = []
 
     class _Done:
+        """Stand-in for ``subprocess.CompletedProcess`` carrying a fixed stdout."""
+
         stdout = "1.0\n"
 
     def fake_run(cmd: list[str], **_: object) -> _Done:

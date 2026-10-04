@@ -1,3 +1,5 @@
+"""Recursion-limit propagation and its HTTP 508 mapping."""
+
 from pathlib import Path
 from typing import Any, cast
 
@@ -13,7 +15,9 @@ from swarm_sdk.serving.http import create_app
 
 
 class _LoopingSDK:
-    async def run(self, text: str, thread_id: str = "default"):
+    """SDK double whose ``run`` always hits the LangGraph recursion limit."""
+
+    async def run(self, text: str, thread_id: str = "default") -> object:
         raise GraphRecursionError("Recursion limit of 50 reached")
 
 

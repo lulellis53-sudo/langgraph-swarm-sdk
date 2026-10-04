@@ -6,6 +6,7 @@ from benchmark.Tasks.standards_audit.benchmark_standards_audit import audit_file
 
 
 def test_audit_file_counts_each_rule() -> None:
+    """A compliant and a non-compliant module score 1 and 0 on every rule."""
     good = (
         '"""Doc."""\n\nfrom __future__ import annotations\n\n'
         'def f(x: int) -> int:\n    """Doc."""\n    return x\n'
@@ -17,6 +18,7 @@ def test_audit_file_counts_each_rule() -> None:
 
 
 def test_working_tree_is_fully_covered_and_better_than_baseline() -> None:
+    """Every rule is at 100% now and no metric regressed against the baseline commit."""
     report = run()
     by_name = {m["name"]: m for m in report["metrics"]}
     for name in ("module_docstring_pct", "public_docstring_pct", "public_annotation_pct"):

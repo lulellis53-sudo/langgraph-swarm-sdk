@@ -91,7 +91,9 @@ def test_file_config_maps_quantize_and_structured_output(tmp_path: Path) -> None
     assert settings.router_structured_output is False
 
 
-def test_environment_backend_overrides_file_config(tmp_path: Path, monkeypatch) -> None:
+def test_environment_backend_overrides_file_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from swarm_sdk.config.loader import load_settings
 
     config = tmp_path / "swarm.yaml"

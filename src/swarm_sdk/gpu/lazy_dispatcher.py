@@ -92,6 +92,7 @@ class VectorComputeDispatcher:
     """Adaptive vector compute dispatcher with lazy OpenCL loading and CPU fallback."""
 
     def __init__(self, batch_threshold: int = 1000) -> None:
+        """Configure the dispatcher; OpenCL is only initialised once a batch is large enough."""
         self.batch_threshold = batch_threshold
         self._cl_module: Any | None = None
         self._cl_load_failed: bool = False

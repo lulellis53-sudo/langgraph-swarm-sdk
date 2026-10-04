@@ -15,6 +15,7 @@ import subprocess
 import tarfile
 import tempfile
 import time
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
@@ -41,10 +42,13 @@ class Tally:
 
 
 def _is_public(name: str) -> bool:
+    """Return whether ``name`` is part of the public API (no leading underscore)."""
     return not name.startswith("_")
 
 
-def _defs(body: list[ast.stmt], in_class: bool = False):
+def _defs(
+    body: list[ast.stmt], in_class: bool = False
+) -> Iterator[tuple[ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef, bool]]:
     """Yield ``(node, is_method)`` for classes and functions reachable without entering defs."""
     for node in body:
         if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
@@ -55,6 +59,7 @@ def _defs(body: list[ast.stmt], in_class: bool = False):
 
 
 def _annotated(fn: ast.FunctionDef | ast.AsyncFunctionDef, is_method: bool) -> bool:
+    """Return whether every parameter (ignoring self/cls) and the return are annotated."""
     args = fn.args
     params = [*args.posonlyargs, *args.args, *args.kwonlyargs]
     params += [a for a in (args.vararg, args.kwarg) if a is not None]
@@ -118,6 +123,7 @@ def _extract_baseline(dest: Path) -> Path:
 
 
 def _pct(ok: int, total: int) -> float:
+    """Return ``ok/total`` as a percentage; an empty population counts as 100%."""
     return ok / total * 100.0 if total else 100.0
 
 

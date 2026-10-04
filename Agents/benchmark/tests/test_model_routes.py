@@ -2,19 +2,32 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
+from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import BaseMessage
+from langchain_core.outputs import ChatResult
 
 from swarm_sdk import vault
 from swarm_sdk.models import chat
 
 
 class _Dummy(BaseChatModel):
+    """Chat model double; constructing it is the assertion, generation is unused."""
+
     @property
     def _llm_type(self) -> str:
         return "dummy"
 
-    def _generate(self, messages, stop=None, run_manager=None, **kwargs):  # noqa: ANN001, ANN202
+    def _generate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: CallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> ChatResult:
         raise NotImplementedError
 
 

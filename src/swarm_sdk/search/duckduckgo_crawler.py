@@ -42,6 +42,7 @@ class DuckDuckGoSearcher:
     """Asynchronous search client for DuckDuckGo."""
 
     def __init__(self, client: httpx.AsyncClient | None = None) -> None:
+        """Use the supplied HTTP client, or create (and later close) our own."""
         self._external_client = client
 
     async def search(
@@ -231,6 +232,7 @@ class CrawleeSpider:
         concurrency: int = 5,
         client: httpx.AsyncClient | None = None,
     ) -> None:
+        """Configure crawl depth, page cap, concurrency and an optional shared client."""
         self.max_depth = max_depth
         self.max_pages = max_pages
         self.concurrency = concurrency
@@ -278,7 +280,8 @@ class CrawleeSpider:
             client = httpx.AsyncClient(headers=DEFAULT_HEADERS, follow_redirects=True, timeout=12.0)
             should_close = True
 
-        async def worker():
+        async def worker() -> None:
+            """Pull URLs from the queue, fetch and extract them until the page cap is hit."""
             while not queue.empty() and len(results) < self.max_pages:
                 try:
                     url, depth = queue.get_nowait()

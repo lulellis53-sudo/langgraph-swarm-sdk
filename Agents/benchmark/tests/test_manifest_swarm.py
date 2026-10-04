@@ -63,7 +63,7 @@ def test_repo_manifests_wire_the_three_handoff_nodes() -> None:
     assert set(wired) == {"researcher", "coder", "reviewer"}
 
 
-def test_graph_nodes_follow_manifests(tmp_path: Path, monkeypatch) -> None:
+def test_graph_nodes_follow_manifests(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
     _solo_catalog(tmp_path)
     sdk = _sdk(tmp_path, ScriptedModel(script=Script([answer("ok")])))
@@ -75,7 +75,9 @@ def test_graph_nodes_follow_manifests(tmp_path: Path, monkeypatch) -> None:
     assert "reviewer" not in nodes
 
 
-def test_missing_catalog_falls_back_to_default_trio(tmp_path: Path, monkeypatch) -> None:
+def test_missing_catalog_falls_back_to_default_trio(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.chdir(tmp_path)
     sdk = _sdk(tmp_path, ScriptedModel(script=Script([answer("ok")])))
 
@@ -84,7 +86,9 @@ def test_missing_catalog_falls_back_to_default_trio(tmp_path: Path, monkeypatch)
     assert {"researcher", "coder", "reviewer"} <= nodes
 
 
-def test_default_active_agent_follows_manifests(tmp_path: Path, monkeypatch) -> None:
+def test_default_active_agent_follows_manifests(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.chdir(tmp_path)
     _solo_catalog(tmp_path)
     sdk = _sdk(tmp_path, ScriptedModel(script=Script([answer("ok")])))
@@ -92,7 +96,7 @@ def test_default_active_agent_follows_manifests(tmp_path: Path, monkeypatch) -> 
     assert sdk._default_agent == "researcher"
 
 
-def test_node_prompt_prefers_role_contract(tmp_path: Path, monkeypatch) -> None:
+def test_node_prompt_prefers_role_contract(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
     _solo_catalog(tmp_path, contract="# Agent: Solo\n\nPrecise single-agent contract.")
     manifest = load_all_agent_manifests(tmp_path / "Agents")["Solo"]
@@ -102,7 +106,9 @@ def test_node_prompt_prefers_role_contract(tmp_path: Path, monkeypatch) -> None:
     assert "Precise single-agent contract." in prompt
 
 
-def test_node_prompt_falls_back_to_manifest_role(tmp_path: Path, monkeypatch) -> None:
+def test_node_prompt_falls_back_to_manifest_role(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.chdir(tmp_path)
     _solo_catalog(tmp_path)
     manifest = load_all_agent_manifests(tmp_path / "Agents")["Solo"]
@@ -121,6 +127,8 @@ def test_node_prompt_of_promptless_node_uses_one_liner(tmp_path: Path) -> None:
 
 
 class _FakeSearchTool:
+    """Minimal LangChain-style tool exposing only a ``name``."""
+
     name = "web_search_brief"
 
 
@@ -144,7 +152,7 @@ def _sdk_with_flag(tmp_path: Path, *, websearch: bool) -> SwarmSDK:
     )
 
 
-def test_websearch_capability_adds_tools(tmp_path: Path, monkeypatch) -> None:
+def test_websearch_capability_adds_tools(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("swarm_sdk.core.swarm._websearch_tools", lambda: [_FakeSearchTool()])
     sdk = _sdk_with_flag(tmp_path, websearch=True)
     manifest = load_all_agent_manifests()["Researcher"]
@@ -167,7 +175,9 @@ def test_websearch_flag_off_leaves_handoffs_only(tmp_path: Path) -> None:
     assert names == ["transfer_to_coder", "transfer_to_reviewer"]
 
 
-def test_capability_without_flag_or_package_is_ignored(tmp_path: Path, monkeypatch) -> None:
+def test_capability_without_flag_or_package_is_ignored(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr("swarm_sdk.core.swarm._websearch_tools", lambda: [_FakeSearchTool()])
     sdk = _sdk_with_flag(tmp_path, websearch=True)
     coder = load_all_agent_manifests()["Coder"]

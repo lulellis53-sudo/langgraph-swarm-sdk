@@ -41,6 +41,7 @@ LAZY_MODULES = ("asyncio", "decimal", "email.message", "http.client", "sqlite3",
 
 
 def _median_s(fn: Callable[[], object], repeats: int) -> float:
+    """Return the median wall time in seconds of ``repeats`` calls to ``fn``."""
     samples = []
     for _ in range(repeats):
         start = time.perf_counter()
@@ -60,6 +61,7 @@ def _row(
     claim_speedup: float,
     note: str = "",
 ) -> dict[str, Any]:
+    """Build one report row, computing the measured speedup from base and target times."""
     return {
         "id": wid,
         "title": title,
@@ -77,10 +79,12 @@ def _row(
 
 
 def _skipped(wid: str, title: str, reason: str) -> dict[str, Any]:
+    """Build a report row for a workload that could not run, with the reason."""
     return {"id": wid, "title": title, "status": "skipped", "note": reason}
 
 
 def _burn(n: int) -> int:
+    """CPU-bound loop of ``n`` iterations used as the thread-scaling workload."""
     total = 0
     for i in range(n):
         total += i * i % 7
@@ -96,6 +100,7 @@ def bench_thread_scaling(work: int, repeats: int) -> dict[str, Any]:
         chunk = work // n
 
         def run(n: int = n, chunk: int = chunk) -> None:
+            """Start ``n`` threads that each burn ``chunk`` iterations, then join them."""
             threads = [threading.Thread(target=_burn, args=(chunk,)) for _ in range(n)]
             for t in threads:
                 t.start()
@@ -123,6 +128,7 @@ def bench_thread_scaling(work: int, repeats: int) -> dict[str, Any]:
 
 
 def bench_vector_dot(n: int, repeats: int) -> dict[str, Any]:
+    """Compare a pure-Python dot product against NumPy on ``n`` elements."""
     rng = np.random.default_rng(SEED)
     a, b = rng.random(n), rng.random(n)
     la, lb = a.tolist(), b.tolist()
@@ -142,16 +148,19 @@ def bench_vector_dot(n: int, repeats: int) -> dict[str, Any]:
 
 
 def bench_stats(n: int, repeats: int) -> dict[str, Any]:
+    """Compare mean/variance/median in pure Python against NumPy on ``n`` samples."""
     rng = np.random.default_rng(SEED)
     arr = rng.random(n)
     values = arr.tolist()
 
     def python_stats() -> tuple[float, float, float]:
+        """Compute mean, variance and median with plain Python."""
         mean = sum(values) / n
         var = sum((v - mean) ** 2 for v in values) / n
         return mean, var, sorted(values)[n // 2]
 
     def numpy_stats() -> tuple[float, float, float]:
+        """Compute mean, variance and median with NumPy."""
         return float(arr.mean()), float(arr.var()), float(np.quantile(arr, 0.5))
 
     try:
@@ -162,6 +171,7 @@ def bench_stats(n: int, repeats: int) -> dict[str, Any]:
         table = pyarrow.array(arr)
 
         def target() -> object:
+            """Compute mean, variance and approximate median with Arrow compute."""
             return pc.mean(table), pc.variance(table), pc.approximate_median(table)
 
         label = "pyarrow.compute"
@@ -174,6 +184,7 @@ def bench_stats(n: int, repeats: int) -> dict[str, Any]:
 
 
 def bench_minimalloc() -> dict[str, Any]:
+    """Time the MiniMalloc buffer-placement solver on a fixed buffer set."""
     kb = 1024
     buffers = [
         Buffer("T0", 0, 2, 4 * kb),
@@ -201,6 +212,7 @@ def bench_minimalloc() -> dict[str, Any]:
 
 
 def bench_zstd(repeats: int) -> dict[str, Any]:
+    """Measure zstd state-compression ratio and speed on a fixed 64 KiB text."""
     rng = np.random.default_rng(SEED)
     words = [f"w{int(i)}" for i in rng.integers(0, 400, 20000)]
     text = " ".join(words)[: 64 * 1024].encode()
@@ -224,6 +236,7 @@ def bench_zstd(repeats: int) -> dict[str, Any]:
 
 
 def _startup_ms(python: str, code: str, runs: int) -> float:
+    """Return the median wall time in ms of ``runs`` fresh interpreters running ``code``."""
     samples = []
     for _ in range(runs):
         start = time.perf_counter()
@@ -233,6 +246,7 @@ def _startup_ms(python: str, code: str, runs: int) -> float:
 
 
 def bench_lazy_imports(runs: int) -> dict[str, Any]:
+    """Compare cold-start time of eager imports against PEP 810 lazy imports on 3.15."""
     title = "Cold start: eager vs PEP 810 lazy imports"
     python = str(_PY315)
     if not _PY315.is_file():
@@ -259,6 +273,7 @@ def bench_lazy_imports(runs: int) -> dict[str, Any]:
 
 
 def bench_allocator() -> dict[str, Any]:
+    """Report the allocator claim as skipped: no mimalloc binding on this host."""
     return _skipped(
         "A",
         "malloc vs mimalloc allocation throughput",
@@ -267,6 +282,7 @@ def bench_allocator() -> dict[str, Any]:
 
 
 def run(*, quick: bool = False) -> dict[str, Any]:
+    """Run every claim workload and return the report; ``quick`` shrinks the sizes."""
     repeats = 3 if quick else 7
     rows = [
         bench_allocator(),
@@ -299,6 +315,7 @@ def run(*, quick: bool = False) -> dict[str, Any]:
 
 
 def format_table(report: dict[str, Any]) -> str:
+    """Format the report rows as a fixed-width text table."""
     lines = [f"{'id':<4}{'workload':<46}{'measured x':>12}{'claimed x':>11}  note"]
     for r in report["rows"]:
         if r["status"] != "measured":
@@ -311,6 +328,7 @@ def format_table(report: dict[str, Any]) -> str:
 
 
 def main() -> int:
+    """CLI entry: run the benchmark, print the table, optionally write JSON."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--quick", action="store_true", help="small sizes for CI")
     parser.add_argument("--json", type=Path, help="also write the full report here")

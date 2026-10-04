@@ -17,7 +17,12 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from playwright.async_api import BrowserContext, Page, async_playwright
+    # Optional "scrape" extra, not part of the quality-gate environment.
+    from playwright.async_api import (  # ty: ignore[unresolved-import]
+        BrowserContext,
+        Page,
+        async_playwright,
+    )
 except ImportError:
     raise ImportError(
         "Playwright is required to use PerplexitySearchEngine. "
@@ -47,6 +52,7 @@ class PerplexitySearchEngine:
         storage_state_path: Path | str | None = None,
         session_cookie: str | None = None,
     ) -> None:
+        """Configure the browser session: headless mode, timeout, user agent and credentials."""
         self.headless = headless
         self.timeout = timeout
         self.user_agent = user_agent

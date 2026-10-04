@@ -152,6 +152,7 @@ def _websearch_tools() -> list[object]:
 
 
 def _fastembed_available() -> bool:
+    """Return whether the optional ``fastembed`` package is importable."""
     try:
         importlib.import_module("fastembed")
     except ImportError:
@@ -450,10 +451,12 @@ class SwarmSDK:
         )
 
     def _recall(self, text: str) -> list[str]:
+        """Recall memories for ``text``, ordered for the prompt (U-shape when enabled)."""
         texts = [hit.text for hit in self.recall(text)]
         return order_for_prompt(texts, enabled=self.file_config.rag.u_shape_order)
 
     def _remember(self, question: str, answer: str) -> None:
+        """Persist a truncated question/answer pair as one embedded memory record."""
         record = f"Q: {question[:200]}\nA: {answer[:400]}"
         vector = self.embedder.embed([record], query=False)[0]
         self.memory.add(record, vector)
@@ -489,6 +492,7 @@ class SwarmSDK:
         return parsed, tokens
 
     async def _route(self, packed: PackedPrompt) -> tuple[RouteDecision, int]:
+        """Choose parallel fan-out or swarm handoff, returning the decision and tokens used."""
         user = packed.suffix or packed.prefix
         if self.settings.router_structured_output:
             decision, tokens = await self._route_structured(user)
@@ -512,6 +516,7 @@ class SwarmSDK:
         return _parse_route(raw), tokens
 
     def _run_config(self, thread_id: str) -> dict[str, object]:
+        """Build the LangGraph run config (thread id and recursion limit)."""
         return {
             "configurable": {"thread_id": thread_id},
             "recursion_limit": self.settings.recursion_limit,
@@ -538,6 +543,7 @@ class SwarmSDK:
             return True
 
     async def _swarm(self, packed: PackedPrompt, thread_id: str) -> tuple[str, int, str]:
+        """Run the handoff swarm for ``thread_id``; return answer, tokens and active agent."""
         graph = self._graph()
         user = packed.user or packed.system
         payload: dict[str, object] = {"messages": [{"role": "user", "content": user}]}
@@ -545,6 +551,7 @@ class SwarmSDK:
 
         def _call() -> dict[str, object]:
             # Checkpointer read is blocking disk I/O: keep it off the event loop.
+            """Invoke the graph synchronously; runs in a worker thread via ``offload``."""
             if self._is_new_thread(thread_id):
                 payload["active_agent"] = self._default_agent
             state = graph.invoke(payload, self._run_config(thread_id))
@@ -567,16 +574,19 @@ class SwarmSDK:
         return answer, tokens, str(agent)
 
     def _router(self) -> BaseChatModel:
+        """Return the router model, loading it on first use."""
         if self._router_model is None:
             self._router_model = load_chat_model(self.settings.router_model)
         return self._router_model
 
     def _specialist(self) -> BaseChatModel:
+        """Return the default specialist model, loading it on first use."""
         if self._specialist_model is None:
             self._specialist_model = load_chat_model(self.settings.specialist_model)
         return self._specialist_model
 
     def _model_for_node(self, node: str) -> BaseChatModel:
+        """Return the model for a handoff node: injected model, manifest model, or default."""
         if self._specialist_model is not None:
             return self._specialist_model
         manifest = self._langgraph_manifests.get(node)
@@ -651,11 +661,13 @@ class SwarmSDK:
         return middleware
 
     def _graph(self) -> CompiledGraph:
+        """Return the compiled handoff graph, building it on first use."""
         if self._compiled is None:
             self._compiled = self._build_graph(self._checkpointer)
         return self._compiled
 
     def _build_graph(self, checkpointer: BaseCheckpointSaver | None) -> CompiledGraph:
+        """Compile the handoff swarm from the Agents/ manifest catalog."""
         from langchain.agents import create_agent
         from langgraph_swarm import create_swarm
 

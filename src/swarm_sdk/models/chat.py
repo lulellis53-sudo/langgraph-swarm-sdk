@@ -58,6 +58,7 @@ class Route(NamedTuple):
 
 
 def _name_list(value: object) -> tuple[str, ...]:
+    """Coerce a YAML list into a tuple of non-empty stripped strings."""
     if not isinstance(value, list):
         return ()
     return tuple(text for item in value if isinstance(item, str) and (text := item.strip()))
@@ -117,7 +118,7 @@ def _present(name: str) -> bool:
         return True
     try:
         return vault.get(name) is not None
-    except (vault.VaultError, OSError):
+    except vault.VaultError, OSError:
         return False
 
 
@@ -129,6 +130,7 @@ def _value(name: str) -> str:
 
 
 def _first_value(names: tuple[str, ...]) -> str:
+    """Return the first set value among the environment variable ``names``, else ``""``."""
     for name in names:
         if found := _value(name):
             return found
@@ -136,6 +138,7 @@ def _first_value(names: tuple[str, ...]) -> str:
 
 
 def _base_url(provider: str, route: Route) -> str:
+    """Resolve the base URL from the route's env var, falling back to the provider default."""
     configured = _value(route.base_url_env).strip() if route.base_url_env else ""
     return configured or _DEFAULT_BASE_URLS.get(provider, "")
 
@@ -268,6 +271,7 @@ def message_tokens(message: object) -> int | None:
 
 
 def _message_kind(message: object) -> object:
+    """Return a message's role/type for both dict and object messages."""
     if isinstance(message, dict):
         return message.get("role") or message.get("type")
     return getattr(message, "type", None)
@@ -309,6 +313,7 @@ async def complete_with_usage(
     """
 
     def _call() -> tuple[str, int]:
+        """Send the system and user messages and return the reply text with its token count."""
         from langchain_core.messages import HumanMessage, SystemMessage
 
         messages = [SystemMessage(content=system), HumanMessage(content=user)]

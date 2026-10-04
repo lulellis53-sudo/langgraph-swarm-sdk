@@ -6,6 +6,9 @@ from pathlib import Path
 from typing import Any, cast
 
 from langchain.agents.middleware import ContextEditingMiddleware, SummarizationMiddleware
+from langchain_core.callbacks import CallbackManagerForLLMRun
+from langchain_core.messages import BaseMessage
+from langchain_core.outputs import ChatResult
 
 from benchmark.tests.fakes import Script, ScriptedModel, answer, handoff
 from swarm_sdk.config.settings import Settings
@@ -21,7 +24,13 @@ class RecordingModel(ScriptedModel):
 
     transcripts: list[str] = []
 
-    def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+    def _generate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: CallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> ChatResult:
         self.transcripts.append("\n".join(message_text(m) for m in messages))
         return super()._generate(messages, stop, run_manager, **kwargs)
 

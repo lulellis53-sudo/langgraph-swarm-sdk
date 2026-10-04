@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
 
 def _sympy() -> Any:
+    """Import sympy on first use."""
     import sympy as sp
 
     return sp

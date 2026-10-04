@@ -60,7 +60,7 @@ def run_cli(argv: Sequence[str]) -> str | None:
         proc = subprocess.run(
             list(argv), capture_output=True, text=True, timeout=TIMEOUT_S, check=False
         )
-    except (OSError, subprocess.TimeoutExpired):
+    except OSError, subprocess.TimeoutExpired:
         return None
     if proc.returncode != 0:
         return None
@@ -68,12 +68,14 @@ def run_cli(argv: Sequence[str]) -> str | None:
 
 
 def _check(name: str) -> str:
+    """Return ``name`` if it is a valid secret name, else raise ``VaultError``."""
     if not _NAME.fullmatch(name):
         raise VaultError(f"invalid secret name: {name[:70]!r}")
     return name
 
 
 def _from_dotenv(name: str, path: Path) -> str | None:
+    """Read ``name`` from a dotenv file; ``None`` when the file or key is missing."""
     try:
         lines = path.read_text().splitlines()
     except OSError:
@@ -265,7 +267,7 @@ def set_secret(
             check=False,
         )
         return proc.returncode == 0
-    except (OSError, subprocess.TimeoutExpired):
+    except OSError, subprocess.TimeoutExpired:
         return False
 
 

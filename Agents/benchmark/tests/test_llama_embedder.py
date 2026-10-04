@@ -12,6 +12,8 @@ from swarm_sdk.retrieval.embeddings import LlamaCppEmbedder
 
 
 class _FakeLlama:
+    """Fake ``llama_cpp.Llama`` recording its constructor arguments."""
+
     def __init__(self, model_path: str, **kwargs: object) -> None:
         self.model_path = model_path
         self.kwargs = kwargs
@@ -28,7 +30,7 @@ def _fake_llama_module() -> types.ModuleType:
     return module
 
 
-def test_llama_embedder_shape_and_dtype():
+def test_llama_embedder_shape_and_dtype() -> None:
     fake = _fake_llama_module()
     with patch.dict("sys.modules", {"llama_cpp": fake}):
         embedder = LlamaCppEmbedder("/tmp/model.gguf", dim=384, batch_size=2)
@@ -38,7 +40,7 @@ def test_llama_embedder_shape_and_dtype():
         assert vectors.dtype == np.float32
 
 
-def test_llama_embedder_empty_input():
+def test_llama_embedder_empty_input() -> None:
     fake = _fake_llama_module()
     with patch.dict("sys.modules", {"llama_cpp": fake}):
         embedder = LlamaCppEmbedder("/tmp/model.gguf", dim=384)
@@ -46,17 +48,19 @@ def test_llama_embedder_empty_input():
         assert vectors.shape == (0, 384)
 
 
-def test_llama_embedder_missing_dependency():
+def test_llama_embedder_missing_dependency() -> None:
     with patch.dict("sys.modules", {"llama_cpp": None}):
         embedder = LlamaCppEmbedder("/tmp/model.gguf", dim=384)
         with pytest.raises(ImportError):
             embedder.embed(["hello"])
 
 
-def test_bge_m3_skips_prefixes_and_keeps_gpu_settings():
+def test_bge_m3_skips_prefixes_and_keeps_gpu_settings() -> None:
     seen: list[str] = []
 
     class BgeLlama(_FakeLlama):
+        """Fake Llama asserting the GPU-offload settings reach the constructor."""
+
         def __init__(self, model_path: str, **kwargs: object) -> None:
             super().__init__(model_path, **kwargs)
             assert kwargs["n_gpu_layers"] == 99
@@ -84,10 +88,12 @@ def test_bge_m3_skips_prefixes_and_keeps_gpu_settings():
     assert seen == ["find similar", "memory passage"]
 
 
-def test_bge_non_m3_uses_query_and_passage_prefixes():
+def test_bge_non_m3_uses_query_and_passage_prefixes() -> None:
     seen: list[str] = []
 
     class BgeLlama(_FakeLlama):
+        """Fake Llama used to check query/passage prefixing for non-M3 models."""
+
         def embed(self, input: list[str], normalize: bool = True) -> list[list[float]]:
             del normalize
             seen.extend(input)

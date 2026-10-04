@@ -205,6 +205,7 @@ class RAGIngestionPipeline:
         chunk_idx = 0
 
         def emit_section(headers: list[tuple[int, str]], body_lines: list[str]) -> None:
+            """Turn the accumulated header path and body lines into one chunk, if non-empty."""
             nonlocal chunk_idx
             raw_content = "\n".join(body_lines).strip()
             if not raw_content:
@@ -493,4 +494,5 @@ class RAGIngestionPipeline:
             raise FileNotFoundError(f"No index file found in {target_dir}")
 
     def __len__(self) -> int:
+        """Return the number of stored chunks."""
         return len(self.chunks)

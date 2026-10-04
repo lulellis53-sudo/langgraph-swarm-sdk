@@ -1,3 +1,5 @@
+"""Parallel fan-out benchmark task: wave execution of independent steps."""
+
 from pathlib import Path
 
 import pytest

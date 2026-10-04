@@ -31,15 +31,18 @@ class LazyModule(types.ModuleType):
         self._loaded_module: types.ModuleType | None = None
 
     def _load(self) -> types.ModuleType:
+        """Import the wrapped module on first use and cache it."""
         if self._loaded_module is None:
             self._loaded_module = importlib.import_module(self._module_name)
         return self._loaded_module
 
     def __getattr__(self, name: str) -> Any:
+        """Resolve ``name`` on the real module, importing it lazily."""
         module = self._load()
         return getattr(module, name)
 
     def __repr__(self) -> str:
+        """Show the module name and whether it has been loaded yet."""
         status = "loaded" if self._loaded_module is not None else "unloaded"
         return f"<LazyModule '{self._module_name}' ({status})>"
 
@@ -75,6 +78,7 @@ def hybrid_jit(
     """
 
     def decorator(fn: F) -> F:
+        """Compile ``fn`` with numba when JIT is enabled, else return it unchanged."""
         if is_jit_disabled():
             # NoJIT Mode: Return original pure-Python function directly
             setattr(fn, "__jit_compiled__", False)
@@ -120,6 +124,7 @@ class ZstdStateCompressor:
         self._init_backend()
 
     def _init_backend(self) -> None:
+        """Select the zstd backend: stdlib ``compression.zstd`` first, then ``zstandard``."""
         try:
             import compression.zstd as zstd
 

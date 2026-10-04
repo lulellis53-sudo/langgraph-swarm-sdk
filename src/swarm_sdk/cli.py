@@ -69,6 +69,7 @@ class PlainTable:
         self.rows.append(cleaned_cells)
 
     def __str__(self) -> str:
+        """Render the table as aligned plain text."""
         lines: list[str] = []
         if self.title:
             lines.append(f"=== {self.title} ===")
@@ -105,6 +106,7 @@ class PlainPanel:
         self.title = title
 
     def __str__(self) -> str:
+        """Render the panel content with Rich markup stripped."""
         content_str = str(self.content)
         cleaned = re.sub(
             r"\[/?(?:bold|italic|underline|green|red|yellow|blue|cyan|magenta|dim|white)[^\]]*\]",

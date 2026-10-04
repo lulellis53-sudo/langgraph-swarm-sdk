@@ -241,6 +241,7 @@ class TokenBudget:
         return "s"
 
     def _lines(self, prefix: str, items: list[str]) -> list[str]:
+        """Prefix each non-empty item and return the resulting prompt lines."""
         lines: list[str] = []
         for item in items:
             body = item.strip()
@@ -250,6 +251,7 @@ class TokenBudget:
         return lines
 
     def _take(self, system_text: str, prior: list[str], lines: list[str]) -> list[str]:
+        """Append each line in order, keeping only those that still fit the budget."""
         chosen = list(prior)
         for line in lines:
             fitted = self._fit(system_text, chosen, line, append=True)
@@ -258,6 +260,7 @@ class TokenBudget:
         return chosen
 
     def _take_newest(self, system_text: str, memories: list[str], turns: list[str]) -> list[str]:
+        """Keep the newest turns that fit, preserving chronological order in the result."""
         chosen: list[str] = []
         for line in reversed(turns):
             fitted = self._fit(system_text, memories + chosen, line, append=False)
@@ -266,6 +269,8 @@ class TokenBudget:
         return chosen
 
     def _fit(self, system_text: str, parts: list[str], line: str, *, append: bool) -> str | None:
+        """Return ``line`` (or a truncated form) if the assembled prompt stays within budget."""
+
         def assembled(piece: str) -> str:
             """The packed prompt text after assembly."""
             ordered = [*parts, piece] if append else [piece, *parts]
