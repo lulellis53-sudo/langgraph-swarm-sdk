@@ -176,7 +176,7 @@ class HostRuleEngine:
 
         try:
             content = target_path.read_text(encoding="utf-8")
-        except OSError, UnicodeDecodeError:
+        except (OSError, UnicodeDecodeError):
             return HostInvariants()
 
         return self._parse_invariants_content(content)

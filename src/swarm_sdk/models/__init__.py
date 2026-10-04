@@ -1,5 +1,7 @@
 """Model integration domain: chat models, model routing, registry, and circuit breakers."""
 
+from __future__ import annotations
+
 from swarm_sdk.models.breaker import BreakerConfig, BreakerState, CircuitBreaker, CircuitOpenError
 from swarm_sdk.models.chat import complete, last_ai_text, load_chat_model, message_text
 from swarm_sdk.models.registry import (

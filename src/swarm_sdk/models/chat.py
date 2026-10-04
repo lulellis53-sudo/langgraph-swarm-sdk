@@ -115,7 +115,7 @@ def _present(name: str) -> bool:
         return True
     try:
         return vault.get(name) is not None
-    except vault.VaultError, OSError:
+    except (vault.VaultError, OSError):
         return False
 
 

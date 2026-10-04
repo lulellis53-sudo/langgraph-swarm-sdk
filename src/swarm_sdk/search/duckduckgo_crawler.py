@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 DuckDuckGo Web Search & Deep Crawler Suite for Antigravity Swarm.
 Integrates:
@@ -9,15 +7,17 @@ Integrates:
 - Crawlee/Scrapy-inspired asynchronous BFS/DFS crawler queue
 """
 
+from __future__ import annotations
+
 import asyncio
 import re
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 from urllib.parse import parse_qs, unquote, urljoin, urlparse
 
 import httpx
+import trafilatura
 from bs4 import BeautifulSoup
 from selectolax.parser import HTMLParser
-import trafilatura
 
 DEFAULT_HEADERS = {
     "User-Agent": (
@@ -41,17 +41,17 @@ TIME_RANGE_MAP = {
 class DuckDuckGoSearcher:
     """Asynchronous search client for DuckDuckGo."""
 
-    def __init__(self, client: Optional[httpx.AsyncClient] = None) -> None:
+    def __init__(self, client: httpx.AsyncClient | None = None) -> None:
         self._external_client = client
 
     async def search(
         self,
         query: str,
         max_results: int = 10,
-        time_range: Optional[str] = None,
-    ) -> List[Dict[str, str]]:
+        time_range: str | None = None,
+    ) -> list[dict[str, str]]:
         """Searches DuckDuckGo HTML endpoint and returns clean results."""
-        post_data: Dict[str, str] = {"q": query, "b": ""}
+        post_data: dict[str, str] = {"q": query, "b": ""}
         if time_range and time_range.lower() in TIME_RANGE_MAP:
             post_data["df"] = TIME_RANGE_MAP[time_range.lower()]
 
@@ -67,7 +67,7 @@ class DuckDuckGoSearcher:
                 return []
 
             tree = HTMLParser(response.text)
-            results: List[Dict[str, str]] = []
+            results: list[dict[str, str]] = []
 
             for node in tree.css(".result"):
                 if len(results) >= max_results:
@@ -89,18 +89,20 @@ class DuckDuckGoSearcher:
                 snippet = snippet_node.text(strip=True) if snippet_node else ""
 
                 if clean_url and title:
-                    results.append({
-                        "title": title,
-                        "url": clean_url,
-                        "snippet": snippet,
-                    })
+                    results.append(
+                        {
+                            "title": title,
+                            "url": clean_url,
+                            "snippet": snippet,
+                        }
+                    )
 
             return results
         finally:
             if should_close:
                 await client.aclose()
 
-    async def instant_answer(self, query: str) -> Dict[str, Any]:
+    async def instant_answer(self, query: str) -> dict[str, Any]:
         """Queries the DuckDuckGo Instant Answer API for encyclopedic/entity data."""
         params = {
             "q": query,
@@ -143,7 +145,8 @@ class ContentExtractor:
     """Hybrid content extractor combining Trafilatura readability with BeautifulSoup4 fallback."""
 
     @staticmethod
-    def extract_with_trafilatura(html: str) -> Optional[str]:
+    def extract_with_trafilatura(html: str) -> str | None:
+        """Extract the main article text from ``html``; ``None`` if none found."""
         return trafilatura.extract(
             html,
             include_links=True,
@@ -152,7 +155,7 @@ class ContentExtractor:
         )
 
     @staticmethod
-    def extract_with_bs4(html: str) -> Dict[str, Any]:
+    def extract_with_bs4(html: str) -> dict[str, Any]:
         """Fallback DOM extractor for non-article, table-heavy, or documentation pages."""
         soup = BeautifulSoup(html, "html.parser")
 
@@ -174,7 +177,9 @@ class ContentExtractor:
                 tables_md.append("\n".join(rows))
 
         # Extract code blocks
-        code_blocks = [pre.get_text(strip=True) for pre in soup.find_all("pre") if pre.get_text(strip=True)]
+        code_blocks = [
+            pre.get_text(strip=True) for pre in soup.find_all("pre") if pre.get_text(strip=True)
+        ]
 
         # Extract cleaned body text
         body_text = soup.get_text(separator="\n", strip=True)
@@ -189,7 +194,7 @@ class ContentExtractor:
         }
 
     @classmethod
-    def extract(cls, html: str, extract_tables: bool = True) -> Dict[str, Any]:
+    def extract(cls, html: str, extract_tables: bool = True) -> dict[str, Any]:
         """Runs hybrid extraction: Trafilatura first; enriches with BS4 if sparse."""
         primary_text = cls.extract_with_trafilatura(html)
         bs4_data = cls.extract_with_bs4(html)
@@ -201,7 +206,7 @@ class ContentExtractor:
             final_content = bs4_data["text"]
             method = "beautifulsoup4_fallback"
 
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "title": bs4_data["title"],
             "content": final_content,
             "method": method,
@@ -224,15 +229,15 @@ class CrawleeSpider:
         max_depth: int = 1,
         max_pages: int = 5,
         concurrency: int = 5,
-        client: Optional[httpx.AsyncClient] = None,
+        client: httpx.AsyncClient | None = None,
     ) -> None:
         self.max_depth = max_depth
         self.max_pages = max_pages
         self.concurrency = concurrency
         self._external_client = client
-        self.visited: Set[str] = set()
+        self.visited: set[str] = set()
 
-    def _normalize_url(self, base_url: str, link: str) -> Optional[str]:
+    def _normalize_url(self, base_url: str, link: str) -> str | None:
         """Resolves relative URLs and strips anchors/tracking queries."""
         try:
             absolute = urljoin(base_url, link)
@@ -254,17 +259,17 @@ class CrawleeSpider:
 
     async def crawl(
         self,
-        start_urls: List[str],
+        start_urls: list[str],
         allowed_domain_only: bool = True,
         max_length: int = 8000,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Crawls starting URLs concurrently up to max_depth and max_pages."""
         queue: asyncio.Queue[tuple[str, int]] = asyncio.Queue()
         for u in start_urls:
             queue.put_nowait((u, 0))
 
         root_domains = {urlparse(u).netloc for u in start_urls if urlparse(u).netloc}
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
         semaphore = asyncio.Semaphore(self.concurrency)
 
         should_close = False
@@ -308,7 +313,8 @@ class CrawleeSpider:
                                         child_url = self._normalize_url(url, href)
                                         if child_url and child_url not in self.visited:
                                             if not allowed_domain_only or any(
-                                                self._is_same_domain(d, child_url) for d in root_domains
+                                                self._is_same_domain(d, child_url)
+                                                for d in root_domains
                                             ):
                                                 queue.put_nowait((child_url, depth + 1))
                     except Exception as e:

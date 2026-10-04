@@ -218,7 +218,8 @@ def open_store(settings: Settings) -> MemoryStore:
 class CompiledGraph(Protocol):
     """Structural view of the compiled handoff-swarm graph."""
 
-    def invoke(self, payload: dict[str, object], config: dict[str, object]) -> object: ...
+    def invoke(self, payload: dict[str, object], config: dict[str, object]) -> object:
+        """Run the compiled graph on ``payload`` and return its final state."""
 
 
 class SwarmSDK:

@@ -33,7 +33,9 @@ from swarm_sdk.core.minimalloc import Buffer, MiniMalloc
 
 SEED = 7
 _RESULTS = Path(__file__).resolve().parents[2] / "results" / "python315_claims"
-_PY315 = Path(os.environ.get("SWARM_PY315", "~/.local/opt/python-3.15-g6413901/bin/python3.15")).expanduser()
+_PY315 = Path(
+    os.environ.get("SWARM_PY315", "~/.local/opt/python-3.15-g6413901/bin/python3.15")
+).expanduser()
 # Modules heavy enough for import cost to show; all stdlib so any interpreter runs them.
 LAZY_MODULES = ("asyncio", "decimal", "email.message", "http.client", "sqlite3", "unittest")
 
@@ -287,7 +289,9 @@ def run(*, quick: bool = False) -> dict[str, Any]:
             "gil_enabled": sys._is_gil_enabled(),
             "py315": str(_PY315) if _PY315.is_file() else None,
         },
-        "method": "median of N runs, time.perf_counter; claimed_speedup is from Python3.15.md §11.2",
+        "method": (
+            "median of N runs, time.perf_counter; claimed_speedup is from Python3.15.md §11.2"
+        ),
         "quick": quick,
         "rows": rows,
     }

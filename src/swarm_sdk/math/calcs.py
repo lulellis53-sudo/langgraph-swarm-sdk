@@ -80,7 +80,11 @@ class SympyCalcs:
 
     @classmethod
     def matrix_inv(cls, matrix: list[list[float | int]]) -> list[list[str]]:
-        """Computes the exact symbolic inverse of a square non-singular matrix."""
+        """Computes the exact symbolic inverse of a square non-singular matrix.
+
+        Raises:
+            ValueError: If ``matrix`` is not square or is singular.
+        """
         sp = cls._sp()
         m = sp.Matrix(matrix)
         inv = m.inv()
@@ -150,7 +154,7 @@ class ArrowCalcs:
                 "max": round(float(max_val), 6),
                 "variance": round(float(var_val), 6),
             }
-        except ImportError, Exception:
+        except Exception:
             # Pure Python fallback
             nums = [float(x) for x in data]
             n = len(nums)
@@ -170,7 +174,14 @@ class ArrowCalcs:
 
     @classmethod
     def vector_dot(cls, a: Sequence[float], b: Sequence[float]) -> float:
-        """Computes inner product between two dense vectors using Arrow chunked compute or SIMD."""
+        """Compute the inner product of two dense vectors.
+
+        Uses PyArrow compute when available; falls back to a pure-Python
+        summation otherwise.
+
+        Raises:
+            ValueError: If ``a`` and ``b`` have different lengths.
+        """
         if len(a) != len(b):
             raise ValueError(f"Vector dimension mismatch: {len(a)} != {len(b)}")
         if not a:
@@ -184,7 +195,7 @@ class ArrowCalcs:
             arr_b = pa.array(b, type=pa.float64())
             prod = pc.multiply(arr_a, arr_b)
             return float(pc.sum(prod).as_py() or 0.0)
-        except ImportError, Exception:
+        except Exception:
             return sum(x * y for x, y in zip(a, b))
 
     @classmethod
@@ -192,9 +203,15 @@ class ArrowCalcs:
         """Computes cosine similarity in [-1.0, 1.0] between two vectors."""
         if len(u) != len(v):
             raise ValueError(f"Vector dimension mismatch: {len(u)} != {len(v)}")
-        dot = cls.vector_dot(u, v)
-        norm_u = math.sqrt(cls.vector_dot(u, u))
-        norm_v = math.sqrt(cls.vector_dot(v, v))
+        dot = uu = vv = 0.0
+        for ui, vi in zip(u, v, strict=True):
+            f_ui = float(ui)
+            f_vi = float(vi)
+            dot += f_ui * f_vi
+            uu += f_ui * f_ui
+            vv += f_vi * f_vi
+        norm_u = math.sqrt(uu)
+        norm_v = math.sqrt(vv)
         if norm_u == 0.0 or norm_v == 0.0:
             return 0.0
         return max(-1.0, min(1.0, dot / (norm_u * norm_v)))
@@ -216,19 +233,31 @@ class ArrowCalcs:
             arr = pa.array(data, type=pa.float64())
             res = pc.quantile(arr, q=q)
             return {float(q_val): float(val.as_py()) for q_val, val in zip(q, res)}
-        except ImportError, Exception:
-            # Sort fallback
+        except Exception:
+            # Linear-interpolation fallback to match PyArrow's default quantile method.
             sorted_nums = sorted(float(x) for x in data)
             n = len(sorted_nums)
             out: dict[float, float] = {}
             for q_val in q:
-                idx = min(n - 1, max(0, int(q_val * n)))
-                out[float(q_val)] = sorted_nums[idx]
+                pos = q_val * (n - 1)
+                lower = int(pos)
+                upper = min(lower + 1, n - 1)
+                frac = pos - lower
+                out[float(q_val)] = sorted_nums[lower] + frac * (
+                    sorted_nums[upper] - sorted_nums[lower]
+                )
             return out
 
     @classmethod
     def to_arrow_table(cls, data: dict[str, list[Any]]) -> Any:
-        """Converts dictionary of columns into an Apache Arrow Table."""
+        """Convert a dictionary of column names to column values into an Arrow Table.
+
+        Args:
+            data: Mapping from column name to a homogeneous list of values.
+
+        Returns:
+            A ``pyarrow.Table`` built from the supplied columns.
+        """
         import pyarrow as pa  # type: ignore
 
         return pa.Table.from_pydict(data)

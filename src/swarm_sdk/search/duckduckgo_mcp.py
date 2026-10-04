@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from __future__ import annotations
 
 """
 DuckDuckGo Websearch MCP Server.
@@ -8,14 +7,17 @@ and extract full webpage markdown content without API keys.
 Compatible with MCP 1.x (FastMCP) and MCP 2.x (MCPServer).
 """
 
+from __future__ import annotations
+
 import json
-from typing import Optional
 
 try:
     from mcp.server.mcpserver import MCPServer
+
     server = MCPServer("duckduckgo-search")
-except (ImportError, ModuleNotFoundError):
+except ImportError, ModuleNotFoundError:
     from mcp.server.fastmcp import FastMCP
+
     server = FastMCP("duckduckgo-search")
 
 from swarm_sdk.search.duckduckgo import (
@@ -35,7 +37,7 @@ from swarm_sdk.search.duckduckgo import (
 async def ddg_web_search(
     query: str,
     max_results: int = 10,
-    time_range: Optional[str] = None,
+    time_range: str | None = None,
 ) -> str:
     """Executes a DuckDuckGo search query.
 
@@ -45,7 +47,9 @@ async def ddg_web_search(
         time_range: Optional recency filter ('day', 'week', 'month', 'year').
     """
     results = await duckduckgo_search(query=query, max_results=max_results, time_range=time_range)
-    return json.dumps({"query": query, "count": len(results), "results": results}, indent=2, ensure_ascii=False)
+    return json.dumps(
+        {"query": query, "count": len(results), "results": results}, indent=2, ensure_ascii=False
+    )
 
 
 @server.tool(

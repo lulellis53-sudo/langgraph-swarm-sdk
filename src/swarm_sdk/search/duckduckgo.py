@@ -1,16 +1,17 @@
-from __future__ import annotations
-
 """
 DuckDuckGo Search Engine & Page Extractor.
 High-performance asynchronous scraper using httpx, selectolax, and trafilatura.
 Zero external API key dependencies.
 """
 
-from typing import Any, Dict, List, Optional
+from __future__ import annotations
+
+from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
+
 import httpx
-from selectolax.parser import HTMLParser
 import trafilatura
+from selectolax.parser import HTMLParser
 
 DEFAULT_HEADERS = {
     "User-Agent": (
@@ -34,9 +35,9 @@ TIME_RANGE_MAP = {
 async def duckduckgo_search(
     query: str,
     max_results: int = 10,
-    time_range: Optional[str] = None,
-    client: Optional[httpx.AsyncClient] = None,
-) -> List[Dict[str, str]]:
+    time_range: str | None = None,
+    client: httpx.AsyncClient | None = None,
+) -> list[dict[str, str]]:
     """Executes an asynchronous web search on DuckDuckGo HTML endpoint.
 
     Args:
@@ -48,7 +49,7 @@ async def duckduckgo_search(
     Returns:
         List of dicts with 'title', 'url', and 'snippet'.
     """
-    post_data: Dict[str, str] = {"q": query, "b": ""}
+    post_data: dict[str, str] = {"q": query, "b": ""}
     if time_range and time_range.lower() in TIME_RANGE_MAP:
         post_data["df"] = TIME_RANGE_MAP[time_range.lower()]
 
@@ -63,7 +64,7 @@ async def duckduckgo_search(
             return []
 
         tree = HTMLParser(response.text)
-        results: List[Dict[str, str]] = []
+        results: list[dict[str, str]] = []
 
         for node in tree.css(".result"):
             if len(results) >= max_results:
@@ -85,11 +86,13 @@ async def duckduckgo_search(
             snippet = snippet_node.text(strip=True) if snippet_node else ""
 
             if clean_url and title:
-                results.append({
-                    "title": title,
-                    "url": clean_url,
-                    "snippet": snippet,
-                })
+                results.append(
+                    {
+                        "title": title,
+                        "url": clean_url,
+                        "snippet": snippet,
+                    }
+                )
 
         return results
     finally:
@@ -99,8 +102,8 @@ async def duckduckgo_search(
 
 async def duckduckgo_instant_answer(
     query: str,
-    client: Optional[httpx.AsyncClient] = None,
-) -> Dict[str, Any]:
+    client: httpx.AsyncClient | None = None,
+) -> dict[str, Any]:
     """Queries official DuckDuckGo Instant Answer API for encyclopedic/entity data.
 
     Args:
@@ -128,7 +131,9 @@ async def duckduckgo_instant_answer(
 
         data = response.json()
         related = [
-            t.get("Text") for t in data.get("RelatedTopics", []) if isinstance(t, dict) and "Text" in t
+            t.get("Text")
+            for t in data.get("RelatedTopics", [])
+            if isinstance(t, dict) and "Text" in t
         ]
 
         return {
@@ -147,8 +152,8 @@ async def duckduckgo_instant_answer(
 async def extract_webpage_content(
     url: str,
     max_length: int = 8000,
-    client: Optional[httpx.AsyncClient] = None,
-) -> Dict[str, Any]:
+    client: httpx.AsyncClient | None = None,
+) -> dict[str, Any]:
     """Fetches a URL and extracts clean article/documentation markdown using trafilatura.
 
     Args:

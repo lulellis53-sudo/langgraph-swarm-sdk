@@ -38,9 +38,11 @@ def _vault_secret(name: str) -> str:
 class Mem0Client(Protocol):
     """Minimal subset of ``mem0.MemoryClient`` used by :class:`Mem0Store`."""
 
-    def add(self, messages: object, **kwargs: object) -> object: ...
+    def add(self, messages: object, **kwargs: object) -> object:
+        """Store ``text`` (with its embedding) and return the new record id."""
 
-    def search(self, query: str, **kwargs: object) -> object: ...
+    def search(self, query: str, **kwargs: object) -> object:
+        """Return the ``k`` stored records most similar to the query."""
 
 
 def _rows(payload: object) -> list[dict[str, object]]:

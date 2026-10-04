@@ -25,7 +25,8 @@ class Embedder(Protocol):
 
     dim: int
 
-    def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray: ...
+    def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:
+        """Embed ``texts`` into one row per text; ``query`` selects query-side prefixing."""
 
 
 def unit(vector: np.ndarray) -> np.ndarray:
@@ -111,6 +112,7 @@ class HashEmbedder:
         self._bge = _bge_style(model_name)
 
     def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:
+        """Embed ``texts`` into one row per text; ``query`` selects query-side prefixing."""
         prepared = _prepare_texts(texts, query=query, bge_style=self._bge)
         rows: list[np.ndarray] = []
         for batch in _batched(prepared, self.batch_size):
@@ -143,6 +145,7 @@ class FastEmbedder:
         self._model: TextEmbeddingProto | None = None
 
     def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:
+        """Embed ``texts`` into one row per text; ``query`` selects query-side prefixing."""
         prepared = _prepare_texts(texts, query=query, bge_style=self._bge)
         model = self._load()
         rows: list[np.ndarray] = []
@@ -167,7 +170,8 @@ class FastEmbedder:
 
 
 class _LlamaEmbedProto(Protocol):
-    def embed(self, input: list[str], normalize: bool = True) -> Iterable[list[float]]: ...
+    def embed(self, input: list[str], normalize: bool = True) -> Iterable[list[float]]:
+        """Embed ``texts`` into one row per text; ``query`` selects query-side prefixing."""
 
 
 class LlamaCppEmbedder:
@@ -189,6 +193,7 @@ class LlamaCppEmbedder:
         self._model: _LlamaEmbedProto | None = None
 
     def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:
+        """Embed ``texts`` into one row per text; ``query`` selects query-side prefixing."""
         if not texts:
             return np.zeros((0, self.dim), dtype=np.float32)
         model = self._load()
@@ -273,6 +278,7 @@ class LlamaServerEmbedder:
         self.timeout_s = timeout_s
 
     def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:
+        """Embed ``texts`` into one row per text; ``query`` selects query-side prefixing."""
         if not texts:
             return np.zeros((0, self.dim), dtype=np.float32)
         prepared = _prepare_texts(texts, query=query, bge_style=_bge_style(self.model))
@@ -313,7 +319,8 @@ class TextEmbeddingProto(Protocol):
         batch_size: int = 256,
         parallel: int | None = None,
         **kwargs: object,
-    ) -> Iterable[Iterable[float]]: ...
+    ) -> Iterable[Iterable[float]]:
+        """Embed ``texts`` into one row per text; ``query`` selects query-side prefixing."""
 
 
 __all__ = [

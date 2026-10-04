@@ -94,7 +94,7 @@ async def _spawn_legacy(
             continue
         try:
             plan = Plan.model_validate(json.loads(match.group(0)))
-        except ValidationError, json.JSONDecodeError:
+        except (ValidationError, json.JSONDecodeError):
             continue
         try:
             _validate_plan(plan, manifests)

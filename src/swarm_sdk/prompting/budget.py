@@ -25,7 +25,8 @@ if TYPE_CHECKING:
 class _HasEncode(Protocol):
     """Anything with an ``encode`` method (HF Tokenizer or tiktoken Encoding)."""
 
-    def encode(self, text: str, /, *args: Any, **kwargs: Any) -> Any: ...
+    def encode(self, text: str, /, *args: Any, **kwargs: Any) -> Any:
+        """Tokenize ``text`` into the backend's encoding object."""
 
 
 def _whitespace() -> Any:

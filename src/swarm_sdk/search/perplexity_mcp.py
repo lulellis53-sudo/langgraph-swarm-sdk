@@ -4,16 +4,23 @@ FastMCP Server for Perplexity AI Search.
 Allows Antigravity, Swarm, and LLM Agents to use Perplexity as an MCP tool.
 """
 
+from __future__ import annotations
+
 import json
+
 from mcp.server.fastmcp import FastMCP
 from src.swarm_sdk.search.perplexity import ask_perplexity
 
 # Create FastMCP server
 mcp = FastMCP("perplexity-search")
 
+
 @mcp.tool(
     name="perplexity_web_search",
-    description="Search the web with Perplexity AI. Returns synthesized factual answers, cited sources with URLs and snippets, and related follow-up queries."
+    description=(
+        "Search the web with Perplexity AI. Returns synthesized factual answers, "
+        "cited sources with URLs and snippets, and related follow-up queries."
+    ),
 )
 async def perplexity_web_search(query: str, focus: str = "web") -> str:
     """

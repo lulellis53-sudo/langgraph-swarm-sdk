@@ -13,6 +13,8 @@ from collections.abc import Generator
 from dataclasses import dataclass
 from typing import Any
 
+from swarm_sdk.execution.concurrency import gil_enabled
+
 
 class _ProcTaskInfo(ctypes.Structure):
     """macOS ``struct proc_taskinfo`` (``PROC_PIDTASKINFO``)."""
@@ -101,7 +103,7 @@ class AllocatorManager:
             return "mimalloc"
 
         # Check free-threaded Python 3.14+ (mimalloc is the default engine)
-        if hasattr(sys, "_is_gil_enabled") and not sys._is_gil_enabled():
+        if not gil_enabled():
             return "mimalloc (free-threaded default)"
 
         # Check DYLD_INSERT_LIBRARIES or LD_PRELOAD
@@ -153,8 +155,8 @@ class AllocatorManager:
         rss_mb = rss_bytes / (1024 * 1024)
         rss_gb = rss_bytes / (1024**3)
 
-        free_threaded = hasattr(sys, "_is_gil_enabled") and not sys._is_gil_enabled()
-        gil_enabled = getattr(sys, "_is_gil_enabled", lambda: True)()
+        gil_on = gil_enabled()
+        free_threaded = not gil_on
 
         return MemoryStats(
             allocator=self._allocator_name,

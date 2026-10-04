@@ -1,5 +1,7 @@
 """Retrieval domain: embeddings, search, reranking, and semantic caching."""
 
+from __future__ import annotations
+
 from swarm_sdk.retrieval.cache import SemanticCache
 from swarm_sdk.retrieval.embeddings import (
     Embedder,

@@ -91,7 +91,7 @@ def hybrid_jit(
             )(fn)
             setattr(compiled_fn, "__jit_compiled__", True)
             return cast(F, compiled_fn)
-        except ImportError, Exception:
+        except Exception:
             # Graceful NoJIT fallback
             setattr(fn, "__jit_compiled__", False)
             return fn
