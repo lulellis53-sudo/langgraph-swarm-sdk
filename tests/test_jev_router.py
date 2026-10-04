@@ -355,6 +355,23 @@ class TestJevLatencyAndFallback:
         assert score.complexity_bucket == "high"
 
 
+class TestEndpointSchemeBoundary:
+    """Jev never sends credentials or payloads to non-http(s) endpoints."""
+
+    @pytest.mark.parametrize(
+        "endpoint", ["file:///etc/passwd", "ftp://jev.example.com", "/local/path"]
+    )
+    def test_non_http_endpoint_falls_back_locally_without_posting(self, endpoint: str) -> None:
+        client = MagicMock()
+        router = JevRouter(endpoint=endpoint, api_key="test-jev-key", http_client=client)
+
+        decision = router.evaluate_noul("rm -rf /")
+
+        client.post.assert_not_called()
+        assert decision.decision is False
+        assert "destructive" in decision.reasoning_tag.lower()
+
+
 class TestOpenRouterKey:
     """Jev reuses OPENROUTER_API_KEY only when it talks to OpenRouter itself."""
 

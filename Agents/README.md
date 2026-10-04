@@ -24,6 +24,8 @@
 | [WebFetch](WebFetch/AGENTS.md) | deterministic pipeline stage: fetch/render | none (no LLM) | - | [agent.yaml](WebFetch/agent.yaml) |
 | [Normalizer](Normalizer/AGENTS.md) | deterministic pipeline stage: normalize + dedupe | none (no LLM) | - | [agent.yaml](Normalizer/agent.yaml) |
 | [Persister](Persister/AGENTS.md) | deterministic pipeline stage: SQLite store | none (no LLM) | - | [agent.yaml](Persister/agent.yaml) |
+| [Prediction](Prediction/AGENTS.md) | mlforecast lane (`ForecastEngine`) | inherit | medium | [agent.yaml](Prediction/agent.yaml) |
+| [Newsletter](Newsletter/AGENTS.md) | offline digest MVP | gpt-4o-mini | low | [agent.yaml](Newsletter/agent.yaml) |
 
 Imported reference catalog: [`antigravity-imported/`](antigravity-imported/) holds 21 Antigravity personas
 (`AGENTS.md` + `agent.md`, frontmatter contracts) — reference material for prompt design, **not** active

@@ -247,6 +247,9 @@ class JevRouter:
             return None
 
         url = f"{self.endpoint.rstrip('/')}/{path.lstrip('/')}"
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            raise ValueError(f"Jev endpoint must be an absolute http(s) URL, got {url!r}")
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",

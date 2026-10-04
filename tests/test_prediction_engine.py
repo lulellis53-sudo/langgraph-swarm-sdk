@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
-from Prediction import ForecastEngine, ForecastError
+from Prediction import ForecastConfig, ForecastEngine, ForecastError
 
 
 def _frame(n: int = 120, series: tuple[str, ...] = ("a", "b")) -> pd.DataFrame:
@@ -22,7 +22,7 @@ def test_predict_returns_horizon_rows_per_series() -> None:
     out = engine.predict(7)
     assert len(out) == 14
     assert set(out["unique_id"]) == {"a", "b"}
-    assert out["ds"].min() == pd.Timestamp("2026-01-01") + pd.Timedelta(days=120)
+    assert out["ds"].min() == pd.Timestamp("2026-05-01")
     assert np.isfinite(out["lgbm"]).all()
 
 
@@ -38,6 +38,22 @@ def test_backtest_reports_small_error_on_clean_signal() -> None:
     metrics = ForecastEngine().backtest(_frame(), horizon=7, n_windows=2)
     assert list(metrics.columns) == ["unique_id", "mae", "rmse", "smape"]
     assert (metrics["mae"] < 1.0).all()
+
+
+def test_backtest_respects_custom_step_size() -> None:
+    frame = _frame(n=140)
+    metrics = ForecastEngine(
+        ForecastConfig(step_size=14),
+    ).backtest(frame, horizon=7, n_windows=2, step_size=14)
+    assert len(metrics) == 2
+
+
+def test_lag_transforms_smoke() -> None:
+    from mlforecast.lag_transforms import RollingMean
+
+    config = ForecastConfig(lag_transforms={7: [RollingMean(window_size=7)]})
+    metrics = ForecastEngine(config).backtest(_frame(n=140), horizon=7, n_windows=2)
+    assert (metrics["mae"] < 2.0).all()
 
 
 def test_predict_before_fit_raises() -> None:

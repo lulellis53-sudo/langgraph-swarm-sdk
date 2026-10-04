@@ -1,8 +1,19 @@
 import socket
 
 import httpx2
+import pytest
 
 from swarm_sdk.serving.peer import async_post_json, post_json
+
+
+def test_post_json_rejects_non_http_schemes() -> None:
+    with pytest.raises(ValueError, match="http"):
+        post_json("file:///etc/passwd", {"text": "ping"})
+
+
+async def test_async_post_json_rejects_non_http_schemes() -> None:
+    with pytest.raises(ValueError, match="http"):
+        await async_post_json("ftp://peer.example/v1/runs", {"text": "ping"})
 
 
 def test_httpx2_post_uses_http2() -> None:

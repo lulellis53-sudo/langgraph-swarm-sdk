@@ -174,7 +174,7 @@ packages = ["src/swarm_sdk"]
 [tool.ruff]
 line-length = 100
 target-version = "py314"
-src = ["src", "Agents/tests", "Agents/benchmark", "WebSearch"]
+src = ["src", "Agents/tests", "Agents/benchmark", "WebSearch", "Prediction", "Main"]
 extend-exclude = ["src/swarm_sdk/pb"]
 
 [tool.ruff.lint]
