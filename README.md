@@ -171,13 +171,23 @@ autonomous LLM run (`--auto`) and live model selection.
 
 ## Checks
 
-Context7, Context.dev, and Apify MCP are configured for Cursor in
-[`.cursor/mcp.json`](.cursor/mcp.json) and for Claude Code in
-[`.mcp.json`](.mcp.json). Context7 uses the remote endpoint's keyless basic
-tier; Context.dev and Apify use OAuth / client sign-in on first use. Codex runs
-the official local server through its user MCP configuration (`codex mcp list`
-to inspect it). Refresh MCP servers or start a new editor session after changing
-these settings.
+Context7, Context.dev, Apify, Bright Data, and Appwrite MCP are configured for
+Cursor in [`.cursor/mcp.json`](.cursor/mcp.json) and for Claude Code in
+[`.mcp.json`](.mcp.json). Remote HTTP servers send `Authorization: Bearer …`
+from env vars (`CONTEXT7_API_KEY`, `CONTEXT_DEV_API_KEY`, `APIFY_TOKEN`);
+Bright Data / Appwrite stdio servers take `BRIGHT_DATA_API_TOKEN` and
+`APPWRITE_*` (store with `uv run swarm-vault set`, names only in
+[`.env.example`](.env.example)). Local Cursor wrappers under `~/.gemini/mcp/`
+load the same Keychain services. For Claude Code CLI:
+
+```bash
+source scripts/export-mcp-keys.sh
+claude
+```
+
+Codex runs the official local server through its user MCP configuration
+(`codex mcp list` to inspect it). Refresh MCP servers or start a new editor
+session after changing these settings.
 
 `ty` resolves the optional-dependency imports (mem0, prometheus_client, OpenCL),
 so run the gate with the extras the SDK supports:

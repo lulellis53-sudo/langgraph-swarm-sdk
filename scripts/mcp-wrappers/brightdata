@@ -1,0 +1,28 @@
+#!/bin/zsh
+set -e
+export PATH="/Users/usuario/.local/opt/node-v26-avx2/bin:$PATH"
+
+if [ -z "$API_TOKEN" ] && [ -n "$BRIGHT_DATA_API_TOKEN" ]; then
+  export API_TOKEN="$BRIGHT_DATA_API_TOKEN"
+fi
+if [ -z "$API_TOKEN" ]; then
+  for f in "$HOME/Desktop/swarm-keys.txt" "$HOME/Desktop/secret.env"; do
+    if [ -f "$f" ]; then
+      val=$(awk -F= '$1 == "BRIGHT_DATA_API_TOKEN" || $1 == "BRIGHTDATA_API_KEY" || $1 == "API_TOKEN" { sub(/^[^=]*=/, ""); gsub(/^["'\'']+|[\"'\'']+$/, ""); gsub(/^[[:space:]]+|[[:space:]]+$/, ""); print; exit }' "$f")
+      if [ -n "$val" ]; then
+        export API_TOKEN="$val"
+        break
+      fi
+    fi
+  done
+  if [ -z "$API_TOKEN" ]; then
+    KEY=$(/usr/bin/security find-generic-password -s swarm/BRIGHT_DATA_API_TOKEN -w 2>/dev/null \
+      || /usr/bin/security find-generic-password -a BRIGHTDATA_API_KEY -w 2>/dev/null \
+      || true)
+    if [ -n "$KEY" ]; then
+      export API_TOKEN="$KEY"
+    fi
+  fi
+fi
+
+exec /Users/usuario/.local/opt/node-v26-avx2/bin/npx -y @brightdata/mcp "$@"
