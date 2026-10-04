@@ -26,6 +26,7 @@ class IdentityReranker:
 
     def rerank(self, query: str, documents: list[str]) -> list[str]:
         """Return ``documents`` ordered best-first for ``query``."""
+        # Order-preserving by design: tests and offline runs need a deterministic ranking.
         del query
         return list(documents)
 
@@ -41,6 +42,7 @@ class KeywordReranker:
             """Count the query words that appear in ``document``."""
             return len(needles & set(document.lower().split()))
 
+        # sorted() is stable, so documents with equal overlap keep their retrieval order.
         ranked = sorted(documents, key=score, reverse=True)
         return ranked
 
@@ -70,6 +72,7 @@ class FastEmbedReranker:
         if not documents:
             return []
         encoder = self._load()
+        # Scores come back one per document in input order: sort indices, then map back.
         scores = list(encoder.rerank(query, documents))
         order = sorted(range(len(documents)), key=lambda index: scores[index], reverse=True)
         return [documents[index] for index in order]
@@ -78,6 +81,7 @@ class FastEmbedReranker:
         """Return documents best-first with raw cross-encoder scores (unbounded logits)."""
         if not documents:
             return []
+        # Cast to float: the backend yields numpy scalars that are not JSON serialisable.
         scores = [float(s) for s in self._load().rerank(query, documents)]
         order = sorted(range(len(documents)), key=lambda index: scores[index], reverse=True)
         return [(documents[index], scores[index]) for index in order]

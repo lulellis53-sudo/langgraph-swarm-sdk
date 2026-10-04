@@ -52,8 +52,10 @@ class _ActionWorker:
         """Run the bound action in a worker thread and wrap its text as a ``StepOutput``."""
         from swarm_sdk.orchestrator.plan import StepOutput
 
+        # Deterministic worker: it ignores the LLM-oriented step inputs and only runs its bound action.
         del description, dep_outputs, files, task
         started = time.perf_counter()
+        # Fetch/SQLite actions block, so run them off the event loop.
         content = await asyncio.to_thread(self._action)
         return StepOutput(
             step_id=step_id,
@@ -95,6 +97,8 @@ def run_cowork_pipeline(
         else (lambda url: fetch_playwright(url, timeout_s=cfg.crawl.timeout_s))
     )
 
+    # Shared blackboard between steps: fetch stores HTML, normalise stores docs, persist reads them.
+    # Safe without locks because later waves only start after their dependencies finish.
     scratch: dict[str, Any] = {"docs": []}
     unique_urls: list[str] = []
     seen: set[str] = set()
@@ -102,6 +106,7 @@ def run_cowork_pipeline(
         if url not in seen:
             seen.add(url)
             unique_urls.append(url)
+    # Cap after de-duplication so duplicates do not eat into the crawl budget.
     unique_urls = unique_urls[: cfg.crawl.max_urls]
 
     steps: list[tuple[str, str, str, Callable[[], str], tuple[str, ...], list[str]]] = []
@@ -109,6 +114,7 @@ def run_cowork_pipeline(
     for index, url in enumerate(unique_urls):
         sid = f"F{index}"
 
+        # Default arguments freeze this iteration's url/sid (avoids the late-binding closure bug in loops).
         def make_fetch_action(target: str = url, tag: str = sid) -> Callable[[], str]:
             """Bind ``target``/``tag`` per iteration so each action keeps its own URL."""
 
@@ -134,6 +140,7 @@ def run_cowork_pipeline(
             )
             for sid, url in zip(fetch_ids, unique_urls, strict=True)
         ]
+        # Dedupe after normalising so trivially different markup of the same page collapses.
         unique = dedupe_docs(docs)
         scratch["docs"] = unique
         return f"normalized {len(docs)} pages, deduped to {len(unique)}"

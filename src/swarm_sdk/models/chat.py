@@ -162,6 +162,7 @@ def route_is_ready(model_name: str) -> bool:
 
 _MODEL_CACHE: dict[str, BaseChatModel] = {}
 _MODEL_CACHE_LOCK = threading.Lock()
+# Small bound: a swarm uses a handful of distinct models; the oldest entry is evicted past it.
 _MODEL_CACHE_MAX = 32
 
 
@@ -197,6 +198,7 @@ def load_chat_model(model_name: str) -> BaseChatModel:
 
     with _MODEL_CACHE_LOCK:
         if len(_MODEL_CACHE) >= _MODEL_CACHE_MAX:
+            # Dicts keep insertion order, so this evicts the oldest entry (FIFO, not LRU).
             _MODEL_CACHE.pop(next(iter(_MODEL_CACHE)))
         _MODEL_CACHE[model_name] = chat_model
     return chat_model

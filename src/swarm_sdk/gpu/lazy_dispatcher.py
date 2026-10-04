@@ -125,11 +125,13 @@ class VectorComputeDispatcher:
             return self._cl_module
         except Exception as exc:
             logger.debug("pyopencl import unavailable: %s", exc)
+            # Remember the failure so hosts without pyopencl do not retry the import.
             self._cl_load_failed = True
             return None
 
     def _ensure_opencl(self) -> bool:
         """Initialize OpenCL context, command queue, and kernels on demand."""
+        # Record the attempt first so a failed init is not retried on every batch.
         self._cl_init_attempted = True
         cl = self._get_opencl()
         if cl is None:

@@ -210,13 +210,16 @@ class TokenBudget:
         Returns:
             A ``PackedPrompt`` whose ``.text`` fits ``max_tokens``.
         """
+        # The system prompt is the stable prefix: fit it first so prefix caching keeps hitting.
         system_text = self._fit_system(system)
         memories_fit = self._take(system_text, [], self._lines("memory: ", memories))
+        # Memories take room first; turns fill what is left, newest first.
         turns_fit = self._take_newest(system_text, memories_fit, self._lines("turn: ", turns))
         user_parts = memories_fit + turns_fit
         user = "\n".join(user_parts)
         packed = PackedPrompt(system=system_text, user=user)
         if self.count(packed.text) > self.max_tokens:
+            # Last-resort guard: never return a prompt over budget, drop all context instead.
             packed = PackedPrompt(system=system_text, user="")
         return packed
 
@@ -262,9 +265,11 @@ class TokenBudget:
     def _take_newest(self, system_text: str, memories: list[str], turns: list[str]) -> list[str]:
         """Keep the newest turns that fit, preserving chronological order in the result."""
         chosen: list[str] = []
+        # Walk newest to oldest so the most recent turns survive when space is tight.
         for line in reversed(turns):
             fitted = self._fit(system_text, memories + chosen, line, append=False)
             if fitted:
+                # Re-insert at the front to restore chronological order.
                 chosen.insert(0, fitted)
         return chosen
 
@@ -279,6 +284,7 @@ class TokenBudget:
         if self.count(assembled(line)) <= self.max_tokens:
             return line
         best: str | None = None
+        # Binary-search the longest prefix of the line that still fits the budget.
         lo = 0
         hi = len(line)
         while lo <= hi:

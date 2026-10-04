@@ -145,6 +145,7 @@ class HashEmbedder:
         prepared = _prepare_texts(texts, query=query, bge_style=self._bge)
         if not prepared:
             return np.zeros((0, self.dim), dtype=np.float32)
+        # Preallocate and fill row by row; avoids building a list of arrays then stacking.
         out = np.empty((len(prepared), self.dim), dtype=np.float32)
         for i, text in enumerate(prepared):
             out[i] = self._one(text)
@@ -154,6 +155,7 @@ class HashEmbedder:
         """Derive a deterministic unit vector from the SHA-256 of the normalised text."""
         seed = text.strip().lower().encode()
         digest = hashlib.sha256(seed).digest()
+        # The first 8 digest bytes seed the RNG: same text, same vector on every machine.
         rng = np.random.default_rng(int.from_bytes(digest[:8], "little"))
         vector = rng.standard_normal(self.dim).astype(np.float32)
         return unit(vector)
@@ -180,10 +182,12 @@ class FastEmbedder:
         prepared = _prepare_texts(texts, query=query, bge_style=self._bge)
         if not prepared:
             return np.zeros((0, self.dim), dtype=np.float32)
+        # Load lazily: importing fastembed costs time and may be absent (no Intel-Mac wheel).
         model = self._load()
         rows: list[np.ndarray] = []
         for batch in _batched(prepared, self.batch_size):
             rows.append(np.asarray(list(model.embed(batch)), dtype=np.float32))
+        # Defensive: the model yielded no batches even though there was input.
         if not rows:
             return np.zeros((0, self.dim), dtype=np.float32)
         return np.vstack(rows)

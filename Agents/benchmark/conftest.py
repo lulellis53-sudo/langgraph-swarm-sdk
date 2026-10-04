@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from benchmark.tests.fakes import Script, ScriptedModel, answer
-from swarm_sdk.config.loader import load_swarm_config
+from swarm_sdk.config.loader import SwarmFileConfig, load_swarm_config
 from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import SwarmSDK
 from swarm_sdk.retrieval.embeddings import HashEmbedder
@@ -14,6 +14,7 @@ from swarm_sdk.retrieval.rerank import IdentityReranker
 
 @pytest.fixture
 def bench_settings(tmp_path: Path) -> Settings:
+    """Tiny settings (32-dim embeddings, 512-token cap) backed by per-test SQLite files."""
     return Settings(
         memory_path=str(tmp_path / "mem.db"),
         cache_path=str(tmp_path / "cache.db"),
@@ -23,12 +24,14 @@ def bench_settings(tmp_path: Path) -> Settings:
 
 
 @pytest.fixture
-def file_config():
+def file_config() -> SwarmFileConfig:
+    """The packaged ``swarm.yaml``, resolved from the repo root (tests run from there)."""
     return load_swarm_config(Path("Main/config/swarm.yaml"))
 
 
 @pytest.fixture
-def bench_sdk(bench_settings: Settings, file_config) -> SwarmSDK:
+def bench_sdk(bench_settings: Settings, file_config: SwarmFileConfig) -> SwarmSDK:
+    """SDK with a scripted model: one routing reply, then one swarm answer; no network."""
     script = Script(
         [
             answer('{"mode":"swarm","tasks":[]}'),

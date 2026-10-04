@@ -118,6 +118,7 @@ def _extract_baseline(dest: Path) -> Path:
     archive = dest / "baseline.tar"
     archive.write_bytes(proc.stdout)
     with tarfile.open(archive) as tar:
+        # filter="data" rejects absolute paths and unsafe links in the archive (PEP 706).
         tar.extractall(dest, filter="data")
     return dest / _PKG
 
@@ -159,6 +160,7 @@ def run() -> dict[str, Any]:
         base_root = _extract_baseline(Path(tmp))
         base, _ = audit_tree(base_root)
         cur, _ = audit_tree(_REPO / _PKG)
+        # The first audit above supplies the counts; these repeats only measure throughput.
         base_rates = [audit_tree(base_root)[1] for _ in range(_RUNS)]
         cur_rates = [audit_tree(_REPO / _PKG)[1] for _ in range(_RUNS)]
 

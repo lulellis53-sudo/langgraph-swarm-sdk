@@ -495,6 +495,7 @@ class SwarmSDK:
         """Choose parallel fan-out or swarm handoff, returning the decision and tokens used."""
         user = packed.suffix or packed.prefix
         if self.settings.router_structured_output:
+            # Prefer schema-constrained output; fall back to JSON-mode text when unsupported.
             decision, tokens = await self._route_structured(user)
             if decision is not None:
                 return decision, tokens
@@ -513,6 +514,7 @@ class SwarmSDK:
                 think_level=self.file_config.router.think_level,
                 json_mode=json_mode,
             )
+        # Lenient parse: malformed or adversarial router output degrades to a safe default route.
         return _parse_route(raw), tokens
 
     def _run_config(self, thread_id: str) -> dict[str, object]:
@@ -524,6 +526,7 @@ class SwarmSDK:
 
     def _is_new_thread(self, thread_id: str) -> bool:
         """True when the checkpointer holds no state for ``thread_id`` (survives restarts)."""
+        # Typed as RunnableConfig so the checkpointer call type-checks.
         config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
         return self._checkpointer.get_tuple(config) is None
 

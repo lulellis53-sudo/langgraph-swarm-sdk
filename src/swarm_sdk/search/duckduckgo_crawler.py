@@ -292,8 +292,10 @@ class CrawleeSpider:
                     queue.task_done()
                     continue
 
+                # Mark before fetching so concurrent workers never crawl the same URL twice.
                 self.visited.add(url)
 
+                # The semaphore bounds in-flight requests; the queue itself is unbounded.
                 async with semaphore:
                     try:
                         resp = await client.get(url)
