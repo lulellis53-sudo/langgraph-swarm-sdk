@@ -1,12 +1,15 @@
 {
   "mcpServers": {
     "context7": {
+      "type": "http",
       "url": "https://mcp.context7.com/mcp"
     },
     "context": {
+      "type": "http",
       "url": "https://mcp.context.dev/mcp"
     },
     "apify": {
+      "type": "http",
       "url": "https://mcp.apify.com"
     }
   }
