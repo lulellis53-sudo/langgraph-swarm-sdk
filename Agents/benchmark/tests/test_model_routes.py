@@ -29,6 +29,9 @@ def fake_init(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, dict]]:
         monkeypatch.delenv(route.base_url_env, raising=False)
         for extra in route.key_fallbacks:
             monkeypatch.delenv(extra, raising=False)
+    # Model instances are cached across calls; clear the cache so each route
+    # test observes fresh ``init_chat_model`` invocations.
+    chat.load_chat_model_cache_clear()
     monkeypatch.setattr(
         "langchain.chat_models.init_chat_model",
         lambda model, **kwargs: calls.append((model, kwargs)) or _Dummy(),

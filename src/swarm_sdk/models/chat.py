@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple
@@ -12,6 +13,7 @@ import yaml
 
 from swarm_sdk import vault
 from swarm_sdk.execution.executor import offload
+from swarm_sdk.observability import metrics
 from swarm_sdk.prompting.budget import count_text
 
 if TYPE_CHECKING:
@@ -155,8 +157,17 @@ def route_is_ready(model_name: str) -> bool:
     return True
 
 
+_MODEL_CACHE: dict[str, BaseChatModel] = {}
+_MODEL_CACHE_LOCK = threading.Lock()
+_MODEL_CACHE_MAX = 32
+
+
 def load_chat_model(model_name: str) -> BaseChatModel:
     """Initialize a LangChain chat model from a provider:name string.
+
+    Results are cached so repeated calls for the same ``model_name`` reuse the
+    same model instance. Call ``load_chat_model.cache_clear()`` to force refresh
+    (e.g. after rotating API keys at runtime).
 
     OpenAI-compatible providers (including ``zai``, ``openrouter``,
     ``sambanova`` and ``fireworks``) are constructed as ``ChatOpenAI``.
@@ -173,6 +184,33 @@ def load_chat_model(model_name: str) -> BaseChatModel:
         TypeError: If ``init_chat_model`` does not return a chat model.
         ValueError: If an OpenAI-compatible route has no base URL configured.
     """
+    with _MODEL_CACHE_LOCK:
+        cached = _MODEL_CACHE.get(model_name)
+        if cached is not None:
+            metrics.record_cache_hit("chat_model")
+            return cached
+
+    chat_model = _build_chat_model(model_name)
+
+    with _MODEL_CACHE_LOCK:
+        if len(_MODEL_CACHE) >= _MODEL_CACHE_MAX:
+            _MODEL_CACHE.pop(next(iter(_MODEL_CACHE)))
+        _MODEL_CACHE[model_name] = chat_model
+    return chat_model
+
+
+def load_chat_model_cache_clear() -> None:
+    """Clear the chat-model cache (useful in tests and after key rotation)."""
+    with _MODEL_CACHE_LOCK:
+        _MODEL_CACHE.clear()
+
+
+# Expose the same ``cache_clear`` attribute tests and callers expect from ``lru_cache``.
+load_chat_model.cache_clear = load_chat_model_cache_clear  # type: ignore
+
+
+def _build_chat_model(model_name: str) -> BaseChatModel:
+    """Construct a fresh chat-model instance for ``model_name``."""
     from langchain.chat_models import init_chat_model
     from langchain_core.language_models.chat_models import BaseChatModel
 

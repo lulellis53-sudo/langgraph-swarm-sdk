@@ -140,12 +140,12 @@ class HashEmbedder:
     def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:
         """Embed ``texts`` into one row per text; ``query`` selects query-side prefixing."""
         prepared = _prepare_texts(texts, query=query, bge_style=self._bge)
-        rows: list[np.ndarray] = []
-        for batch in _batched(prepared, self.batch_size):
-            rows.extend(self._one(text) for text in batch)
-        if not rows:
+        if not prepared:
             return np.zeros((0, self.dim), dtype=np.float32)
-        return np.stack(rows)
+        out = np.empty((len(prepared), self.dim), dtype=np.float32)
+        for i, text in enumerate(prepared):
+            out[i] = self._one(text)
+        return out
 
     def _one(self, text: str) -> np.ndarray:
         seed = text.strip().lower().encode()
@@ -173,10 +173,12 @@ class FastEmbedder:
     def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:
         """Embed ``texts`` into one row per text; ``query`` selects query-side prefixing."""
         prepared = _prepare_texts(texts, query=query, bge_style=self._bge)
+        if not prepared:
+            return np.zeros((0, self.dim), dtype=np.float32)
         model = self._load()
         rows: list[np.ndarray] = []
         for batch in _batched(prepared, self.batch_size):
-            rows.extend(np.asarray(vector, dtype=np.float32) for vector in model.embed(batch))
+            rows.append(np.asarray(list(model.embed(batch)), dtype=np.float32))
         if not rows:
             return np.zeros((0, self.dim), dtype=np.float32)
         return np.vstack(rows)
@@ -226,10 +228,8 @@ class LlamaCppEmbedder:
         prepared = _prepare_texts(texts, query=query, bge_style=_bge_style(self.model_path))
         rows: list[np.ndarray] = []
         for batch in _batched(prepared, self.batch_size):
-            raw = model.embed(batch, normalize=True)
-            for vec in raw:
-                rows.append(np.asarray(vec, dtype=np.float32))
-        return np.stack(rows)
+            rows.append(np.asarray(list(model.embed(batch, normalize=True)), dtype=np.float32))
+        return np.vstack(rows) if rows else np.zeros((0, self.dim), dtype=np.float32)
 
     def _load(self) -> _LlamaEmbedProto:
         if self._model is None:
@@ -308,8 +308,10 @@ class LlamaServerEmbedder:
         if not texts:
             return np.zeros((0, self.dim), dtype=np.float32)
         prepared = _prepare_texts(texts, query=query, bge_style=_bge_style(self.model))
-        rows = [vec for batch in _batched(prepared, self.batch_size) for vec in self._post(batch)]
-        return np.stack(rows)
+        rows: list[np.ndarray] = []
+        for batch in _batched(prepared, self.batch_size):
+            rows.append(np.asarray(self._post(batch), dtype=np.float32))
+        return np.vstack(rows) if rows else np.zeros((0, self.dim), dtype=np.float32)
 
     def _post(self, batch: list[str]) -> list[np.ndarray]:
         request = urllib.request.Request(
