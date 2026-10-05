@@ -2694,6 +2694,9 @@ serialization = [
     { name = "orjson" },
     { name = "protobuf" },
 ]
+tune = [
+    { name = "optuna" },
+]
 websearch = [
     { name = "beautifulsoup4" },
     { name = "google-genai" },
@@ -2757,6 +2760,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-fastapi", marker = "extra == 'observability'", specifier = ">=0.52b0" },
     { name = "opentelemetry-instrumentation-httpx", marker = "extra == 'observability'", specifier = ">=0.52b0" },
     { name = "opentelemetry-sdk", marker = "extra == 'observability'", specifier = ">=1.30" },
+    { name = "optuna", marker = "extra == 'tune'", specifier = ">=4" },
     { name = "orjson", specifier = ">=3.10" },
     { name = "orjson", marker = "extra == 'serialization'", specifier = ">=3.10" },
     { name = "pip", marker = "extra == 'jupyter'", specifier = ">=25" },
@@ -2796,7 +2800,7 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34" },
     { name = "uvloop", marker = "sys_platform != 'win32'", specifier = ">=0.21" },
 ]
-provides-extras = ["dev", "observability", "faiss", "faiss-gpu", "embed", "embed-gpu", "molten", "opencl", "llama-cpp", "ml", "qdrant", "mem0", "jupyter", "websearch", "serialization", "forecast"]
+provides-extras = ["dev", "observability", "faiss", "faiss-gpu", "embed", "embed-gpu", "molten", "opencl", "llama-cpp", "ml", "qdrant", "mem0", "tune", "jupyter", "websearch", "serialization", "forecast"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "langgraph-cli", extras = ["inmem"], specifier = ">=0.1.54" }]

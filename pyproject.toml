@@ -121,6 +121,7 @@ ml = [
 qdrant = ["qdrant-client>=1.14"]
 # ## Mem0 Platform memory (MemoryClient; API key in MEM0_API_KEY)
 mem0 = ["mem0ai>=1.0"]
+tune = ["optuna>=4"]
 jupyter = [
     "cryptography==48.0.1",
     "ipykernel>=6",
