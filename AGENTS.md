@@ -150,7 +150,7 @@ uv run python -m swarm_sdk.agents.validate
 
 - Never commit `.env`, API keys, tokens, or credentials.
 - Secrets live only in the macOS Keychain (`uv run swarm-vault set NAME`) or the gitignored, owner-only `.env` (`chmod 600`). Never add sudo, group or world read access to it.
-- YAML (`agent.yaml`, `model_registry.yaml`, `coordination.yaml`, `swarm.yaml`) holds env-var **names** only (`api_key_env: ZAI_API_KEY`), never values. `test_yaml_never_holds_secret_values` enforces this; keep it green.
+- YAML (`agent.yaml`, `model_registry.yaml`, `coordination.yaml`, `swarm.yaml`) holds env-var **names** only (`api_key_env: ZHIPU_API_KEY`), never values. `test_yaml_never_holds_secret_values` enforces this; keep it green.
 - Never paste secret values into issues, logs, or agent output (report path/pattern only — see `[Agents/Security/AGENTS.md](Agents/Security/AGENTS.md)`).
 
 ### Subtopic: Network

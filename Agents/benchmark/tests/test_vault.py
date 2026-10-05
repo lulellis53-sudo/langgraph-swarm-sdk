@@ -81,7 +81,9 @@ def test_shared_project_env_cannot_select_keychain(
     assert runner.calls[0][-1] == "-w"
 
 
-def test_apikeychain_when_swarm_item_is_missing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_apikeychain_when_swarm_item_is_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     keychain = tmp_path / "APIKEYCHAIN.keychain-db"
     keychain.write_bytes(b"")
     monkeypatch.setenv("KEYS_KEYCHAIN", str(keychain))
@@ -93,9 +95,7 @@ def test_apikeychain_when_swarm_item_is_missing(tmp_path: Path, monkeypatch: pyt
             return "from-api"
         return None
 
-    got = vault.get_with_source(
-        "ATLASCLOUD_API_KEY", runner=run, environ={}, dotenv=Path("/nope")
-    )
+    got = vault.get_with_source("ATLASCLOUD_API_KEY", runner=run, environ={}, dotenv=Path("/nope"))
     assert got == ("from-api", "apikeychain")
     assert calls[0][calls[0].index("-s") + 1] == "swarm/ATLASCLOUD_API_KEY"
     assert calls[1][calls[1].index("-s") + 1] == "APIKEYCHAIN/ATLASCLOUD_API_KEY"

@@ -38,6 +38,7 @@ def test_compat_provider_uses_registry_base_url(fake_init, monkeypatch: pytest.M
     monkeypatch.setenv("ZAI_BASE_URL", "https://api.z.ai/api/paas/v4")
     monkeypatch.delenv("ZHIPU_API_KEY", raising=False)
     monkeypatch.setenv("ZAI_API_KEY", "k")
+    monkeypatch.setattr(vault, "get", lambda name: None)
     chat.load_chat_model("zai:glm-5.2")
     ((model, kwargs),) = fake_init
     assert model == "glm-5.2"
@@ -57,9 +58,16 @@ def test_compat_provider_requires_base_url(fake_init, monkeypatch: pytest.Monkey
     ("route", "key_name", "base_url"),
     [
         ("openrouter:z-ai/glm-5.3-flash", "OPENROUTER_API_KEY", "https://openrouter.ai/api/v1"),
-        ("sambanova:Meta-Llama-3.3-70B-Instruct", "SAMBANOVA_API_KEY", "https://api.sambanova.ai/v1"),
-        ("fireworks:accounts/fireworks/models/kimi-k2.7", "FIREWORKS_API_KEY",
-         "https://api.fireworks.ai/inference/v1"),
+        (
+            "sambanova:Meta-Llama-3.3-70B-Instruct",
+            "SAMBANOVA_API_KEY",
+            "https://api.sambanova.ai/v1",
+        ),
+        (
+            "fireworks:accounts/fireworks/models/kimi-k2.7",
+            "FIREWORKS_API_KEY",
+            "https://api.fireworks.ai/inference/v1",
+        ),
         (
             "atlascloud:dots-studio/dots-3-note-prev-free",
             "ATLASCLOUD_API_KEY",
@@ -75,9 +83,7 @@ def test_hosted_compat_routes_use_provider_endpoint(
     chat.load_chat_model(route)
     ((model, kwargs),) = fake_init
     assert model == route.split(":", 1)[1]
-    assert kwargs == {
-        "model_provider": "openai", "base_url": base_url, "api_key": "synthetic-key"
-    }
+    assert kwargs == {"model_provider": "openai", "base_url": base_url, "api_key": "synthetic-key"}
 
 
 def test_hosted_route_reads_named_key_from_vault(
