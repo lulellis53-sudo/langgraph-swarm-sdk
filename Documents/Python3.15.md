@@ -1596,15 +1596,68 @@ flowchart LR
 
 ## 11. Benchmarking protocol
 
-The previous tables in this section did not include raw outputs or a reproducible
-harness, so their figures are removed rather than presented as measurements.
-Python-version and allocator comparisons need the same workload, dependencies,
-model files, and host conditions. Record interpreter build flags (including
-whether the GIL is enabled), warm-up, repetitions, latency distribution, peak
-RSS, and command output. Treat results from prerelease interpreters as provisional.
+Python-version and allocator comparisons require the **same workload**, dependency
+lockfile, warm-up policy, and host conditions. Record interpreter build flags
+(including whether the GIL is enabled), repetitions, latency distribution (P50/P95/P99),
+peak RSS, and the exact command line. Treat prerelease interpreters as provisional.
 
-This repository's supported Python range is specified in [`pyproject.toml`](../pyproject.toml).
-For measured SDK results, use the [project benchmark guide](../Agents/benchmark/README.md).
+This repository's supported Python range is in [`pyproject.toml`](../pyproject.toml).
+For **measured** SDK results, use the [project benchmark guide](../Agents/benchmark/README.md).
+
+### 11.1 Workload definitions & test rig
+
+| Field | Requirement |
+| :--- | :--- |
+| **Hardware** | Document CPU model, core count, RAM, OS — default reference: §1.3 (Intel i7-9750H, 16 GB) |
+| **Interpreter** | `python -VV`; note `sys._is_gil_enabled()` |
+| **Allocator** | mimalloc vs pymalloc; record `MIMALLOC_*` env vars |
+| **Workload** | Pin script or pytest node id; no mixed micro-bench + production trace in one table |
+| **Metrics** | Throughput, wall time, P99 latency, peak RSS; report Δ% only against a named baseline run |
+
+### 11.2 Illustrative host metrics (Intel i7-9750H)
+
+> **Not project benchmarks.** Figures below are **illustrative planning numbers**
+> (merged from legacy `PythonPerformanceGuide.md`). Reproduce locally before
+> capacity planning; link raw logs when publishing updates.
+
+Hardware: Intel i7-9750H, 16 GB RAM, macOS x86_64 (12 logical CPUs).
+
+| Metric | CPython (GIL) | Free-threaded (nogil) | Δ% vs GIL | Notes |
+| :--- | :--- | :--- | :--- | :--- |
+| Thread creation (ms) | 1.2 | 1.8 | +50% | Higher per-thread setup on nogil builds |
+| Compute (10M floats) | 450 ms | 85 ms | −81% | Pure-Python / numeric loop; verify with your kernel |
+| P99 latency (ms) | 510 | 110 | −78% | Contention-sensitive |
+| Peak RSS (MB) | 45 | 58 | +28% | Per-object metadata + mimalloc arenas |
+
+Strategy comparison (same illustrative source):
+
+| Strategy | Memory overhead | Speedup (illustrative) | Complexity | Stability (3.15 preview) |
+| :--- | :--- | :--- | :--- | :--- |
+| Standard CPython | Low | 1.0× | Low | High |
+| Free-threaded | Medium | up to ~6× | High | Medium |
+| Multiprocessing | High (copy) | up to ~5.5× | Medium | High |
+| PyArrow zero-copy IPC | Low | up to ~4.5× | Medium | High |
+
+### 11.3 Illustrative server-scale metrics (reference)
+
+> **Different hardware** from §1.3 — included for thread-pool scaling shape only
+> (merged from legacy `PythonFreeThreadedRuntime.md`). Do not extrapolate to the
+> MacBookPro16,1 without re-measuring.
+
+Reference host cited in source note: AMD EPYC 9654 class (many-core server).
+
+| Workers | Ops/sec (GIL) | Ops/sec (free-threaded) | P99 latency (FT) | RSS (FT) |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | 12,000 | 11,200 | 1.2 ms | 45 MB |
+| 16 | 12,100 | 165,000 | 1.5 ms | 65 MB |
+| 64 | 11,800 | 610,000 | 2.1 ms | 110 MB |
+
+### 11.4 Repo harness (`python315_claims`)
+
+Measured claims for this repository live under
+[`Agents/benchmark/Tasks/python315_claims/`](../Agents/benchmark/Tasks/python315_claims/)
+(see [`Agents/benchmark/README.md`](../Agents/benchmark/README.md)). Prefer that
+suite over the illustrative tables in §11.2–§11.3 for SDK or CI gating.
 
 ---
 
