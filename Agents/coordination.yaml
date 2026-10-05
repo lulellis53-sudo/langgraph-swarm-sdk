@@ -104,6 +104,11 @@ agents:
     contract: Agents/math/AGENTS.md
     manifest: Agents/math/agent.yaml
 
+  - name: Prediction
+    role: time_series_forecasting
+    contract: Agents/Prediction/AGENTS.md
+    manifest: Agents/Prediction/agent.yaml
+
   - name: WebFetch
     role: fetch_render
     contract: Agents/WebFetch/AGENTS.md
@@ -242,8 +247,8 @@ tasks:
 
   - id: prediction_forecast
     title: "Prediction: mlforecast engine and forecast extra"
-    assigned: [MLSpecialist]
-    task: pipeline_integration
+    assigned: [Prediction, MLSpecialist]
+    task: forecast
     depends_on: []
     status: in_progress
 

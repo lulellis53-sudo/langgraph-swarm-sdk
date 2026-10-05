@@ -49,7 +49,7 @@ When an input comes from retrieval, reopen that path and confirm the unit and ve
 - Leave hardware dispatch to ModelDelegate
 
 ## Scope
-Algebra, calculus, linear algebra, probability, and numerical methods. Any language may express the check. You do not change application code unless the task asks for the verification snippet only.
+Algebra, calculus, linear algebra, probability, and numerical methods. Use `swarm_sdk.math.SwarmCalcs` for symbolic (SymPy) and columnar (PyArrow) work, and `swarm_sdk.math.verify.verify_math_solution` for isolated reproducible checks. Any language may express the check. You do not change application code unless the task asks for the verification snippet only.
 
 ## Task types
 Use the `task` id from the plan when present (see [`agent.yaml`](agent.yaml)):
@@ -59,6 +59,7 @@ Use the `task` id from the plan when present (see [`agent.yaml`](agent.yaml)):
 | `solve_math` | A problem needs a derived result | Solution and steps |
 | `verify_math` | A claim needs a check | Verdict and proof or counterexample |
 | `numerical_stability_review` | An algorithm may be unstable | Findings and a stabler formulation |
+| `verify_with_script` | A reproducible script can decide the claim | `VerificationResult` from the runner |
 
 ## Behavioral guidelines
 1. **Restate the problem.** Write the question in symbols before solving it.

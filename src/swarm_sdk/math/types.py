@@ -12,6 +12,10 @@ type MathTaskType = Literal[
 ]
 type MathBackend = Literal["opencl", "molten", "numpy", "llm", "sympy", "pyarrow"]
 type ThinkLevel = Literal["low", "medium", "high", "xhigh"]
+type MathOperation = Literal[
+    "matmul", "solve", "eig", "svd", "inv", "det", "sum", "dot", "elementwise", "unknown"
+]
+type MathDtype = Literal["float32", "float64"]
 
 
 class MathProblem(BaseModel):
@@ -21,6 +25,8 @@ class MathProblem(BaseModel):
     task_type: MathTaskType
     mode: MathMode = "solve"
     shape: tuple[int, ...] | None = None
+    operation: MathOperation = "unknown"
+    dtype: MathDtype = "float32"
     precision_tolerance: float = Field(default=1e-6, gt=0.0)
     force_gpu: bool = False
     think_level: ThinkLevel | None = None
@@ -63,7 +69,9 @@ class MathResult(BaseModel):
 __all__ = [
     "MathBackend",
     "MathDispatchDecision",
+    "MathDtype",
     "MathMode",
+    "MathOperation",
     "MathProblem",
     "MathResult",
     "MathTaskType",

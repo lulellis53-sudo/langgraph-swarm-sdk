@@ -12,7 +12,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import math
 import os
 import platform
 import statistics
@@ -26,6 +25,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TypedDict
 
+from benchmark.protocol import (
+    TAIL_MIN_N,
+    allows_speedup_claim,
+    bootstrap_median_ci,
+    paired_deltas,
+    summarize,
+)
 from benchmark.Tasks.agent_suite.instruments import (
     SuiteInstruments,
     gc_collections,
@@ -44,16 +50,17 @@ RESULTS_PATH = Path(__file__).resolve().parents[2] / "results" / "agent_suite" /
 PARALLEL_CAP = 3
 CLI_WARMUP = 1
 CLI_SAMPLES = 30
-TAIL_MIN_N = 100
 SCRIPTED_REPLY = "done-ok"
 _SCRIPTED_KEY = "scripted-bench"
 
 
 class Distribution(TypedDict):
+    """Latency summary. Tails are null until the sample supports them."""
+
     n: int
     p50_ms: float
-    p95_ms: float
-    p99_ms: float
+    p95_ms: float | None
+    p99_ms: float | None
     median_ms: float
     mad_ms: float
     mean_ms: float
@@ -63,12 +70,14 @@ class Distribution(TypedDict):
 
 
 class StepReport(TypedDict):
+    """One agent task across the counted samples."""
+
     agent: str
     task_id: str
     n: int
     p50_ms: float
-    p95_ms: float
-    p99_ms: float
+    p95_ms: float | None
+    p99_ms: float | None
     mad_ms: float
     cv_pct: float
     prompt_tokens_p50: float
@@ -78,10 +87,12 @@ class StepReport(TypedDict):
 
 
 class ModeReport(TypedDict):
+    """One dispatch mode, its raw samples, and its per-step rows."""
+
     n: int
     p50_ms: float
-    p95_ms: float
-    p99_ms: float
+    p95_ms: float | None
+    p99_ms: float | None
     median_ms: float
     mad_ms: float
     mean_ms: float
@@ -94,6 +105,8 @@ class ModeReport(TypedDict):
 
 
 class SuiteReport(TypedDict):
+    """Scripted solo-versus-parallel report for the loaded agent catalog."""
+
     task: str
     measured_at: str
     latency_kind: str
@@ -174,40 +187,80 @@ def catalog(manifests: Mapping[str, AgentManifest]) -> list[AgentStep]:
 def latency_distribution(samples_ms: list[float]) -> Distribution:
     """Summarize samples with the Benchmark.md median, nearest-rank, MAD, and CV.
 
+    P95 and P99 are withheld until ``tail_supported`` is true.
+
     Args:
         samples_ms: At least two durations, in milliseconds.
 
     Returns:
-        Median as P50, nearest-rank P95 and P99, MAD, and CV percent.
+        Median as P50, MAD, and CV percent. Tails are present only at ``n >= 100``.
 
     Raises:
         ValueError: When fewer than two samples are given.
     """
-    if len(samples_ms) < 2:
-        raise ValueError("samples must be at least 2")
-    ordered = sorted(samples_ms)
-    median = statistics.median(ordered)
-    deviations = [abs(sample - median) for sample in ordered]
-    mean = statistics.fmean(ordered)
-    stdev = statistics.stdev(ordered)
-    n = len(ordered)
+    stats = summarize(samples_ms, tail_min_n=TAIL_MIN_N)
+    supported = stats["tail_supported"]
     return {
-        "n": n,
-        "p50_ms": median,
-        "p95_ms": _nearest_rank(ordered, 0.95),
-        "p99_ms": _nearest_rank(ordered, 0.99),
-        "median_ms": median,
-        "mad_ms": statistics.median(deviations),
-        "mean_ms": mean,
-        "stdev_ms": stdev,
-        "cv_pct": (stdev / mean * 100.0) if mean else 0.0,
-        "tail_supported": n >= TAIL_MIN_N,
+        "n": stats["n"],
+        "p50_ms": stats["p50"],
+        "p95_ms": stats["p95"] if supported else None,
+        "p99_ms": stats["p99"] if supported else None,
+        "median_ms": stats["median"],
+        "mad_ms": stats["mad"],
+        "mean_ms": stats["mean"],
+        "stdev_ms": stats["stdev"],
+        "cv_pct": stats["cv_pct"],
+        "tail_supported": supported,
     }
 
 
-def _nearest_rank(ordered: list[float], fraction: float) -> float:
-    index = math.ceil(fraction * len(ordered)) - 1
-    return ordered[index]
+def comparison_report(
+    solo_ms: list[float],
+    parallel_ms: list[float],
+    *,
+    independent_runs: int = 1,
+) -> dict[str, object]:
+    """Compare paired solo and parallel samples.
+
+    The paired delta is parallel minus solo. ``exceeds_two_dispersion`` records
+    the noise-floor check. ``claim`` is ``win`` only when that check also has a
+    second independent run.
+
+    Args:
+        solo_ms: Solo wall times, one per counted pair.
+        parallel_ms: Parallel wall times, matched to ``solo_ms``.
+        independent_runs: Separate sessions that reproduced this comparison.
+
+    Returns:
+        Median paired delta, its MAD, a 95% bootstrap interval, and the claim.
+
+    Raises:
+        ValueError: When the two lists cannot be paired.
+    """
+    deltas = paired_deltas(parallel_ms, solo_ms)
+    delta_median = statistics.median(deltas)
+    delta_mad = statistics.median(abs(delta - delta_median) for delta in deltas)
+    low_ms, high_ms = bootstrap_median_ci(deltas)
+    solo_p50 = statistics.median(solo_ms)
+    claim = (
+        "win"
+        if allows_speedup_claim(
+            delta=delta_median,
+            dispersion=delta_mad,
+            independent_runs=independent_runs,
+        )
+        else "none"
+    )
+    return {
+        "claim": claim,
+        "runs": independent_runs,
+        "paired_delta_p50_ms": delta_median,
+        "paired_delta_mad_ms": delta_mad,
+        "paired_delta_ci95_low_ms": low_ms,
+        "paired_delta_ci95_high_ms": high_ms,
+        "delta_pct": (delta_median / solo_p50 * 100.0) if solo_p50 else None,
+        "exceeds_two_dispersion": abs(delta_median) > (2.0 * delta_mad),
+    }
 
 
 def _environment() -> dict[str, object]:
@@ -504,6 +557,7 @@ async def measure(
     samples: int = CLI_SAMPLES,
     parallel_cap: int = PARALLEL_CAP,
     agents_root: Path = AGENTS_ROOT,
+    independent_runs: int = 1,
 ) -> SuiteReport:
     """Warm up, then time interleaved solo and parallel passes of the catalog.
 
@@ -514,6 +568,8 @@ async def measure(
             below 100.
         parallel_cap: Concurrent agent steps in the parallel mode.
         agents_root: Directory of ``Agents/{Name}/agent.yaml``.
+        independent_runs: Sessions that reproduced this comparison. One session
+            never produces a speedup claim.
 
     Returns:
         Distributions for both modes, per-step rows, and any non-ok steps.
@@ -599,12 +655,6 @@ async def measure(
         traced = await _allocation_probe(steps, manifests, root, parallel_cap=parallel_cap)
     solo = _mode_report(solo_walls, solo_samples, steps, solo_peak)
     parallel = _mode_report(parallel_walls, parallel_samples, steps, parallel_peak)
-    deltas = [
-        right - left for left, right in zip(solo["samples_ms"], parallel["samples_ms"], strict=True)
-    ]
-    delta_median = statistics.median(deltas)
-    delta_mad = statistics.median(abs(delta - delta_median) for delta in deltas)
-    solo_p50 = solo["p50_ms"]
     return {
         "task": "agent_suite",
         "measured_at": datetime.now(UTC).isoformat(),
@@ -617,9 +667,13 @@ async def measure(
             "order": "each counted pair is solo then parallel; warmup pairs are discarded",
             "parallel_cap": parallel_cap,
             "parallel_cap_reason": "host agent limit is 3; the swarm.yaml I/O cap of 8 is not used",
-            "percentile": "p50 is statistics.median; p95 and p99 are nearest-rank",
+            "percentile": (
+                "p50 is statistics.median; p95 and p99 are nearest-rank "
+                "and are omitted until n reaches tail_supported_min_n"
+            ),
             "tail_supported_min_n": TAIL_MIN_N,
             "win_rule": "a win needs the paired delta to exceed 2x MAD and a second run",
+            "paired_interval": "percentile bootstrap of the median paired delta, 10000 resamples",
             "catalog_source": "load_all_agent_manifests",
             "instruments": ["python", "langchain", "prometheus", "opentelemetry"],
         },
@@ -630,14 +684,11 @@ async def measure(
             "tasks": [{"agent": step.agent, "task_id": step.task_id} for step in steps],
         },
         "modes": {"solo": solo, "parallel": parallel},
-        "comparison": {
-            "claim": "none",
-            "runs": 1,
-            "paired_delta_p50_ms": delta_median,
-            "paired_delta_mad_ms": delta_mad,
-            "delta_pct": (delta_median / solo_p50 * 100.0) if solo_p50 else None,
-            "exceeds_two_dispersion": abs(delta_median) > (2.0 * delta_mad) if delta_mad else False,
-        },
+        "comparison": comparison_report(
+            solo["samples_ms"],
+            parallel["samples_ms"],
+            independent_runs=independent_runs,
+        ),
         "peak_rss_bytes": _peak_rss_bytes(),
         "rss_unit": "bytes",
         "instruments": {
@@ -681,21 +732,38 @@ def format_report(report: SuiteReport) -> str:
     for name in ("solo", "parallel"):
         mode = report["modes"][name]
         lines.append(
-            f"{name:<10}{mode['n']:>6}{mode['p50_ms']:>12.3f}{mode['p95_ms']:>12.3f}"
-            f"{mode['p99_ms']:>12.3f}{mode['mad_ms']:>12.3f}{mode['cv_pct']:>8.2f}"
+            f"{name:<10}{mode['n']:>6}{_format_ms(mode['p50_ms'])}"
+            f"{_format_ms(mode['p95_ms'])}{_format_ms(mode['p99_ms'])}"
+            f"{_format_ms(mode['mad_ms'])}{mode['cv_pct']:>8.2f}"
         )
     comparison = report["comparison"]
     delta_ms = comparison["paired_delta_p50_ms"]
     delta_pct = comparison["delta_pct"]
     pct = f"{delta_pct:.3f}%" if isinstance(delta_pct, float) else "n/a"
     ms = f"{delta_ms:.3f}" if isinstance(delta_ms, float) else "n/a"
-    lines.append(f"paired delta p50 {ms} ms ({pct})  claim: {comparison['claim']}")
+    low_ms = comparison["paired_delta_ci95_low_ms"]
+    high_ms = comparison["paired_delta_ci95_high_ms"]
+    interval = (
+        f"[{low_ms:.3f}, {high_ms:.3f}]"
+        if isinstance(low_ms, float) and isinstance(high_ms, float)
+        else "n/a"
+    )
+    lines.append(
+        f"paired delta p50 {ms} ms ({pct})  95% CI {interval}  claim: {comparison['claim']}"
+    )
     lines.append(f"peak RSS {report['peak_rss_bytes']} {report['rss_unit']}")
     lines.extend(_format_instruments(report["instruments"]))
     if report["failures"]:
         lines.append(f"failures: {len(report['failures'])}")
         lines.extend(report["failures"][:20])
     return "\n".join(lines)
+
+
+def _format_ms(value: float | None) -> str:
+    """Return a 12-wide millisecond cell, or n/a when a tail is withheld."""
+    if value is None:
+        return f"{'n/a':>12}"
+    return f"{value:12.3f}"
 
 
 def _format_instruments(instruments: dict[str, object]) -> list[str]:

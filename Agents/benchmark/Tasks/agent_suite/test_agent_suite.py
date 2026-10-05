@@ -11,6 +11,7 @@ from benchmark.Tasks.agent_suite.suite import (
     AGENTS_ROOT,
     TAIL_MIN_N,
     catalog,
+    comparison_report,
     latency_distribution,
     main,
     measure,
@@ -38,18 +39,22 @@ def test_catalog_covers_every_loaded_manifest_and_task() -> None:
         assert found == expected
 
 
-def test_nearest_rank_matches_the_dossier_formula() -> None:
-    samples = [float(value) for value in range(1, 31)]
-    stats = latency_distribution(samples)
+def test_tails_are_published_only_when_the_sample_supports_them() -> None:
+    short = [float(value) for value in range(1, 31)]
+    withheld = latency_distribution(short)
 
-    assert stats["n"] == 30
-    assert stats["p50_ms"] == statistics.median(samples)
-    assert stats["median_ms"] == stats["p50_ms"]
-    # ceil(0.95 * 30) - 1 == 28 -> 29; ceil(0.99 * 30) - 1 == 29 -> 30.
-    assert stats["p95_ms"] == 29.0
-    assert stats["p99_ms"] == 30.0
-    assert stats["tail_supported"] is False
-    assert stats["mad_ms"] >= 0.0
+    assert withheld["n"] == 30
+    assert withheld["p50_ms"] == statistics.median(short)
+    assert withheld["median_ms"] == withheld["p50_ms"]
+    assert withheld["p95_ms"] is None
+    assert withheld["p99_ms"] is None
+    assert withheld["tail_supported"] is False
+
+    long = [float(value) for value in range(1, TAIL_MIN_N + 1)]
+    published = latency_distribution(long)
+    assert published["tail_supported"] is True
+    assert published["p95_ms"] == long[math.ceil(0.95 * TAIL_MIN_N) - 1]
+    assert published["p99_ms"] == long[math.ceil(0.99 * TAIL_MIN_N) - 1]
 
 
 def test_distribution_rejects_a_single_sample() -> None:
@@ -72,9 +77,15 @@ def test_distribution_matches_median_and_nearest_rank(samples: list[float]) -> N
     assert stats["n"] == count
     assert stats["p50_ms"] == statistics.median(ordered)
     assert stats["median_ms"] == stats["p50_ms"]
-    assert stats["p95_ms"] == ordered[math.ceil(0.95 * count) - 1]
-    assert stats["p99_ms"] == ordered[math.ceil(0.99 * count) - 1]
-    assert stats["p95_ms"] <= stats["p99_ms"]
+    if stats["tail_supported"]:
+        assert stats["p95_ms"] == ordered[math.ceil(0.95 * count) - 1]
+        assert stats["p99_ms"] == ordered[math.ceil(0.99 * count) - 1]
+        assert stats["p95_ms"] is not None
+        assert stats["p99_ms"] is not None
+        assert stats["p95_ms"] <= stats["p99_ms"]
+    else:
+        assert stats["p95_ms"] is None
+        assert stats["p99_ms"] is None
     assert min(ordered) <= stats["p50_ms"] <= max(ordered)
     assert stats["mad_ms"] >= 0.0
     assert stats["tail_supported"] is (count >= TAIL_MIN_N)
@@ -119,7 +130,16 @@ async def test_solo_and_parallel_cover_the_catalog() -> None:
     report = await measure(warmup=1, samples=2)
     catalog_rows = report["catalog"]["tasks"]
     assert isinstance(catalog_rows, list)
-    assert report["comparison"]["claim"] == "none"
+    comparison = report["comparison"]
+    assert comparison["claim"] == "none"
+    assert comparison["runs"] == 1
+    low_ms = comparison["paired_delta_ci95_low_ms"]
+    high_ms = comparison["paired_delta_ci95_high_ms"]
+    delta_ms = comparison["paired_delta_p50_ms"]
+    assert isinstance(low_ms, float)
+    assert isinstance(high_ms, float)
+    assert isinstance(delta_ms, float)
+    assert low_ms <= delta_ms <= high_ms
     assert report["peak_rss_bytes"] > 0
     assert report["failures"] == []
 
@@ -138,6 +158,8 @@ async def test_solo_and_parallel_cover_the_catalog() -> None:
             assert step["prompt_tokens_p50"] > 0
             for key in ("p50_ms", "p95_ms", "p99_ms", "mad_ms", "cv_pct"):
                 assert key in step
+            assert step["p95_ms"] is None
+            assert step["p99_ms"] is None
     assert report["modes"]["solo"]["peak_in_flight"] == 1
     assert TAIL_MIN_N == 100
 
@@ -167,6 +189,28 @@ async def test_solo_and_parallel_cover_the_catalog() -> None:
     assert cpu["solo"]["n"] == 2
     assert cpu["parallel"]["n"] == 2
     assert traced["peak_bytes"] > 0
+
+
+def test_one_run_records_the_floor_without_claiming_a_win() -> None:
+    report = comparison_report([10.0, 10.0, 10.0], [1.0, 1.0, 1.0], independent_runs=1)
+
+    assert report["claim"] == "none"
+    assert report["exceeds_two_dispersion"] is True
+    assert report["paired_delta_p50_ms"] == -9.0
+    assert report["paired_delta_ci95_low_ms"] == -9.0
+    assert report["paired_delta_ci95_high_ms"] == -9.0
+
+
+def test_a_second_run_claims_the_win_past_the_noise_floor() -> None:
+    report = comparison_report([10.0, 10.0], [1.0, 1.0], independent_runs=2)
+    assert report["claim"] == "win"
+    assert report["exceeds_two_dispersion"] is True
+
+
+def test_a_zero_delta_does_not_clear_a_zero_dispersion() -> None:
+    report = comparison_report([5.0, 5.0], [5.0, 5.0], independent_runs=2)
+    assert report["exceeds_two_dispersion"] is False
+    assert report["claim"] == "none"
 
 
 def run() -> None:

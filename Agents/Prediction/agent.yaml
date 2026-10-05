@@ -1,0 +1,48 @@
+version: "1"
+name: Prediction
+role: time_series_forecasting
+
+model: mistral:ministral-3-8b-latest
+think_level: medium
+effort: medium
+api_key_env: MISTRAL_API_KEY_2
+
+token_budget:
+  max_prompt: 8192
+  max_completion: 2048
+
+tasks:
+  - id: forecast
+    description: >-
+      Fit a global forecasting model on a long-format time-series frame and
+      produce point predictions for a stated horizon. Return the forecast frame,
+      model settings, and a confidence statement.
+    outputs:
+      - forecast_frame
+      - model_settings
+      - confidence_statement
+
+  - id: backtest
+    description: >-
+      Run rolling-origin cross-validation on the supplied series and return
+      per-series MAE, RMSE and sMAPE. State the window count and any data
+      caveats.
+    outputs:
+      - metrics_frame
+      - window_count
+      - caveats
+
+  - id: feature_engineering
+    description: >-
+      Propose calendar, lag, and rolling features for the given frequency and
+      return a feature specification that can be consumed by a forecasting
+      pipeline.
+    outputs:
+      - feature_spec
+      - rationale
+
+capabilities:
+  - time_series_forecasting
+  - mlforecast
+  - cross_validation
+  - feature_engineering

@@ -36,6 +36,19 @@ tasks:
       - stability_findings
       - recommended_formulation
 
+  - id: verify_with_script
+    description: >-
+      Run a reproducible Python/SymPy/NumPy script through the isolated
+      verification runner and report proven, refuted, or inconclusive with the
+      error bound.
+    outputs:
+      - verification_result
+      - script_snippet
+      - error_bound
+
 capabilities:
   - symbolic_math
   - numerical_verification
+  - hardware_dispatch
+  - local_calculation
+  - script_verification

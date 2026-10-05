@@ -101,6 +101,11 @@ class Settings(BaseSettings):
     # twice the edit trigger. Off by default: it spends an extra model call per
     # trigger and is not offline-deterministic.
     swarm_summarization: bool = False
+    # JEV System-1 routing: use the non-autoregressive semantic router to pick the
+    # entry agent and workflow mode instead of the LLM router / static defaults.
+    jev_routing: bool = False
+    jev_endpoint: str | None = None
+    jev_timeout_s: float = Field(default=0.030, ge=0.001)
 
 
 def load_merged_settings(
