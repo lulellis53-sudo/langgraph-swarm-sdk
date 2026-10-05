@@ -144,6 +144,11 @@ agents:
     contract: Agents/WebResearcher/AGENTS.md
     manifest: Agents/WebResearcher/agent.yaml
 
+  - name: Tuner
+    role: offline parameter tuning
+    contract: Agents/Tuner/AGENTS.md
+    manifest: Agents/Tuner/agent.yaml
+
 # Task board — replace with tasks for the active project.
 # Each task must have: id, title, assigned agent(s), depends_on, and status.
 # Coder tasks that share a wave also need disjoint files (and usually task).

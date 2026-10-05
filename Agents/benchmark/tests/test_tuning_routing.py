@@ -15,6 +15,7 @@ from swarm_sdk.tuning.routing import (
     score_routing,
     split_cases,
     tune_routing,
+    tuning_objective,
 )
 
 _AGENTS = Path("Agents")
@@ -81,7 +82,9 @@ def test_tune_routing_rejects_unknown_labels_and_too_few_cases(tiny_agents: Path
 
 def test_tune_routing_never_loses_to_the_baseline(tiny_agents: Path) -> None:
     result = tune_routing(tiny_agents, _tiny_cases(), n_trials=6, seed=0)
-    assert result.best_train.objective >= result.baseline_train.objective
+    assert tuning_objective(result.best_train, result.best.k) >= tuning_objective(
+        result.baseline_train, 4
+    )
     assert result.best_holdout.n == 2
 
 
@@ -90,5 +93,13 @@ def test_tune_routing_on_the_real_agents_is_reproducible() -> None:
     first = tune_routing(_AGENTS, cases, n_trials=12, seed=0)
     second = tune_routing(_AGENTS, cases, n_trials=12, seed=0)
     assert first == second
-    assert first.best_train.objective >= first.baseline_train.objective
+    assert tuning_objective(first.best_train, first.best.k) >= tuning_objective(
+        first.baseline_train, 4
+    )
     assert first.best_holdout.n == len(cases) // 2
+
+
+def test_tuning_objective_penalizes_deeper_retrieval() -> None:
+    score = RoutingScore(top1=0.5, recall_at_k=1.0, n=2)
+    assert tuning_objective(score, 1) > tuning_objective(score, 8)
+    assert tuning_objective(score, 1) == pytest.approx(0.6 - 0.01)

@@ -21,6 +21,7 @@ __all__ = [
     "score_routing",
     "split_cases",
     "tune_routing",
+    "tuning_objective",
 ]
 
 logger = logging.getLogger(__name__)
@@ -105,6 +106,11 @@ def split_cases(
     return list(cases[0::2]), list(cases[1::2])
 
 
+def tuning_objective(score: RoutingScore, k: int) -> float:
+    """Return the value the tuner maximizes: ``score.objective`` minus a small cost per ``k``."""
+    return score.objective - _K_PENALTY * k
+
+
 def _params(values: Mapping[str, ParamValue]) -> IndexParams:
     """Build ``IndexParams`` from a tuner assignment."""
     return IndexParams(
@@ -139,7 +145,7 @@ def tune_routing(
         """Score one parameter assignment on the train split."""
         params = _params(values)
         score = score_routing(AgentPromptIndex.build(agents_dir, params=params), train, params.k)
-        return score.objective - _K_PENALTY * params.k
+        return tuning_objective(score, params.k)
 
     result = tune(_SPACE, evaluate, n_trials=n_trials, seed=seed, warm_start=[asdict(baseline)])
     best = _params(result.best_params)
