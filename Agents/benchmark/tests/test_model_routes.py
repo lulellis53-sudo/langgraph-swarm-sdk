@@ -110,16 +110,16 @@ def test_second_key_alias_keeps_the_upstream_model_id(
     chat.load_chat_model("google:gemini-3.8-flash-b")
     chat.load_chat_model("moonshot:kimi-k2.7-code-b")
     assert fake_init[0] == ("google_genai:gemini-3.8-flash", {"google_api_key": "g2"})
+    model, kwargs = fake_init[1]
+    assert model == "kimi-k2.7-code"
+    assert kwargs["base_url"] == "https://api.moonshot.ai/v1"
+    assert kwargs["api_key"] == "k2"
 
 
 def test_gemini_route_accepts_google_api_key(fake_init, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(vault, "get", lambda name: "g" if name == "GOOGLE_API_KEY" else None)
     chat.load_chat_model("google:gemini-3.8-flash")
     assert fake_init == [("google_genai:gemini-3.8-flash", {"google_api_key": "g"})]
-    model, kwargs = fake_init[1]
-    assert model == "kimi-k2.7-code"
-    assert kwargs["base_url"] == "https://api.moonshot.ai/v1"
-    assert kwargs["api_key"] == "k2"
 
 
 def test_mistral_keys_stay_on_their_own_models(fake_init, monkeypatch: pytest.MonkeyPatch) -> None:
