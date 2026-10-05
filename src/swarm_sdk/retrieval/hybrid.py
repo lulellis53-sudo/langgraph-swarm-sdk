@@ -1,4 +1,4 @@
-"""Hybrid retrieval: dense vectors + BM25 keywords, merged with reciprocal rank fusion.
+r"""Hybrid retrieval: dense vectors + BM25 keywords, merged with reciprocal rank fusion.
 
 BM25 scores keyword matches and RRF merges rankings from different sources without
 requiring score calibration.

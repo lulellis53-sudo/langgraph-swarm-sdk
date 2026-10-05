@@ -25,7 +25,9 @@ class Embedder(Protocol):
 
     dim: int
 
-    def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray: ...
+    def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:
+        """Return one unit-normalized float32 row per text."""
+        ...
 
 
 def unit(vector: np.ndarray) -> np.ndarray:
@@ -106,11 +108,13 @@ class HashEmbedder:
     """Deterministic unit vectors for tests and for machines without FastEmbed."""
 
     def __init__(self, dim: int = 384, batch_size: int = 64, model_name: str = "") -> None:
+        """Store vector size, batch size, and whether ``model_name`` is BGE-style."""
         self.dim = dim
         self.batch_size = batch_size
         self._bge = _bge_style(model_name)
 
     def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:
+        """Return deterministic unit vectors hashed from the prepared texts."""
         prepared = _prepare_texts(texts, query=query, bge_style=self._bge)
         rows: list[np.ndarray] = []
         for batch in _batched(prepared, self.batch_size):
@@ -136,6 +140,7 @@ class FastEmbedder:
         dim: int = 384,
         batch_size: int = 64,
     ) -> None:
+        """Store FastEmbed model name, output dim, and batch size."""
         self.model_name = model_name
         self.dim = dim
         self.batch_size = batch_size
@@ -143,6 +148,7 @@ class FastEmbedder:
         self._model: TextEmbeddingProto | None = None
 
     def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:
+        """Embed prepared texts with FastEmbed and stack the rows."""
         prepared = _prepare_texts(texts, query=query, bge_style=self._bge)
         model = self._load()
         rows: list[np.ndarray] = []
@@ -181,6 +187,7 @@ class LlamaCppEmbedder:
         n_ctx: int = 8192,
         **kwargs: object,
     ) -> None:
+        """Store the GGUF path and llama.cpp load options."""
         self.model_path = model_path
         self.dim = dim
         self.batch_size = batch_size
@@ -189,6 +196,7 @@ class LlamaCppEmbedder:
         self._model: _LlamaEmbedProto | None = None
 
     def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:
+        """Embed prepared texts with a local llama.cpp GGUF model."""
         if not texts:
             return np.zeros((0, self.dim), dtype=np.float32)
         model = self._load()
@@ -263,6 +271,7 @@ class LlamaServerEmbedder:
         batch_size: int = 8,
         timeout_s: float = 30.0,
     ) -> None:
+        """Validate a loopback embedding server URL and store request settings."""
         parts = urlsplit(base_url)
         if parts.scheme != "http" or parts.hostname not in _LOOPBACK_HOSTS:
             raise ValueError(f"llama-server URL must be an http loopback address: {base_url!r}")
@@ -273,6 +282,7 @@ class LlamaServerEmbedder:
         self.timeout_s = timeout_s
 
     def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:
+        """POST prepared texts to the loopback ``/v1/embeddings`` route."""
         if not texts:
             return np.zeros((0, self.dim), dtype=np.float32)
         prepared = _prepare_texts(texts, query=query, bge_style=_bge_style(self.model))
