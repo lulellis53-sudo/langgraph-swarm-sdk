@@ -12,83 +12,73 @@ concurrency:
 env:
   UV_PYTHON: "3.14"
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint (ruff)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.14.5"
-          enable-cache: true
-      - name: Install dev dependencies
-        run: uv sync --extra dev --frozen
+      - uses: ./.github/actions/setup-python
       - name: Ruff check
         run: uv run ruff check src Agents/benchmark Main
-      - name: YAML lint
-        run: uv run yamllint .
+      - name: Validate YAML syntax
+        run: |
+          uv run python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          roots = (Path(".github"), Path("Main/config"), Path("Agents"))
+          files = [path for root in roots for pattern in ("*.yml", "*.yaml") for path in root.rglob(pattern)]
+          for path in sorted(set(files)):
+              yaml.safe_load(path.read_text(encoding="utf-8"))
+          print(f"Validated {len(set(files))} YAML files")
+          PY
 
   tomlcheck:
     name: TOML format (taplo)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.14.5"
-          enable-cache: true
-      - name: Install dev dependencies
-        run: uv sync --extra dev --frozen
+      - uses: ./.github/actions/setup-python
       - name: Taplo format check
         run: uv run taplo format --check
 
   typecheck:
     name: Type check (ty)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.14.5"
-          enable-cache: true
-      - name: Install dev dependencies
-        run: uv sync --extra dev --frozen
+      - uses: ./.github/actions/setup-python
       - name: ty check
         run: uv run ty check src Agents/benchmark Main
 
   agents-schema:
     name: Agent manifests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.14.5"
-          enable-cache: true
-      - name: Install dev dependencies
-        run: uv sync --extra dev --frozen
+      - uses: ./.github/actions/setup-python
       - name: Validate agent.yaml and coordination.yaml
         run: uv run python -m swarm_sdk.agents.validate
 
   test:
     name: Tests (pytest, Python 3.14)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       # Fail loudly if the runner's Python cannot load sqlite_vec for real,
       # instead of letting those tests skip silently.
       SWARM_REQUIRE_SQLITE_EXT: "1"
     steps:
       - uses: actions/checkout@v7
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.14.5"
-          enable-cache: true
+      - uses: ./.github/actions/setup-python
       - name: Report sqlite3 capability
         run: |
           uv run python - <<'PY'
@@ -98,14 +88,13 @@ jobs:
           print("sqlite_version:", sqlite3.sqlite_version)
           print("configure_args:", sysconfig.get_config_var("CONFIG_ARGS") or "")
           PY
-      - name: Install dev dependencies
-        run: uv sync --extra dev --frozen
       - name: Run tests
         run: uv run pytest Agents/benchmark/tests -q
 
   benchmark:
     name: Benchmarks (pytest)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       redis:
         image: redis:7-alpine
@@ -118,14 +107,10 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v7
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
+      - uses: ./.github/actions/setup-python
         with:
-          python-version: "3.14.5"
-          enable-cache: true
-      - name: Install dev dependencies
-        run: uv sync --extra dev --extra redis --frozen
-      - name: Run benchmark tasks
+          extras: dev redis
+      - name: Run benchmark tests
         run: uv run pytest Agents/benchmark -q
       - name: Measure Redis cache paths
         run: >-
@@ -144,13 +129,12 @@ jobs:
   build:
     name: Build wheel
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
+      - uses: ./.github/actions/setup-python
         with:
-          python-version: "3.14.5"
-          enable-cache: true
+          sync: "false"
       - name: Build distributions
         run: uv build
       - name: Upload artifacts

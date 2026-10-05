@@ -5,19 +5,17 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: "Gate: tests"
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.14"
-          enable-cache: true
-      - name: Install dev dependencies
-        run: uv sync --extra dev --frozen
+      - uses: ./.github/actions/setup-python
       - name: Run tests
         run: uv run pytest Agents/benchmark/tests -q
 
@@ -25,13 +23,12 @@ jobs:
     name: Build distributions
     runs-on: ubuntu-latest
     needs: test
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
+      - uses: ./.github/actions/setup-python
         with:
-          python-version: "3.14"
-          enable-cache: true
+          sync: "false"
       - name: Build distributions
         run: uv build
       - name: Check metadata freshness
@@ -53,6 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     environment: pypi
+    timeout-minutes: 10
     permissions:
       # Required for PyPI Trusted Publishing (OIDC)
       id-token: write
