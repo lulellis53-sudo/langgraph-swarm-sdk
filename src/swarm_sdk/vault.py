@@ -50,6 +50,21 @@ def _keychain_args() -> list[str]:
     return [str(Path(path).expanduser())] if path else []
 
 
+def _api_keychain_args() -> list[str]:
+    """APIKEYCHAIN path when that file exists.
+
+    Items there use the service ``APIKEYCHAIN/<NAME>``. ``KEYS_KEYCHAIN``
+    overrides the default ``~/Library/Keychains/APIKEYCHAIN.keychain-db``.
+    """
+    raw = os.environ.get("KEYS_KEYCHAIN")
+    path = (
+        Path(raw).expanduser()
+        if raw
+        else Path.home() / "Library" / "Keychains" / "APIKEYCHAIN.keychain-db"
+    )
+    return [str(path)] if path.is_file() else []
+
+
 class VaultError(ValueError):
     """Raised for an invalid secret name (never carries a secret value)."""
 
@@ -173,6 +188,20 @@ def get_with_source(
         ]
     ):
         return value, "keychain"
+    api_keychain = _api_keychain_args()
+    if api_keychain and (
+        value := run(
+            [
+                "security",
+                "find-generic-password",
+                "-s",
+                f"APIKEYCHAIN/{name}",
+                "-w",
+                *api_keychain,
+            ]
+        )
+    ):
+        return value, "apikeychain"
     if value := _from_dotenv(name, dotenv or Path.home() / ".env"):
         logger.warning(
             "secret %s read from ~/.env; migrate it with `swarm-vault set %s`", name, name

@@ -365,7 +365,7 @@ The repository registry actively references 35 credentials across `swarm.yaml`, 
 | :--- | :--- | :--- | :--- |
 | **OpenAI** | `OPENAI_API_KEY` | `uv run swarm-vault set OPENAI_API_KEY` | GPT-4o, GPT-4o-mini router models |
 | **Anthropic** | `ANTHROPIC_API_KEY` | `uv run swarm-vault set ANTHROPIC_API_KEY` | Claude 3.5 Sonnet, Claude 3.7 Sonnet |
-| **Google Gemini** | `GEMINI_API_KEY` | `uv run swarm-vault set GEMINI_API_KEY` | Gemini 2.5 Pro / Flash models |
+| **Google Gemini** | `GEMINI_API_KEY` | `uv run swarm-vault set GEMINI_API_KEY` | Gemini 3.8 Flash. `GOOGLE_API_KEY` is accepted when the Gemini names are unset |
 | **Groq** | `GROQ_API_KEY` | `uv run swarm-vault set GROQ_API_KEY` | Llama-3.3-70b-versatile, DeepSeek |
 | **Groq Backup** | `GROQ_API_KEY_2` | `uv run swarm-vault set GROQ_API_KEY_2` | Failover pool for Groq endpoints |
 | **Cohere Primary** | `COHERE_API_KEY_1` | `uv run swarm-vault set COHERE_API_KEY_1` | Command-R, Cohere rerankers |
@@ -396,8 +396,10 @@ The repository registry actively references 35 credentials across `swarm.yaml`, 
 | **Ollama Failover URL**| `OLLAMA_2_BASE_URL` | `uv run swarm-vault set OLLAMA_2_BASE_URL` | Secondary Ollama node URL |
 | **Ollama Cloud** | `OLLAMA_CLOUD_API_KEY` | `uv run swarm-vault set OLLAMA_CLOUD_API_KEY` | Managed Ollama Cloud token |
 | **Ollama Cloud URL** | `OLLAMA_CLOUD_BASE_URL` | `uv run swarm-vault set OLLAMA_CLOUD_BASE_URL` | Managed Ollama Cloud endpoint |
-| **ZAI / Zhipu** | `ZAI_API_KEY` | `uv run swarm-vault set ZAI_API_KEY` | GLM model API token |
+| **Z.ai (Zhipu)** | `ZHIPU_API_KEY` | `uv run swarm-vault set ZHIPU_API_KEY` | GLM 5.2 API key, not OAuth. `ZAI_API_KEY` is accepted when this name is unset |
 | **ZAI Base URL** | `ZAI_BASE_URL` | `uv run swarm-vault set ZAI_BASE_URL` | GLM base endpoint URL |
+| **Atlas Cloud** | `ATLASCLOUD_API_KEY` | `uv run swarm-vault set ATLASCLOUD_API_KEY` | Free chat model `dots-studio/dots-3-note-prev-free` ($0/$0 on 2026-10-05). No web-search tool |
+| **Google API key** | `GOOGLE_API_KEY` | `uv run swarm-vault set GOOGLE_API_KEY` | Alternate name for Gemini routes and Google Search grounding |
 
 ---
 

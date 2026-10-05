@@ -87,7 +87,17 @@ def _route_index() -> dict[str, Route]:
 # OpenAI-compatible providers: their routes carry a ``base_url_env`` in the
 # registry instead of a native LangChain integration.
 _COMPAT_PROVIDERS = frozenset(
-    {"zai", "minimax", "moonshot", "xiaomi", "nvidia", "openrouter", "sambanova", "fireworks"}
+    {
+        "zai",
+        "minimax",
+        "moonshot",
+        "xiaomi",
+        "nvidia",
+        "openrouter",
+        "sambanova",
+        "fireworks",
+        "atlascloud",
+    }
 )
 # Public OpenAI-compatible hosts. A vault or env base URL still wins.
 _DEFAULT_BASE_URLS = {
@@ -97,6 +107,7 @@ _DEFAULT_BASE_URLS = {
     "zai": "https://api.z.ai/api/paas/v4",
     "minimax": "https://api.minimax.io/v1",
     "moonshot": "https://api.moonshot.ai/v1",
+    "atlascloud": "https://api.atlascloud.ai/v1",
 }
 
 _KEY_KWARG = {

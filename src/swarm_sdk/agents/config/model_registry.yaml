@@ -29,13 +29,13 @@ providers:
 
   - name: zai:glm-5.2
     provider: zai
-    api_key_env: ZAI_API_KEY
-    api_key_fallbacks: [ZHIPU_API_KEY]
+    api_key_env: ZHIPU_API_KEY   # Z.ai is Zhipu. ZAI_API_KEY is the alias.
+    api_key_fallbacks: [ZAI_API_KEY]
     base_url_env: ZAI_BASE_URL   # https://api.z.ai/api/paas/v4
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 5
-    evidence: user (z.ai medium tier; glm-5.2 maps medium->high server-side)
+    evidence: user (Z.ai / Zhipu API key, not OAuth; glm-5.2 maps medium->high server-side)
 
   - name: anthropic:claude-sonnet-4-5
     provider: anthropic
@@ -68,7 +68,7 @@ providers:
   - name: google:gemini-3.8-flash
     provider: google
     api_key_env: GEMINI_API_KEY
-    api_key_fallbacks: [GEMINI_API_KEY_DUPLICATE_1]
+    api_key_fallbacks: [GEMINI_API_KEY_DUPLICATE_1, GOOGLE_API_KEY]
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 12
@@ -107,7 +107,7 @@ providers:
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 20
-    evidence: user (2.7 high speed); model ID assumed - verify in Minimax console
+    evidence: user (MINIMAX_API_KEY, not OAuth; 2.7 high speed); model ID assumed - verify in Minimax console
 
   - name: openai:gpt-6-luna
     provider: codex
@@ -126,6 +126,17 @@ providers:
     evidence: user (Claude Code API, Sonnet 4.6); inactive until CLAUDE_CODE_API_KEY is stored
 
   # ---- Free: low token usage, low effort ----
+  # GET https://api.atlascloud.ai/v1/models on 2026-10-05: one $0 text model.
+  # Chat only. That catalog row has no web-search tool.
+  - name: atlascloud:dots-studio/dots-3-note-prev-free
+    provider: atlascloud
+    api_key_env: ATLASCLOUD_API_KEY
+    base_url_env: ATLASCLOUD_BASE_URL   # https://api.atlascloud.ai/v1
+    effort: low
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 36
+    evidence: verified live 2026-10-05 (only $0/$0 text id; 512000 context; no web-search tool)
+
   - name: nvidia:nemotron-3.5-lightning-30b-a3b
     provider: nvidia
     api_key_env: NVIDIA_API_KEY

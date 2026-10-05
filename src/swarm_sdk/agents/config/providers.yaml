@@ -16,3 +16,7 @@ providers:
     models: ["groq:llama-3.3-70b-versatile"]
     api_key_env: GROQ_API_KEY
     priority: 30
+  - name: atlascloud
+    models: ["atlascloud:dots-studio/dots-3-note-prev-free"]
+    api_key_env: ATLASCLOUD_API_KEY
+    priority: 45
