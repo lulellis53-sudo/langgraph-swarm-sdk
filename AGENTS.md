@@ -13,9 +13,10 @@ Instructions for humans and AI assistants working in this repository. Read this 
 | [Benchmarks](#topic-benchmarks)                           | Task layout; SQL Pro suite                                                       |
 | [Security and compliance](#topic-security-and-compliance) | Secrets; network exfiltration                                                    |
 | [Git and documentation](#topic-git-and-documentation)     | Commits, README, dependencies                                                    |
-| [Python Static Template](#topic-python-static-template)   | Lite + full `.py` scaffolds; agent contract; link only (no inline paste) |
+| [Python Static Template](#topic-python-static-template)   | Lite + full `.py` scaffolds; agent contract; decorator/class rules; link only |
+| [Python Function Template](#topic-python-function-template-strict) | **Locked**: five PEPs, docstring + type-hint template for every function |
 
-Human-oriented overview: `[README.md](README.md)`.
+Human-oriented overview: [README.md](README.md).
 
 ---
 
@@ -28,9 +29,9 @@ Human-oriented overview: `[README.md](README.md)`.
 ### Subtopic: Two kinds of “agents”
 
 1. **Coding assistant (you in Cursor)** — edits this repo, runs tests, opens PRs. Follow the sections below.
-2. **Swarm specialists (**`Agents/`***)** — fictional roles (Coder, Tester, Security, …) with JSON output contracts for orchestrated tasks. When emulating a role, read that folder’s `[AGENTS.md](Agents/Coder/AGENTS.md)` and obey its contract. When doing general repo work, use this file and the Coder-style norms (minimal diff, tests, no secrets).
+2. **Swarm specialists (`Agents/`)** — fictional roles (Coder, Tester, Security, …) with JSON output contracts for orchestrated tasks. When emulating a role, read that folder’s [AGENTS.md](Agents/Coder/AGENTS.md) and obey its contract. When doing general repo work, use this file and the Coder-style norms (minimal diff, tests, no secrets).
 
-For swarm coordination: start from `[Agents/SKILLS.md](Agents/SKILLS.md)` and `[Agents/coordination.yaml](Agents/coordination.yaml)`.
+For swarm coordination: start from [Agents/SKILLS.md](Agents/SKILLS.md) and [Agents/coordination.yaml](Agents/coordination.yaml).
 
 ---
 
@@ -40,36 +41,36 @@ For swarm coordination: start from `[Agents/SKILLS.md](Agents/SKILLS.md)` and `[
 
 | Path                                                         | Purpose                                                                                                  |
 | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| `[src/swarm_sdk/](src/swarm_sdk/)`                           | Library: swarm runtime, cache, memory, routing, API/gRPC                                                 |
-| `[src/swarm_sdk/orchestrator/](src/swarm_sdk/orchestrator/)` | Parallel plan engine: `spawn` (goal → structured plan) + `run_plan` (LangGraph dependency waves)          |
-| `[src/swarm_sdk/server/](src/swarm_sdk/server/)`             | LangGraph Server graph factories referenced by `[langgraph.json](langgraph.json)` (`swarm`, `plan`)       |
-| `[src/swarm_sdk/serving/client.py](src/swarm_sdk/serving/client.py)` | `langgraph_sdk` client; `SWARM_SERVER_URL` delegates runs to a LangGraph Server                    |
-| `[langgraph.json](langgraph.json)`                           | LangGraph Server manifest mapping the `swarm` and `plan` graph ids to factory functions                   |
-| `[src/swarm_sdk/pb/](src/swarm_sdk/pb/)`                     | gRPC: `swarm.proto` + generated `swarm_pb2*` stubs                                                       |
-| `[Main/config/swarm.yaml](Main/config/swarm.yaml)`           | Provider registry, routes, defaults (`SWARM_*` env overrides)                                            |
-| `[Main/](Main/)`                                             | Embeddings/vectorstore re-exports, YAML, Essentials                                                      |
-| `[WebSearch/](WebSearch/)`                                   | Git worktree (`feature/websearch`): search pipeline — see `[WebSearch/PIPELINE.md](WebSearch/PIPELINE.md)` |
-| `[Prediction/](../Swarm-Prediction/Prediction/)`               | Git worktree (`feat/prediction-engine`): mlforecast engine — sibling `../Swarm-Prediction` |
-| `[Newsletter/](../Newsletter/Newsletter/)`                   | Git worktree (`feat/newsletter`): offline digest MVP — sibling `../Newsletter` |
-| `[Agents/](Agents/)`                                         | Specialist **swarm personas** (`AGENTS.md` + `agent.yaml` per role)                                      |
-| `[Agents/coordination.yaml](Agents/coordination.yaml)`       | Task graph for multi-agent workflows                                                                     |
-| `[Agents/SKILLS.md](Agents/SKILLS.md)`                       | Specialist catalog: persona → handoff node/plan-worker wiring, how to add a specialist                    |
-| `[Agents/benchmark/](Agents/benchmark/)`                     | Token/retrieval/swarm benchmarks; unit/integration tests in `[Agents/benchmark/tests/](Agents/benchmark/tests/)` (incl. `[Agents/benchmark/sql_pro/](Agents/benchmark/sql_pro/)`)  |
-| `[.cursor/commands/](.cursor/commands/)`                     | Cursor slash commands (e.g. `/sql-pro`)                                                                  |
-| `[.cursor/AGENTS.md](.cursor/AGENTS.md)`                     | Cursor agent guidelines, folder design, modus operandi                                                   |
-| `[.cursor/rules/](.cursor/rules/)`                           | Project `.mdc` rules (core, Context7-after-edit, Python, protobuf, …)                                    |
-| `[.cursor/templates/](.cursor/templates/)`                   | Static scaffolds — `[python_static_template_lite.py](.cursor/templates/python_static_template_lite.py)` or full `[python_static_template.py](.cursor/templates/python_static_template.py)` |
-| `[.vscode/](.vscode/)`                                       | Workspace settings + extension recommendations (Cursor/VS Code)                                          |
-| `[.cursor/extensions.txt](.cursor/extensions.txt)`           | Install list mirroring recommended extensions                                                            |
+| [src/swarm_sdk/](src/swarm_sdk/)                           | Library: swarm runtime, cache, memory, routing, API/gRPC                                                 |
+| [src/swarm_sdk/orchestrator/](src/swarm_sdk/orchestrator/) | Parallel plan engine: `spawn` (goal → structured plan) + `run_plan` (LangGraph dependency waves)          |
+| [src/swarm_sdk/server/](src/swarm_sdk/server/)             | LangGraph Server graph factories referenced by [langgraph.json](langgraph.json) (`swarm`, `plan`)       |
+| [src/swarm_sdk/serving/client.py](src/swarm_sdk/serving/client.py) | `langgraph_sdk` client; `SWARM_SERVER_URL` delegates runs to a LangGraph Server                    |
+| [langgraph.json](langgraph.json)                           | LangGraph Server manifest mapping the `swarm` and `plan` graph ids to factory functions                   |
+| [src/swarm_sdk/pb/](src/swarm_sdk/pb/)                     | gRPC: `swarm.proto` + generated `swarm_pb2*` stubs                                                       |
+| [Main/config/swarm.yaml](Main/config/swarm.yaml)           | Provider registry, routes, defaults (`SWARM_*` env overrides)                                            |
+| [Main/](Main/)                                             | Embeddings/vectorstore re-exports, YAML, Essentials                                                      |
+| [WebSearch/](WebSearch/)                                   | Git worktree (`feature/websearch`): search pipeline — see [WebSearch/PIPELINE.md](WebSearch/PIPELINE.md) |
+| [Prediction/](../Swarm-Prediction/Prediction/)               | Git worktree (`feat/prediction-engine`): mlforecast engine — sibling `../Swarm-Prediction` |
+| [Newsletter/](../Newsletter/Newsletter/)                   | Git worktree (`feat/newsletter`): offline digest MVP — sibling `../Newsletter` |
+| [Agents/](Agents/)                                         | Specialist **swarm personas** (`AGENTS.md` + `agent.yaml` per role)                                      |
+| [Agents/coordination.yaml](Agents/coordination.yaml)       | Task graph for multi-agent workflows                                                                     |
+| [Agents/SKILLS.md](Agents/SKILLS.md)                       | Specialist catalog: persona → handoff node/plan-worker wiring, how to add a specialist                    |
+| [Agents/benchmark/](Agents/benchmark/)                     | Token/retrieval/swarm benchmarks; unit/integration tests in [Agents/benchmark/tests/](Agents/benchmark/tests/) (incl. [Agents/benchmark/sql_pro/](Agents/benchmark/sql_pro/))  |
+| [.cursor/commands/](.cursor/commands/)                     | Cursor slash commands (e.g. `/sql-pro`)                                                                  |
+| [.cursor/AGENTS.md](.cursor/AGENTS.md)                     | Cursor agent guidelines, folder design, modus operandi                                                   |
+| [.cursor/rules/](.cursor/rules/)                           | Project `.mdc` rules (core, Context7-after-edit, Python, protobuf, …)                                    |
+| [.cursor/templates/](.cursor/templates/)                   | Static scaffolds — [python_static_template_lite.py](.cursor/templates/python_static_template_lite.py) or full [python_static_template.py](.cursor/templates/python_static_template.py) |
+| [.vscode/](.vscode/)                                       | Workspace settings + extension recommendations (Cursor/VS Code)                                          |
+| [.cursor/extensions.txt](.cursor/extensions.txt)           | Install list mirroring recommended extensions                                                            |
 
-Edit `[src/swarm_sdk/pb/swarm.proto](src/swarm_sdk/pb/swarm.proto)` then `uv run python -m swarm_sdk.pb` to regenerate stubs. Never commit `.env`.
+Edit [src/swarm_sdk/pb/swarm.proto](src/swarm_sdk/pb/swarm.proto) then `uv run python -m swarm_sdk.pb` to regenerate stubs. Never commit `.env`.
 
 ### Subtopic: Quick links
 
-- Agent index: `[Agents/SKILLS.md](Agents/SKILLS.md)`
-- Workspace layout: `[codeworkspace/swarm.code-workspace](codeworkspace/swarm.code-workspace)`
-- Benchmarks: `[Agents/benchmark/README.md](Agents/benchmark/README.md)`
-- Toolchains and CPython support: `[Toolchain.md](Toolchain.md)`
+- Agent index: [Agents/SKILLS.md](Agents/SKILLS.md)
+- Workspace layout: [codeworkspace/swarm.code-workspace](codeworkspace/swarm.code-workspace)
+- Benchmarks: [Agents/benchmark/README.md](Agents/benchmark/README.md)
+- Toolchains and CPython support: [Toolchain.md](Toolchain.md)
 - Static template: [@.cursor/templates/python_static_template.py](.cursor/templates/python_static_template.py)
 
 ---
@@ -86,7 +87,7 @@ Use `uv run …` so commands use the project virtualenv.
 ### Subtopic: Services
 
 - **Run services:** `uv run swarm-api`, `uv run swarm-grpc`.
-- **LangGraph Server:** `[langgraph.json](langgraph.json)` serves the `swarm` (handoff graph) and `plan` (spawn → wave engine) graphs; factories in `[src/swarm_sdk/server/graphs.py](src/swarm_sdk/server/graphs.py)`. Deploy with `langgraph up` (the pinned `langgraph-cli` for Python 3.14 has no in-memory `dev` server), then call it with `SWARM_SERVER_URL=http://127.0.0.1:2024` — `SwarmSDK.run` delegates to the server via `langgraph_sdk` (`swarm_sdk.serving.client`). `swarm-api`/`swarm-grpc` remain the in-process serving paths.
+- **LangGraph Server:** [langgraph.json](langgraph.json) serves the `swarm` (handoff graph) and `plan` (spawn → wave engine) graphs; factories in [src/swarm_sdk/server/graphs.py](src/swarm_sdk/server/graphs.py). Deploy with `langgraph up` (the pinned `langgraph-cli` for Python 3.14 has no in-memory `dev` server), then call it with `SWARM_SERVER_URL=http://127.0.0.1:2024` — `SwarmSDK.run` delegates to the server via `langgraph_sdk` (`swarm_sdk.serving.client`). `swarm-api`/`swarm-grpc` remain the in-process serving paths.
 
 ### Subtopic: Quality gate
 
@@ -102,11 +103,11 @@ uv run python -m swarm_sdk.agents.validate
 ### Subtopic: Colab
 
 - **Colab** (`google.colab`): open a `.ipynb` → **Select Kernel** → **Colab** → sign in with Google. Requires `uv sync --extra jupyter` for local kernels; Colab runs remotely.
-- **LangChain Codex routes:** set `CODEX_OAUTH_TOKEN` in `.env` (see `[Main/config/model_registry.yaml](Main/config/model_registry.yaml)`).
+- **LangChain Codex routes:** set `CODEX_OAUTH_TOKEN` in `.env` (see [Main/config/model_registry.yaml](Main/config/model_registry.yaml)).
 
 ### Subtopic: Editor extensions
 
-- Cursor/VS Code will prompt from `[.vscode/extensions.json](.vscode/extensions.json)`, or `xargs -n1 code --install-extension < .cursor/extensions.txt`.
+- Cursor/VS Code will prompt from [.vscode/extensions.json](.vscode/extensions.json), or `xargs -n1 code --install-extension < .cursor/extensions.txt`.
 
 ---
 
@@ -118,15 +119,15 @@ uv run python -m swarm_sdk.agents.validate
 2. **Smallest correct diff** — no drive-by refactors, new abstractions, or dependencies unless the task requires them.
 3. **Match conventions** — Ruff (`line-length = 100`, py314), existing naming and patterns in `src/swarm_sdk/`.
 4. **Prove it** — failing test → fix → full [quality gate](#subtopic-quality-gate). Do not weaken lint/type checks without a named rule and reason.
-5. **Config** — prefer `[Main/config/swarm.yaml](Main/config/swarm.yaml)` and agent manifests under `Agents/*/agent.yaml`; document new env vars in README or agent docs.
-6. **Protobuf** — edit `[src/swarm_sdk/pb/swarm.proto](src/swarm_sdk/pb/swarm.proto)`, then regenerate with `uv run python -m swarm_sdk.pb`. Do not hand-edit `swarm_pb2`* stubs.
-7. **New Python modules** — lite or full template (see [Python Static Template](#topic-python-static-template)); always `from __future__ import annotations` first.
+5. **Config** — prefer [Main/config/swarm.yaml](Main/config/swarm.yaml) and agent manifests under `Agents/*/agent.yaml`; document new env vars in README or agent docs.
+6. **Protobuf** — edit [src/swarm_sdk/pb/swarm.proto](src/swarm_sdk/pb/swarm.proto), then regenerate with `uv run python -m swarm_sdk.pb`. Do not hand-edit `swarm_pb2`* stubs.
+7. **New Python modules** — lite or full template (see [Python Static Template](#topic-python-static-template)); modules copied from a template keep its `from __future__ import annotations`. Function rules: [Python Function Template](#topic-python-function-template-strict).
 
 ### Subtopic: When stuck
 
 - Report `blocked` with the exact command output after one reasonable retry.
 - Prefer fixing the environment (uv sync, missing extra) over skipping tests.
-- For provider/model behavior, read `[Main/config/swarm.yaml](Main/config/swarm.yaml)` and `[src/swarm_sdk/model_select.py](src/swarm_sdk/model_select.py)`.
+- For provider/model behavior, read [Main/config/swarm.yaml](Main/config/swarm.yaml) and [src/swarm_sdk/models/selection.py](src/swarm_sdk/models/selection.py).
 
 ---
 
@@ -134,11 +135,11 @@ uv run python -m swarm_sdk.agents.validate
 
 ### Subtopic: Benchmark layout
 
-- Benchmark tasks live under `[Agents/benchmark/Tasks/](Agents/benchmark/Tasks/)`; results go to `Agents/benchmark/results/` (gitignored).
+- Benchmark tasks live under [Agents/benchmark/Tasks/](Agents/benchmark/Tasks/); results go to `Agents/benchmark/results/` (gitignored).
 
 ### Subtopic: SQL Pro
 
-- SQL Pro suite: `[Agents/benchmark/sql_pro/suite.yaml](Agents/benchmark/sql_pro/suite.yaml)`, CLI `uv run python -m benchmark.sql_pro.run`, Cursor command `[.cursor/commands/sql-pro.md](.cursor/commands/sql-pro.md)`.
+- SQL Pro suite: [Agents/benchmark/sql_pro/suite.yaml](Agents/benchmark/sql_pro/suite.yaml), CLI `uv run python -m benchmark.sql_pro.run`, Cursor command [.cursor/commands/sql-pro.md](.cursor/commands/sql-pro.md).
 
 ---
 
@@ -149,7 +150,7 @@ uv run python -m swarm_sdk.agents.validate
 - Never commit `.env`, API keys, tokens, or credentials.
 - Secrets live only in the macOS Keychain (`uv run swarm-vault set NAME`) or the gitignored, owner-only `.env` (`chmod 600`). Never add sudo, group or world read access to it.
 - YAML (`agent.yaml`, `model_registry.yaml`, `coordination.yaml`, `swarm.yaml`) holds env-var **names** only (`api_key_env: ZAI_API_KEY`), never values. `test_yaml_never_holds_secret_values` enforces this; keep it green.
-- Never paste secret values into issues, logs, or agent output (report path/pattern only — see `[Agents/Security/AGENTS.md](Agents/Security/AGENTS.md)`).
+- Never paste secret values into issues, logs, or agent output (report path/pattern only — see [Agents/Security/AGENTS.md](Agents/Security/AGENTS.md)).
 
 ### Subtopic: Network
 
@@ -162,11 +163,11 @@ uv run python -m swarm_sdk.agents.validate
 ### Subtopic: Commits
 
 - **Commits:** only when the user asks; do not force-push `main`.
-- **Branches / worktrees:** use only the three fixed agent lanes plus `integration/all-branches` at repo root. See [`.cursor/skills/multi-lane-worktrees/SKILL.md`](.cursor/skills/multi-lane-worktrees/SKILL.md).
+- **Branches / worktrees:** four checkouts only (three lanes + `integration/all-branches` at repo root). Canonical map: [`.cursor/skills/multi-lane-worktrees/SKILL.md`](.cursor/skills/multi-lane-worktrees/SKILL.md).
 
 ### Subtopic: Documentation
 
-- **Docs:** update `[README.md](README.md)` when behavior or install steps change; keep agent-specific rules in `Agents/*/AGENTS.md`.
+- **Docs:** update [README.md](README.md) when behavior or install steps change; keep agent-specific rules in `Agents/*/AGENTS.md`.
 
 ### Subtopic: Dependencies
 
@@ -181,13 +182,9 @@ Default for small modules (lite): [@.cursor/templates/python_static_template_lit
 
 Rule: [`.cursor/rules/python-static-template.mdc`](.cursor/rules/python-static-template.mdc). Ops: [`.cursor/AGENTS.md`](.cursor/AGENTS.md). **Do not** paste the full template into this file — single source of truth is the `.py` files (CI enforces).
 
-### Subtopic: Mandatory first import
+### Subtopic: First import
 
-Module docstring, then immediately:
-
-```python
-from __future__ import annotations
-```
+The templates open with a module docstring, then `from __future__ import annotations`. Keep it in modules copied from a template and do not strip it from existing files. On the project's Python (`>=3.14.5`) annotations are already evaluated lazily (PEP 649/749), so the import is a no-op there and is not needed in code written outside the templates.
 
 ### Subtopic: Agent contract
 
@@ -223,9 +220,89 @@ Do **not** import template files from runtime package code — copy and trim.
 - `@wrappers.retry_transient(times=2, on=(TimeoutError, OSError, ConnectionError))` — not for logic bugs.
 - `@wrappers.timed` — active only when `SWARM_PROFILE` is set.
 
+### Subtopic: Decorators (`@`) and class usage
+
+Applies to code copied from the templates. The templates already follow it: role classes are namespaces of `@staticmethod`, state lives in `@dataclass(slots=True)`, and `wrappers` holds the decorators.
+
+| Construct | Use when | Avoid |
+| --------- | -------- | ----- |
+| `@staticmethod` | Pure function grouped under a role class; needs neither `self` nor `cls` | A class with one method and no state — use a module function |
+| `@classmethod` | Alternative constructor returning `Self` | Mutating class-level state |
+| `@property` | Cheap, side-effect-free computed attribute | I/O or expensive work behind attribute syntax |
+| `@dataclass(slots=True)` | Mutable state container | Plain `dict` for structured data |
+| `@dataclass(frozen=True, slots=True)` | Immutable value object (`HintRole` pattern) | Mutating a frozen instance |
+| `@override` | Any method that overrides a base method | Silent overrides |
+| Own decorator | Cross-cutting concern (`retry_transient`, `timed`) | Business logic inside a decorator |
+
+Rules:
+
+- **Stack order:** `@classmethod` / `@staticmethod` outermost; own decorators (`@wrappers.*`) directly above `def`, beneath them. Every decorator uses `@functools.wraps` and is typed with `ParamSpec` / `TypeVar` so the wrapped signature survives.
+- **Class body:** keep `__init__` trivial (assign only, no I/O); one responsibility per class; prefer composition over inheritance.
+- **Role classes** hold `@staticmethod` functions only; delete unused roles when copying (see Agent contract).
+- Do not stack `@dataclass` on a library decorator that already converts the class; read its docs first.
+- Public methods and attributes carry type hints; use `X | None` and built-in generics.
+
+Sources: [Real Python — AGENTS.md for Python](https://realpython.com/agents-md/), [python-agent-coding-guidelines](https://github.com/ipeterfulop/python-agent-coding-guidelines), [python-coding-agent-skill](https://github.com/ankit-aglawe/python-coding-agent-skill), [minimaxir Python AGENTS.md](https://gist.github.com/minimaxir/10b780671ee5d695b4369b987413b38f).
+
 ### Subtopic: Smoke check
 
 ```bash
 uv run python .cursor/templates/python_static_template.py
 uv run python .cursor/templates/python_static_template_lite.py
 ```
+
+---
+
+<!-- LOCKED:BEGIN python-function-template sha256=97de64883e7fa2e3abb1c1d4678e23043102b14326619e3d81d0a1472bfcae25 -->
+## Topic: Python Function Template (STRICT)
+
+> **DO NOT MODIFY.** This topic is locked. Edit it only when the user asks for exactly that change. Verify it is intact with the command at the end of this topic.
+
+### Subtopic: The five PEPs
+
+| PEP | Rule for every function | Python |
+| --- | ----------------------- | ------ |
+| [257](https://peps.python.org/pep-0257/) | Docstring: one-line imperative summary ending in a period | any |
+| [484](https://peps.python.org/pep-0484/) | Annotate every parameter and the return type | 3.5+ |
+| [585](https://peps.python.org/pep-0585/) | Built-in generics: `list[str]`, `dict[str, int]`; never `typing.List` | 3.9+ |
+| [604](https://peps.python.org/pep-0604/) | `X | None`; never `Optional[X]` | 3.10+ |
+| [649](https://peps.python.org/pep-0649/) / [749](https://peps.python.org/pep-0749/) | Annotations are lazy: forward references unquoted, no `from __future__` needed | 3.14+ |
+
+### Subtopic: Template
+
+```python
+def load_lines(path: Path, *, limit: int | None = None) -> list[Line]:
+    """Return the non-empty lines of a text file.
+
+    Args:
+        path: File to read.
+        limit: Maximum number of lines to return; ``None`` means all.
+
+    Returns:
+        Stripped, non-empty lines in file order.
+
+    Raises:
+        ConfigError: If ``path`` does not exist.
+    """
+    if not path.is_file():
+        raise ConfigError(f"missing file: {path}")
+    lines = [ln.strip() for ln in path.read_text().splitlines() if ln.strip()]
+    return lines if limit is None else lines[:limit]
+```
+
+### Subtopic: Rules
+
+- **MUST** give every new or changed function and method in `src/` a docstring and full annotations (parameters and return), public or private.
+- **MUST** use Google-style sections (`Args`, `Returns`, `Raises`) only when the signature does not already say it; never repeat types in the docstring.
+- **MUST NOT** use `typing.List`, `typing.Dict`, `Optional`, or quoted forward references.
+- **MUST NOT** add `# type: ignore` or `# noqa` without a named rule and a reason.
+- The quality gate (`ruff` `E,F,I,UP`, `ty`) does not enforce docstrings or annotations; check them with the command below.
+
+### Subtopic: Check
+
+```bash
+uv run ruff check --target-version py314 --select D,ANN --config 'lint.pydocstyle.convention = "google"' <files>
+```
+<!-- LOCKED:END python-function-template -->
+
+Verify: `awk '/LOCKED:BEGIN/{f=1;next} /LOCKED:END/{f=0} f' AGENTS.md | shasum -a 256` must equal the `sha256` in the BEGIN marker.

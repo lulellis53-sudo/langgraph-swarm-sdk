@@ -128,15 +128,7 @@ gRPC: `SwarmService.SpawnPlan` (goal → plan handle), `RunPlan` (handle → per
 
 Predefined model routes, API key variable names, and service credential owners live in [`Main/config/model_registry.yaml`](Main/config/model_registry.yaml); it contains no credential values. Runtime defaults live in [`src/swarm_sdk/agents/config/swarm.yaml`](src/swarm_sdk/agents/config/swarm.yaml) (human-facing symlinks under [`Main/config/`](Main/config/)). Per-agent roles, models, and tasks live in [`Agents/{Name}/agent.yaml`](Agents/Tester/agent.yaml) (see [`Agents/README.md`](Agents/README.md)).
 
-**Three parallel agent lanes** (fixed git worktrees; see [`.cursor/skills/multi-lane-worktrees/SKILL.md`](.cursor/skills/multi-lane-worktrees/SKILL.md)):
-
-| Lane | Worktree | Branch |
-|------|----------|--------|
-| WebSearch | [`WebSearch/`](WebSearch/) | `feature/websearch` — [`PIPELINE.md`](WebSearch/PIPELINE.md) |
-| Prediction | `../Swarm-Prediction` | `feat/prediction-engine` — [`Prediction/`](Prediction/) |
-| Newsletter | `../Newsletter` | `feat/newsletter` — [`Newsletter/`](Newsletter/) |
-
-Repo root stays on `integration/all-branches` for merges. Open [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace) for a multi-root editor layout. `SWARM_*` env vars override file defaults.
+**Three parallel agent lanes** plus an integration root (fixed git worktrees; map and gates in [`.cursor/skills/multi-lane-worktrees/SKILL.md`](.cursor/skills/multi-lane-worktrees/SKILL.md)): WebSearch (`WebSearch/`, `feature/websearch`), Prediction (`../Swarm-Prediction`, `feat/prediction-engine`), Newsletter (`../Newsletter`, `feat/newsletter`). Repo root stays on `integration/all-branches` for merges. Open [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace) for a multi-root editor layout. `SWARM_*` env vars override file defaults.
 
 ## Token path
 
