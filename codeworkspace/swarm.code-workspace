@@ -10,25 +10,11 @@
   ],
   "settings": {
     "python.defaultInterpreterPath": "${workspaceFolder:SDK (integration)}/.venv/bin/python",
-    "python.languageServer": "None",
-    "python.analysis.typeCheckingMode": "off",
-    "[python]": {
-      "editor.defaultFormatter": "charliermarsh.ruff",
-      "editor.formatOnSave": true,
-      "editor.codeActionsOnSave": {
-        "source.organizeImports.ruff": "explicit",
-        "source.fixAll.ruff": "explicit"
-      }
-    },
-    "ruff.enable": true,
-    "ruff.nativeServer": "on",
-    "ruff.configuration": "pyproject.toml",
-    "ruff.configurationPreference": "filesystemFirst",
-    "ruff.importStrategy": "fromEnvironment",
+    "python.testing.cwd": "${workspaceFolder:SDK (integration)}",
+    "python.envFile": "${workspaceFolder:SDK (integration)}/.env",
     "ruff.interpreter": ["${workspaceFolder:SDK (integration)}/.venv/bin/python"],
-    "ty.importStrategy": "fromEnvironment",
     "ty.interpreter": "${workspaceFolder:SDK (integration)}/.venv/bin/python",
-    "ty.diagnosticMode": "workspace",
-    "ty.experimental.useUv": "on"
+    "jupyter.notebookFileRoot": "${workspaceFolder:SDK (integration)}",
+    "docker.composeFile": "${workspaceFolder:SDK (integration)}/docker/compose.yaml"
   }
 }

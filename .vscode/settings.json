@@ -3,6 +3,16 @@
   "python.terminal.activateEnvironment": true,
   "python.languageServer": "None",
   "python.analysis.typeCheckingMode": "off",
+  "python.analysis.extraPaths": ["src"],
+  "python.analysis.diagnosticMode": "off",
+  "python.envFile": "${workspaceFolder}/.env",
+  "python.createEnvironment.trigger": "off",
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.cwd": "${workspaceFolder}",
+  "python.testing.pytestArgs": ["Agents/benchmark", "-q"],
+  "debugpy.debugJustMyCode": true,
+
   "[python]": {
     "editor.defaultFormatter": "charliermarsh.ruff",
     "editor.formatOnSave": true,
@@ -12,16 +22,66 @@
     },
     "editor.defaultFoldingRangeProvider": "charliermarsh.ruff"
   },
+  "[javascript]": {
+    "editor.defaultFormatter": "biomejs.biome",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.biome": "explicit",
+      "source.organizeImports.biome": "explicit"
+    }
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "biomejs.biome",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.biome": "explicit",
+      "source.organizeImports.biome": "explicit"
+    }
+  },
+  "[json]": {
+    "editor.defaultFormatter": "biomejs.biome",
+    "editor.formatOnSave": true
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "biomejs.biome",
+    "editor.formatOnSave": true
+  },
+  "[markdown]": {
+    "editor.formatOnSave": false,
+    "editor.wordWrap": "bounded",
+    "editor.wordWrapColumn": 100,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.markdownlint": "explicit"
+    }
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml",
+    "editor.formatOnSave": true
+  },
+  "[toml]": {
+    "editor.defaultFormatter": "tamasfe.even-better-toml",
+    "editor.formatOnSave": true
+  },
+  "[ipynb]": {
+    "editor.formatOnSave": true
+  },
+
+  "biome.enabled": true,
+  "biome.requireConfiguration": true,
+  "biome.suggestInstallingGlobally": false,
+
   "ruff.enable": true,
   "ruff.nativeServer": "on",
   "ruff.configuration": "pyproject.toml",
   "ruff.configurationPreference": "filesystemFirst",
   "ruff.importStrategy": "fromEnvironment",
-  "ruff.interpreter": [
-    "${workspaceFolder}/.venv/bin/python"
-  ],
+  "ruff.interpreter": ["${workspaceFolder}/.venv/bin/python"],
   "ruff.organizeImports": true,
   "ruff.fixAll": true,
+  "ruff.lint.run": "onSave",
+  "ruff.showNotifications": "onError",
+  "ruff.path": ["${workspaceFolder}/.venv/bin/ruff"],
+
   "ty.importStrategy": "fromEnvironment",
   "ty.interpreter": "${workspaceFolder}/.venv/bin/python",
   "ty.diagnosticMode": "workspace",
@@ -32,6 +92,11 @@
   "ty.completions.completeFunctionParentheses": true,
   "ty.inlayHints.variableTypes": true,
   "ty.inlayHints.callArgumentNames": true,
+
+  "markdownlint.configFile": ".markdownlint.json",
+  "markdownlint.run": "onSave",
+  "markdownlint.focusMode": false,
+
   "editor.suggestOnTriggerCharacters": true,
   "editor.quickSuggestions": {
     "other": "on",
@@ -41,41 +106,118 @@
   "editor.inlineSuggest.enabled": true,
   "editor.parameterHints.enabled": true,
   "editor.wordBasedSuggestions": "off",
+
   "jupyter.askForKernelRestart": false,
+  "jupyter.allowUnauthorizedRemoteConnection": false,
+  "jupyter.notebookFileRoot": "${workspaceFolder}",
+  "jupyter.interactiveWindow.creationMode": "perFile",
+  "jupyter.widgetScriptSources": ["jsdelivr.com", "unpkg.com"],
   "jupyter.kernels.excludePythonEnvironments": [],
+  "jupyter.jupyterServerType": "local",
   "notebook.formatOnSave.enabled": true,
+  "notebook.lineNumbers": "on",
+  "notebook.output.scrolling": true,
+  "notebook.output.textLineLimit": 80,
+  "notebook.consolidatedOutputView": true,
+  "notebook.cellToolbarLocation": {
+    "default": "right",
+    "jupyter-notebook": "left"
+  },
+  "notebook.codeActionsOnSave": {
+    "notebook.source.organizeImports": "explicit"
+  },
+
   "colab.logging.level": "info",
   "colab.uploading": true,
   "colab.activityBarContentView": true,
   "colab.activityBarResourceView": true,
   "colab.serverMounting": false,
   "colab.terminal": false,
+
+  "docker.showStartPage": false,
+  "docker.composeBuild": true,
+  "docker.composeDetached": true,
+  "docker.composeFile": "${workspaceFolder}/docker/compose.yaml",
+  "docker.commands.composeUp": [
+    {
+      "label": "Compose Up: docker/compose.yaml",
+      "template": "docker compose -f ${workspaceFolder}/docker/compose.yaml up -d --build"
+    }
+  ],
+  "docker.commands.composeDown": [
+    {
+      "label": "Compose Down: docker/compose.yaml",
+      "template": "docker compose -f ${workspaceFolder}/docker/compose.yaml down"
+    }
+  ],
+  "containers.context": "default",
+  "containers.composeCommand": "docker",
+  "containers.containers.groupBy": "Compose Project Name",
+  "containers.images.groupBy": "Repository",
+
+  "dev.containers.copyGitConfig": true,
+  "dev.containers.executeInWSL": false,
+  "dev.containers.dockerPath": "docker",
+  "dev.containers.dockerComposePath": "docker compose",
+  "remote.containers.workspaceMountConsistency": "cached",
+
+  "gitlens.showWelcomeOnInstall": false,
+  "gitlens.showWhatsNewAfterUpgrades": false,
+  "gitlens.currentLine.enabled": true,
+  "gitlens.currentLine.pullRequests.enabled": true,
+  "gitlens.currentLine.format": "${author, }${agoOrDate|14-} ${message|50?}",
+  "gitlens.hovers.enabled": true,
+  "gitlens.hovers.currentLine.over": "line",
+  "gitlens.hovers.changes": true,
+  "gitlens.hovers.avatars": true,
+  "gitlens.codeLens.enabled": true,
+  "gitlens.codeLens.authors.enabled": true,
+  "gitlens.codeLens.recentChange.enabled": true,
+  "gitlens.codeLens.scopes": ["document"],
+  "gitlens.statusBar.enabled": true,
+  "gitlens.statusBar.alignment": "right",
+  "gitlens.statusBar.format": "${author}, ${agoOrDate}",
+  "gitlens.blame.compact": true,
+  "gitlens.blame.format": "${author|12} ${agoOrDate|14-} ${message|50?}",
+  "gitlens.blame.heatmap.enabled": false,
+  "gitlens.blame.highlight.enabled": true,
+  "gitlens.fileAnnotations.preserveWhileEditing": false,
+  "gitlens.views.commitDetails.files.layout": "tree",
+  "gitlens.views.commitDetails.files.threshold": 80,
+  "gitlens.views.branches.branches.layout": "tree",
+  "gitlens.graph.layout": "editor",
+  "gitlens.graph.onlyFollowFirstParent": false,
+  "gitlens.smartFormatting.enabled": true,
+  "gitlens.integrations.enabled": true,
+  "gitlens.advanced.messages": {
+    "suppressIntegrationRequestAlreadyInstalledWarning": true
+  },
+
   "chatgpt.openOnStartup": false,
   "chatgpt.followUpQueueMode": "queue",
   "chatgpt.composerEnterBehavior": "cmdIfMultiline",
   "chatgpt.reviewDelivery": "inline",
   "chatgpt.commentCodeLensEnabled": true,
-  "notebook.codeActionsOnSave": {
-    "notebook.source.organizeImports": "explicit"
-  },
-  "[yaml]": {
-    "editor.defaultFormatter": "redhat.vscode-yaml",
-    "editor.formatOnSave": true
-  },
-  "[toml]": {
-    "editor.defaultFormatter": "tamasfe.even-better-toml",
-    "editor.formatOnSave": true
-  },
+
+  "cursor.general.gitGraphIndexing": "enabled",
+
   "evenBetterToml.formatter.alignEntries": false,
   "yaml.disableSchemaDetection": [],
   "redhat.telemetry.enabled": false,
+
+  "files.associations": {
+    "AGENTS.md": "markdown",
+    "agent.yaml": "yaml",
+    "coordination.yaml": "yaml",
+    "swarm.yaml": "yaml"
+  },
   "files.exclude": {
     "**/.venv": true,
     "**/__pycache__": true,
     "**/.pytest_cache": true,
     "**/.ruff_cache": true,
-    "**/target": true,
-    "**/.hypothesis": true
+    "**/.hypothesis": true,
+    "**/target": true
   },
   "files.watcherExclude": {
     "**/.venv/**": true,
@@ -83,16 +225,12 @@
     "**/target/**": true,
     "**/.git/objects/**": true
   },
+  "search.exclude": {
+    "**/.venv": true,
+    "**/benchmark/results": true,
+    "**/.remember": true
+  },
   "workbench.editor.autoLockGroups": {
     "jupyter-notebook": true
-  },
-  "python.testing.unittestArgs": [
-    "-v",
-    "-s",
-    "./Agents",
-    "-p",
-    "*test.py"
-  ],
-  "python.testing.pytestEnabled": false,
-  "python.testing.unittestEnabled": true
+  }
 }

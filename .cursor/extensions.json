@@ -1,13 +1,1 @@
-{
-  "recommendations": [
-    "charliermarsh.ruff",
-    "ms-python.python",
-    "ms-python.debugpy",
-    "astral-sh.ty",
-    "meta.pyrefly",
-    "njqdev.vscode-python-typehint",
-    "redhat.vscode-yaml",
-    "tamasfe.even-better-toml",
-    "davidanson.vscode-markdownlint"
-  ]
-}
+../.vscode/extensions.json
