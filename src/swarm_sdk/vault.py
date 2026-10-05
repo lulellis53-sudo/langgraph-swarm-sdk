@@ -47,6 +47,22 @@ type Runner = Callable[[Sequence[str]], str | None]
 type InputRunner = Callable[[Sequence[str], str], str | bool | None]
 
 
+def _api_keychain_args() -> list[str]:
+    """Path of APIKEYCHAIN when that file exists, else nothing.
+
+    Swarm items use ``swarm/<NAME>``. The user key store uses
+    ``APIKEYCHAIN/<NAME>`` in ``~/Library/Keychains/APIKEYCHAIN.keychain-db``
+    (override with ``KEYS_KEYCHAIN``). A missing file skips the lookup.
+    """
+    raw = os.environ.get("KEYS_KEYCHAIN")
+    path = (
+        Path(raw).expanduser()
+        if raw
+        else Path.home() / "Library" / "Keychains" / "APIKEYCHAIN.keychain-db"
+    )
+    return [str(path)] if path.is_file() else []
+
+
 def _keychain_args() -> list[str]:
     """Select a dedicated Keychain when configured, otherwise use the search list."""
     path = os.environ.get("SWARM_KEYCHAIN_PATH")
@@ -182,6 +198,20 @@ def get_with_source(
         ]
     ):
         return value, "keychain"
+    api_keychain = _api_keychain_args()
+    if api_keychain and (
+        value := run(
+            [
+                "security",
+                "find-generic-password",
+                "-s",
+                f"APIKEYCHAIN/{name}",
+                "-w",
+                *api_keychain,
+            ]
+        )
+    ):
+        return value, "apikeychain"
     if value := _from_dotenv(name, dotenv or Path.home() / ".env"):
         logger.warning(
             "secret %s read from ~/.env; migrate it with `swarm-vault set %s`", name, name

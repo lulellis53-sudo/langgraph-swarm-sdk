@@ -14,7 +14,7 @@ providers:
     priority: 15
   - name: zai
     models: ["zai:glm-5.2"]
-    api_key_env: ZAI_API_KEY
+    api_key_env: ZHIPU_API_KEY
     priority: 16
   - name: minimax
     models: ["minimax:MiniMax-M2.7"]
@@ -32,3 +32,7 @@ providers:
     models: ["groq:llama-3.3-70b-versatile"]
     api_key_env: GROQ_API_KEY
     priority: 30
+  - name: atlascloud
+    models: ["atlascloud:dots-studio/dots-3-note-prev-free"]
+    api_key_env: ATLASCLOUD_API_KEY
+    priority: 45

@@ -81,6 +81,27 @@ def test_shared_project_env_cannot_select_keychain(
     assert runner.calls[0][-1] == "-w"
 
 
+def test_apikeychain_when_swarm_item_is_missing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    keychain = tmp_path / "APIKEYCHAIN.keychain-db"
+    keychain.write_bytes(b"")
+    monkeypatch.setenv("KEYS_KEYCHAIN", str(keychain))
+    calls: list[list[str]] = []
+
+    def run(argv: Sequence[str]) -> str | None:
+        calls.append(list(argv))
+        if "APIKEYCHAIN/ATLASCLOUD_API_KEY" in argv:
+            return "from-api"
+        return None
+
+    got = vault.get_with_source(
+        "ATLASCLOUD_API_KEY", runner=run, environ={}, dotenv=Path("/nope")
+    )
+    assert got == ("from-api", "apikeychain")
+    assert calls[0][calls[0].index("-s") + 1] == "swarm/ATLASCLOUD_API_KEY"
+    assert calls[1][calls[1].index("-s") + 1] == "APIKEYCHAIN/ATLASCLOUD_API_KEY"
+    assert calls[1][-1] == str(keychain)
+
+
 def test_dotenv_fallback_parses_export_quotes_equals(tmp_path: Path) -> None:
     env = tmp_path / ".env"
     env.write_text('# c\nOTHER=1\nexport MEM0_API_KEY="a=b==c"\n')

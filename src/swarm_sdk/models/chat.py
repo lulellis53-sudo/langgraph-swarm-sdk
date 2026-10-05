@@ -67,12 +67,30 @@ def _route_index() -> dict[str, tuple[str, str]]:
 # OpenAI-compatible providers: their routes carry a ``base_url_env`` in the
 # registry instead of a native LangChain integration.
 _COMPAT_PROVIDERS = frozenset(
-    {"zai", "minimax", "moonshot", "xiaomi", "nvidia", "openrouter", "sambanova", "fireworks"}
+    {
+        "zai",
+        "minimax",
+        "moonshot",
+        "xiaomi",
+        "nvidia",
+        "openrouter",
+        "sambanova",
+        "fireworks",
+        "atlascloud",
+    }
 )
 _DEFAULT_BASE_URLS = {
     "openrouter": "https://openrouter.ai/api/v1",
     "sambanova": "https://api.sambanova.ai/v1",
     "fireworks": "https://api.fireworks.ai/inference/v1",
+    "atlascloud": "https://api.atlascloud.ai/v1",
+}
+# Same credential under either published name. The first hit wins.
+_KEY_ALIASES: dict[str, tuple[str, ...]] = {
+    "ZHIPU_API_KEY": ("ZAI_API_KEY",),
+    "ZAI_API_KEY": ("ZHIPU_API_KEY",),
+    "GEMINI_API_KEY": ("GOOGLE_API_KEY",),
+    "GOOGLE_API_KEY": ("GEMINI_API_KEY",),
 }
 
 _KEY_KWARG = {
@@ -84,6 +102,25 @@ _KEY_KWARG = {
     "google_genai": "google_api_key",
     "xai": "xai_api_key",
 }
+
+
+def _secret(name: str) -> str:
+    """Return one named secret from the environment or the vault, or ``""``."""
+    if not name:
+        return ""
+    return os.environ.get(name, "") or vault.get(name) or ""
+
+
+def _route_secret(name: str) -> str:
+    """Resolve a route key, then its alias (Zhipu/Z.ai, Gemini/Google)."""
+    value = _secret(name)
+    if value:
+        return value
+    for alias in _KEY_ALIASES.get(name, ()):
+        value = _secret(alias)
+        if value:
+            return value
+    return ""
 
 
 def load_chat_model(model_name: str) -> BaseChatModel:
@@ -109,9 +146,7 @@ def load_chat_model(model_name: str) -> BaseChatModel:
 
     provider, _, model = model_name.partition(":")
     route_key_env, base_url_env = _route_index().get(model_name, ("", ""))
-    key_value = ""
-    if route_key_env:
-        key_value = os.environ.get(route_key_env, "") or vault.get(route_key_env) or ""
+    key_value = _route_secret(route_key_env)
     if provider == "google":
         kwargs = {"google_api_key": key_value} if key_value else {}
         chat_model = init_chat_model(f"google_genai:{model}", **kwargs)

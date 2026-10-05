@@ -36,6 +36,7 @@ def test_google_prefix_routes_to_google_genai(fake_init) -> None:
 
 def test_compat_provider_uses_registry_base_url(fake_init, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ZAI_BASE_URL", "https://api.z.ai/api/paas/v4")
+    monkeypatch.delenv("ZHIPU_API_KEY", raising=False)
     monkeypatch.setenv("ZAI_API_KEY", "k")
     chat.load_chat_model("zai:glm-5.2")
     ((model, kwargs),) = fake_init
@@ -59,11 +60,17 @@ def test_compat_provider_requires_base_url(fake_init, monkeypatch: pytest.Monkey
         ("sambanova:Meta-Llama-3.3-70B-Instruct", "SAMBANOVA_API_KEY", "https://api.sambanova.ai/v1"),
         ("fireworks:accounts/fireworks/models/kimi-k2.7", "FIREWORKS_API_KEY",
          "https://api.fireworks.ai/inference/v1"),
+        (
+            "atlascloud:dots-studio/dots-3-note-prev-free",
+            "ATLASCLOUD_API_KEY",
+            "https://api.atlascloud.ai/v1",
+        ),
     ],
 )
 def test_hosted_compat_routes_use_provider_endpoint(
     fake_init, monkeypatch: pytest.MonkeyPatch, route: str, key_name: str, base_url: str
 ) -> None:
+    monkeypatch.delenv("ATLASCLOUD_BASE_URL", raising=False)
     monkeypatch.setenv(key_name, "synthetic-key")
     chat.load_chat_model(route)
     ((model, kwargs),) = fake_init
@@ -93,3 +100,15 @@ def test_google_route_reads_named_key_from_vault(
     )
     chat.load_chat_model("google:gemini-3.8-flash")
     assert fake_init == [("google_genai:gemini-3.8-flash", {"google_api_key": "vault-key"})]
+
+
+def test_google_route_accepts_google_api_key_when_gemini_is_unset(
+    fake_init, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+    monkeypatch.setattr(
+        vault, "get", lambda name: "google-key" if name == "GOOGLE_API_KEY" else None
+    )
+    chat.load_chat_model("google:gemini-3.8-flash")
+    assert fake_init == [("google_genai:gemini-3.8-flash", {"google_api_key": "google-key"})]
