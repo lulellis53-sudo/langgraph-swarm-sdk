@@ -64,7 +64,7 @@ langchain = [
 python-preference = "managed"
 # Jupyter AI → cryptography; source builds fail with custom LLVM (missing assert.h). Wheels only.
 no-build-package = ["cryptography"]
-constraint-dependencies = ["cryptography==48.0.1"]
+constraint-dependencies = ["cryptography==50.0.2"]
 
 [project.optional-dependencies]
 # ## Testing & property tests
@@ -118,7 +118,7 @@ qdrant = ["qdrant-client>=1.14"]
 # ## Mem0 Platform memory (MemoryClient; API key in MEM0_API_KEY)
 mem0 = ["mem0ai>=1.0"]
 jupyter = [
-    "cryptography==48.0.1",
+    "cryptography==50.0.2",
     "ipykernel>=6",
     "jupyter-ai>=2",
     "notebook>=7",
