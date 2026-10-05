@@ -128,6 +128,8 @@ providers:
   # ---- Free: low token usage, low effort ----
   # GET https://api.atlascloud.ai/v1/models on 2026-10-05: one $0 text model.
   # Chat only. That catalog row has no web-search tool.
+  # Docs: https://atlascloud.ai/docs/en/models/llm
+  # Official chat: POST https://api.atlascloud.ai/v1/chat/completions
   - name: atlascloud:dots-studio/dots-3-note-prev-free
     provider: atlascloud
     api_key_env: ATLASCLOUD_API_KEY
@@ -165,10 +167,13 @@ providers:
     evidence: assumed (Ollama Cloud hosted endpoint)
 
   # ---- Paid value pool: medium tier, medium effort ----
+  # OpenRouter docs: https://openrouter.ai/docs/api/api-reference/chat/create-a-chat-completion
+  # Official chat: POST https://openrouter.ai/api/v1/chat/completions
+  # Catalog: GET https://openrouter.ai/api/v1/models
   - name: openrouter:z-ai/glm-5.3-flash
     provider: openrouter
     api_key_env: OPENROUTER_API_KEY
-    base_url_env: OPENROUTER_BASE_URL
+    base_url_env: OPENROUTER_BASE_URL  # https://openrouter.ai/api/v1
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 40
@@ -182,6 +187,10 @@ providers:
     priority: 58
     evidence: assumed (Alibaba Cloud Qwen 3.8 direct API)
 
+  # Cohere docs: https://docs.cohere.com/reference/chat
+  # Models: https://docs.cohere.com/docs/models
+  # Official chat: POST https://api.cohere.com/v2/chat
+  # Native LangChain client; these routes have no base_url_env.
   - name: cohere:command-a
     provider: cohere-1
     api_key_env: COHERE_API_KEY_1
@@ -199,6 +208,9 @@ providers:
     priority: 62
     evidence: assumed (Cohere fallback key instance)
 
+  # Mistral docs: https://docs.mistral.ai/api/endpoint/chat
+  # Official chat: POST https://api.mistral.ai/v1/chat/completions
+  # Native LangChain client; these routes have no base_url_env.
   - name: mistral:mistral-large-latest
     provider: mistral-1
     api_key_env: MISTRAL_API_KEY_1
@@ -217,6 +229,10 @@ providers:
     priority: 67
     evidence: assumed (Mistral fallback key instance; Ministral 3 8B 2512)
 
+  # Groq docs: https://console.groq.com/docs/api-reference
+  # Models: https://console.groq.com/docs/models
+  # Official chat: POST https://api.groq.com/openai/v1/chat/completions
+  # Native LangChain client; these routes have no base_url_env.
   - name: groq:openai/gpt-oss-120b
     provider: groq-1
     api_key_env: GROQ_API_KEY
@@ -243,10 +259,12 @@ providers:
     priority: 80
     evidence: assumed (fallback)
 
+  # Fireworks docs: https://docs.fireworks.ai/serverless/serving-paths
+  # Official chat: POST https://api.fireworks.ai/inference/v1/chat/completions
   - name: fireworks:accounts/fireworks/models/kimi-k2.7
     provider: fireworks
     api_key_env: FIREWORKS_API_KEY
-    base_url_env: FIREWORKS_BASE_URL
+    base_url_env: FIREWORKS_BASE_URL  # https://api.fireworks.ai/inference/v1
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 85

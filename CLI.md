@@ -21,6 +21,7 @@ A comprehensive, operational guide to the command-line interfaces, modern Unix t
    - [5.1 Shell / Terminal Keybindings (Zsh / FZF / Ghostty)](#51-shell--terminal-keybindings-zsh--fzf--ghostty)
    - [5.2 Cursor & VS Code Slash Commands & Keybindings](#52-cursor--vs-code-slash-commands--keybindings)
    - [5.3 Vault Secret Keys Registry (Supported Providers)](#53-vault-secret-keys-registry-supported-providers)
+   - [5.4 Official chat endpoints](#54-official-chat-endpoints)
 6. [Quality Gate Verification Protocol](#6-quality-gate-verification-protocol)
 
 ---
@@ -402,6 +403,21 @@ The repository registry actively references 35 credentials across `swarm.yaml`, 
 | **ZAI Base URL** | `ZAI_BASE_URL` | `uv run swarm-vault set ZAI_BASE_URL` | GLM base endpoint URL |
 | **Atlas Cloud** | `ATLASCLOUD_API_KEY` | `uv run swarm-vault set ATLASCLOUD_API_KEY` | Free chat model `dots-studio/dots-3-note-prev-free` ($0/$0 on 2026-10-05). No web-search tool |
 | **Google API key** | `GOOGLE_API_KEY` | `uv run swarm-vault set GOOGLE_API_KEY` | Alternate name for Gemini routes and Google Search grounding |
+
+### 5.4 Official chat endpoints
+
+Checked against each vendor's docs on 2026-10-05. These are the vendor endpoints. Groq, Mistral, and Cohere routes use the native LangChain clients and have no `base_url_env`. Fireworks, OpenRouter, and Atlas Cloud use the OpenAI-compatible bases in `src/swarm_sdk/models/chat.py`.
+
+| Provider | Documentation | Chat endpoint |
+| :--- | :--- | :--- |
+| **Groq** | [API reference](https://console.groq.com/docs/api-reference). Models: [console.groq.com/docs/models](https://console.groq.com/docs/models) | `POST https://api.groq.com/openai/v1/chat/completions` |
+| **Mistral** | [Chat endpoint](https://docs.mistral.ai/api/endpoint/chat) | `POST https://api.mistral.ai/v1/chat/completions` |
+| **Cohere** | [Chat reference](https://docs.cohere.com/reference/chat). Models: [docs.cohere.com/docs/models](https://docs.cohere.com/docs/models) | `POST https://api.cohere.com/v2/chat` |
+| **Fireworks** | [Serverless serving paths](https://docs.fireworks.ai/serverless/serving-paths) | `POST https://api.fireworks.ai/inference/v1/chat/completions` |
+| **OpenRouter** | [Create a chat completion](https://openrouter.ai/docs/api/api-reference/chat/create-a-chat-completion). Catalog: `GET https://openrouter.ai/api/v1/models`. OpenAPI: [openapi.yaml](https://openrouter.ai/openapi.yaml) | `POST https://openrouter.ai/api/v1/chat/completions` |
+| **Atlas Cloud** | [LLM / Chat](https://atlascloud.ai/docs/en/models/llm). Request flow: [how it works](https://atlascloud.ai/docs/en/how-it-works). Catalog: `GET https://api.atlascloud.ai/v1/models` | `POST https://api.atlascloud.ai/v1/chat/completions` |
+
+Bearer auth on every row. Swarm's Atlas base stays `https://api.atlascloud.ai/v1`, the base on the LLM page.
 
 ---
 
