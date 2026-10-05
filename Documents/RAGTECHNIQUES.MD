@@ -1,7 +1,8 @@
 # RAG Techniques: Comparative Research Notes
 
-> **Scope and evidence:** This is a survey of retrieval approaches, not a universal production architecture or a benchmark of this repository. Retrieval quality depends on the corpus, task, embedding model, filters, and evaluation set. Validate recommendations on representative data and link claims to primary sources and reproducible measurements. Project behavior is documented in the root README and implemented under `src/swarm_sdk/retrieval/`.
-
+> **CANONICAL RAG DOSSIER** (merged `RAG.md`): survey of retrieval paradigms plus a **Swarm SDK map** below.
+> This is not a universal production architecture. Validate on your corpus and evaluation set.
+> Runtime behavior: [README](../README.md), [`src/swarm_sdk/retrieval/`](../src/swarm_sdk/retrieval/), [REDIS.md](REDIS.md) §8–§9 (caching).
 
 ---
 
@@ -9,7 +10,47 @@
 
 Use the index to find a topic, then verify technical and version-specific claims against the linked primary source. Examples are starting points, not production-ready code.
 
+For the short **2026 paradigm overview** (GraphRAG / CRAG / Self-RAG decision flow) that lived in `RAG.md`, see [Executive quick reference](#executive-quick-reference-merged-ragmd) and Parts IV–VI below.
+
+## Swarm SDK implementation map (merged `RAG.md`)
+
+| Dossier topic | Swarm module / config | Notes |
+| :--- | :--- | :--- |
+| Embeddings / FastEmbed | `retrieval/embeddings.py`, `Settings.embed_backend` | Default `fastembed`; optional llama/OpenCL paths |
+| Hybrid dense + lexical | `retrieval/hybrid.py`, `retrieval/recall.py` | `Settings.hybrid_enabled` |
+| Re-ranking | `retrieval/rerank.py` | Identity / cross-encoder rerankers |
+| Ingest & chunking | `retrieval/rag_ingest.py` | Pipeline into vector store |
+| Routing | `retrieval/rag_route.py`, `retrieval/gate.py` | Query / retrieval gates |
+| Semantic + exact cache | `retrieval/cache.py`, `retrieval/redis_exact.py` | SQLite semantic; optional Redis exact ([REDIS.md](REDIS.md) §8) |
+| Text utilities | `retrieval/text.py`, `retrieval/ordering.py` | Normalization, ordering |
+| Agent RAG persona | [Agents/RAG/AGENTS.md](../Agents/RAG/AGENTS.md) | Orchestrated specialist contract |
+| Benchmarks | `Agents/benchmark/Tasks/rag_quality/`, `hybrid_recall/`, `token_cache_hit/` | Measured gates in [Agents/benchmark/README.md](../Agents/benchmark/README.md) |
+
+Token budgets for think levels (`low` / `medium` / `high` / `xhigh`) are enforced in `swarm_sdk.models.selection` and `prompting/budget.py`, not in this survey.
+
+## Executive quick reference (merged `RAG.md`)
+
+**Core recommendation:** Hybrid retrieval with **late chunking**-friendly embeddings (e.g. `BAAI/bge-small-en-v1.5` via FastEmbed), plus **GraphRAG** when queries need multi-hop structure; add **CRAG** / **Self-RAG** when grounding must be verified before generation.
+
+```ascii
+[User Query] -> [Query Router] --> GraphRAG / dense index / web fallback
+                      |                    |
+                      v                    v
+              [Chunks + rerank] <-- [CRAG / Self-RAG evaluators] -> [Generate]
+```
+
+| Paradigm | Strengths | Weaknesses | Best use case |
+| :--- | :--- | :--- | :--- |
+| **Naive RAG** | Low complexity | Multi-hop weakness, hallucination risk | Short-doc Q&A |
+| **GraphRAG** | Structural / holistic answers | High index cost | Legal, medical, market intel |
+| **CRAG** | Fills internal corpus gaps | Web fallback latency | Enterprise + live search |
+| **Self-RAG** | Self-correction tokens | Needs reflection-capable model | Conversational agents |
+
+**Pitfalls (recap):** brittle KG extraction; CRAG over-triggering web search; late-chunking boundary errors. Deep treatment: §§9–11, §19.
+
 ## INDEX
+- [Swarm SDK implementation map](#swarm-sdk-implementation-map-merged-ragmd)
+- [Executive quick reference (merged `RAG.md`)](#executive-quick-reference-merged-ragmd)
 - [Master Architectural Workflow: Multi-Stage Universal RAG Flow](#master-architectural-workflow-multi-stage-universal-rag-flow)
 - [Part I: Theoretical Foundations & The RAG Pipeline Anatomy](#part-i-theoretical-foundations--the-rag-pipeline-anatomy)
   - [1. The Failure Modes of Naive RAG & Mathematical Formulations](#1-the-failure-modes-of-naive-rag--mathematical-formulations)
@@ -764,7 +805,7 @@ def generate_node(state: CRAGState) -> dict[str, Any]:
 ```
 
 ### 11.1 Agent Memory Layers: Mem0, Zep/Graphiti & Temporal Knowledge Graphs
-Sections §9–§11 index *documents*; agentic systems additionally need memory that persists *across sessions* — episodic interaction state, evolving user facts, prior tool outcomes. This is a distinct layer that feeds the RAG loop as structured context:
+Swarm-focused manual (tiers, handoffs, vector engines): [AGENTMEMORY.md](AGENTMEMORY.md). Sections §9–§11 index *documents*; agentic systems additionally need memory that persists *across sessions* — episodic interaction state, evolving user facts, prior tool outcomes. This is a distinct layer that feeds the RAG loop as structured context:
 
 | Framework | Architecture | Distinguishing property |
 | :--- | :--- | :--- |

@@ -10,9 +10,8 @@ linked source, configuration, and tests before applying them.
 - [Repository layout](LAYOUT.md) — where the project's main components live.
 - [WebSearch workflow](workflow.md) — search, fetch, and extraction flow.
 - [Google dork queries](dorks.md) — query builder syntax and examples.
-- [LangGraph Swarm reference](LangGraphSwarm.md) — project architecture and
-  selected LangGraph concepts. Code examples are illustrative unless marked as
-  project-verified.
+- [LangGraph Swarm reference](LangSwarm.md) — canonical architecture manual (merged `LangGraphSwarm.md`, acceleration research)
+- [LangGraphSwarm stub](LangGraphSwarm.md) — redirect to `LangSwarm.md`
 - [Perplexity integration notes](perplexity_playwright_guide.md) — use the documented API for integrations.
 
 ## Research and design notes
@@ -20,12 +19,16 @@ linked source, configuration, and tests before applying them.
 - [Redis & caching](REDIS.md) — canonical manual (merged caching + optional SDK Redis cache)
 - [Caching architecture](CACHING.md) — redirect stub
 - [Optional Redis cache (SDK)](redis-cache.md) — redirect stub
-- [RAG techniques](RAGTECHNIQUES.MD)
+- [RAG techniques](RAGTECHNIQUES.MD) — canonical dossier (merged `RAG.md`)
+- [RAG overview stub](RAG.md) — redirect to `RAGTECHNIQUES.MD`
 - [Low-resource optimization](LowResourceOptimization.md)
 - [Memory allocators](MemoryAllocators.md)
 - [Python 3.15](Python3.15.md) — canonical 3.15 / free-threading / performance dossier
 - [Python free-threaded runtime](PythonFreeThreadedRuntime.md) — redirect stub
 - [Python performance guide](PythonPerformanceGuide.md) — redirect stub
+- [Enterprise databases](Database.md) — canonical dossier (merged `DATABASE.md`, `DB.md`; `DB.md` stub remains)
+- [Agent memory & vector storage](AGENTMEMORY.md) — canonical dossier (merged `VectorDB.md`)
+- [Vector DB stub](VectorDB.md) — redirect to `AGENTMEMORY.md`
 - [MoltenVK and Vulkan](Molten.md)
 - [Agent methods](AgenticMethod.MD)
 - [Liveboard design](design-liveboard.md)

@@ -8,9 +8,12 @@ Personal canonical bridge manual: **`~/Documentos/SwarmSDK-Bridge.md`**. Edit th
 | [AGENTS.md](../AGENTS.md) | Contributor workflow, quality gate |
 | [Toolchain.md](../Toolchain.md) | Host silicon + verification commands |
 | [CLI.md](../CLI.md) | `low-swarm`, `swarm-vault`, entrypoints |
-| [Documents/LangGraphSwarm.md](LangGraphSwarm.md) | Architecture manual (large) |
+| [Documents/LangSwarm.md](LangSwarm.md) | Canonical LangGraph Swarm manual (merged `LangGraphSwarm.md`, `LANGGRAPH_SWARM_ACCELERATION_RESEARCH.md`) |
+| [Documents/LangGraphSwarm.md](LangGraphSwarm.md) | Stub → `LangSwarm.md` |
+| [Documents/LANGGRAPH_SWARM_ACCELERATION_RESEARCH.md](LANGGRAPH_SWARM_ACCELERATION_RESEARCH.md) | Stub → `LangSwarm.md` Part 0 |
 | [Documents/LowResourceOptimization.md](LowResourceOptimization.md) | Low-resource systems, zero-copy PyArrow/Polars, NumPy 2.x, LangSmith |
-| [Documents/RAGTECHNIQUES.MD](RAGTECHNIQUES.MD) | RAG research & 2026 late chunking / V-RAG 1.0 benchmarks |
+| [Documents/RAGTECHNIQUES.MD](RAGTECHNIQUES.MD) | Canonical RAG dossier (merged `RAG.md`); Swarm SDK map + benchmarks |
+| [Documents/RAG.md](RAG.md) | Stub → `RAGTECHNIQUES.MD` |
 | [Documents/Python3.15.md](Python3.15.md) | 3.15 dossier (includes merged free-threading + performance guides); §11.4 ↔ `python315_claims/` |
 | [Documents/PythonFreeThreadedRuntime.md](PythonFreeThreadedRuntime.md) | Stub → `Python3.15.md` §2.1.1, §11.3 |
 | [Documents/PythonPerformanceGuide.md](PythonPerformanceGuide.md) | Stub → `Python3.15.md` §2.1.2–§2.1.3, §11.2 |
@@ -21,17 +24,17 @@ Personal canonical bridge manual: **`~/Documentos/SwarmSDK-Bridge.md`**. Edit th
 | [Documents/CACHING.md](CACHING.md) | Stub → `REDIS.md` §9 |
 | [Documents/LLMLITE.md](LLMLITE.md) | Lightweight LLM engines (vLLM, Ollama, llama.cpp, FastEmbed) & GGUF quantization |
 | [Documents/SERIALIZATION.md](SERIALIZATION.md) | High-performance serialization, Apache Arrow IPC, zero-copy PyArrow & orjson benchmarks |
-| [Documents/AGENTMEMORY.md](AGENTMEMORY.md) | Multi-tier agent memory, Mem0 APIs, subagent handoff protocols & self-learning feedback |
+| [Documents/AGENTMEMORY.md](AGENTMEMORY.md) | Canonical agent memory + vector DB dossier (merged `VectorDB.md`); Mem0, handoffs, LanceDB/Redis/Qdrant |
+| [Documents/VectorDB.md](VectorDB.md) | Stub → `AGENTMEMORY.md` |
 | [Documents/GRAPH.md](GRAPH.md) | 2026 Graph architectures for embeddings, memory graph, and multi-agent coordination |
-| [Documents/RAG.md](RAG.md) | 2026 GraphRAG, CRAG, Self-RAG, FastEmbed & Redis 7.4/8.0 vector indexing manual |
-| [Documents/DATABASE.md](DATABASE.md) | Enterprise DB architectures, PostgreSQL 17 + pgvector 0.8.0+, sqlite-vec & PgCat |
-| [Documents/VectorDB.md](VectorDB.md) | Vector DB engines, LanceDB DiskANN, Redis 7.4/8.0 VSS, Qdrant & FastEmbed |
+| [Documents/Database.md](Database.md) | Canonical DB dossier (merged `DATABASE.md`, `DB.md`); pgvector, sqlite-vec, DuckDB, LangGraph persistence (`DATABASE.md` is same path on case-insensitive volumes) |
+| [Documents/DB.md](DB.md) | Stub → `Database.md` |
 | [Documents/DeepResearch.md](DeepResearch.md) | Multi-engine DeepResearch framework (#Context7, #Exa, #Brave, #ParallelSearch, #Jira, #BrightData) |
 | [Agents/TEMPLATE.md](../Agents/TEMPLATE.md) | Canonical Specialist Agent Persona & JSON Contract Template |
 | [Agents/AgentMethods.md](../Agents/AgentMethods.md) | Canonical 12 Agent Methods (DARS, ReAct, Reflection, SWE, etc.) |
 | [Agents/RAG/AGENTS.md](../Agents/RAG/AGENTS.md) | RAG specialist contract |
 | [.cursor/skills/multi-lane-worktrees/SKILL.md](../.cursor/skills/multi-lane-worktrees/SKILL.md) | Three-lane worktrees |
-| [Research Dossier](file:///Users/usuario/Documentos/LANGGRAPH_SWARM_ACCELERATION_RESEARCH.md) | LangSmith, PyArrow, Polars & NumPy 2.x acceleration dossier |
+| [Research Dossier](file:///Users/usuario/Documentos/LANGGRAPH_SWARM_ACCELERATION_RESEARCH.md) | Extended host copy (LangSmith, PyArrow, Polars, NumPy 2.x); repo summary in `LangSwarm.md` Part 0 |
 
 Quality gate (from repo root):
 

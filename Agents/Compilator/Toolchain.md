@@ -3781,7 +3781,7 @@ uv pip install --python "$HOME/Swarm/.venv/bin/python" --no-binary <name> <name>
 
 #### Tokens, milliseconds, RAM
 
-The interpreter does not decide prompt size. Swarm does. Think level `low` is 512 tokens, `medium` is 2048, `high` is 8192, `xhigh` is 32768 (`swarm_sdk.models.selection.THINK_TOKEN_BUDGET`). Retrieval keeps 10 chunks after a 20-wide rerank. A cache hit at cosine 0.97 sends no prompt. The write-up is `RAG.md` §10.1. Measured interpreter micros stay in `Python3.15.md` §7.6. The large Δ% tables in the performance manuals are design targets.
+The interpreter does not decide prompt size. Swarm does. Think level `low` is 512 tokens, `medium` is 2048, `high` is 8192, `xhigh` is 32768 (`swarm_sdk.models.selection.THINK_TOKEN_BUDGET`). Retrieval keeps 10 chunks after a 20-wide rerank. A cache hit at cosine 0.97 sends no prompt. The write-up is `Documents/RAGTECHNIQUES.MD` (Swarm SDK map + token budgets in `swarm_sdk.prompting.budget`). Measured interpreter micros stay in `Python3.15.md` §7.6. The large Δ% tables in the performance manuals are design targets.
 
 ---
 

@@ -2,13 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Close the three production-reliability gaps between `Documents/LangGraphSwarm.md` and `src/swarm_sdk`: durable checkpointing, an explicit recursion limit with a clean HTTP error, and a cheap liveness endpoint.
+**Goal:** Close the three production-reliability gaps between `Documents/LangSwarm.md` and `src/swarm_sdk`: durable checkpointing, an explicit recursion limit with a clean HTTP error, and a cheap liveness endpoint.
 
 **Architecture:** `SwarmSDK` keeps one compiled `langgraph-swarm` graph. We swap its hard-wired `InMemorySaver` for a factory (`open_checkpointer`) that returns a `SqliteSaver` when `Settings.checkpoint_path` is set, pass `recursion_limit` in every invoke config, and map `GraphRecursionError` to HTTP 508 in `swarm-api`. `/healthz` is added beside the existing `/v1/health`.
 
 **Tech Stack:** Python 3.14, LangGraph >=1.0, `langgraph-checkpoint-sqlite`, FastAPI, pytest (`asyncio_mode = "auto"`), ruff, uv.
 
-**Spec:** `Documents/LangGraphSwarm.md` — §3.2 (durable checkpointing), §5.1 (HTTP service), §16.2 (`/healthz` polled by Lifeguard), §17.1 and §17.5 (recursion limit, production checklist).
+**Spec:** `Documents/LangSwarm.md` — §3.2 (durable checkpointing), §5.1 (HTTP service), §16.2 (`/healthz` polled by Lifeguard), §17.1 and §17.5 (recursion limit, production checklist).
 
 ## Scope (what is in and out)
 

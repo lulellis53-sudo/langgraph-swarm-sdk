@@ -8,7 +8,7 @@ Pattern C (wave-barrier coworking) over three deterministic agents:
 
 Heavy payloads (HTML bytes, extracted docs) travel through a scratchpad dict
 bound in the worker factory; ``StepOutput.content`` stays a short summary, so
-no transcript bloat (LangGraphSwarm.md sections 2.3 and 3.1).
+no transcript bloat (LangSwarm.md sections 2.3 and 3.1).
 """
 
 from __future__ import annotations

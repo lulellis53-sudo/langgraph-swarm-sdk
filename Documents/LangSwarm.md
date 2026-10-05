@@ -1,5 +1,6 @@
 # LangGraph Swarm SDK: Architecture Notes and External Examples
 
+> **CANONICAL MANUAL** (merged `LangGraphSwarm.md`, `LANGGRAPH_SWARM_ACCELERATION_RESEARCH.md`) — edit **`LangSwarm.md`** only.
 > **Status:** Mixed project notes and external examples; not a complete implementation guide.  
 > **Project support:** Python `>=3.14.5`; see [`pyproject.toml`](../pyproject.toml) and the root [`README`](../README.md).  
 > **Authority:** Source code, configuration, and tests define current behavior. Snippets in this document are illustrative unless explicitly linked to a project implementation. Benchmark numbers are not project results unless a reproducible command and artifact are linked.
@@ -7,6 +8,11 @@
 ---
 
 ## Master Table of Contents
+
+### [Part 0: Acceleration research synthesis](#part-0-acceleration-research-synthesis-merged-langgraph_swarm_acceleration_researchmd)
+- 0.1 [Executive summary & system architecture](#01-executive-summary--system-architecture)
+- 0.2 [Integration layers & trade-off matrix](#02-integration-layers--trade-off-matrix)
+- 0.3 [Performance synthesis & citations](#03-performance-synthesis--citations)
 
 ### [Part I: Architectural Foundations & Multiagent Coworking Patterns](#part-i-architectural-foundations--multiagent-coworking-patterns)
 - 1. [Multiagent Coworking Foundations & Architecture Overview](#1-multiagent-coworking-foundations--architecture-overview)
@@ -97,6 +103,61 @@
   - 17.4 [Serialization & Checkpointer Desync](#174-serialization--checkpointer-desync)
   - 17.5 [Production Reliability Checklist](#175-production-reliability-checklist)
 - 18. [Primary Citations & Verification Ledger](#18-primary-citations--verification-ledger)
+
+---
+
+# Part 0: Acceleration research synthesis (merged `LANGGRAPH_SWARM_ACCELERATION_RESEARCH.md`)
+
+Synthesizes LangGraph Swarm orchestration with Python 3.15 free-threading, Lifeguard supervision, FastEmbed memory, and Numba JIT. Deep runtime treatment continues in [Part IV](#part-iv-performance-systems-gpu-hardware-acceleration--runtimes) and [Part V §16](#16-automated-self-healing--pre-flight-verification-with-lifeguard).
+
+## 0.1 Executive summary & system architecture
+
+LangGraph Swarm DAG routing, ONNX embeddings, and optional Numba/CUDA kernels target deterministic multi-agent workflows with concurrent graph traversal when the interpreter runs without the GIL ([§13.4](#134-runtime-synergy-executing-langgraph-swarms-on-free-threaded-python-315--mimalloc)).
+
+```text
+[Lifeguard Process Supervisor]
+       | (cgroup limits, watchdog)
+       v
++-------------------------------------------------------------+
+| System Runtime: Python 3.15 (GIL-Free) + NUMA Pinned        |
+|                                                             |
+|   +-------------------+          +-----------------------+  |
+|   | LangGraph Swarm   | <------> | FastEmbed Memory      |  |
+|   | (DAG Routing)     |          | (ONNX Vectorization)  |  |
+|   +-------------------+          +-----------------------+  |
+|           |                                                 |
+|           v                                                 |
+|   +-------------------+                                     |
+|   | Numba CPU/GPU     |                                     |
+|   | (AVX-512, CUDA)   |                                     |
+|   +-------------------+                                     |
++-------------------------------------------------------------+
+```
+
+## 0.2 Integration layers & trade-off matrix
+
+| Layer | Component | Role |
+| :--- | :--- | :--- |
+| Orchestration | LangGraph Swarm + Python 3.15 | `SwarmState` DAG; IO-bound LLM calls parallelized without GIL serialization |
+| Data / memory | FastEmbed + Numba | ONNX embeddings in agents; `@njit` for math-heavy context ([AGENTMEMORY.md](AGENTMEMORY.md)) |
+| Reliability | Lifeguard | `dRSS/dt` leak detection; SIGKILL + restart on heartbeat TTL; mitigates OpenMP/Numba pool deadlocks |
+
+| Capability | Approach | Pros | Cons |
+| :--- | :--- | :--- | :--- |
+| DAG execution | LangGraph Swarm | Formal state, persistence | Message payload bloat over time |
+| Threading | Python 3.15 GIL-free | True CPU concurrency | C-extension instability risk |
+| Memory query | FastEmbed ONNX | No PyTorch dependency | Static model weights |
+| Number crunching | Numba CUDA | Near-native speed | JIT warmup latency |
+| High availability | Lifeguard daemon | Hard resource bounds, auto-recover | Deployment complexity |
+
+## 0.3 Performance synthesis & citations
+
+Combined stack targets high-throughput streaming and low sub-graph routing latency; treat vendor-style figures as hypotheses until reproduced via [§14.3](#143-reproducible-performance-measurements).
+
+- LangGraph Swarm: https://github.com/langchain-ai/langgraph-swarm-py
+- Numba: https://numba.readthedocs.io/en/stable/
+- FastEmbed: https://github.com/qdrant/fastembed
+- PEP 703 (free-threaded CPython): https://peps.python.org/pep-0703/
 
 ---
 

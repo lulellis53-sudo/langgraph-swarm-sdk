@@ -92,7 +92,7 @@ at intake and per-step boundaries — not a single Coder loop.
 | `src/swarm_sdk/server/graphs.py` | Enhancement | `plan` graph: Jev-enabled factory | Med | worker |
 | `Agents/coordination.yaml` | Enhancement | Reference tasks for parallel + websearch pipeline | Low | validate |
 | `Agents/benchmark/tests/` | New | Integration: plan + Jev + parallel wave | Med | fixtures |
-| `Documents/LangGraphSwarm.md` | Docs | §9 Jev integration status updated | Low | code |
+| `Documents/LangSwarm.md` | Docs | §9 Jev integration status updated | Low | code |
 | `Main/config/swarm.yaml` | Config | Feature flag `jev_routing_enabled` (proposed) | Low | — |
 
 **Risk profile (draft):** 4 low, 5 medium, 0 high (no schema migrations).
@@ -161,7 +161,7 @@ Use **Jev at worker boundary** (each `PlanStep` execution), not inside every LLM
 - [ ] Reference parallel plan in benchmark or docs executes 2+ steps in one wave
 - [ ] `uv run python -m swarm_sdk.agents.validate` green
 - [ ] Quality gate green (pytest, ruff, ty on touched paths)
-- [ ] `Documents/LangGraphSwarm.md` §9 reflects implemented wiring
+- [ ] `Documents/LangSwarm.md` §9 reflects implemented wiring
 
 ---
 
@@ -205,7 +205,7 @@ Use **Jev at worker boundary** (each `PlanStep` execution), not inside every LLM
 
 - Parallel coworkers: `WebFetch` / `Normalizer` / `Persister` wave barriers in `WebSearch/`.
 - Jev + graph: `LowSwarmEngine._build_graph`.
-- Full swarm docs: `Documents/LangGraphSwarm.md` §9.
+- Full swarm docs: `Documents/LangSwarm.md` §9.
 
 ### Test locations
 
@@ -223,7 +223,7 @@ Use **Jev at worker boundary** (each `PlanStep` execution), not inside every LLM
 | SWARM-JEV-2 | ChoiceDecision when agent ambiguous | Story | spawn validation |
 | SWARM-JEV-3 | Extend `_CANDIDATE_KEYWORDS` for all personas | Task | jev_router.py |
 | SWARM-JEV-4 | Benchmark: parallel two-Coder wave plan | Story | benchmark |
-| SWARM-JEV-5 | `swarm.yaml` feature flag + docs | Task | LangGraphSwarm.md |
+| SWARM-JEV-5 | `swarm.yaml` feature flag + docs | Task | LangSwarm.md |
 | SWARM-JEV-6 | coordination.yaml exemplar parallel graph | Task | Agents |
 
 *Replace keys when epic exists in Jira; use JQL `"Epic Link" = SWARM-JEV`.*
