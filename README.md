@@ -130,6 +130,8 @@ Predefined model routes, API key variable names, and service credential owners l
 
 **Three parallel agent lanes** plus an integration root (fixed git worktrees; map and gates in [`.cursor/skills/multi-lane-worktrees/SKILL.md`](.cursor/skills/multi-lane-worktrees/SKILL.md)): WebSearch (`WebSearch/`, `feature/websearch`), Prediction (`../Swarm-Prediction`, `feat/prediction-engine`), Newsletter (`../Newsletter`, `feat/newsletter`). Repo root stays on `integration/all-branches` for merges. Open [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace) for a multi-root editor layout. `SWARM_*` env vars override file defaults.
 
+Optional shared Redis caching for WebSearch and exact Swarm responses is documented in [`docs/redis-cache.md`](docs/redis-cache.md).
+
 ## Token path
 
 1. Exact SHA-256 cache, then a cosine semantic cache (default threshold `0.97`).

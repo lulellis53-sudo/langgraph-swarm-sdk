@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from swarm_sdk.config.loader import SwarmFileConfig
 
 from dotenv import dotenv_values
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 MemoryBackend = Literal["sqlite-vec", "faiss", "qdrant", "opencl", "mem0"]
@@ -56,6 +56,12 @@ class Settings(BaseSettings):
     mem0_agent_id: str = "swarm-sdk"
     mem0_infer: bool = False
     cache_path: str = "swarm-cache.sqlite"
+    # Optional shared exact-response cache; unset keeps caching local to SQLite.
+    redis_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("REDIS_URL", "SWARM_REDIS_URL", "redis_url"),
+    )
+    redis_cache_ttl_s: int = Field(default=86400, ge=1)
     # None keeps checkpoints in memory (lost on restart); a path makes threads durable.
     checkpoint_path: str | None = None
     peer_url: str | None = None

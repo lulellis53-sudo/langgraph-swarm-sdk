@@ -335,6 +335,8 @@ class SwarmSDK:
                 self.settings.semantic_threshold,
                 ttl_days=self.settings.cache_ttl_days,
                 use_index=self.settings.semantic_cache_on_gpu,
+                redis_url=self.settings.redis_url,
+                redis_ttl_s=self.settings.redis_cache_ttl_s,
             )
         return self._cache
 
@@ -540,9 +542,7 @@ class SwarmSDK:
             metrics.set_active_threads(len(self._threads))
             return True
 
-    async def _swarm(
-        self, packed: PackedPrompt, text: str, thread_id: str
-    ) -> tuple[str, int, str]:
+    async def _swarm(self, packed: PackedPrompt, text: str, thread_id: str) -> tuple[str, int, str]:
         graph = self._graph()
         user = packed.user or packed.system
         payload: dict[str, object] = {"messages": [{"role": "user", "content": user}]}
