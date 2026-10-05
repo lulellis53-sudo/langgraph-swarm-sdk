@@ -76,6 +76,18 @@ class TestArrowCalcs:
         assert 49.0 <= q_res[0.5] <= 51.0
         assert 94.0 <= q_res[0.95] <= 96.0
 
+    def test_column_stats_includes_median(self) -> None:
+        stats = ArrowCalcs.column_stats([1.0, 2.0, 3.0, 4.0, 5.0])
+        assert stats["median"] == 3.0
+        stats_even = ArrowCalcs.column_stats([1.0, 2.0, 3.0, 4.0])
+        assert stats_even["median"] == 2.5
+
+    def test_quantiles_use_linear_interpolation(self) -> None:
+        # Even-count data: median should be interpolated, not floored.
+        data = [1.0, 2.0, 3.0, 4.0]
+        q_res = ArrowCalcs.quantiles(data, q=[0.5])
+        assert q_res[0.5] == pytest.approx(2.5)
+
 
 class TestSwarmCalcsFacadeAndDispatch:
     """Test unified SwarmCalcs facade and dispatch routing."""

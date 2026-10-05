@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Researcher handoff",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["agent", "task_id", "status", "route", "findings"],
+  "properties": {
+    "agent": { "const": "Researcher" },
+    "task_id": { "enum": ["code_search", "summarize_domain"] },
+    "status": { "enum": ["done", "blocked", "needs_input"] },
+    "route": { "enum": ["L1", "L2", "L3", "L4"] },
+    "findings": { "type": "array" },
+    "gaps": { "type": "array", "items": { "type": "string" } }
+  }
+}

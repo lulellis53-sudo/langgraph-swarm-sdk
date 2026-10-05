@@ -19,6 +19,13 @@ from swarm_sdk.orchestrator.plan import normalize_claimed_file
 from swarm_sdk.orchestrator.worker import WorkerAgent, role_contract
 
 
+@pytest.fixture(autouse=True)
+def _no_hosted_jev(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Spawn tests must not call TypeSafe when a key is present in the environment."""
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    monkeypatch.delenv("JEV_API_KEY", raising=False)
+
+
 def manifest(name: str = "Coder", **overrides: object) -> AgentManifest:
     data = {
         "name": name,
@@ -438,7 +445,9 @@ def test_resolve_api_key_from_vault(monkeypatch: pytest.MonkeyPatch, tmp_path: P
     from swarm_sdk import vault
 
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    monkeypatch.setattr(vault, "get", lambda name: "vault-key" if name == "OPENAI_API_KEY" else None)
+    monkeypatch.setattr(
+        vault, "get", lambda name: "vault-key" if name == "OPENAI_API_KEY" else None
+    )
     worker = WorkerAgent(manifest("Coder", api_key_env="OPENAI_API_KEY"), agents_root=str(tmp_path))
     worker._resolve_api_key()
     assert os.environ["OPENAI_API_KEY"] == "vault-key"

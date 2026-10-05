@@ -1,4 +1,7 @@
-# Systems Memory Allocators: Architecture, Hardware Mechanics, Profiling & Benchmarks
+# Memory Allocators: Research Notes and Trade-Offs
+
+> **Scope and evidence:** This document surveys allocator research across operating systems and runtimes. It is not a project benchmark or a recommendation to replace the platform allocator. Treat comparative figures as source-specific; reproduce them on the target workload before making an engineering decision.
+
 *Systems reference with selected 2025–2026 allocator research*
 
 > **Target Systems**: Linux (x86_64, ARM64, RISC-V), Darwin macOS/iOS, Bare-Metal / RTOS, Android NDK, CXL 2.0/3.0 Disaggregated Clusters, and UPMEM In-Memory Computing.  
@@ -35,7 +38,7 @@
 6. [Compile-Time & Static ML Buffer Compaction](#6-compile-time--static-ml-buffer-compaction)
    - 6.1 [Hardware Accelerator SRAM Constraints (TPUs, NPUs, GPUs)](#61-hardware-accelerator-sram-constraints-tpus-npus-gpus)
    - 6.2 [Google `MiniMalloc` (ASPLOS '23): Algebraic Semi-Lattice Optimization & Spatial Pruning](#62-google-minimalloc-asplos-23-algebraic-semi-lattice-optimization--spatial-pruning)
-   - 6.3 [Empirical Local Benchmark Results: 17.0x Static Memory Compaction](#63-empirical-local-benchmark-results-170x-static-memory-compaction)
+   - 6.3 [Benchmark evidence and reproduction](#63-benchmark-evidence-and-reproduction)
    - 6.4 [MiniMalloc CLI, C++ Engine & Python Integration](#64-minimalloc-cli-c-engine--python-integration)
 7. [Memory Defragmentation & Security-Hardening Allocators](#7-memory-defragmentation--security-hardening-allocators)
    - 7.1 [Berger et al. `Mesh` (PLDI '19): Virtual Memory Remapping Without Pointer Relocation](#71-berger-et-al-mesh-pldi-19-virtual-memory-remapping-without-pointer-relocation)
@@ -677,32 +680,17 @@ Google's `MiniMalloc` (Michael D. Moffitt, ASPLOS 2023) formulates static memory
 
 ---
 
-### 6.3 Empirical Local Benchmark Results: 17.0x Static Memory Compaction
+### 6.3 Benchmark evidence and reproduction
 
-Our local hardware benchmark suite ([`/Users/usuario/Benchmarks/`](file:///Users/usuario/Benchmarks/)) evaluated Google MiniMalloc on our 6-core Intel Core i7-9750H testbed under CPython 3.14.7 (Apple Clang 21.0.0, AVX2, ThinLTO, PGO).
+This repository does not include the local MiniMalloc benchmark suite or raw
+results previously referenced here, so this guide makes no claim about local
+compaction ratios or allocator speed. Published results apply to the paper's
+workloads and implementation, not automatically to this SDK or this Mac.
 
-#### Measured Buffer Compaction Power:
-
-| Benchmark Trace | Category | Buffers | Uncompacted Bytes | Compacted Height | Compaction Ratio | Solve Time | Validation |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `input.12` | ASPLOS Example | 5 | 20 B | 12 B | **1.67x** | 0.067 ms | ✅ GOOD |
-| `A.1048576` | ASPLOS Challenging | 154 | 15,071,232 B | 1,048,576 B | **14.37x** | 7,152.41 ms | ✅ GOOD |
-| `B.1048576` | ASPLOS Challenging | 170 | 17,871,872 B | 1,048,576 B | **17.04x** | 5,231.24 ms | ✅ GOOD |
-| `synthetic_10_tensors` | Synthetic ML Graph | 10 | 52,428,800 B | 41,943,040 B | **1.25x** | 0.047 ms | ✅ GOOD |
-| `synthetic_30_tensors` | Synthetic ML Graph | 30 | 197,132,288 B | 84,934,656 B | **2.32x** | 0.146 ms | ✅ GOOD |
-| `synthetic_75_tensors` | Synthetic ML Graph | 75 | 456,130,560 B | 84,934,656 B | **5.37x** | 0.414 ms | ✅ GOOD |
-
-> **Key Result**: On ASPLOS Challenging Workload B, MiniMalloc compressed **17.04x** of tensor buffer memory space (from 17.87 MB down to 1.05 MB), mathematically guaranteeing zero spatial or temporal overlap across all 170 tensor lifetimes.
-
-#### Allocator Face-Off: Combinatorial Solving under `mimalloc` vs Darwin OS `malloc`:
-Executing the MiniMalloc combinatorial solver across 1,000 continuous iterations:
-
-| Allocator Engine | Total Solving Time (1,000 runs) | Latency per Solve | Peak Resident Memory (RSS) |
-| :--- | :--- | :--- | :--- |
-| **Darwin System Malloc** (`libsystem_malloc`) | 11.199 ms | 11.20 µs | 13.35 MB |
-| **Microsoft mimalloc v3.5** (`PYTHONMALLOC=mimalloc`) | 11.175 ms | 11.18 µs | 13.57 MB |
-
----
+For a project performance claim, include the source revision, hardware and OS,
+compiler flags, input trace, warm-up and repetition method, memory metric, raw
+output, and a command another contributor can run. Compare identical inputs and
+keep solver time separate from allocation or inference time.
 
 ### 6.4 MiniMalloc CLI, C++ Engine & Python Integration
 

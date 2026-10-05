@@ -16,7 +16,13 @@ from pydantic import ValidationError
 from swarm_sdk.agents.manifest import AgentManifest, AgentTaskSpec, TokenBudgetSpec
 from swarm_sdk.orchestrator.graph import build_graph, run_plan
 from swarm_sdk.orchestrator.plan import Plan, PlanStep, StepOutput, UsageTotals
-from swarm_sdk.orchestrator.spawn import _fallback_plan, _validate_plan, make_factory, spawn
+from swarm_sdk.orchestrator.spawn import (
+    _fallback_plan,
+    _validate_plan,
+    jev_advice,
+    make_factory,
+    spawn,
+)
 
 
 @pytest.fixture
@@ -44,6 +50,13 @@ def mock_manifests() -> dict[str, AgentManifest]:
     }
 
 
+@pytest.fixture(autouse=True)
+def _no_hosted_jev(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Plan tests must not call TypeSafe when a key is present in the environment."""
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    monkeypatch.delenv("JEV_API_KEY", raising=False)
+
+
 class TestSpawnDecomposition:
     """Test suite for orchestrator goal decomposition and plan validation."""
 
@@ -52,10 +65,10 @@ class TestSpawnDecomposition:
         """Orchestrator emits valid JSON plan -> validated and returned as Plan."""
         mock_model = MagicMock()
         mock_response = (
-            'Here is the plan:\n'
-            '{\n'
+            "Here is the plan:\n"
+            "{\n"
             '  "steps": [\n'
-            '    {\n'
+            "    {\n"
             '      "id": "S1",\n'
             '      "title": "implement module",\n'
             '      "description": "write src/core.py",\n'
@@ -64,8 +77,8 @@ class TestSpawnDecomposition:
             '      "files": ["src/core.py"],\n'
             '      "depends_on": [],\n'
             '      "inputs": []\n'
-            '    },\n'
-            '    {\n'
+            "    },\n"
+            "    {\n"
             '      "id": "S2",\n'
             '      "title": "test module",\n'
             '      "description": "test src/core.py",\n'
@@ -74,12 +87,14 @@ class TestSpawnDecomposition:
             '      "files": ["tests/test_core.py"],\n'
             '      "depends_on": ["S1"],\n'
             '      "inputs": ["S1"]\n'
-            '    }\n'
-            '  ]\n'
-            '}'
+            "    }\n"
+            "  ]\n"
+            "}"
         )
 
-        with patch("swarm_sdk.orchestrator.spawn.complete", new_callable=AsyncMock) as mock_complete:
+        with patch(
+            "swarm_sdk.orchestrator.spawn.complete", new_callable=AsyncMock
+        ) as mock_complete:
             mock_complete.return_value = mock_response
             plan = await spawn(
                 "Build core module and test it",
@@ -103,16 +118,20 @@ class TestSpawnDecomposition:
         mock_model = MagicMock()
         bad_response = "I am decomposing this... wait, no JSON here."
         good_response = (
-            '{\n'
+            "{\n"
             '  "steps": [\n'
             '    {"id": "S1", "title": "step 1", "description": "do work", "agent": "Coder"}\n'
-            '  ]\n'
-            '}'
+            "  ]\n"
+            "}"
         )
 
-        with patch("swarm_sdk.orchestrator.spawn.complete", new_callable=AsyncMock) as mock_complete:
+        with patch(
+            "swarm_sdk.orchestrator.spawn.complete", new_callable=AsyncMock
+        ) as mock_complete:
             mock_complete.side_effect = [bad_response, good_response]
-            plan = await spawn("Do work", mock_manifests, model_override=mock_model, structured=False)
+            plan = await spawn(
+                "Do work", mock_manifests, model_override=mock_model, structured=False
+            )
 
             assert len(plan.steps) == 1
             assert plan.steps[0].id == "S1"
@@ -129,7 +148,9 @@ class TestSpawnDecomposition:
         mock_model = MagicMock()
         bad_response = "Invalid reply"
 
-        with patch("swarm_sdk.orchestrator.spawn.complete", new_callable=AsyncMock) as mock_complete:
+        with patch(
+            "swarm_sdk.orchestrator.spawn.complete", new_callable=AsyncMock
+        ) as mock_complete:
             mock_complete.return_value = bad_response
             plan = await spawn("Unrecoverable goal", mock_manifests, model_override=mock_model)
 
@@ -139,6 +160,58 @@ class TestSpawnDecomposition:
             assert plan.steps[0].description == "Unrecoverable goal"
             assert plan.steps[0].agent == "Orchestrator"
 
+    def test_jev_advice_abstains_without_a_key(self) -> None:
+        """The plan hint does not invent a local Score or Choice."""
+        brief = jev_advice("fix a typo in the docstring", ["Coder", "Tester"], environ={})
+        assert brief.startswith("JEV abstained")
+        assert "flash_lite" not in brief
+
+    @pytest.mark.asyncio
+    async def test_spawn_noul_blocks_without_calling_the_model(
+        self, mock_manifests: dict[str, AgentManifest]
+    ) -> None:
+        """A destructive goal becomes a blocked plan and never reaches the model."""
+        mock_model = MagicMock()
+        with patch(
+            "swarm_sdk.orchestrator.spawn.complete", new_callable=AsyncMock
+        ) as mock_complete:
+            plan = await spawn(
+                "rm -rf /",
+                mock_manifests,
+                model_override=mock_model,
+                structured=False,
+            )
+
+        assert plan.steps[0].title == "blocked"
+        assert plan.steps[0].agent == "Orchestrator"
+        assert plan.steps[0].description.startswith("deterministic safety block:")
+        assert "unsafe_destructive_command" in plan.steps[0].description
+        assert "JEV" not in plan.steps[0].description
+        mock_complete.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_spawn_appends_jev_advice(self, mock_manifests: dict[str, AgentManifest]) -> None:
+        """A safe goal still calls the model, with the JEV brief in the prompt."""
+        mock_model = MagicMock()
+        good = (
+            '{"steps": [{"id": "S1", "title": "step", "description": "do work", "agent": "Coder"}]}'
+        )
+        with patch(
+            "swarm_sdk.orchestrator.spawn.complete", new_callable=AsyncMock
+        ) as mock_complete:
+            mock_complete.return_value = good
+            plan = await spawn(
+                "fix a typo in the docstring",
+                mock_manifests,
+                model_override=mock_model,
+                structured=False,
+            )
+
+        assert plan.steps[0].agent == "Coder"
+        prompt = mock_complete.call_args_list[0][0][2]
+        assert "JEV abstained" in prompt
+        assert "flash_lite" not in prompt
+
     def test_validate_plan_unknown_agent(self, mock_manifests: dict[str, AgentManifest]) -> None:
         """Plan referencing agent not in manifests raises ValueError."""
         plan = Plan(
@@ -147,11 +220,15 @@ class TestSpawnDecomposition:
         with pytest.raises(ValueError, match="plan references unknown agents"):
             _validate_plan(plan, mock_manifests)
 
-    def test_validate_plan_forward_dependency(self, mock_manifests: dict[str, AgentManifest]) -> None:
+    def test_validate_plan_forward_dependency(
+        self, mock_manifests: dict[str, AgentManifest]
+    ) -> None:
         """Step depending on a future/unknown step raises ValueError."""
         plan = Plan(
             steps=[
-                PlanStep(id="S1", title="step 1", description="desc", agent="Coder", depends_on=["S2"]),
+                PlanStep(
+                    id="S1", title="step 1", description="desc", agent="Coder", depends_on=["S2"]
+                ),
                 PlanStep(id="S2", title="step 2", description="desc", agent="Tester"),
             ]
         )
@@ -230,6 +307,7 @@ class TestWaveBarrierGraphExecution:
 
         def mock_factory(step: PlanStep):
             worker = MagicMock()
+
             async def mock_run(step_id, desc, inputs, files=(), task=""):
                 return StepOutput(
                     step_id=step_id,
@@ -241,6 +319,7 @@ class TestWaveBarrierGraphExecution:
                     wall_s=0.05,
                     status="ok",
                 )
+
             worker.run = mock_run
             return worker
 

@@ -32,6 +32,7 @@ tasks:
       - severity_map
 
 capabilities:
+  - ast
   - diff_reading
   - static_analysis
   - security_patterns

@@ -199,12 +199,14 @@ Search behavior:
 
 Strictly enforce this retrieval precedence:
 
-1. **Code & Library Search (Primary: Context7)**:
-   - Always query **Context7 MCP** (`resolve-library-id` -> `query-docs`) first when researching programming languages, frameworks, library APIs, flags, types, and CLI command syntax.
+1. **Code & Library Search (Primary: Context7 — Mandatory First Step)**:
+   - **If code-related, library-related, or API-related and needs websearch, START WITH CONTEXT7 FIRST** (`resolve-library-id` -> `query-docs`).
+   - This avoids expensive websearchers token usage, prevents hallucinated snippets, and minimizes multi-hop browsing overhead.
+   - Always query Context7 for programming languages, frameworks, library APIs, flags, types, classes, methods, and CLI command syntax before invoking any external search engine.
 2. **Web Scraping, Content Fetching & JSON Parsing (Tavily & Exa)**:
    - Use **Tavily** (`tavily_search`, `tavily_extract`, `tavily_crawl`, `tavily_map`) and **Exa** (`web_search_exa`, `web_fetch_exa`) for automated scraping, deep content extraction, batch URL processing, and structured JSON parsing.
 3. **Google Web Search (Secondary Fallback Only)**:
-   - Use Google Websearch (`search_web`) **strictly as a second option**, only after Context7 has been consulted or when Context7 does not yield the required technical documentation.
+   - Use Google Websearch (`search_web`) **strictly as a secondary fallback option**, only after Context7 has been consulted or when Context7 does not yield the required technical documentation.
 
 ---
 

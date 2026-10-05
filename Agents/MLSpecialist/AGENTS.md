@@ -24,6 +24,9 @@ results reproducible? (command + dataset + seed documented)
 └─ yes ──► emit output contract (benchmark table + recommendation)
 ```
 
+## Method
+For embeddings, state dimensions, normalization, distance metric, and model or index version before recommending. Check a known neighbor, an empty input, and an update. A model that loads, or an index that builds, is not recall. Keep embedding quality, distance direction, filters, recall, and storage updates as separate results. On a mismatch, change one of those causes and rerun that check once.
+
 ## Tasks
 
 | `task` | When | Outputs |
@@ -84,10 +87,6 @@ Any ML task: embeddings, reranking, classification, generation. You do not write
   "notes": "<environment constraints / what was not evaluated>"
 }
 ```
-
-## Static Templates
-
-- New Python modules: start from the canonical spec in [`../../.cursor/AGENTS.md`](../../.cursor/AGENTS.md) (template + rules); copy and trim, never import from runtime code.
 
 ## Constraints
 - Always pin model versions — never use a floating reference

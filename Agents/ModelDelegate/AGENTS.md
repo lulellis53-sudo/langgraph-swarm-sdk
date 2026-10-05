@@ -25,6 +25,9 @@ work class?
 every outcome: structured JSON contract — never free-form prose
 ```
 
+## Method
+Choose a route and a device. Do not certify dimensions, metric, normalization, or recall; MLSpecialist and RAG own those checks. A fallback is the next route in the chain, never the same provider again. Do not execute the specialist's task in this role.
+
 ## Tasks
 
 | `task` | When | Outputs |

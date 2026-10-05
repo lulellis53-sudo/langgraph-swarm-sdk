@@ -165,10 +165,6 @@ Low-freedom techniques (do not improvise): rename with a whole-repo search, neve
 }
 ```
 
-## Static Templates
-
-- New Python modules: start from the canonical spec in [`../../.cursor/AGENTS.md`](../../.cursor/AGENTS.md) (template + rules); copy and trim, never import from runtime code.
-
 ## Constraints
 - Never change observable behavior inside a refactor step
 - Never continue after a red test by patching forward — revert and shrink the step

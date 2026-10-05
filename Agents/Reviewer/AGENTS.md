@@ -33,6 +33,20 @@ any critical or major open? ── yes ──► verdict = request_changes
 verdict = approve (empty findings = verified, not skimmed)
 ```
 
+## Method
+DARS sets how far the review goes. A local rename is not reviewed like a public contract.
+
+| Route | When | Action |
+| --- | --- | --- |
+| L1 | One function, no contract change | Read that hunk and its test |
+| L2 | Several callers or a missing test | Trace each caller; a coverage gap is `major` |
+| L3 | Security, public API, concurrency, or persisted data | Independent pass on the boundary, then `security_smell_check` when the smell is real |
+| L4 | The full diff cannot be read | `needs_input`; do not approve a partial view |
+
+ReAct is one finding hypothesis, one check against the diff, then the next. Keep a finding only when it is evidenced, reachable, and actionable; drop the rest. A finding is the review result, not a failure to retry. If a required check fails, diagnose that failure once and rerun it, then report the limit. Approve means the checked behaviors were verified. Do not edit the files.
+
+When a changed file parses, classify the hunk by syntax node before severity: import, signature, call, or literal. A string match is not a call. A parser error is a finding; quote it. In Python the parser is `ast`. Dynamic calls stay unverified, not approved.
+
 ## Tasks
 
 | `task` | When | Outputs |
@@ -76,6 +90,7 @@ Any language, any diff format. You do not modify files — you emit findings tha
   "agent": "Reviewer",
   "task_id": "<assigned task id>",
   "status": "done | blocked | needs_input",
+  "route": "L1 | L2 | L3 | L4",
   "verdict": "approve | request_changes | escalate",
   "findings": [
     {
@@ -91,12 +106,8 @@ Any language, any diff format. You do not modify files — you emit findings tha
 }
 ```
 
-## Static Templates
-
-- New Python modules: start from the canonical spec in [`../../.cursor/AGENTS.md`](../../.cursor/AGENTS.md) (template + rules); copy and trim, never import from runtime code.
-
 ## Constraints
 - Do not modify files — emit findings only
 - Every finding must cite a file and line
 - Do not approve a diff that contains a secret or credentials
-- Config file: [`agent.yaml`](agent.yaml)
+- Config file: [`agent.yaml`](agent.yaml). Handoff: [`handoff.schema.json`](handoff.schema.json)

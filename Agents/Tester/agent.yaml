@@ -29,6 +29,7 @@ tasks:
       - failure_classification
 
 capabilities:
+  - ast
   - pytest
   - hypothesis
   - coverage

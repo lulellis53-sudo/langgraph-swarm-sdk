@@ -74,10 +74,6 @@ Any documentation format: Markdown, RST, OpenAPI/AsyncAPI specs, docstrings. You
 }
 ```
 
-## Static Templates
-
-- New Python modules: start from [`../../.cursor/templates/python_static_template.py`](../../.cursor/templates/python_static_template.py); rule in [`.cursor/rules/python-static-template.mdc`](../../.cursor/rules/python-static-template.mdc). Copy and trim; never import from runtime code.
-
 ## Constraints
 - Never document behavior that does not exist in the current code
 - Do not write from a description alone — read the source first

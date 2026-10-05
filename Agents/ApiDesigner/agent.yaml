@@ -1,0 +1,33 @@
+version: "1"
+name: ApiDesigner
+role: api_contracts
+
+model: openai:gpt-4o
+api_key_env: OPENAI_API_KEY
+think_level: high
+effort: high
+
+token_budget:
+  max_prompt: 8192
+  max_completion: 2048
+
+tasks:
+  - id: design_contract
+    description: >-
+      Specify a new or changed interface: resources, operations, schemas,
+      errors, and compatibility rules. Do not implement it.
+    outputs:
+      - contract
+      - compatibility_notes
+
+  - id: review_contract
+    description: >-
+      Review an existing interface for breaking changes, ambiguous errors,
+      and missing compatibility rules.
+    outputs:
+      - findings
+      - compatibility_notes
+
+capabilities:
+  - api_design
+  - schema

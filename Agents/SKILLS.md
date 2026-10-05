@@ -29,11 +29,12 @@ token budget, tasks, capabilities). Validation: `uv run python -m swarm_sdk.agen
 | [Coder](Coder/AGENTS.md) | implement_changes | coder | implement_feature, implement_in_files, fix_regression, add_tests |
 | [DataEngineer](DataEngineer/AGENTS.md) | data_pipeline_and_storage | - | pipeline_design, store_operations |
 | [Debugger](Debugger/AGENTS.md) | root_cause_failures | - | reproduce_failure, identify_root_cause |
-| [DeepResearch](DeepResearch/AGENTS.md) | deep_technical_research | - | argus_evidence_graph, hardware_runtime_benchmarks |
+| [DeepResearch](DeepResearch/AGENTS.md) | deep_technical_research | - | evidence_synthesis, source_verification |
 | [DevOps](DevOps/AGENTS.md) | ci_cd_and_environments | - | pipeline_green, environment_provision |
 | [Documenter](Documenter/AGENTS.md) | maintain_documentation | - | sync_docs, generate_reference |
 | [MLSpecialist](MLSpecialist/AGENTS.md) | model_selection_and_integration | - | model_evaluation, pipeline_integration |
-| [ModelDelegate](ModelDelegate/AGENTS.md) | model_delegation | - | route_task, resolve_fallback, delegate_embedding, delegate_math |
+| [ModelDelegate](ModelDelegate/AGENTS.md) | model_delegation | - | route_task, resolve_fallback, delegate_embedding, delegate_math, solve_math, verify_math |
+| [Newsletter](Newsletter/AGENTS.md) | digest_generation | - | newsletter_mvp |
 | [Normalizer](Normalizer/AGENTS.md) | normalize_dedupe | - | normalize_dedupe |
 | [Optimizer](Optimizer/AGENTS.md) | performance_tuning | - | profile_hotpath, apply_optimization |
 | [Orchestrator](Orchestrator/AGENTS.md) | coordinate_swarm | - | decompose_goal, assign_tasks, merge_results |
@@ -45,13 +46,19 @@ token budget, tasks, capabilities). Validation: `uv run python -m swarm_sdk.agen
 | [Reviewer](Reviewer/AGENTS.md) | review_changes | reviewer | diff_review, security_smell_check |
 | [Security](Security/AGENTS.md) | security_review | - | secrets_audit, dependency_audit |
 | [Tester](Tester/AGENTS.md) | write_and_run_tests | - | write_tests, run_gate |
+| [Toolchain](Toolchain/AGENTS.md) | build_toolchain | - | diagnose_build, select_toolchain |
 | [TxtToCsv](TxtToCsv/AGENTS.md) | convert_text_files_to_csv | - | infer_format, convert |
 | [WebFetch](WebFetch/AGENTS.md) | fetch_render | - | fetch_render |
-| [Newsletter](Newsletter/AGENTS.md) | digest_generation | - | newsletter_mvp |
+| [WebResearcher](WebResearcher/AGENTS.md) | cited_web_lookup | - | lookup_fact, collect_sources |
+| [ApiDesigner](ApiDesigner/AGENTS.md) | api_contracts | - | design_contract, review_contract |
+| [Architect](Architect/AGENTS.md) | structure_and_boundaries | - | map_boundaries, propose_layout |
+| [Benchmarker](Benchmarker/AGENTS.md) | measured_baselines | - | define_workload, measure_baseline, compare_candidates |
+| [math](math/AGENTS.md) | mathematical_modeling | - | solve_math, verify_math, numerical_stability_review |
 
-The `benchmark/` directory holds the primary test suite and evals; the
-`code-review/`, `deep-research/`, and `math/` directories are mirrored prompt
-catalogs consumed as reference material, not running agents.
+`benchmark/` is the test harness, not a persona. Review lives on `Reviewer`.
+Web lookup is split: `Researcher` for the workspace, `WebResearcher` for a
+narrow public fact, `DeepResearch` for a sourced dossier, `WebFetch` for the
+deterministic page pipeline. Nested `ModelDelegate/*` manifests are not loaded.
 
 ## Coordination
 

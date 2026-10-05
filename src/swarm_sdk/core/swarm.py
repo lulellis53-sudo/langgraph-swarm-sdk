@@ -594,18 +594,23 @@ class SwarmSDK:
     def _node_tools(self, manifest: AgentManifest | None, peers: list[str]) -> list[object]:
         """Tools for one swarm node: capability-gated extras plus handoffs.
 
-        A manifest advertising the ``web_search`` capability also gets the
-        WebSearch LangChain tools when ``Settings.enable_websearch_tools`` is
-        set and the package is importable; otherwise only handoff tools.
+        A manifest advertising ``web_search`` also gets the WebSearch tools
+        when ``Settings.enable_websearch_tools`` is set. A manifest advertising
+        ``ast`` gets the Python syntax outline. Otherwise only handoff tools.
         """
         handoffs = [_handoff(peer, f"Hand off {peer} work.") for peer in peers]
+        extras: list[object] = []
         if (
             manifest is not None
             and self.settings.enable_websearch_tools
             and "web_search" in manifest.capabilities
         ):
-            return [*_websearch_tools(), *handoffs]
-        return handoffs
+            extras.extend(_websearch_tools())
+        if manifest is not None and "ast" in manifest.capabilities:
+            from swarm_sdk.agents.syntax_tree import syntax_tools
+
+            extras.extend(syntax_tools())
+        return [*extras, *handoffs]
 
     def _node_middleware(self) -> list[object]:
         """Token-saving middleware for every swarm agent node.

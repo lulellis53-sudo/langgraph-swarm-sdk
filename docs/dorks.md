@@ -1,6 +1,10 @@
 # Google dork tutorial
 
-Build dork strings with `dork()` in `frontend/dorks.py`, then pass them to `search_hits`, `search_brief`, or `run_pipeline` like any other query.
+Build queries with `dork()` in
+[`WebSearch/frontend/dorks.py`](../WebSearch/frontend/dorks.py), then pass them
+to the WebSearch search helpers. See the
+[pipeline guide](../WebSearch/PIPELINE.md) for supported entry points and
+provider behavior.
 
 A **dork** is a query that uses operators so Google returns a narrower set of pages.
 This frontend always builds the same shape: one **parameter** OR-group, `AND`, one

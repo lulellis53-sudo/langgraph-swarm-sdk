@@ -28,6 +28,7 @@ tasks:
       - benchmark_delta
 
 capabilities:
+  - ast
   - profiling
   - benchmarking
   - token_counting

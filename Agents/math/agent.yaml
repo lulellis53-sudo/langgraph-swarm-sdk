@@ -1,9 +1,6 @@
 version: "1"
 name: math
 role: mathematical_modeling
-# Reference persona (also mirrored in ModelDelegate's MathWorker matrix).
-# Not wired into the handoff swarm: no langgraph_node; participates through
-# the plan orchestrator and via ModelDelegate delegate_math dispatch.
 
 model: mistral:ministral-3-8b-latest
 think_level: high
@@ -18,15 +15,15 @@ tasks:
   - id: solve_math
     description: >-
       Solve a mathematical problem end to end: model it, derive the solution
-      with explicit steps, and present the result with LaTeX.
+      with explicit steps, and present the result with the assumptions stated.
     outputs:
       - solution
       - derivation_steps
 
   - id: verify_math
     description: >-
-      Verify a mathematical claim symbolically (SymPy) or numerically
-      (mpmath at raised precision); report PROVEN / REFUTED / INCONCLUSIVE.
+      Verify a mathematical claim symbolically or numerically and report
+      proven, refuted, or inconclusive.
     outputs:
       - verification_result
       - counterexample_or_proof
@@ -34,7 +31,7 @@ tasks:
   - id: numerical_stability_review
     description: >-
       Review an algorithm for numerical stability: conditioning, cancellation,
-      accumulation error, and dtype/precision choices on this AVX2 host.
+      accumulation error, and precision choices for the stated runtime.
     outputs:
       - stability_findings
       - recommended_formulation
@@ -42,6 +39,3 @@ tasks:
 capabilities:
   - symbolic_math
   - numerical_verification
-  - sympy
-  - pyarrow_columnar
-  - gpu_dispatch_via_modeldelegate

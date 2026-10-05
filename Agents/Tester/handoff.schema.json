@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Tester handoff",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["agent", "task_id", "status", "route", "gate_result"],
+  "properties": {
+    "agent": { "const": "Tester" },
+    "task_id": { "enum": ["write_tests", "run_gate"] },
+    "status": { "enum": ["done", "blocked", "needs_input"] },
+    "route": { "enum": ["L1", "L2", "L3", "L4"] },
+    "gate_result": { "enum": ["pass", "fail"] },
+    "failures": { "type": "array" }
+  }
+}
