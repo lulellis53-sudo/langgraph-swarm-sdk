@@ -12,6 +12,7 @@ import hashlib
 import json
 import os
 import platform
+import resource
 import sys
 import time
 import uuid
@@ -168,6 +169,12 @@ def _time_batch(operation: Callable[[], object], *, iterations: int) -> float:
     return (time.perf_counter_ns() - started) / iterations / 1_000_000
 
 
+def _peak_rss_bytes() -> int:
+    """Return process peak RSS in bytes on macOS and Linux."""
+    value = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    return int(value if sys.platform == "darwin" else value * 1024)
+
+
 def _compare(
     name: str,
     size: int,
@@ -178,6 +185,7 @@ def _compare(
     iterations: int,
 ) -> dict[str, Any]:
     """Return paired ABBA timings, robust summaries, and a seeded CI."""
+    cpu_started = time.process_time_ns()
     for _ in range(_WARMUP_BATCHES):
         _time_batch(baseline, iterations=iterations)
         _time_batch(candidate, iterations=iterations)
@@ -209,6 +217,7 @@ def _compare(
             "candidate": candidate_samples,
             "paired_delta": deltas,
         },
+        "process_cpu_ms": (time.process_time_ns() - cpu_started) / 1_000_000,
     }
 
 
@@ -339,6 +348,7 @@ def run(
                 "independent_runs": 1,
             },
             "comparisons": comparisons,
+            "peak_rss_bytes": _peak_rss_bytes(),
         }
     finally:
         for client in clients:

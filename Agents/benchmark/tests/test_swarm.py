@@ -262,6 +262,50 @@ def test_indexed_cache_empty_db(tmp_path: Path) -> None:
     assert cache.lookup("x") is None
 
 
+def test_semantic_candidate_matrix_respects_configured_row_limit(tmp_path: Path) -> None:
+    cache = SemanticCache(str(tmp_path / "c.db"), HashEmbedder(16), max_semantic_rows=2)
+    for index in range(4):
+        cache.store(f"question {index}", f"answer {index}")
+
+    matrix, rows = cache._candidate_matrix("default")
+
+    assert matrix.shape == (2, 16)
+    assert [row[1] for row in rows] == ["answer 2", "answer 3"]
+
+
+def test_batch_exact_hit_does_not_write_semantic_access_timestamp(tmp_path: Path) -> None:
+    cache = SemanticCache(str(tmp_path / "batch.db"), HashEmbedder(16))
+    cache.store("question", "answer")
+    cache._conn.execute("UPDATE semantic_cache SET accessed_at = 1")
+    cache._conn.commit()
+
+    assert cache.lookup_batch(["question"]) == ["answer"]
+    assert cache._conn.execute("SELECT accessed_at FROM semantic_cache").fetchone()[0] == 1
+
+
+def test_semantic_candidate_cache_refreshes_after_same_connection_write(tmp_path: Path) -> None:
+    cache = SemanticCache(str(tmp_path / "refresh.db"), HashEmbedder(16))
+    cache.store("first", "answer one")
+    first, _ = cache._candidate_matrix("default")
+    cache.store("second", "answer two")
+
+    refreshed, rows = cache._candidate_matrix("default")
+
+    assert refreshed.shape[0] == first.shape[0] + 1
+    assert [row[1] for row in rows] == ["answer one", "answer two"]
+
+
+def test_exact_hit_does_not_write_semantic_access_timestamp(tmp_path: Path) -> None:
+    path = str(tmp_path / "c.db")
+    cache = SemanticCache(path, HashEmbedder(16))
+    cache.store("question", "answer")
+    cache._conn.execute("UPDATE semantic_cache SET accessed_at = 1")
+    cache._conn.commit()
+
+    assert cache.lookup("question") == "answer"
+    assert cache._conn.execute("SELECT accessed_at FROM semantic_cache").fetchone()[0] == 1
+
+
 def _ai(text: str, total: int | None) -> AIMessage:
     meta = (
         None

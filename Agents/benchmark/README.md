@@ -42,6 +42,23 @@ Tests use an explicitly enabled in-memory stand-in; the benchmark CLI refuses
 to silently treat that stand-in as real Redis. Results do not impose
 machine-dependent CI latency thresholds.
 
+### Persistent cache storage and resource use (`Tasks/cache_storage/`)
+
+Compare SQLite with DuckDB when the optional `duckdb` package is installed.
+Each engine and cache size runs in a fresh subprocess so peak RSS is not
+contaminated by a previous engine. The harness reports exact point hits and
+misses, a bounded 256-row semantic candidate scan, insert cost, process CPU,
+peak RSS, and database size. It isolates storage operations; embedding and
+Redis network time are intentionally excluded.
+
+```bash
+PYTHONPATH=Agents:. uv run python Agents/benchmark/Tasks/cache_storage/benchmark_cache_storage.py
+uv run pytest Agents/benchmark/Tasks/cache_storage -q
+```
+
+SQLite runs with the standard library. To include DuckDB, install it in the
+benchmark environment explicitly; it is not a core SDK dependency.
+
 ## Embedding throughput (CPU vs CoreML GPU)
 
 Compare ONNX Runtime providers for FastEmbed (requires `uv sync --extra jupyter`):

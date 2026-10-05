@@ -19,6 +19,7 @@ from swarm_sdk.retrieval.redis_exact import RedisExactCache
 _SPACE = re.compile(r"\s+")
 _INDEX_ROWS = 256
 _QUERY_EMBEDDING_ROWS = 256
+_DEFAULT_SEMANTIC_ROWS = 10_000
 
 
 def normalize(text: str) -> str:
@@ -52,6 +53,7 @@ class SemanticCache:
         redis_url: str | None = None,
         redis_ttl_s: int = 86400,
         max_entries: int = 10000,
+        max_semantic_rows: int = _DEFAULT_SEMANTIC_ROWS,
     ) -> None:
         """Open (or create) the cache database with exact + semantic layers."""
         self.embedder = embedder
@@ -59,6 +61,9 @@ class SemanticCache:
         self.ttl_days = ttl_days
         self.use_index = use_index
         self.max_entries = max(max_entries, 1)
+        if max_semantic_rows < 1:
+            raise ValueError("max_semantic_rows must be at least 1")
+        self.max_semantic_rows = max_semantic_rows
         self._redis_cache = (
             RedisExactCache(redis_url, "swarm:response", redis_ttl_s) if redis_url else None
         )
@@ -68,6 +73,8 @@ class SemanticCache:
         self._semantic_matrix: np.ndarray | None = None
         self._semantic_rows: list[tuple[int, str]] = []
         self._semantic_data_version = -1
+        self._semantic_write_version = 0
+        self._semantic_matrix_write_version = -1
         self._conn = sqlite3.connect(path, check_same_thread=False)
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute(
@@ -169,11 +176,20 @@ class SemanticCache:
                 tenant_id == "default"
                 and self._semantic_matrix is not None
                 and data_version == self._semantic_data_version
+                and self._semantic_write_version == self._semantic_matrix_write_version
             ):
                 return self._semantic_matrix, self._semantic_rows
             stored = self._conn.execute(
-                "SELECT id, vector, response FROM semantic_cache WHERE tenant_id = ?",
-                (tenant_id,),
+                """
+                SELECT id, vector, response FROM (
+                    SELECT id, vector, response
+                    FROM semantic_cache
+                    WHERE tenant_id = ?
+                    ORDER BY id DESC
+                    LIMIT ?
+                ) ORDER BY id ASC
+                """,
+                (tenant_id, self.max_semantic_rows),
             ).fetchall()
         vectors: list[np.ndarray] = []
         rows: list[tuple[int, str]] = []
@@ -191,6 +207,7 @@ class SemanticCache:
                 self._semantic_data_version = int(
                     self._conn.execute("PRAGMA data_version").fetchone()[0]
                 )
+                self._semantic_matrix_write_version = self._semantic_write_version
         return matrix, rows
 
     def _query_vector(self, text: str) -> np.ndarray:
@@ -271,7 +288,6 @@ class SemanticCache:
         if row is not None:
             self._exact_hits += 1
             response = str(row[0])
-            self._touch_semantic(text, tenant_id)
             if self._redis_cache is not None:
                 self._redis_cache.set(f"{tenant_id}:{normalized}", response)
             return response
@@ -423,9 +439,7 @@ class SemanticCache:
                 (normalized, blob, response, tenant_id, now, now),
             )
             self._conn.commit()
-            self._semantic_matrix = None
-            self._semantic_rows = []
-            self._semantic_data_version = -1
+            self._semantic_write_version += 1
         if tenant_id == "default":
             self._evict_if_needed()
         if self._redis_cache is not None:
