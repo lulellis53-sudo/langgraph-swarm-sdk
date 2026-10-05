@@ -97,6 +97,7 @@ _COMPAT_PROVIDERS = frozenset(
         "sambanova",
         "fireworks",
         "atlascloud",
+        "poolside",
     }
 )
 # Public OpenAI-compatible hosts. A vault or env base URL still wins.
@@ -108,6 +109,7 @@ _DEFAULT_BASE_URLS = {
     "minimax": "https://api.minimax.io/v1",
     "moonshot": "https://api.moonshot.ai/v1",
     "atlascloud": "https://api.atlascloud.ai/v1",
+    "poolside": "https://inference.poolside.ai/v1",
 }
 
 _KEY_KWARG = {

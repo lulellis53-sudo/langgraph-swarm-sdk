@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import time
+import urllib.request
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -395,3 +397,60 @@ class TestOpenRouterKey:
     def test_jev_key_wins(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._vault(monkeypatch, {"JEV_API_KEY": "jev-key", "OPENROUTER_API_KEY": "or-key"})
         assert JevRouter(endpoint="https://openrouter.ai/api/v1").api_key == "jev-key"
+
+
+def test_typesafe_choice_posts_systemone_and_keeps_a_known_option(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from swarm_sdk.core.jev_router import typesafe_choice
+
+    monkeypatch.delenv("JEV_API_KEY", raising=False)
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    monkeypatch.delenv("JEV_BASE_URL", raising=False)
+    monkeypatch.setattr(
+        "swarm_sdk.vault.get",
+        lambda name: {"JEV_API_KEY": "k", "JEV_BASE_URL": "https://api.typesafe.ai"}.get(name),
+    )
+    seen: dict[str, object] = {}
+
+    class _Response:
+        status = 200
+
+        def read(self) -> bytes:
+            return b'{"answers":{"pick":{"type":"choice","choice":"b"}}}'
+
+        def __enter__(self) -> _Response:
+            return self
+
+        def __exit__(self, *_exc: object) -> bool:
+            return False
+
+    def fake_open(request: urllib.request.Request, timeout: float) -> _Response:
+        seen["url"] = request.full_url
+        seen["timeout"] = timeout
+        seen["body"] = json.loads(request.data.decode())
+        assert request.get_header("Authorization") == "Bearer k"
+        return _Response()
+
+    monkeypatch.setattr("swarm_sdk.core.jev_router.urllib.request.urlopen", fake_open)
+    assert typesafe_choice("state", ["a", "b"]) == "b"
+    assert seen["url"] == "https://api.typesafe.ai/v1/systemone"
+    assert seen["timeout"] == 5.0
+    body = seen["body"]
+    assert isinstance(body, dict)
+    assert body["model"] == "jev-latest"
+    assert body["questions"]["pick"]["criteria"] == {"a": "a", "b": "b"}
+
+
+def test_typesafe_choice_without_a_key_does_not_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    from swarm_sdk.core.jev_router import typesafe_choice
+
+    monkeypatch.delenv("JEV_API_KEY", raising=False)
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    monkeypatch.setattr("swarm_sdk.vault.get", lambda name: None)
+
+    def boom(*_args: object, **_kwargs: object) -> object:
+        raise AssertionError("must not call systemone without a key")
+
+    monkeypatch.setattr("swarm_sdk.core.jev_router.urllib.request.urlopen", boom)
+    assert typesafe_choice("state", ["a", "b"]) == ""

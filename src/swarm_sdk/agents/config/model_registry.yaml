@@ -137,6 +137,15 @@ providers:
     priority: 36
     evidence: verified live 2026-10-05 (only $0/$0 text id; 512000 context; no web-search tool)
 
+  - name: poolside:poolside/laguna-s-2.1
+    provider: poolside
+    api_key_env: POOLSIDE_API_KEY
+    base_url_env: POOLSIDE_BASE_URL   # https://inference.poolside.ai/v1
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 48
+    evidence: docs.poolside.ai openai examples (model id poolside/laguna-s-2.1; API key, not OAuth)
+
   - name: nvidia:nemotron-3.5-lightning-30b-a3b
     provider: nvidia
     api_key_env: NVIDIA_API_KEY
@@ -281,4 +290,7 @@ services:
     agents: [Persister]          # memory provider
   - name: jev
     api_key_env: JEV_API_KEY
-    agents: [Orchestrator]       # decision maker
+    agents: [Orchestrator]       # decision maker; base URL is JEV_BASE_URL
+  - name: jina
+    api_key_env: JINA_API_KEY
+    agents: [WebFetch]

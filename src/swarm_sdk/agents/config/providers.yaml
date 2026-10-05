@@ -36,3 +36,7 @@ providers:
     models: ["atlascloud:dots-studio/dots-3-note-prev-free"]
     api_key_env: ATLASCLOUD_API_KEY
     priority: 45
+  - name: poolside
+    models: ["poolside:poolside/laguna-s-2.1"]
+    api_key_env: POOLSIDE_API_KEY
+    priority: 46

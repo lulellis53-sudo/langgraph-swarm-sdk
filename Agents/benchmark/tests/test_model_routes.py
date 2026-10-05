@@ -158,6 +158,11 @@ def test_mistral_keys_stay_on_their_own_models(fake_init, monkeypatch: pytest.Mo
             "ATLASCLOUD_API_KEY",
             "https://api.atlascloud.ai/v1",
         ),
+        (
+            "poolside:poolside/laguna-s-2.1",
+            "POOLSIDE_API_KEY",
+            "https://inference.poolside.ai/v1",
+        ),
     ],
 )
 def test_hosted_compat_routes_use_provider_endpoint(

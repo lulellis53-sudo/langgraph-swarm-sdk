@@ -19,12 +19,91 @@ import re
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Sequence
 from typing import Any, ClassVar
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
+
+_SYSTEMONE_TIMEOUT_S = 5.0
+
+
+def typesafe_choice(state: str, options: Sequence[str]) -> str:
+    """Ask Jev Choice at ``POST /v1/systemone``.
+
+    The key is ``JEV_API_KEY``, then ``TYPESAFE_API_KEY``. The host is
+    ``JEV_BASE_URL`` (default ``https://api.typesafe.ai``). Returns ``""``
+    when the key is missing or the call fails. The value is never logged.
+
+    Args:
+        state: Text the question is about.
+        options: Choice names. The selected name is returned only if it is one of these.
+
+    Returns:
+        The selected option, or an empty string.
+    """
+    names = [option for option in options if option]
+    if not state.strip() or len(names) < 2:
+        return ""
+    try:
+        from swarm_sdk.vault import VaultError, get
+    except ImportError:
+        return ""
+    try:
+        key = (
+            os.environ.get("JEV_API_KEY")
+            or get("JEV_API_KEY")
+            or os.environ.get("TYPESAFE_API_KEY")
+            or get("TYPESAFE_API_KEY")
+            or ""
+        )
+        base = os.environ.get("JEV_BASE_URL") or get("JEV_BASE_URL") or "https://api.typesafe.ai"
+    except VaultError, OSError:
+        return ""
+    if not key:
+        return ""
+    root = base.rstrip("/")
+    url = root if root.endswith("/v1/systemone") else f"{root}/v1/systemone"
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        return ""
+    payload = json.dumps(
+        {
+            "state": state,
+            "model": "jev-latest",
+            "questions": {
+                "pick": {
+                    "type": "choice",
+                    "instructions": "Which option best handles this request?",
+                    "criteria": {name: name for name in names},
+                }
+            },
+        }
+    ).encode()
+    request = urllib.request.Request(
+        url,
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=_SYSTEMONE_TIMEOUT_S) as response:
+            if response.status != 200:
+                return ""
+            body = json.loads(response.read().decode("utf-8"))
+    except urllib.error.URLError, TimeoutError, json.JSONDecodeError, UnicodeError:
+        logger.warning("Jev systemone choice failed")
+        return ""
+    choice = (
+        body.get("answers", {}).get("pick", {}).get("choice") if isinstance(body, dict) else None
+    )
+    return choice if isinstance(choice, str) and choice in names else ""
 
 
 # ---------------------------------------------------------------------------

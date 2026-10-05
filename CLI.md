@@ -374,9 +374,11 @@ The repository registry actively references 35 credentials across `swarm.yaml`, 
 | **Mistral Secondary** | `MISTRAL_API_KEY_2` | `uv run swarm-vault set MISTRAL_API_KEY_2` | Failover pool for Mistral API |
 | **Tavily Search** | `TAVILY_API_KEY` | `uv run swarm-vault set TAVILY_API_KEY` | WebSearch Tavily searcher |
 | **Brave Search** | `BRAVE_API_KEY` | `uv run swarm-vault set BRAVE_API_KEY` | WebSearch Brave API crawler |
+| **Jina Search** | `JINA_API_KEY` | `uv run swarm-vault set JINA_API_KEY` | WebSearch `s.jina.ai`. Embeddings stay on `JINA_BASE_URL` (`api.jina.ai/v1`) |
+| **Poolside** | `POOLSIDE_API_KEY` | `uv run swarm-vault set POOLSIDE_API_KEY` | Laguna S 2.1 at `https://inference.poolside.ai/v1` |
 | **Exa Search** | `EXA_API_KEY` | `uv run swarm-vault set EXA_API_KEY` | WebSearch Exa neural search |
 | **Mem0 Platform** | `MEM0_API_KEY` | `uv run swarm-vault set MEM0_API_KEY` | Long-term user/agent memory |
-| **Jev Safety** | `JEV_API_KEY` | `uv run swarm-vault set JEV_API_KEY` | Low-Swarm safety decision gate |
+| **Jev** | `JEV_API_KEY` | `uv run swarm-vault set JEV_API_KEY` | TypeSafe `POST /v1/systemone` on `JEV_BASE_URL` (`api.typesafe.ai`), model `jev-latest` |
 | **xAI** | `XAI_API_KEY` | `uv run swarm-vault set XAI_API_KEY` | Grok-beta / Grok-2 |
 | **Fireworks AI** | `FIREWORKS_API_KEY` | `uv run swarm-vault set FIREWORKS_API_KEY` | Serverless open-weights models |
 | **OpenRouter** | `OPENROUTER_API_KEY` | `uv run swarm-vault set OPENROUTER_API_KEY` | Unified router endpoint |
