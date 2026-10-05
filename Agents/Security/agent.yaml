@@ -3,7 +3,9 @@ name: Security
 role: security_review
 
 model: anthropic:claude-sonnet-4.6
+# api_endpoint: POST https://api.anthropic.com/v1/messages
 api_key_env: CLAUDE_OAUTH_TOKEN
+effort: high
 think_level: high
 
 token_budget:

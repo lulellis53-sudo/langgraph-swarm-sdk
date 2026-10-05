@@ -62,6 +62,7 @@ dependencies = [
     "trafilatura>=2.0",
     "beautifulsoup4>=4.12",
     "mcp>=2,<3",
+    "pyarrow>=18.0",
 ]
 
 [tool.uv]
@@ -201,7 +202,16 @@ packages = ["src/swarm_sdk"]
 [tool.ruff]
 line-length = 100
 target-version = "py314"
-src = ["src", "Agents/tests", "Agents/benchmark", "WebSearch", "Prediction", "Main", "tests"]
+src = [
+    "src",
+    "Agents/tests",
+    "Agents/benchmark",
+    "Agents/math/algorithms",
+    "WebSearch",
+    "Prediction",
+    "Main",
+    "tests",
+]
 extend-exclude = ["src/swarm_sdk/pb"]
 
 [tool.ruff.lint]
@@ -227,4 +237,4 @@ exclude = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["Agents/benchmark", "tests"]
-pythonpath = [".", "Agents"]
+pythonpath = [".", "Agents", "Agents/math"]

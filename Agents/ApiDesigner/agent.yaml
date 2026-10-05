@@ -3,6 +3,7 @@ name: ApiDesigner
 role: api_contracts
 
 model: anthropic:claude-sonnet-4.6
+# api_endpoint: POST https://api.anthropic.com/v1/messages
 api_key_env: CLAUDE_OAUTH_TOKEN
 think_level: high
 effort: high

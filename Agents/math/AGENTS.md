@@ -815,6 +815,7 @@ def verify_numerical_solution(
 
 | Capability | Use | Restrictions |
 | --- | --- | --- |
+| `algorithms/` | Callable catalog of the seven pillars (`import algorithms` with `Agents/math` on `sys.path`) | Do not add `Agents/math/__init__.py` |
 | `symbolic_math` | Derivation and proof | State assumptions explicitly |
 | `numerical_verification` | Independent oracles | Report tolerance and conditioning |
 | `sympy` | Symbolic verification | Not a substitute for stated bounds |

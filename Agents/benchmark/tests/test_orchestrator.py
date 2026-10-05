@@ -24,6 +24,7 @@ def _no_hosted_jev(monkeypatch: pytest.MonkeyPatch) -> None:
     """Spawn tests must not call TypeSafe when a key is present in the environment."""
     monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
     monkeypatch.delenv("JEV_API_KEY", raising=False)
+    monkeypatch.setattr("swarm_sdk.vault.get_jev_key", lambda: None)
 
 
 def manifest(name: str = "Coder", **overrides: object) -> AgentManifest:

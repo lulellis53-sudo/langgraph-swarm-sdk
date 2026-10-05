@@ -6,6 +6,7 @@ role: review_changes
 langgraph_node: reviewer
 
 model: anthropic:claude-sonnet-4.6
+# api_endpoint: POST https://api.anthropic.com/v1/messages
 think_level: high
 effort: high
 api_key_env: CLAUDE_OAUTH_TOKEN

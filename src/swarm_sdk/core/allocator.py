@@ -59,7 +59,7 @@ def _current_rss_bytes() -> int | None:
             proc_pidtaskinfo = 4
             got = libproc.proc_pidinfo(os.getpid(), proc_pidtaskinfo, 0, ctypes.byref(info), size)
             return int(info.resident_size) if got == size else None
-    except OSError, ValueError, IndexError, AttributeError:
+    except (OSError, ValueError, IndexError, AttributeError):
         return None
     return None
 
@@ -182,7 +182,7 @@ class AllocatorManager:
                     mi_lib.mi_collect(ctypes.c_bool(True))
                     mi_reclaimed = True
                     break
-            except OSError, AttributeError:
+            except (OSError, AttributeError):
                 continue
 
         final_rss = AllocatorManager.get_rss_bytes()

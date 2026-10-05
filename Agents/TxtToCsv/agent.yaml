@@ -3,6 +3,7 @@ name: TxtToCsv
 role: convert_text_files_to_csv
 
 model: openai:gpt-6-luna
+# api_endpoint: POST https://api.openai.com/v1/chat/completions
 think_level: low
 effort: low
 api_key_env: CODEX_OAUTH_TOKEN

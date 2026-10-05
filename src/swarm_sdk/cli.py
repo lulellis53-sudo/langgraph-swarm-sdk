@@ -456,7 +456,10 @@ def build_parser() -> argparse.ArgumentParser:
     """Constructs the low-swarm argument parser with all subcommands."""
     parser = argparse.ArgumentParser(
         prog="low-swarm",
-        description="Low-Resource Autonomous Code Synthesis Swarm CLI",
+        description=(
+            "Low-Resource Autonomous Code Synthesis Swarm CLI. "
+            'Run one agent with @Agent --Task "prompt".'
+        ),
     )
     subparsers = parser.add_subparsers(dest="command", required=False)
 
@@ -535,6 +538,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not args_list:
         parser.print_help()
         return 2
+
+    if args_list[0].startswith("@"):
+        from swarm_sdk.orchestrator.task_command import main_at
+
+        return main_at(args_list)
 
     try:
         args = parser.parse_args(args_list)

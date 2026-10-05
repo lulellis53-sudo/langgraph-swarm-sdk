@@ -77,3 +77,6 @@ SKILL.md
 
 # Local editor/agent config
 .cursor/
+
+# Swarm skill CLI state (langgraph_swarm.py)
+.swarm-skill-state/

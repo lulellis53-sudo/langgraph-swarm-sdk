@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from swarm_sdk.core.system_one import SystemOneHTTPError, jev_advice
 
 _HOSTED = {
@@ -18,6 +20,23 @@ _HOSTED = {
     },
     "usage": {"input_tokens": 10, "output_tokens": 4},
 }
+
+
+def test_vault_key_is_used_when_the_environment_is_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The Orchestrator path reads JEV_API_KEY from the vault when the env is empty."""
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    monkeypatch.delenv("JEV_API_KEY", raising=False)
+    monkeypatch.setattr("swarm_sdk.vault.get_jev_key", lambda: "vault-token")
+    seen: list[str] = []
+
+    def post(payload: dict[str, object], api_key: str) -> dict[str, object]:
+        seen.append(api_key)
+        return _HOSTED
+
+    brief = jev_advice("ask the tester to run pytest", ["Tester"], post=post)
+    assert seen == ["vault-token"]
+    assert "vault-token" not in brief
+    assert "choice=Tester" in brief
 
 
 def test_missing_key_abstains_without_calling() -> None:

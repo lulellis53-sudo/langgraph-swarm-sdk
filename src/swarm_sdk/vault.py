@@ -102,7 +102,7 @@ def run_cli(argv: Sequence[str]) -> str | None:
         proc = subprocess.run(
             list(argv), capture_output=True, text=True, timeout=TIMEOUT_S, check=False
         )
-    except OSError, subprocess.TimeoutExpired:
+    except (OSError, subprocess.TimeoutExpired):
         return None
     if proc.returncode != 0:
         return None
@@ -323,7 +323,7 @@ def set_secret(
             check=False,
         )
         return proc.returncode == 0
-    except OSError, subprocess.TimeoutExpired:
+    except (OSError, subprocess.TimeoutExpired):
         return False
 
 

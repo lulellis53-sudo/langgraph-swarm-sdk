@@ -2,7 +2,9 @@ version: "1"
 name: DeepResearch
 role: deep_technical_research
 
-model: inherit
+model: zai:glm-5.2
+# api_endpoint: POST https://api.z.ai/api/paas/v4/chat/completions
+api_key_env: ZHIPU_API_KEY
 think_level: high
 effort: high
 

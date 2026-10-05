@@ -3,6 +3,7 @@ name: ModelDelegate/Embedder
 role: delegate_embedding
 
 model: cohere:command-r7b
+# api_endpoint: POST https://api.cohere.com/v2/chat
 think_level: low
 effort: low
 api_key_env: COHERE_API_KEY_2

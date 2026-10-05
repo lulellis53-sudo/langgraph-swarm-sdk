@@ -6,6 +6,7 @@ import hashlib
 import importlib
 import json
 import logging
+import threading
 import urllib.error
 import urllib.request
 from collections.abc import Iterable
@@ -176,6 +177,8 @@ class FastEmbedder:
         self.batch_size = batch_size
         self._bge = _bge_style(model_name)
         self._model: TextEmbeddingProto | None = None
+        # One ONNX session is not safe to call from several free threads at once.
+        self._lock = threading.Lock()
 
     def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:
         """Embed ``texts`` into one row per text; ``query`` selects query-side prefixing."""
@@ -183,10 +186,11 @@ class FastEmbedder:
         if not prepared:
             return np.zeros((0, self.dim), dtype=np.float32)
         # Load lazily: importing fastembed costs time and may be absent (no Intel-Mac wheel).
-        model = self._load()
-        rows: list[np.ndarray] = []
-        for batch in _batched(prepared, self.batch_size):
-            rows.append(np.asarray(list(model.embed(batch)), dtype=np.float32))
+        with self._lock:
+            model = self._load()
+            rows: list[np.ndarray] = []
+            for batch in _batched(prepared, self.batch_size):
+                rows.append(np.asarray(list(model.embed(batch)), dtype=np.float32))
         # Defensive: the model yielded no batches even though there was input.
         if not rows:
             return np.zeros((0, self.dim), dtype=np.float32)

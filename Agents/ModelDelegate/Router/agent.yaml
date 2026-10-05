@@ -3,6 +3,7 @@ name: ModelDelegate/Router
 role: route_task
 
 model: openrouter:z-ai/glm-5.3-flash
+# api_endpoint: POST https://openrouter.ai/api/v1/chat/completions
 think_level: low
 effort: low
 api_key_env: OPENROUTER_API_KEY

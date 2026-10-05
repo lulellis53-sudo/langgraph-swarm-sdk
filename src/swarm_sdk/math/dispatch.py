@@ -13,7 +13,7 @@ _GPU_BACKENDS: dict[str, MathBackend] = {
     "vulkan": "molten",
 }
 _FRONTIER_ROUTE = {"name": "google:gemini-2.5-pro", "provider": "google"}
-_FAST_ROUTE = {"name": "mistral:ministral-3-8b-latest", "provider": "mistral-2"}
+_FAST_ROUTE = {"name": "moonshot:kimi-k2.7-code", "provider": "moonshot"}
 _BALANCED_ROUTE = {"name": "openai:gpt-6-luna", "provider": "codex"}
 _NUMPY_ROUTE = {"name": "numpy_blas", "provider": "local_cpu"}
 

@@ -2,7 +2,9 @@ version: "1"
 name: RAG
 role: knowledge_retrieval
 
-model: inherit
+model: moonshot:kimi-k2.7-code
+# api_endpoint: POST https://api.moonshot.ai/v1/chat/completions
+api_key_env: KIMI_API_KEY
 think_level: high
 effort: high
 

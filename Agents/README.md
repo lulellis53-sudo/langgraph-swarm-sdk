@@ -20,7 +20,7 @@
 | [TxtToCsv](TxtToCsv/AGENTS.md) | convert text files to CSV | gpt-4o-mini | low | [agent.yaml](TxtToCsv/agent.yaml) |
 | [RAG](RAG/AGENTS.md) | semantic caching, hybrid search, reranking & grounding | inherit | high | [agent.yaml](RAG/agent.yaml) |
 | [DeepResearch](DeepResearch/AGENTS.md) | deep technical research & evidence graphs | inherit | high | [agent.yaml](DeepResearch/agent.yaml) |
-| [math](math/AGENTS.md) | symbolic/numerical solving and verification | mistral:ministral-3-8b-latest | high | [agent.yaml](math/agent.yaml) |
+| [math](math/AGENTS.md) | symbolic/numerical solving and verification | moonshot:kimi-k2.7-code | high | [agent.yaml](math/agent.yaml) |
 | [WebFetch](WebFetch/AGENTS.md) | deterministic pipeline stage: fetch/render | none (no LLM) | - | [agent.yaml](WebFetch/agent.yaml) |
 | [Normalizer](Normalizer/AGENTS.md) | deterministic pipeline stage: normalize + dedupe | none (no LLM) | - | [agent.yaml](Normalizer/agent.yaml) |
 | [Persister](Persister/AGENTS.md) | deterministic pipeline stage: SQLite store | none (no LLM) | - | [agent.yaml](Persister/agent.yaml) |

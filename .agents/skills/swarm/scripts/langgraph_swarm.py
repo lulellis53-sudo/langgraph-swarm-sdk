@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""LangGraph Swarm Agent Orchestrator with FastEmbed, Memory & RAG Engine.
+"""Skill CLI: workspace RAG, memory, and ``Agents/`` role contracts.
 
-This module provides multi-provider LLM resolution, FastEmbed text vectorization,
-long-term semantic memory storage, RAG workspace retrieval, and self-learning benchmark optimization.
+This script prepares context for swarm-style tasks (provider audit, RAG snippets,
+past trajectories, and the selected persona's ``AGENTS.md`` contract). Production
+handoff graphs use ``langgraph_swarm.create_swarm`` with ``create_handoff_tool``
+and manifests under ``Agents/*/agent.yaml`` (see ``Agents/SKILLS.md`` and
+``swarm_sdk.core.swarm``).
 
 Copyright 2026 Antigravity Team.
 """
@@ -18,28 +21,123 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
-SWARM_CONFIG_DIR = Path.home() / ".config" / "swarm"
-MEMORY_DB_PATH = SWARM_CONFIG_DIR / "memory_db.json"
-LEARNING_HISTORY_PATH = SWARM_CONFIG_DIR / "learning_history.json"
-RAG_INDEX_PATH = SWARM_CONFIG_DIR / "rag_index.json"
+def skill_state_dir(workspace: Path) -> Path:
+    """Return the directory for memory/RAG JSON (repo-local by default).
 
-
-# ------------------------------------------------------------------------------
-# 1. Multi-LLM Provider Resolution
-# ------------------------------------------------------------------------------
-
-def resolve_llm_providers() -> Dict[str, Dict[str, Any]]:
-    """Resolves available LLM providers, endpoint URIs, and API credentials.
+    Args:
+        workspace: Swarm repository root.
 
     Returns:
-        Dict[str, Dict[str, Any]]: Active LLM provider configurations.
+        ``SWARM_SKILL_STATE_DIR`` when set, else ``{workspace}/.swarm-skill-state``.
     """
-    providers: Dict[str, Dict[str, Any]] = {}
+    override = os.environ.get("SWARM_SKILL_STATE_DIR")
+    if override:
+        path = Path(override)
+    else:
+        path = workspace / ".swarm-skill-state"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
-    # Check farm-keychain or environment variables
+#: Max characters of a role contract embedded in the JSON payload (full file stays on disk).
+CONTRACT_EXCERPT_CHARS = 4000
+
+
+def find_agents_root(workspace: Path) -> Path:
+    """Locate the ``Agents/`` tree for the active Swarm checkout.
+
+    Args:
+        workspace: Repository or worktree root (typically ``Path.cwd()``).
+
+    Returns:
+        Absolute path to ``Agents/``.
+
+    Raises:
+        FileNotFoundError: When no ``Agents/SKILLS.md`` exists under ``workspace``.
+    """
+    candidates = [workspace / "Agents", workspace.parent / "Agents"]
+    for root in candidates:
+        if (root / "SKILLS.md").is_file():
+            return root.resolve()
+    raise FileNotFoundError(f"Agents/ not found under {workspace}")
+
+
+def list_registered_agents(agents_root: Path) -> list[str]:
+    """Return persona directory names that ship an ``AGENTS.md`` contract.
+
+    Args:
+        agents_root: Path returned by :func:`find_agents_root`.
+
+    Returns:
+        Sorted PascalCase names (e.g. ``Coder``, ``DeepResearch``).
+    """
+    names = [
+        path.name
+        for path in agents_root.iterdir()
+        if path.is_dir() and (path / "AGENTS.md").is_file()
+    ]
+    return sorted(names)
+
+
+def resolve_agent_name(role: str, agents_root: Path) -> str | None:
+    """Map a CLI ``@coder`` / ``coder`` token to an ``Agents/{Name}`` folder.
+
+    Args:
+        role: User role or handle (leading ``@`` is stripped).
+        agents_root: Swarm ``Agents/`` directory.
+
+    Returns:
+        Canonical directory name, or ``None`` when no persona matches.
+    """
+    token = role.lstrip("@").strip()
+    if not token:
+        return None
+    normalized = token.lower().replace("_", "").replace("-", "")
+    for name in list_registered_agents(agents_root):
+        key = name.lower().replace("_", "")
+        if key == normalized or name.lower() == token.lower():
+            return name
+    return None
+
+
+def load_role_contract(
+    agents_root: Path,
+    agent_name: str,
+    *,
+    max_chars: int = CONTRACT_EXCERPT_CHARS,
+) -> str:
+    """Read ``Agents/{agent_name}/AGENTS.md`` (SDK helper when importable).
+
+    Args:
+        agents_root: Swarm ``Agents/`` directory.
+        agent_name: Canonical persona folder name.
+        max_chars: Truncate for JSON payloads; ``0`` means no truncation.
+
+    Returns:
+        Contract text, or ``""`` when the file is missing.
+    """
+    try:
+        from swarm_sdk.agents.manifest import role_contract
+
+        text = role_contract(str(agents_root), agent_name)
+    except ImportError:
+        path = agents_root / agent_name / "AGENTS.md"
+        text = path.read_text(encoding="utf-8") if path.is_file() else ""
+    if max_chars > 0 and len(text) > max_chars:
+        return text[:max_chars] + "\n…"
+    return text
+
+
+def resolve_llm_providers() -> dict[str, dict[str, Any]]:
+    """Report which cloud/local LLM env keys are set (values never returned).
+
+    Returns:
+        Map of provider label to ``status``, ``type``, and optional ``endpoint``.
+        Only env vars are consulted; configure secrets with ``swarm-vault`` / ``keys``.
+    """
+    providers: dict[str, dict[str, Any]] = {}
     keys_map = {
         "OPENAI": "OPENAI_API_KEY",
         "ANTHROPIC": "ANTHROPIC_API_KEY",
@@ -53,11 +151,6 @@ def resolve_llm_providers() -> Dict[str, Dict[str, Any]]:
 
     for name, env_var in keys_map.items():
         key_val = os.environ.get(env_var, "")
-        if not key_val and subprocess.run(["which", "farm-keychain"], capture_output=True).returncode == 0:
-            res = subprocess.run(["farm-keychain", "get", env_var], capture_output=True, text=True)
-            if res.returncode == 0 and res.stdout.strip():
-                key_val = res.stdout.strip()
-        
         if key_val:
             providers[name] = {
                 "status": "READY",
@@ -67,105 +160,122 @@ def resolve_llm_providers() -> Dict[str, Dict[str, Any]]:
         else:
             providers[name] = {"status": "UNSET", "type": "cloud_api"}
 
-    # Check Ollama local LLM provider
     ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
     try:
-        res = subprocess.run(["curl", "-s", "-o", "/dev/null", "-w", "%{http_code}", f"{ollama_host}/api/tags"],
-                             capture_output=True, text=True, timeout=2)
-        if res.stdout.strip() == "200":
-            providers["OLLAMA"] = {"status": "READY", "endpoint": ollama_host, "type": "local_llm"}
-        else:
-            providers["OLLAMA"] = {"status": "UNSET", "endpoint": ollama_host, "type": "local_llm"}
-    except Exception:
-        providers["OLLAMA"] = {"status": "UNSET", "endpoint": ollama_host, "type": "local_llm"}
+        res = subprocess.run(
+            [
+                "curl",
+                "-s",
+                "-o",
+                "/dev/null",
+                "-w",
+                "%{http_code}",
+                f"{ollama_host}/api/tags",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+        ready = res.stdout.strip() == "200"
+    except (OSError, subprocess.TimeoutExpired):
+        ready = False
+    providers["OLLAMA"] = {
+        "status": "READY" if ready else "UNSET",
+        "endpoint": ollama_host,
+        "type": "local_llm",
+    }
 
     return providers
 
 
-# ------------------------------------------------------------------------------
-# 2. FastEmbed Text Vectorizer & Embeddings
-# ------------------------------------------------------------------------------
-
 class FastEmbedder:
-    """Fast local text vector embedding engine using fastembed or fallback tokenizer."""
+    """Local text embeddings via ``fastembed`` with a deterministic hash fallback."""
 
     def __init__(self, model_name: str = "BAAI/bge-small-en-v1.5") -> None:
+        """Load ``TextEmbedding`` when the optional dependency is installed.
+
+        Args:
+            model_name: Hugging Face id passed to ``fastembed.TextEmbedding``.
+        """
         self.model_name = model_name
         self.use_fastembed = False
-        self._model = None
+        self._model: Any = None
 
         try:
             from fastembed import TextEmbedding
+
             self._model = TextEmbedding(model_name=model_name)
             self.use_fastembed = True
         except ImportError:
             self.use_fastembed = False
 
-    def embed(self, texts: List[str]) -> List[List[float]]:
-        """Generates vector embeddings for input text strings.
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        """Vectorize each input string.
 
         Args:
-            texts (List[str]): Input string array.
+            texts: Batch of UTF-8 strings.
 
         Returns:
-            List[List[float]]: Vector representations.
+            One float vector per input (384 dimensions in fallback mode).
         """
         if self.use_fastembed and self._model is not None:
-            embeddings_generator = self._model.embed(texts)
-            return [list(vec) for vec in embeddings_generator]
+            return [list(vec) for vec in self._model.embed(texts)]
 
-        # Lightweight fallback deterministic hashing vectorizer (384-dimensional)
-        vectors: List[List[float]] = []
+        vectors: list[list[float]] = []
         for text in texts:
             vec = [0.0] * 384
             words = text.lower().split()
             for idx, word in enumerate(words):
-                h = int(hashlib.md5(word.encode("utf-8")).hexdigest(), 16)
-                slot = h % 384
+                digest = int(hashlib.md5(word.encode("utf-8")).hexdigest(), 16)
+                slot = digest % 384
                 vec[slot] += 1.0 / (idx + 1)
-            # Normalize vector
             norm = math.sqrt(sum(v * v for v in vec)) or 1.0
-            vec = [round(v / norm, 6) for v in vec]
-            vectors.append(vec)
+            vectors.append([round(v / norm, 6) for v in vec])
         return vectors
 
 
-# ------------------------------------------------------------------------------
-# 3. Swarm Long-Term Memory Engine
-# ------------------------------------------------------------------------------
-
 class SwarmMemoryEngine:
-    """Long-term memory store for task trajectories and agent feedback."""
+    """Append-only JSON store of past runs with embedding vectors for similarity search."""
 
-    def __init__(self, embedder: FastEmbedder) -> None:
+    def __init__(self, embedder: FastEmbedder, state_dir: Path) -> None:
+        """Open or create ``memory_db.json`` under ``state_dir``.
+
+        Args:
+            embedder: Shared embedder for prompt vectors.
+            state_dir: Writable directory from :func:`skill_state_dir`.
+        """
         self.embedder = embedder
-        SWARM_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        self.records: List[Dict[str, Any]] = self._load()
+        self._memory_path = state_dir / "memory_db.json"
+        self.records: list[dict[str, Any]] = self._load()
 
-    def _load(self) -> List[Dict[str, Any]]:
-        if MEMORY_DB_PATH.exists():
+    def _load(self) -> list[dict[str, Any]]:
+        if self._memory_path.is_file():
             try:
-                with open(MEMORY_DB_PATH, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            except Exception:
+                with self._memory_path.open(encoding="utf-8") as handle:
+                    data = json.load(handle)
+                if isinstance(data, list):
+                    return data
+            except (OSError, json.JSONDecodeError):
                 pass
         return []
 
     def save(self) -> None:
-        with open(MEMORY_DB_PATH, "w", encoding="utf-8") as f:
-            json.dump(self.records, f, indent=2)
+        """Persist ``records`` to disk."""
+        with self._memory_path.open("w", encoding="utf-8") as handle:
+            json.dump(self.records, handle, indent=2)
 
-    def add_memory(self, prompt: str, result: Dict[str, Any], score: float = 1.0) -> None:
-        """Stores a task execution record with vector embeddings.
+    def add_memory(self, prompt: str, result: dict[str, Any], score: float = 1.0) -> None:
+        """Append one execution record.
 
         Args:
-            prompt (str): Original prompt.
-            result (Dict[str, Any]): Task execution results.
-            score (float): Feedback quality score (0.0 to 1.0).
+            prompt: Original user task text.
+            result: Serializable payload stored verbatim.
+            score: Quality weight in ``[0.0, 1.0]`` for ranking.
         """
         vec = self.embedder.embed([prompt])[0]
         record = {
-            "id": hashlib.sha256(f"{prompt}{time.time()}".encode("utf-8")).hexdigest()[:12],
+            "id": hashlib.sha256(f"{prompt}{time.time()}".encode()).hexdigest()[:12],
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "prompt": prompt,
             "vector": vec,
@@ -175,191 +285,231 @@ class SwarmMemoryEngine:
         self.records.append(record)
         self.save()
 
-    def search_similar(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
-        """Finds most relevant historical executions using vector similarity.
+    def search_similar(self, query: str, top_k: int = 3) -> list[dict[str, Any]]:
+        """Rank stored trajectories by dot-product similarity.
 
         Args:
-            query (str): Query string.
-            top_k (int): Number of top results to return.
+            query: Natural-language task description.
+            top_k: Maximum rows to return.
 
         Returns:
-            List[Dict[str, Any]]: Top relevant memory entries.
+            Highest-scoring memory dicts (may be empty).
         """
         if not self.records:
             return []
-        
+
         query_vec = self.embedder.embed([query])[0]
-        scored: List[Tuple[float, Dict[str, Any]]] = []
+        scored: list[tuple[float, dict[str, Any]]] = []
 
         for rec in self.records:
             rec_vec = rec.get("vector", [])
             if not rec_vec or len(rec_vec) != len(query_vec):
                 continue
-            dot = sum(q * r for q, r in zip(query_vec, rec_vec))
+            dot = sum(q * r for q, r in zip(query_vec, rec_vec, strict=True))
             scored.append((dot, rec))
 
-        scored.sort(key=lambda x: x[0], reverse=True)
+        scored.sort(key=lambda item: item[0], reverse=True)
         return [item[1] for item in scored[:top_k]]
 
 
-# ------------------------------------------------------------------------------
-# 4. Swarm Workspace RAG Engine
-# ------------------------------------------------------------------------------
-
 class SwarmRAGEngine:
-    """Workspace Retrieval-Augmented Generation (RAG) indexer."""
+    """Lightweight workspace indexer for markdown and shell snippets."""
 
-    def __init__(self, embedder: FastEmbedder, workspace_dir: Path) -> None:
-        self.embedder = embedder
-        self.workspace_dir = workspace_dir
-        self.index: List[Dict[str, Any]] = []
-
-    def index_workspace(self, max_files: int = 50) -> int:
-        """Indexes workspace markdown files, configs, and documentation.
+    def __init__(self, embedder: FastEmbedder, workspace_dir: Path, state_dir: Path) -> None:
+        """Bind embedder and root used for relative paths in the index.
 
         Args:
-            max_files (int): Limit of files to index.
+            embedder: Embedding backend shared with memory.
+            workspace_dir: Repository root to walk.
+            state_dir: Directory for ``rag_index.json``.
+        """
+        self.embedder = embedder
+        self.workspace_dir = workspace_dir
+        self._rag_index_path = state_dir / "rag_index.json"
+        self.index: list[dict[str, Any]] = []
+
+    def index_workspace(self, max_files: int = 50) -> int:
+        """Walk the tree and embed the first matching documentation files.
+
+        Args:
+            max_files: Hard cap on indexed documents.
 
         Returns:
-            int: Total indexed documents.
+            Number of documents in ``self.index`` after the run.
         """
-        documents: List[Dict[str, Any]] = []
-        target_patterns = ["AGENTS.md", "GEMINI.md", "*.md", "*.zsh"]
-
+        documents: list[dict[str, Any]] = []
+        suffixes = (".md", ".zsh")
         indexed_count = 0
+
         for root, _, files in os.walk(self.workspace_dir):
-            if ".git" in root or ".venv" in root or "node_modules" in root:
+            if any(skip in root for skip in (".git", ".venv", "node_modules")):
                 continue
             for file in files:
-                if any(file.endswith(ext.replace("*", "")) for ext in target_patterns):
+                if file in {"AGENTS.md", "GEMINI.md"} or file.endswith(suffixes):
                     file_path = Path(root) / file
                     try:
                         text = file_path.read_text(encoding="utf-8", errors="ignore")[:2000]
-                        if text.strip():
-                            documents.append({
-                                "path": str(file_path.relative_to(self.workspace_dir)),
-                                "content": text,
-                            })
-                            indexed_count += 1
-                            if indexed_count >= max_files:
-                                break
-                    except Exception:
-                        pass
+                    except OSError:
+                        continue
+                    if not text.strip():
+                        continue
+                    documents.append(
+                        {
+                            "path": str(file_path.relative_to(self.workspace_dir)),
+                            "content": text,
+                        }
+                    )
+                    indexed_count += 1
+                    if indexed_count >= max_files:
+                        break
             if indexed_count >= max_files:
                 break
 
         if documents:
-            contents = [doc["content"] for doc in documents]
-            vectors = self.embedder.embed(contents)
-            for doc, vec in zip(documents, vectors):
+            vectors = self.embedder.embed([doc["content"] for doc in documents])
+            for doc, vec in zip(documents, vectors, strict=True):
                 doc["vector"] = vec
             self.index = documents
-
-            with open(RAG_INDEX_PATH, "w", encoding="utf-8") as f:
-                json.dump(self.index, f, indent=2)
+            with self._rag_index_path.open("w", encoding="utf-8") as handle:
+                json.dump(self.index, handle, indent=2)
 
         return len(self.index)
 
-    def retrieve(self, query: str, top_k: int = 2) -> List[Dict[str, Any]]:
-        """Retrieves top workspace context snippets relevant to query.
+    def retrieve(self, query: str, top_k: int = 2) -> list[dict[str, Any]]:
+        """Return the top workspace snippets for a query.
 
         Args:
-            query (str): Search prompt query.
-            top_k (int): Result count.
+            query: Natural-language search string.
+            top_k: Number of hits.
 
         Returns:
-            List[Dict[str, Any]]: Retrieved snippets.
+            Dicts with ``path``, ``snippet``, and ``score`` keys.
         """
-        if not self.index and RAG_INDEX_PATH.exists():
+        if not self.index and self._rag_index_path.is_file():
             try:
-                with open(RAG_INDEX_PATH, "r", encoding="utf-8") as f:
-                    self.index = json.load(f)
-            except Exception:
+                with self._rag_index_path.open(encoding="utf-8") as handle:
+                    loaded = json.load(handle)
+                if isinstance(loaded, list):
+                    self.index = loaded
+            except (OSError, json.JSONDecodeError):
                 pass
 
         if not self.index:
             return []
 
         query_vec = self.embedder.embed([query])[0]
-        scored: List[Tuple[float, Dict[str, Any]]] = []
+        scored: list[tuple[float, dict[str, Any]]] = []
 
         for doc in self.index:
             doc_vec = doc.get("vector", [])
             if not doc_vec or len(doc_vec) != len(query_vec):
                 continue
-            dot = sum(q * r for q, r in zip(query_vec, doc_vec))
+            dot = sum(q * r for q, r in zip(query_vec, doc_vec, strict=True))
             scored.append((dot, doc))
 
-        scored.sort(key=lambda x: x[0], reverse=True)
-        return [{"path": item[1]["path"], "snippet": item[1]["content"][:300], "score": round(item[0], 4)}
-                for item in scored[:top_k]]
+        scored.sort(key=lambda item: item[0], reverse=True)
+        return [
+            {
+                "path": item[1]["path"],
+                "snippet": item[1]["content"][:300],
+                "score": round(item[0], 4),
+            }
+            for item in scored[:top_k]
+        ]
 
-
-# ------------------------------------------------------------------------------
-# 5. Swarm Orchestrator & Self-Learning Engine
-# ------------------------------------------------------------------------------
 
 class SwarmOrchestrator:
-    """Main orchestration controller for multi-agent execution."""
+    """Compose provider audit, RAG, memory, and ``Agents/`` contracts for one task."""
 
     def __init__(self, workspace_dir: Path) -> None:
+        """Wire sub-engines and resolve ``Agents/`` for the workspace.
+
+        Args:
+            workspace_dir: Swarm repository root.
+        """
         self.workspace_dir = workspace_dir
+        self.state_dir = skill_state_dir(workspace_dir)
+        self.agents_root = find_agents_root(workspace_dir)
         self.providers = resolve_llm_providers()
         self.embedder = FastEmbedder()
-        self.memory = SwarmMemoryEngine(self.embedder)
-        self.rag = SwarmRAGEngine(self.embedder, workspace_dir)
+        self.memory = SwarmMemoryEngine(self.embedder, self.state_dir)
+        self.rag = SwarmRAGEngine(self.embedder, workspace_dir, self.state_dir)
 
     def execute(
         self,
         prompt: str,
         role: str = "general",
+        *,
         index_rag: bool = False,
-        target_provider: Optional[str] = None,
+        target_provider: str | None = None,
         effort: str = "MEDIUM",
         max_ms: int = 60000,
         max_try: int = 3,
-    ) -> Dict[str, Any]:
-        """Runs a complete swarm task with RAG context, memory lookup, and feedback.
+    ) -> dict[str, Any]:
+        """Build context for a swarm task (simulated execution latency).
+
+        Aligns with ``langgraph_swarm.create_swarm`` handoffs in production: the
+        selected persona's ``AGENTS.md`` is loaded here; a real graph would pass it
+        as the agent system prompt via ``swarm_sdk`` manifests.
 
         Args:
-            prompt (str): Task execution prompt.
-            role (str): Target subagent role name.
-            index_rag (bool): Force index workspace files.
-            target_provider (Optional[str]): Explicit target LLM provider or @agentname.
-            effort (str): Reasoning effort level (LOW, MEDIUM, HIGH).
-            max_ms (int): Execution timeout limit in milliseconds.
-            max_try (int): Maximum retry attempts.
+            prompt: User task text.
+            role: Default persona when ``target_provider`` is not an ``@agent``.
+            index_rag: Force a workspace re-index before retrieval.
+            target_provider: Optional ``@Coder`` handle or provider label.
+            effort: Requested reasoning depth (``LOW`` / ``MEDIUM`` / ``HIGH``).
+            max_ms: Declared timeout budget in milliseconds (advisory in this CLI).
+            max_try: Declared retry budget (advisory in this CLI).
 
         Returns:
-            Dict[str, Any]: Execution result payload.
+            JSON-serializable status payload including RAG and contract excerpts.
         """
-        start_time = time.time()
+        start_time = time.perf_counter()
 
-        if index_rag or not RAG_INDEX_PATH.exists():
+        if index_rag or not (self.state_dir / "rag_index.json").is_file():
             self.rag.index_workspace()
 
-        # Step 1: Memory & RAG Retrieval
         similar_past = self.memory.search_similar(prompt, top_k=2)
         rag_snippets = self.rag.retrieve(prompt, top_k=2)
 
-        # Step 2: Select Active LLM Provider
-        active_providers = [p for p, data in self.providers.items() if data["status"] == "READY"]
-        
-        if target_provider:
+        agent_name = None
+        if target_provider and target_provider.lstrip("@").isalpha():
+            agent_name = resolve_agent_name(target_provider, self.agents_root)
+        if agent_name is None and role != "general":
+            agent_name = resolve_agent_name(role, self.agents_root)
+
+        contract_excerpt = ""
+        contract_path = ""
+        if agent_name:
+            rel = (self.agents_root / agent_name / "AGENTS.md").relative_to(self.workspace_dir)
+            contract_path = str(rel)
+            contract_excerpt = load_role_contract(self.agents_root, agent_name)
+
+        active_providers = [
+            label for label, data in self.providers.items() if data["status"] == "READY"
+        ]
+
+        if target_provider and not agent_name:
             selected_provider = target_provider.upper().lstrip("@")
         elif active_providers:
             selected_provider = active_providers[0]
         else:
             selected_provider = "MOCK_ENGINE"
 
-        # Step 3: Execute Task Simulation
+        # Placeholder for LangGraph ``app.invoke``; records context only.
         time.sleep(0.04)
-        elapsed_ms = round((time.time() - start_time) * 1000, 2)
+        elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
+        agent_handle = f"@{agent_name}" if agent_name else (target_provider or f"@{role}")
 
         result_payload = {
             "status": "SUCCESS",
-            "agent_target": f"@{target_provider.lstrip('@')}" if target_provider else f"@{role}",
-            "agent_role": role,
+            "agent_target": agent_handle,
+            "agent_role": agent_name or role,
+            "agent_contract_path": contract_path,
+            "agent_contract_excerpt_chars": len(contract_excerpt),
+            "agent_contract_excerpt": contract_excerpt,
+            "registered_agents_count": len(list_registered_agents(self.agents_root)),
             "prompt": prompt,
             "selected_provider": selected_provider,
             "active_providers": active_providers,
@@ -371,21 +521,20 @@ class SwarmOrchestrator:
             "retrieved_snippets": rag_snippets,
             "similar_past_count": len(similar_past),
             "fastembed_active": self.embedder.use_fastembed,
+            "langgraph_note": (
+                "Production swarm: langgraph_swarm.create_swarm + create_handoff_tool "
+                "(see Agents/SKILLS.md)"
+            ),
         }
 
-        # Step 4: Record to Memory (Self-Learning)
         self.memory.add_memory(prompt, result_payload, score=0.99)
         return result_payload
 
 
-# ------------------------------------------------------------------------------
-# CLI Dispatcher
-# ------------------------------------------------------------------------------
-
 def main() -> None:
-    # Pre-parse @agentname / @model arguments from sys.argv
-    target_agent: Optional[str] = None
-    cleaned_argv: List[str] = []
+    """Parse ``@agent`` tokens and dispatch :class:`SwarmOrchestrator`."""
+    target_agent: str | None = None
+    cleaned_argv: list[str] = []
 
     for arg in sys.argv[1:]:
         if arg.startswith("@"):
@@ -393,30 +542,46 @@ def main() -> None:
         else:
             cleaned_argv.append(arg)
 
-    parser = argparse.ArgumentParser(description="LangGraph Swarm Agent Orchestrator")
-    parser.add_argument("--prompt", "-p", "--Task", "-t", dest="prompt", type=str, help="Task prompt string")
-    parser.add_argument("--role", type=str, default="general", help="Target agent role")
-    parser.add_argument("--Effort", "--effort", dest="effort", type=str, default="MEDIUM", choices=["LOW", "MEDIUM", "HIGH", "low", "medium", "high"], help="Reasoning effort level")
-    parser.add_argument("--MaxMS", "--max-ms", dest="max_ms", type=int, default=60000, help="Maximum execution timeout in milliseconds")
-    parser.add_argument("--MaxTry", "--max-try", dest="max_try", type=int, default=3, help="Maximum retry attempts")
-    parser.add_argument("--index-rag", action="store_true", help="Build/rebuild RAG index")
-    parser.add_argument("--status", action="store_true", help="Print swarm provider & memory status")
+    parser = argparse.ArgumentParser(
+        description="Swarm skill CLI (RAG, memory, Agents/ contracts)",
+    )
+    parser.add_argument("--prompt", "-p", "--Task", "-t", dest="prompt", type=str)
+    parser.add_argument("--role", type=str, default="general", help="Persona when @agent omitted")
+    parser.add_argument(
+        "--Effort",
+        "--effort",
+        dest="effort",
+        type=str,
+        default="MEDIUM",
+        choices=["LOW", "MEDIUM", "HIGH", "low", "medium", "high"],
+    )
+    parser.add_argument("--MaxMS", "--max-ms", dest="max_ms", type=int, default=60000)
+    parser.add_argument("--MaxTry", "--max-try", dest="max_try", type=int, default=3)
+    parser.add_argument("--index-rag", action="store_true", help="Rebuild workspace RAG index")
+    parser.add_argument("--status", action="store_true", help="Provider, memory, and agent roster")
     args = parser.parse_args(cleaned_argv)
 
     workspace = Path.cwd()
     orchestrator = SwarmOrchestrator(workspace)
 
     if args.status or not args.prompt:
-        print(json.dumps({
-            "swarm_status": "ONLINE",
-            "active_llm_providers": orchestrator.providers,
-            "fastembed_enabled": orchestrator.embedder.use_fastembed,
-            "memory_records_count": len(orchestrator.memory.records),
-            "rag_indexed_count": len(orchestrator.rag.index),
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "swarm_status": "ONLINE",
+                    "active_llm_providers": orchestrator.providers,
+                    "fastembed_enabled": orchestrator.embedder.use_fastembed,
+                    "memory_records_count": len(orchestrator.memory.records),
+                    "rag_indexed_count": len(orchestrator.rag.index),
+                    "agents_root": str(orchestrator.agents_root.relative_to(workspace)),
+                    "registered_agents": list_registered_agents(orchestrator.agents_root),
+                },
+                indent=2,
+            )
+        )
         return
 
-    res = orchestrator.execute(
+    result = orchestrator.execute(
         prompt=args.prompt,
         role=args.role,
         index_rag=args.index_rag,
@@ -425,7 +590,7 @@ def main() -> None:
         max_ms=args.max_ms,
         max_try=args.max_try,
     )
-    print(json.dumps(res, indent=2))
+    print(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":

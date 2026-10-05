@@ -113,11 +113,15 @@ class ArrowCalcs:
     """
 
     @staticmethod
-    def is_available() -> bool:
-        """True if pyarrow is installed and available in the current environment."""
-        import importlib.util
+    def _pa_modules() -> tuple[Any, Any] | None:
+        """Cached import helper for PyArrow and pyarrow.compute modules."""
+        try:
+            import pyarrow as pa  # type: ignore
+            import pyarrow.compute as pc  # type: ignore
 
-        return importlib.util.find_spec("pyarrow") is not None
+            return pa, pc
+        except Exception:
+            return None
 
     @classmethod
     def column_stats(cls, data: Sequence[float | int] | Any) -> dict[str, float]:
@@ -133,45 +137,49 @@ class ArrowCalcs:
                 "variance": 0.0,
             }
 
-        try:
-            import pyarrow as pa  # type: ignore
-            import pyarrow.compute as pc  # type: ignore
+        mods = cls._pa_modules()
+        if mods is not None:
+            try:
+                pa, pc = mods
+                if hasattr(data, "__arrow_c_array__"):
+                    arr = pa.array(data)
+                else:
+                    arr = pa.array(data, type=pa.float64(), safe=False)
+                count = len(arr)
+                mean_val = pc.mean(arr).as_py() or 0.0
+                std_val = pc.stddev(arr).as_py() or 0.0
+                sum_val = pc.sum(arr).as_py() or 0.0
+                min_val = pc.min(arr).as_py() or 0.0
+                max_val = pc.max(arr).as_py() or 0.0
+                var_val = pc.variance(arr).as_py() or 0.0
 
-            arr = pa.array(data, type=pa.float64())
-            count = len(arr)
-            mean_val = pc.mean(arr).as_py() or 0.0
-            std_val = pc.stddev(arr).as_py() or 0.0
-            sum_val = pc.sum(arr).as_py() or 0.0
-            min_val = pc.min(arr).as_py() or 0.0
-            max_val = pc.max(arr).as_py() or 0.0
-            var_val = pc.variance(arr).as_py() or 0.0
-
-            return {
-                "count": float(count),
-                "mean": round(float(mean_val), 6),
-                "stddev": round(float(std_val), 6),
-                "sum": round(float(sum_val), 6),
-                "min": round(float(min_val), 6),
-                "max": round(float(max_val), 6),
-                "variance": round(float(var_val), 6),
-            }
-        except Exception:
-            # Pure Python fallback
-            nums = [float(x) for x in data]
-            n = len(nums)
-            s = sum(nums)
-            m = s / n
-            var = sum((x - m) ** 2 for x in nums) / n
-            std = math.sqrt(var)
-            return {
-                "count": float(n),
-                "mean": round(m, 6),
-                "stddev": round(std, 6),
-                "sum": round(s, 6),
-                "min": round(min(nums), 6),
-                "max": round(max(nums), 6),
-                "variance": round(var, 6),
-            }
+                return {
+                    "count": float(count),
+                    "mean": round(float(mean_val), 6),
+                    "stddev": round(float(std_val), 6),
+                    "sum": round(float(sum_val), 6),
+                    "min": round(float(min_val), 6),
+                    "max": round(float(max_val), 6),
+                    "variance": round(float(var_val), 6),
+                }
+            except Exception:
+                pass
+        # Pure Python fallback
+        nums = [float(x) for x in data]
+        n = len(nums)
+        s = sum(nums)
+        m = s / n
+        var = sum((x - m) ** 2 for x in nums) / n
+        std = math.sqrt(var)
+        return {
+            "count": float(n),
+            "mean": round(m, 6),
+            "stddev": round(std, 6),
+            "sum": round(s, 6),
+            "min": round(min(nums), 6),
+            "max": round(max(nums), 6),
+            "variance": round(var, 6),
+        }
 
     @classmethod
     def vector_dot(cls, a: Sequence[float], b: Sequence[float]) -> float:

@@ -10,6 +10,9 @@
 version: 1
 
 providers:
+  # Paidmodels. OAuth: Codex openai:gpt-6-luna, Grok xai:grok-4.6,
+  # Claude anthropic:claude-sonnet-4.6. API key: MiniMax, Z.ai, Kimi, Xiaomi MiMo.
+  # Rows stay at their existing priorities. Detail is MODELS.md.
   # ---- Paid: medium tier, medium effort ----
   - name: openai:gpt-4o-mini
     provider: openai
@@ -94,11 +97,12 @@ providers:
 
   - name: xai:grok-4.6
     provider: xai
-    api_key_env: XAI_API_KEY
+    api_key_env: GROK_OAUTH_TOKEN
+    api_key_fallbacks: [XAI_API_KEY]
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 18
-    evidence: user (Grok 4.6, medium effort)
+    evidence: user (Grok OAuth, Grok 4.6, medium effort)
 
   - name: minimax:minimax-2.7-high-speed
     provider: minimax
@@ -119,11 +123,21 @@ providers:
 
   - name: anthropic:claude-sonnet-4.6
     provider: claude-code
-    api_key_env: CLAUDE_CODE_API_KEY
+    api_key_env: CLAUDE_OAUTH_TOKEN
+    api_key_fallbacks: [CLAUDE_CODE_API_KEY]
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 30
-    evidence: user (Claude Code API, Sonnet 4.6); inactive until CLAUDE_CODE_API_KEY is stored
+    evidence: user (Claude OAuth, Sonnet 4.6)
+
+  - name: anthropic:claude-opus-5-5
+    provider: claude-code
+    api_key_env: CLAUDE_OAUTH_TOKEN
+    api_key_fallbacks: [CLAUDE_CODE_API_KEY]
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 31
+    evidence: user (Orchestrator, Claude Opus 5.5); id from platform.claude.com models overview
 
   # ---- Free: low token usage, low effort ----
   # GET https://api.atlascloud.ai/v1/models on 2026-10-05: one $0 text model.

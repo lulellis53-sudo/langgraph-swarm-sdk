@@ -11,6 +11,7 @@ from typing import Any, TypedDict, cast
 from langgraph.graph import END, StateGraph
 
 from swarm_sdk.core.allocator import AllocatorManager
+from swarm_sdk.core.handoff_guard import HandoffCycleError, advance_handoff
 from swarm_sdk.core.jev_router import JevRouter, NoulDecision, ScoreDecision
 from swarm_sdk.core.lifeguard_ast import MetaLifeguardAuditor
 from swarm_sdk.core.rules import HostRuleEngine
@@ -30,6 +31,8 @@ class SwarmState(TypedDict, total=False):
     lifeguard_report: dict[str, Any]
     test_results: dict[str, Any]
     iteration: int
+    active_agent: str
+    handoff_depth: int
     metrics: dict[str, float]
     status: str
     error: str | None
@@ -319,10 +322,15 @@ class LowSwarmEngine:
         context_chunks = list(state.get("context_chunks") or [])
         context_chunks.append(feedback)
 
-        if next_iter >= 3:
+        try:
+            # Depth 3 is the same stop as the historical three-iteration cap.
+            depth = advance_handoff("lifeguard", "coder", next_iter, max_depth=2)
+        except HandoffCycleError:
             return {
                 "lifeguard_report": report_dict,
                 "iteration": next_iter,
+                "active_agent": "lifeguard",
+                "handoff_depth": next_iter,
                 "status": "blocked",
                 "error": "Max resynthesis iterations reached",
                 "context_chunks": context_chunks,
@@ -332,6 +340,8 @@ class LowSwarmEngine:
         return {
             "lifeguard_report": report_dict,
             "iteration": next_iter,
+            "active_agent": "coder",
+            "handoff_depth": depth,
             "status": "resynthesizing",
             "context_chunks": context_chunks,
             "metrics": {**state.get("metrics", {}), "rss_gb": rss},

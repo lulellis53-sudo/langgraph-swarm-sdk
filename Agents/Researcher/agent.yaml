@@ -6,6 +6,7 @@ role: read_only_research
 langgraph_node: researcher
 
 model: openai:gpt-6-luna
+# api_endpoint: POST https://api.openai.com/v1/chat/completions
 think_level: medium
 effort: medium
 api_key_env: CODEX_OAUTH_TOKEN

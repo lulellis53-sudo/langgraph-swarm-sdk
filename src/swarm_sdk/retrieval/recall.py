@@ -10,6 +10,7 @@ from swarm_sdk.memory.base import MemoryHit, MemoryStore
 from swarm_sdk.retrieval.embeddings import Embedder, dedupe_texts
 from swarm_sdk.retrieval.gate import Confidence, GateConfig, classify
 from swarm_sdk.retrieval.hybrid import HybridSearchConfig, hybrid_search
+from swarm_sdk.retrieval.rag_route import RetrievalPlan, plan_retrieval
 from swarm_sdk.retrieval.rerank import Reranker, ScoredReranker
 
 
@@ -116,6 +117,7 @@ class RecallResult:
 
     hits: list[MemoryHit]
     confidence: Confidence | None
+    plan: RetrievalPlan | None = None
 
 
 def recall_with_confidence(
@@ -146,7 +148,9 @@ def recall_with_confidence(
         hybrid_enabled=hybrid_enabled,
     )
     if not unique:
-        return RecallResult([], Confidence.LOW if gate.enabled else None)
+        confidence = Confidence.LOW if gate.enabled else None
+        plan = plan_retrieval(query, Confidence.LOW, kept=0) if gate.enabled else None
+        return RecallResult([], confidence, plan)
     scored_fn = getattr(reranker, "rerank_scored", None)
     if not callable(scored_fn):
         ranked = reranker.rerank(query, unique)
@@ -154,9 +158,11 @@ def recall_with_confidence(
     scored = cast(ScoredReranker, reranker).rerank_scored(query, unique)
     confidence = classify([score for _, score in scored], gate)
     if confidence is Confidence.LOW:
-        return RecallResult([], confidence)
-    hits = [by_text[text] for text, _ in scored[:rerank_k] if text in by_text]
-    return RecallResult(hits, confidence)
+        hits = []
+    else:
+        hits = [by_text[text] for text, _ in scored[:rerank_k] if text in by_text]
+    plan = plan_retrieval(query, confidence, kept=len(hits)) if gate.enabled else None
+    return RecallResult(hits, confidence, plan)
 
 
 def recall_texts(
