@@ -1,7 +1,19 @@
 # Enterprise Redis 7.4 / 8.0 Architecture & Swarm Integration Manual (2026 Edition)
 
-> **CANONICAL REDIS TECHNICAL MANUAL**:
-> Detailed specification covering enterprise Redis 7.4 / 8.0 topology, RediSearch vector indexing with FP16/INT8 quantization, Redis Streams task queue dispatching, Redlock distributed state synchronization, microsecond latency tuning, and Python 3.15 free-threaded `redis.asyncio` integration.
+> **CANONICAL REDIS & CACHING MANUAL** (merged `CACHING.md`, `redis-cache.md`):
+> Enterprise Redis 7.4 / 8.0 topology, RediSearch vector indexing, Streams, Redlock, tuning,
+> Python `redis.asyncio` patterns, **multi-tier caching architecture**, and **Swarm SDK optional
+> exact-response cache** (`REDIS_URL` / `SWARM_REDIS_URL`).
+
+---
+
+## How to use this document
+
+| Section | Audience | Content |
+| :--- | :--- | :--- |
+| **§1–§7** | Operators / platform | Redis Stack deployment, VSS, Streams, locks, tuning, Docker |
+| **§8** | Swarm / WebSearch developers | In-repo `RedisExactCache`, env vars, failure modes, benchmarks |
+| **§9** | Architects | Multi-tier cache routing (exact, semantic, columnar, SQLite WAL) |
 
 ---
 
@@ -279,3 +291,134 @@ volumes:
   redis-data:
     driver: local
 ```
+
+---
+
+## 8. Swarm SDK optional exact cache (project integration)
+
+This section documents **what this repository actually ships**. It supersedes the
+standalone `redis-cache.md` note. Redis is **optional**: without a URL, Swarm keeps
+SQLite exact + semantic caching locally; WebSearch uses its process-local cache.
+
+### 8.1 Enable
+
+```bash
+uv sync --extra redis
+export REDIS_URL=redis://127.0.0.1:6379/0
+# Swarm also accepts:
+export SWARM_REDIS_URL=redis://127.0.0.1:6379/0
+export SWARM_REDIS_CACHE_TTL_S=86400   # default 1 day; see Settings.redis_cache_ttl_s
+```
+
+The application does **not** start or manage a Redis server. Point the URL at a
+service you operate (Docker §7, managed cloud, or local `redis-stack-server`).
+
+### 8.2 Behavior (`swarm_sdk.retrieval.redis_exact.RedisExactCache`)
+
+| Invariant | Value / rule |
+| :--- | :--- |
+| **Namespaces** | `swarm:response` (Swarm `SemanticCache` exact layer); `websearch:results` (WebSearch, default TTL **300 s**, overridable via `cache_ttl_s`) |
+| **Key shape** | `{namespace}:v1:{sha256(utf8 logical key)}` — prompts/queries are not stored as Redis key names |
+| **Value limit** | **256 KiB** per entry (`_MAX_VALUE_BYTES`); larger responses are not written |
+| **Pool / timeouts** | Max **8** connections; **100 ms** connect and command socket timeouts |
+| **Errors** | Treated as cache miss or dropped write (debug log only); core paths continue |
+| **Semantic layer** | **Local SQLite only** — Redis does not store embeddings or run vector ANN (avoids Redis RAM for vectors) |
+
+`SemanticCache` (`src/swarm_sdk/retrieval/cache.py`) checks Redis for exact hits first,
+then SQLite exact, then local semantic cosine search. Settings: `redis_url` aliases
+`REDIS_URL`, `SWARM_REDIS_URL` (`src/swarm_sdk/config/settings.py`).
+
+LangGraph Server graph factories build a Redis-enabled cache when those env vars are set
+(`src/swarm_sdk/server/graphs.py`).
+
+### 8.3 Security and operations
+
+- Cached values may contain **agent task output** — use ACLs, TLS, and a trusted network.
+- Configure server-side **`maxmemory`** and **`maxmemory-policy`** (§1.C); the client cap is per-entry, not total RSS.
+- For cross-process reuse, Redis helps; a single worker may still be faster on a local SQLite hit.
+
+### 8.4 Measure (repo harness)
+
+```bash
+uv sync --extra redis
+REDIS_URL=redis://localhost:6379/0 PYTHONPATH=Agents:. \
+  uv run python Agents/benchmark/Tasks/redis_cache/benchmark_redis_cache.py --write-results
+uv run pytest Agents/benchmark/Tasks/redis_cache -q
+```
+
+Compare cold miss vs warm hit: p50/p95 lookup latency, provider calls avoided, tokens
+saved, CPU, peak RSS. See [Agents/benchmark/README.md](../Agents/benchmark/README.md).
+
+---
+
+## 9. Multi-tier caching architecture (merged reference)
+
+Merged from `CACHING.md`. Use this section to **choose a tier**; use §2 for Redis
+Vector Search operations when Redis is your semantic plane.
+
+### 9.1 Decision flow
+
+```text
+                          [ Cache query ]
+                                |
+             +------------------+------------------+
+             |                  |                  |
+       [Exact string key?] [Semantic / embedding?] [Large columnar blob?]
+             |                  |                  |
+    [Redis exact §8]     [SQLite semantic +       [PyArrow IPC /
+     or SQLite exact]     local HNSW / FAISS]       shared memory]
+             |                  |                  |
+        optional §2         threshold tuning      zero-copy views
+     Redis VSS (ANN)        (Swarm default)       between processes
+```
+
+### 9.2 Tier comparison
+
+| Tier / technology | Typical latency | Persistence | Primary use in Swarm |
+| :--- | :--- | :--- | :--- |
+| In-process LRU / dict | sub-ms | No | Hot paths inside one worker |
+| **Redis exact** (`RedisExactCache`) | ~1–5 ms | Optional (AOF/RDB) | Shared **exact** responses across processes (§8) |
+| **SQLite WAL** (`cache_path`, semantic DB) | ~5–15 ms | Yes | Default **semantic + exact** cache on disk |
+| **Redis VSS / RediSearch** | ~1–5 ms ANN | Optional | Enterprise semantic plane (§2); not required for SDK semantic layer |
+| **PyArrow IPC / memory map** | O(1) attach | No | Large record batches between isolated processes |
+
+### 9.3 Semantic vector caching
+
+Multi-tier semantic caching stores embeddings and serves **near-duplicate** prompts via
+cosine similarity above a threshold (Swarm default **0.97** in `SemanticCache`). Tier 1:
+in-process matrix / OpenCL index when enabled. Tier 2: SQLite `semantic_cache` table.
+Optional Tier 3: Redis HNSW (§2) when operating a Redis Stack cluster for RAG at scale.
+
+**Pitfall:** thresholds that are too loose increase false-positive cache hits; tune with
+benchmark tasks under `Agents/benchmark/Tasks/token_cache_hit/`.
+
+### 9.4 SQLite WAL persistent state
+
+Swarm cache and memory SQLite files use WAL for concurrent readers/writers:
+
+```python
+import sqlite3
+
+conn = sqlite3.connect("swarm-cache.sqlite", check_same_thread=False)
+conn.execute("PRAGMA journal_mode=WAL")
+```
+
+**Pitfall:** WAL files grow until checkpoint; long-lived agents should monitor disk use.
+
+### 9.5 PyArrow zero-copy buffer caching
+
+For dataframe-scale payloads, prefer Arrow record batches and IPC files/memory maps so
+consumers attach without pickling full tables. See [SERIALIZATION.md](SERIALIZATION.md)
+and [Python3.15.md](Python3.15.md) §4.1 for columnar context.
+
+### 9.6 Eviction policies (recap)
+
+- **LRU / LFU** (`allkeys-lru`, `allkeys-lfu`): recency- or frequency-biased shared caches (§1.C).
+- **noeviction**: protect Streams and lock keys from silent drops when `maxmemory` is hit.
+
+### 9.7 Citations (caching layer)
+
+1. [Redis vector search](https://redis.io/docs/latest/develop/interact/search-and-query/vectors/) — RediSearch / VSS.
+2. [SQLite WAL mode](https://sqlite.org/wal.html) — persistent cache files.
+3. [Apache Arrow columnar format](https://arrow.apache.org/docs/format/Columnar.html) — zero-copy layouts.
+4. In-repo: `src/swarm_sdk/retrieval/cache.py`, `src/swarm_sdk/retrieval/redis_exact.py`.

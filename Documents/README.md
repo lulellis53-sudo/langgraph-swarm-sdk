@@ -17,10 +17,15 @@ linked source, configuration, and tests before applying them.
 
 ## Research and design notes
 
+- [Redis & caching](REDIS.md) — canonical manual (merged caching + optional SDK Redis cache)
+- [Caching architecture](CACHING.md) — redirect stub
+- [Optional Redis cache (SDK)](redis-cache.md) — redirect stub
 - [RAG techniques](RAGTECHNIQUES.MD)
 - [Low-resource optimization](LowResourceOptimization.md)
 - [Memory allocators](MemoryAllocators.md)
-- [Python 3.15](Python3.15.md)
+- [Python 3.15](Python3.15.md) — canonical 3.15 / free-threading / performance dossier
+- [Python free-threaded runtime](PythonFreeThreadedRuntime.md) — redirect stub
+- [Python performance guide](PythonPerformanceGuide.md) — redirect stub
 - [MoltenVK and Vulkan](Molten.md)
 - [Agent methods](AgenticMethod.MD)
 - [Liveboard design](design-liveboard.md)
