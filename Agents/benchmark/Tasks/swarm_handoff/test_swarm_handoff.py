@@ -1,3 +1,5 @@
+"""Swarm handoff benchmark task: routing between specialist nodes."""
+
 from pathlib import Path
 
 import pytest

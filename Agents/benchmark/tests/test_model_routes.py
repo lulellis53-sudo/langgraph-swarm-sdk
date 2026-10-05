@@ -2,25 +2,49 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
+from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import BaseMessage
+from langchain_core.outputs import ChatResult
 
 from swarm_sdk import vault
 from swarm_sdk.models import chat
 
 
 class _Dummy(BaseChatModel):
+    """Chat model double; constructing it is the assertion, generation is unused."""
+
     @property
     def _llm_type(self) -> str:
         return "dummy"
 
-    def _generate(self, messages, stop=None, run_manager=None, **kwargs):  # noqa: ANN001, ANN202
+    def _generate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: CallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> ChatResult:
         raise NotImplementedError
 
 
 @pytest.fixture()
 def fake_init(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, dict]]:
     calls: list[tuple[str, dict]] = []
+    # Never read the real Keychain from a test: a failing assertion would print the secret.
+    monkeypatch.setattr(chat.vault, "get", lambda *args, **kwargs: None)
+    # Earlier tests may have primed real keys into os.environ; a route test must start clean.
+    for route in chat._route_index().values():
+        monkeypatch.delenv(route.api_key_env, raising=False)
+        monkeypatch.delenv(route.base_url_env, raising=False)
+        for extra in route.key_fallbacks:
+            monkeypatch.delenv(extra, raising=False)
+    # Model instances are cached across calls; clear the cache so each route
+    # test observes fresh ``init_chat_model`` invocations.
+    chat.load_chat_model_cache_clear()
     monkeypatch.setattr(
         "langchain.chat_models.init_chat_model",
         lambda model, **kwargs: calls.append((model, kwargs)) or _Dummy(),
@@ -36,9 +60,7 @@ def test_google_prefix_routes_to_google_genai(fake_init) -> None:
 
 def test_compat_provider_uses_registry_base_url(fake_init, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ZAI_BASE_URL", "https://api.z.ai/api/paas/v4")
-    monkeypatch.delenv("ZHIPU_API_KEY", raising=False)
     monkeypatch.setenv("ZAI_API_KEY", "k")
-    monkeypatch.setattr(vault, "get", lambda name: None)
     chat.load_chat_model("zai:glm-5.2")
     ((model, kwargs),) = fake_init
     assert model == "glm-5.2"
@@ -48,10 +70,73 @@ def test_compat_provider_uses_registry_base_url(fake_init, monkeypatch: pytest.M
 
 
 def test_compat_provider_requires_base_url(fake_init, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("MINIMAX_BASE_URL", raising=False)
-    with pytest.raises(ValueError, match="MINIMAX_BASE_URL"):
-        chat.load_chat_model("minimax:MiniMax-M2.7")
+    monkeypatch.delenv("MIMO_BASE_URL", raising=False)
+    with pytest.raises(ValueError, match="MIMO_BASE_URL"):
+        chat.load_chat_model("xiaomi:mimo-v2.5-pro")
     assert fake_init == []
+
+
+def test_minimax_and_zai_use_documented_hosts(fake_init, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        vault,
+        "get",
+        lambda name: {"MINIMAX_API_KEY": "mini", "ZHIPU_API_KEY": "zhipu"}.get(name),
+    )
+    chat.load_chat_model("minimax:minimax-2.7-high-speed")
+    chat.load_chat_model("zai:glm-5.2")
+    assert fake_init[0][1]["base_url"] == "https://api.minimax.io/v1"
+    assert fake_init[0][1]["api_key"] == "mini"
+    assert fake_init[1] == (
+        "glm-5.2",
+        {
+            "model_provider": "openai",
+            "base_url": "https://api.z.ai/api/paas/v4",
+            "api_key": "zhipu",
+        },
+    )
+
+
+def test_second_key_alias_keeps_the_upstream_model_id(
+    fake_init, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        vault,
+        "get",
+        lambda name: {
+            "GEMINI_API_KEY_DUPLICATE_1": "g2",
+            "KIMI_API_KEY_DUPLICATE_1": "k2",
+        }.get(name),
+    )
+    chat.load_chat_model("google:gemini-3.8-flash-b")
+    chat.load_chat_model("moonshot:kimi-k2.7-code-b")
+    assert fake_init[0] == ("google_genai:gemini-3.8-flash", {"google_api_key": "g2"})
+    model, kwargs = fake_init[1]
+    assert model == "kimi-k2.7-code"
+    assert kwargs["base_url"] == "https://api.moonshot.ai/v1"
+    assert kwargs["api_key"] == "k2"
+
+
+def test_gemini_route_accepts_google_api_key(fake_init, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(vault, "get", lambda name: "g" if name == "GOOGLE_API_KEY" else None)
+    chat.load_chat_model("google:gemini-3.8-flash")
+    assert fake_init == [("google_genai:gemini-3.8-flash", {"google_api_key": "g"})]
+
+
+def test_mistral_keys_stay_on_their_own_models(fake_init, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        vault,
+        "get",
+        lambda name: {
+            "MISTRAL_API_KEY": "m-unsuffixed",
+            "MISTRAL_API_KEY_DUPLICATE_1": "m-dup",
+        }.get(name),
+    )
+    chat.load_chat_model("mistral:mistral-large-latest")
+    chat.load_chat_model("mistral:ministral-3-8b-latest")
+    assert fake_init == [
+        ("mistral:mistral-large-latest", {"mistral_api_key": "m-unsuffixed"}),
+        ("mistral:ministral-3-8b-latest", {"mistral_api_key": "m-dup"}),
+    ]
 
 
 @pytest.mark.parametrize(
@@ -78,7 +163,6 @@ def test_compat_provider_requires_base_url(fake_init, monkeypatch: pytest.Monkey
 def test_hosted_compat_routes_use_provider_endpoint(
     fake_init, monkeypatch: pytest.MonkeyPatch, route: str, key_name: str, base_url: str
 ) -> None:
-    monkeypatch.delenv("ATLASCLOUD_BASE_URL", raising=False)
     monkeypatch.setenv(key_name, "synthetic-key")
     chat.load_chat_model(route)
     ((model, kwargs),) = fake_init
@@ -106,15 +190,3 @@ def test_google_route_reads_named_key_from_vault(
     )
     chat.load_chat_model("google:gemini-3.8-flash")
     assert fake_init == [("google_genai:gemini-3.8-flash", {"google_api_key": "vault-key"})]
-
-
-def test_google_route_accepts_google_api_key_when_gemini_is_unset(
-    fake_init, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
-    monkeypatch.setattr(
-        vault, "get", lambda name: "google-key" if name == "GOOGLE_API_KEY" else None
-    )
-    chat.load_chat_model("google:gemini-3.8-flash")
-    assert fake_init == [("google_genai:gemini-3.8-flash", {"google_api_key": "google-key"})]

@@ -3,10 +3,19 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlparse
 
 import aiohttp
 import httpx2
 import requests
+
+
+def validate_http_url(url: str) -> str:
+    """Return ``url`` if it is an absolute http(s) URL; raise ValueError otherwise."""
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise ValueError(f"refusing non-http(s) URL: {url!r}")
+    return url
 
 
 def post_json(
@@ -28,9 +37,11 @@ def post_json(
         Response JSON object.
 
     Raises:
+        ValueError: If ``url`` is not an absolute http(s) URL.
         TypeError: If the response body is not a JSON object.
         requests.HTTPError | httpx2.HTTPError: On non-success status.
     """
+    validate_http_url(url)
     if client == "requests":
         response = requests.post(url, json=payload, timeout=30)
         response.raise_for_status()
@@ -56,9 +67,11 @@ async def async_post_json(url: str, payload: dict[str, Any]) -> dict[str, Any]:
         Response JSON object.
 
     Raises:
+        ValueError: If ``url`` is not an absolute http(s) URL.
         TypeError: If the response body is not a JSON object.
         aiohttp.ClientResponseError: On non-success status.
     """
+    validate_http_url(url)
     timeout = aiohttp.ClientTimeout(total=30)
     async with aiohttp.ClientSession(timeout=timeout) as session:
         async with session.post(url, json=payload) as response:
@@ -69,4 +82,4 @@ async def async_post_json(url: str, payload: dict[str, Any]) -> dict[str, Any]:
     return body
 
 
-__all__ = ["async_post_json", "post_json"]
+__all__ = ["async_post_json", "post_json", "validate_http_url"]

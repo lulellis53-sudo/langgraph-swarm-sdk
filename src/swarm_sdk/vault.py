@@ -77,6 +77,21 @@ def _keychain_args() -> list[str]:
     return [str(Path(path).expanduser())] if path else []
 
 
+def _api_keychain_args() -> list[str]:
+    """APIKEYCHAIN path when that file exists.
+
+    Items there use the service ``APIKEYCHAIN/<NAME>``. ``KEYS_KEYCHAIN``
+    overrides the default ``~/Library/Keychains/APIKEYCHAIN.keychain-db``.
+    """
+    raw = os.environ.get("KEYS_KEYCHAIN")
+    path = (
+        Path(raw).expanduser()
+        if raw
+        else Path.home() / "Library" / "Keychains" / "APIKEYCHAIN.keychain-db"
+    )
+    return [str(path)] if path.is_file() else []
+
+
 class VaultError(ValueError):
     """Raised for an invalid secret name (never carries a secret value)."""
 
@@ -95,12 +110,14 @@ def run_cli(argv: Sequence[str]) -> str | None:
 
 
 def _check(name: str) -> str:
+    """Return ``name`` if it is a valid secret name, else raise ``VaultError``."""
     if not _NAME.fullmatch(name):
         raise VaultError(f"invalid secret name: {name[:70]!r}")
     return name
 
 
 def _from_dotenv(name: str, path: Path) -> str | None:
+    """Read ``name`` from a dotenv file; ``None`` when the file or key is missing."""
     try:
         lines = path.read_text().splitlines()
     except OSError:

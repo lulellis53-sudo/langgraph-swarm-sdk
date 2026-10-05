@@ -20,6 +20,7 @@ class SympyCalcs:
 
     @staticmethod
     def _sp() -> Any:
+        """Import sympy on first use."""
         import sympy as sp
 
         return sp
@@ -80,7 +81,11 @@ class SympyCalcs:
 
     @classmethod
     def matrix_inv(cls, matrix: list[list[float | int]]) -> list[list[str]]:
-        """Computes the exact symbolic inverse of a square non-singular matrix."""
+        """Computes the exact symbolic inverse of a square non-singular matrix.
+
+        Raises:
+            ValueError: If ``matrix`` is not square or is singular.
+        """
         sp = cls._sp()
         m = sp.Matrix(matrix)
         inv = m.inv()
@@ -116,7 +121,7 @@ class ArrowCalcs:
 
     @classmethod
     def column_stats(cls, data: Sequence[float | int] | Any) -> dict[str, float]:
-        """Calculates moments and median (count, mean, stddev, sum, min, median, max, variance)."""
+        """Calculates moments (mean, stddev, sum, min, max, variance) on columnar data."""
         if not data:
             return {
                 "count": 0.0,
@@ -126,7 +131,6 @@ class ArrowCalcs:
                 "min": 0.0,
                 "max": 0.0,
                 "variance": 0.0,
-                "median": 0.0,
             }
 
         try:
@@ -141,7 +145,6 @@ class ArrowCalcs:
             min_val = pc.min(arr).as_py() or 0.0
             max_val = pc.max(arr).as_py() or 0.0
             var_val = pc.variance(arr).as_py() or 0.0
-            med_scalar = pc.quantile(arr, q=0.5)[0].as_py() or 0.0
 
             return {
                 "count": float(count),
@@ -149,33 +152,37 @@ class ArrowCalcs:
                 "stddev": round(float(std_val), 6),
                 "sum": round(float(sum_val), 6),
                 "min": round(float(min_val), 6),
-                "median": round(float(med_scalar), 6),
                 "max": round(float(max_val), 6),
                 "variance": round(float(var_val), 6),
             }
-        except (ImportError, Exception):
+        except Exception:
             # Pure Python fallback
-            nums = sorted(float(x) for x in data)
+            nums = [float(x) for x in data]
             n = len(nums)
             s = sum(nums)
             m = s / n
             var = sum((x - m) ** 2 for x in nums) / n
             std = math.sqrt(var)
-            median = (nums[n // 2] if n % 2 else (nums[n // 2 - 1] + nums[n // 2]) / 2.0)
             return {
                 "count": float(n),
                 "mean": round(m, 6),
                 "stddev": round(std, 6),
                 "sum": round(s, 6),
                 "min": round(min(nums), 6),
-                "median": round(median, 6),
                 "max": round(max(nums), 6),
                 "variance": round(var, 6),
             }
 
     @classmethod
     def vector_dot(cls, a: Sequence[float], b: Sequence[float]) -> float:
-        """Computes inner product between two dense vectors using Arrow chunked compute or SIMD."""
+        """Compute the inner product of two dense vectors.
+
+        Uses PyArrow compute when available; falls back to a pure-Python
+        summation otherwise.
+
+        Raises:
+            ValueError: If ``a`` and ``b`` have different lengths.
+        """
         if len(a) != len(b):
             raise ValueError(f"Vector dimension mismatch: {len(a)} != {len(b)}")
         if not a:
@@ -189,7 +196,7 @@ class ArrowCalcs:
             arr_b = pa.array(b, type=pa.float64())
             prod = pc.multiply(arr_a, arr_b)
             return float(pc.sum(prod).as_py() or 0.0)
-        except (ImportError, Exception):
+        except Exception:
             return sum(x * y for x, y in zip(a, b))
 
     @classmethod
@@ -197,9 +204,15 @@ class ArrowCalcs:
         """Computes cosine similarity in [-1.0, 1.0] between two vectors."""
         if len(u) != len(v):
             raise ValueError(f"Vector dimension mismatch: {len(u)} != {len(v)}")
-        dot = cls.vector_dot(u, v)
-        norm_u = math.sqrt(cls.vector_dot(u, u))
-        norm_v = math.sqrt(cls.vector_dot(v, v))
+        dot = uu = vv = 0.0
+        for ui, vi in zip(u, v, strict=True):
+            f_ui = float(ui)
+            f_vi = float(vi)
+            dot += f_ui * f_vi
+            uu += f_ui * f_ui
+            vv += f_vi * f_vi
+        norm_u = math.sqrt(uu)
+        norm_v = math.sqrt(vv)
         if norm_u == 0.0 or norm_v == 0.0:
             return 0.0
         return max(-1.0, min(1.0, dot / (norm_u * norm_v)))
@@ -221,22 +234,31 @@ class ArrowCalcs:
             arr = pa.array(data, type=pa.float64())
             res = pc.quantile(arr, q=q)
             return {float(q_val): float(val.as_py()) for q_val, val in zip(q, res)}
-        except (ImportError, Exception):
-            # Linear-interpolation fallback matching NumPy semantics.
+        except Exception:
+            # Linear-interpolation fallback to match PyArrow's default quantile method.
             sorted_nums = sorted(float(x) for x in data)
             n = len(sorted_nums)
             out: dict[float, float] = {}
             for q_val in q:
                 pos = q_val * (n - 1)
-                low = int(pos)
-                high = min(n - 1, low + 1)
-                frac = pos - low
-                out[float(q_val)] = sorted_nums[low] + frac * (sorted_nums[high] - sorted_nums[low])
+                lower = int(pos)
+                upper = min(lower + 1, n - 1)
+                frac = pos - lower
+                out[float(q_val)] = sorted_nums[lower] + frac * (
+                    sorted_nums[upper] - sorted_nums[lower]
+                )
             return out
 
     @classmethod
     def to_arrow_table(cls, data: dict[str, list[Any]]) -> Any:
-        """Converts dictionary of columns into an Apache Arrow Table."""
+        """Convert a dictionary of column names to column values into an Arrow Table.
+
+        Args:
+            data: Mapping from column name to a homogeneous list of values.
+
+        Returns:
+            A ``pyarrow.Table`` built from the supplied columns.
+        """
         import pyarrow as pa  # type: ignore
 
         return pa.Table.from_pydict(data)

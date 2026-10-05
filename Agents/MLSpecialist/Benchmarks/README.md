@@ -26,5 +26,6 @@ Shared suite and runners: [`benchmark/`](../../benchmark/) (see [`benchmark/READ
 | [`cold_import`](../../benchmark/Tasks/cold_import/) | SDK import-time / lazy-import stack | `PYTHONPATH=Agents uv run python -m benchmark.Tasks.cold_import.benchmark_cold_import` |
 | [`gpu_retrieval`](../../benchmark/Tasks/gpu_retrieval/) | OpenCL vs NumPy vector search | See [`benchmark/README.md`](../../benchmark/README.md) § bounded retrieval |
 | [`gpu_quantization`](../../benchmark/Tasks/gpu_quantization/) | INT8 / quant paths | `uv run python Agents/benchmark/Tasks/gpu_quantization/benchmark_gpu_quantization.py` |
+| [`prediction_forecast`](../../benchmark/Tasks/prediction_forecast/) | mlforecast backtest on synthetic sine | `uv run --extra forecast pytest Agents/benchmark/Tasks/prediction_forecast -q` |
 
 Dossier cross-reference: `Documents/Python3.15.md` §11.3 and `~/Documentos/Python3.15.md` (mirror).

@@ -109,6 +109,8 @@ def test_token_budget_rejects_non_positive_max(max_tokens: int) -> None:
 
 
 class _CountingTok:
+    """Tokenizer double that counts ``encode`` calls and scales by length."""
+
     def __init__(self, per_char: int = 1) -> None:
         self.calls = 0
         self.per_char = per_char

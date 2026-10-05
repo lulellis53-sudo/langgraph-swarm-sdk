@@ -86,7 +86,7 @@ async def test_route_off_flag_skips_structured_path(tmp_path: Path) -> None:
 class _NoBindTools(ScriptedModel):
     """Scripted model without a ``bind_tools`` override."""
 
-    bind_tools = BaseChatModel.bind_tools  # type: ignore[method-assign]
+    bind_tools = BaseChatModel.bind_tools  # ty: ignore[invalid-method-override]
 
 
 async def test_route_unsupported_model_uses_json_mode(tmp_path: Path) -> None:

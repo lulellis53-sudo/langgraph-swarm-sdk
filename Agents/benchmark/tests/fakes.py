@@ -1,3 +1,5 @@
+"""Scripted chat models and SDK builders shared by the unit tests."""
+
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +17,8 @@ from swarm_sdk.retrieval.rerank import IdentityReranker
 
 
 class Script:
+    """Ordered list of canned model replies, consumed one per call."""
+
     def __init__(self, messages: list[AIMessage]) -> None:
         self.messages = messages
         self.cursor = 0

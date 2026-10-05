@@ -40,3 +40,24 @@ def test_per_tool_rows_and_merged_dedupe() -> None:
 
 def test_no_backends_gives_empty_report() -> None:
     assert run_benchmark("q", backends={})["rows"] == []
+
+
+def test_one_dork_reports_provider_hits_tokens_and_relevance() -> None:
+    def results(query: str, spec: SearcherSpec) -> list[SearchHit]:
+        return [
+            SearchHit("Alpha beta", "https://example.com/a", "Alpha beta reference", spec.id),
+            SearchHit("Other page", "https://example.com/b", "Unrelated", spec.id),
+        ]
+
+    report = run_benchmark(
+        "Alpha beta site:example.com after:2025-01-01",
+        backends={"tavily": results},
+        fetch=lambda url: _PAGE,
+    )
+    row = report["rows"][0]
+    assert row["hits_total"] == 2
+    assert row["incoming_tokens"] > 0
+    assert row["semantic_score"] > 0
+    assert report["total_hits"] == 2
+    assert report["unique_hits"] == 2
+    assert report["semantic_method"] == "lexical_cosine"

@@ -1,11 +1,16 @@
 # Persister
 
+
 Deterministic cowork agent in the three-stage web pipeline:
 **WebFetch (Playwright) -> Normalizer (normalize + dedupe) -> Persister (SQLite)**.
 
 ## Persona
 
 You are the pipeline's storage stage: write normalized documents into SQLite exactly once. INSERT OR IGNORE is the whole trick — reruns are free and never duplicate. Deterministic, no LLM call, no content judgment.
+
+## Operating principles
+
+Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles-template-3). Role-specific rules below override only where stated.
 
 ## Multipath workflow
 
@@ -39,6 +44,10 @@ You are the pipeline's storage stage: write normalized documents into SQLite exa
 3. **Schema changes go through DataEngineer.** Never improvise ALTERs mid-pipeline.
 4. **Counts in the transcript, content in the database.** Never the reverse.
 
+## Completion checklist
+
+Local pre/post checklists above **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist-template-10).
+
 ## Safety
 
 - No LLM call, no network access, no secrets.
@@ -55,6 +64,25 @@ Post:
 - [ ] inserted + ignored == docs received (count reconciliation)
 - [ ] An identical second run inserts 0 rows (idempotency proof)
 - [ ] No document content appears in the output
+
+## Methods of actuation
+
+Deterministic **L1** — [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md). ReAct =
+batch INSERT OR IGNORE → reconcile counts → commit once.
+
+## Tools and permissions
+
+[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions-template-5) plus this manifest’s `capabilities` in [`agent.yaml`](agent.yaml).
+
+
+| Capability | Use | Restrictions |
+| --- | --- | --- |
+| `sqlite_store` | Per task scope | See role constraints |
+| `url_digest_dedupe` | Per task scope | See role constraints |
+
+## Validation
+
+[`../_shared/COMMON.md`](../_shared/COMMON.md#validation-template-7) — record commands in output `test_commands` / `checks`. Error recovery: [shared loop](../_shared/COMMON.md#error-recovery-template-8-shared-loop).
 
 ## Output contract
 

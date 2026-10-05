@@ -156,6 +156,17 @@ imports replaced. Measured 2026-10-01 (3 runs, `results/`):
 | ----------------- | ----------: | ---------: | ------------: |
 | Cold import wall  | 1,636.30 ms | 672.02 ms  | **−58.93%**   |
 
+### Prediction forecast lane (`Tasks/prediction_forecast/`)
+
+Synthetic multi-series sine; ``ForecastEngine.backtest`` must keep mean MAE below the task gate.
+
+```bash
+uv run --extra forecast pytest Agents/benchmark/Tasks/prediction_forecast -q
+uv run --extra forecast python Agents/benchmark/Tasks/prediction_forecast/benchmark_prediction_forecast.py --write-results
+```
+
+Case definition: `benchmark/Tasks/prediction_forecast/task.yaml`.
+
 See also **Python 3.15 dossier §11.3** (`Documents/Python3.15.md`) for the separate
 PEP 810 `lazy import` micro-benchmark (`Tasks/python315_claims/`, workload **F**).
 

@@ -195,6 +195,8 @@ def test_set_delegates_prompt_to_security(monkeypatch: pytest.MonkeyPatch) -> No
     seen: list[list[str]] = []
 
     class Done:
+        """Stand-in for ``subprocess.CompletedProcess`` with a zero exit code."""
+
         returncode = 0
 
     def fake_run(argv: list[str], **kwargs: object) -> Done:
@@ -244,6 +246,8 @@ def test_import_stores_via_stdin_never_argv_or_output(
     calls: list[tuple[list[str], str]] = []
 
     class Done:
+        """Stand-in for ``subprocess.CompletedProcess`` with a zero exit code."""
+
         returncode = 0
 
     def fake_run(argv: list[str], **kwargs: object) -> Done:
@@ -293,6 +297,8 @@ def test_set_with_dedicated_keychain_sends_value_on_stdin(
     seen: dict[str, object] = {}
 
     class Done:
+        """Stand-in for ``subprocess.CompletedProcess`` with a zero exit code."""
+
         returncode = 0
 
     def fake_run(argv: list[str], **kwargs: object) -> Done:

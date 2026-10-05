@@ -19,6 +19,8 @@ DIM = 8
 
 
 class _Handler(BaseHTTPRequestHandler):
+    """HTTP handler double that records requests and can fail or redirect."""
+
     seen: list[dict[str, object]] = []
     mode = "ok"
     redirect_to = ""
@@ -135,6 +137,8 @@ def test_redirect_is_refused_and_target_never_contacted(server: str) -> None:
     hits: list[str] = []
 
     class _Target(BaseHTTPRequestHandler):
+        """Redirect target that records any request it receives."""
+
         def do_POST(self) -> None:
             hits.append(self.path)
             self.send_response(200)

@@ -1,4 +1,4 @@
-"""Shared fixtures for the Agents/benchmark suite."""
+"""Shared fixtures for the benchmark suite (file config and scripted SDK)."""
 
 from pathlib import Path
 
@@ -15,7 +15,7 @@ from swarm_sdk.retrieval.rerank import IdentityReranker
 
 @pytest.fixture
 def bench_settings(tmp_path: Path) -> Settings:
-    """Isolated SDK settings pointing at files under ``tmp_path``."""
+    """Tiny settings (32-dim embeddings, 512-token cap) backed by per-test SQLite files."""
     return Settings(
         memory_path=str(tmp_path / "mem.db"),
         cache_path=str(tmp_path / "cache.db"),
@@ -26,13 +26,13 @@ def bench_settings(tmp_path: Path) -> Settings:
 
 @pytest.fixture
 def file_config() -> SwarmFileConfig:
-    """Load the committed ``Main/config/swarm.yaml`` registry."""
+    """The packaged ``swarm.yaml``, resolved from the repo root (tests run from there)."""
     return load_swarm_config(Path("Main/config/swarm.yaml"))
 
 
 @pytest.fixture
 def bench_sdk(bench_settings: Settings, file_config: SwarmFileConfig) -> SwarmSDK:
-    """Scripted SwarmSDK that never calls a live provider."""
+    """SDK with a scripted model: one routing reply, then one swarm answer; no network."""
     script = Script(
         [
             answer('{"mode":"swarm","tasks":[]}'),

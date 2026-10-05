@@ -1,3 +1,5 @@
+"""Hybrid retrieval benchmark task: recall of dense + BM25 fusion."""
+
 import json
 from pathlib import Path
 

@@ -1,3 +1,5 @@
+"""Model fallback benchmark task: chain order and failover."""
+
 from swarm_sdk.config.loader import load_swarm_config
 from swarm_sdk.models.selection import FallbackChain
 

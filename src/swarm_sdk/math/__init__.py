@@ -7,17 +7,13 @@ need symbolic math.
 
 from __future__ import annotations
 
-from types import ModuleType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from swarm_sdk.math.dispatch import classify_math_task
-from swarm_sdk.math.stats import rolling_mean, welford
 from swarm_sdk.math.types import (
     MathBackend,
     MathDispatchDecision,
-    MathDtype,
     MathMode,
-    MathOperation,
     MathProblem,
     MathResult,
     MathTaskType,
@@ -32,8 +28,8 @@ if TYPE_CHECKING:
     import sympy as sp
 
 
-def _sympy() -> ModuleType:
-    """Import SymPy on first use so cold imports stay cheap."""
+def _sympy() -> Any:
+    """Import sympy on first use."""
     import sympy as sp
 
     return sp
@@ -71,7 +67,11 @@ def bm25_term_score(
         \frac{\operatorname{tf}(t, D) \cdot (k_1 + 1)}
              {\operatorname{tf}(t, D) + k_1 \cdot
               \left(1 - b + b \cdot \frac{|D|}{\operatorname{avgdl}}\right)}
+
+    Returns ``0.0`` when ``avgdl == 0`` to avoid division by zero.
     """
+    if avgdl == 0.0:
+        return 0.0
     denominator = tf + k1 * (1.0 - b + b * doc_len / avgdl)
     return idf * tf * (k1 + 1.0) / denominator
 
@@ -130,7 +130,9 @@ def cosine_similarity(u: Sequence[float], v: Sequence[float]) -> float:
         \operatorname{cos}(u, v) =
             \frac{u \cdot v}{\|u\|_2 \cdot \|v\|_2}
 
-    Zero vectors are handled by returning ``0.0``.
+    Zero vectors are handled by returning ``0.0``. The result is clamped to
+    ``[-1.0, 1.0]`` so round-off error cannot produce values outside the
+    theoretical cosine range.
     """
     import math
 
@@ -139,7 +141,7 @@ def cosine_similarity(u: Sequence[float], v: Sequence[float]) -> float:
     norm_v = math.sqrt(sum(float(vi) ** 2 for vi in v))
     if norm_u == 0.0 or norm_v == 0.0:
         return 0.0
-    return dot / (norm_u * norm_v)
+    return max(-1.0, min(1.0, dot / (norm_u * norm_v)))
 
 
 def rrf_score(rank: int, k: int = 60) -> float:
@@ -173,10 +175,12 @@ def int8_scale(peak: float) -> float:
     .. math::
         \operatorname{scale} = \frac{\max(|x|)}{127}
 
-    When ``peak == 0`` the scale is defined as ``1.0`` to avoid division by
-    zero during quantization.
+    ``peak`` is the maximum absolute value for the row. When ``peak == 0``
+    the scale is defined as ``1.0`` to avoid division by zero during
+    quantization.
     """
-    return peak / 127.0 if peak > 0.0 else 1.0
+    abs_peak = abs(peak)
+    return abs_peak / 127.0 if abs_peak > 0.0 else 1.0
 
 
 def int8_quantize(value: float, scale: float) -> int:
@@ -215,10 +219,19 @@ def binary_cosine_estimate(hamming_distance: int, dim: int) -> float:
 
 
 def binary_score_to_cosine(score: float, dim: int) -> float:
-    """Convert a ``dim - hamming_distance`` binary score back to cosine estimate.
+    r"""Convert a ``dim - hamming_distance`` binary score back to cosine estimate.
 
-    This is the inverse of the binary dot mapping used in the OpenCL kernel:
-    ``score = dim - hamming_distance``.
+    The OpenCL binary dot kernel returns ``s_i = \dim - d_H(i)``, where
+    :math:`d_H(i)` is the Hamming distance between the query and row ``i``.
+    This helper recovers :math:`d_H = \dim - s_i` and feeds it into
+    ``binary_cosine_estimate``.
+
+    Args:
+        score: Binary dot score in the range ``[0, dim]``.
+        dim: Vector dimensionality.
+
+    Returns:
+        Cosine similarity estimate in ``[-1.0, 1.0]``.
     """
     return binary_cosine_estimate(int(dim - score), dim)
 
@@ -280,9 +293,7 @@ def symbolic_cosine() -> "sp.Eq":  # noqa: UP037
 __all__ = [
     "MathBackend",
     "MathDispatchDecision",
-    "MathDtype",
     "MathMode",
-    "MathOperation",
     "MathProblem",
     "MathResult",
     "MathTaskType",
@@ -298,7 +309,6 @@ __all__ = [
     "int8_quantize",
     "int8_scale",
     "l2_norm",
-    "rolling_mean",
     "rrf_score",
     "softmax_scores",
     "symbolic_bm25",
@@ -306,5 +316,4 @@ __all__ = [
     "symbolic_rrf",
     "symbolic_softmax",
     "verify_math_solution",
-    "welford",
 ]

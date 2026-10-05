@@ -41,19 +41,23 @@ class _ClassOrInstanceMethod:
     """Descriptor enabling a method to be called on either the class or an instance."""
 
     def __init__(self, func: Callable[..., Any]) -> None:
+        """Store the wrapped function."""
         self.func = func
 
     def __get__(self, instance: Any, owner: type | None = None) -> Callable[..., Any]:
+        """Bind to ``instance``, or to a default instance when accessed on the class."""
         if instance is None:
             assert owner is not None
             default_instance = owner()
 
             def class_wrapper(*args: Any, **kwargs: Any) -> Any:
+                """Call the wrapped function with a default-constructed instance."""
                 return self.func(default_instance, *args, **kwargs)
 
             return class_wrapper
 
         def instance_wrapper(*args: Any, **kwargs: Any) -> Any:
+            """Call the wrapped function with the owning instance."""
             return self.func(instance, *args, **kwargs)
 
         return instance_wrapper
@@ -134,6 +138,7 @@ class HostRuleEngine:
 
     def _parse_invariants_content(self, content: str) -> HostInvariants:
         # Check if content attempts to enable or support AVX-512
+        """Parse invariants text, rejecting any attempt to enable AVX-512."""
         avx512_prohibited_violation = re.search(
             r"(?i)(?:\bsimd_supported\s*:[^\n]*\bavx-?512\b|\b(?:enable[ds]?|support(?:ed|s)?|allow(?:ed|s)?)\b[^\n]*\bavx-?512\b|\bavx-?512\b[^\n]*\b(?:enable[ds]?|support(?:ed|s)?|allow(?:ed|s)?)\b)",
             content,

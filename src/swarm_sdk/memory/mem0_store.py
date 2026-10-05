@@ -23,12 +23,26 @@ if TYPE_CHECKING:
 _CACHE_HEAD = "swarm-cache"
 
 
+def _vault_secret(name: str) -> str:
+    """Keychain value for ``name``, or empty. The value is not logged."""
+    try:
+        from swarm_sdk.vault import get
+    except ImportError:
+        return ""
+    try:
+        return get(name) or ""
+    except OSError, ValueError:
+        return ""
+
+
 class Mem0Client(Protocol):
     """Minimal subset of ``mem0.MemoryClient`` used by :class:`Mem0Store`."""
 
-    def add(self, messages: object, **kwargs: object) -> object: ...
+    def add(self, messages: object, **kwargs: object) -> object:
+        """Store ``text`` (with its embedding) and return the new record id."""
 
-    def search(self, query: str, **kwargs: object) -> object: ...
+    def search(self, query: str, **kwargs: object) -> object:
+        """Return the ``k`` stored records most similar to the query."""
 
 
 def _rows(payload: object) -> list[dict[str, object]]:
@@ -99,7 +113,7 @@ class Mem0Store:
                 is not installed (``uv sync --extra mem0``).
         """
         env_name = settings.mem0_api_key_env
-        api_key = os.environ.get(env_name)
+        api_key = os.environ.get(env_name) or _vault_secret(env_name)
         if not api_key:
             raise RuntimeError(f"api key env var {env_name} is not set for mem0 memory")
         try:

@@ -1,3 +1,5 @@
+"""Checkpointer tests: persistence across SDK restarts and thread eviction."""
+
 import operator
 from pathlib import Path
 from typing import Annotated
@@ -14,11 +16,13 @@ from swarm_sdk.retrieval.rerank import IdentityReranker
 
 
 class _State(TypedDict):
+    """Graph state whose ``log`` entries accumulate across steps."""
+
     log: Annotated[list[str], operator.add]
 
 
 def _app(saver):
-    graph = StateGraph(_State)
+    graph = StateGraph(_State)  # ty: ignore[invalid-argument-type]
     graph.add_node("step", lambda state: {"log": ["x"]})
     graph.add_edge(START, "step")
     graph.add_edge("step", END)

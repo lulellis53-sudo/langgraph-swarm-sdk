@@ -36,6 +36,7 @@ class _ActionWorker:
     """Deterministic worker: runs a bound action instead of calling an LLM."""
 
     def __init__(self, agent: str, action: Callable[[], str]) -> None:
+        """Bind a worker to its agent name and the zero-argument action it runs."""
         self._agent = agent
         self._action = action
 
@@ -48,10 +49,13 @@ class _ActionWorker:
         files: list[str] | None = None,
         task: str = "",
     ) -> StepOutput:
+        """Run the bound action in a worker thread and wrap its text as a ``StepOutput``."""
         from swarm_sdk.orchestrator.plan import StepOutput
 
+        # Deterministic worker: it ignores the LLM-oriented step inputs and only runs its bound action.
         del description, dep_outputs, files, task
         started = time.perf_counter()
+        # Fetch/SQLite actions block, so run them off the event loop.
         content = await asyncio.to_thread(self._action)
         return StepOutput(
             step_id=step_id,
@@ -82,15 +86,19 @@ def run_cowork_pipeline(
         dict: ``stored`` rows added, ``docs`` unique docs kept after dedupe,
         ``fetched`` number of fetch steps, ``wall_s`` wall time.
     """
-    from swarm_sdk.orchestrator import Plan, run_plan
-
     from WebSearch.midend import fetch_playwright
 
+    from swarm_sdk.orchestrator import Plan, run_plan
+
     cfg = config or load_providers()
-    do_fetch: FetchFn = fetch if fetch is not None else (
-        lambda url: fetch_playwright(url, timeout_s=cfg.crawl.timeout_s)
+    do_fetch: FetchFn = (
+        fetch
+        if fetch is not None
+        else (lambda url: fetch_playwright(url, timeout_s=cfg.crawl.timeout_s))
     )
 
+    # Shared blackboard between steps: fetch stores HTML, normalise stores docs, persist reads them.
+    # Safe without locks because later waves only start after their dependencies finish.
     scratch: dict[str, Any] = {"docs": []}
     unique_urls: list[str] = []
     seen: set[str] = set()
@@ -98,6 +106,7 @@ def run_cowork_pipeline(
         if url not in seen:
             seen.add(url)
             unique_urls.append(url)
+    # Cap after de-duplication so duplicates do not eat into the crawl budget.
     unique_urls = unique_urls[: cfg.crawl.max_urls]
 
     steps: list[tuple[str, str, str, Callable[[], str], tuple[str, ...], list[str]]] = []
@@ -105,8 +114,12 @@ def run_cowork_pipeline(
     for index, url in enumerate(unique_urls):
         sid = f"F{index}"
 
+        # Default arguments freeze this iteration's url/sid (avoids the late-binding closure bug in loops).
         def make_fetch_action(target: str = url, tag: str = sid) -> Callable[[], str]:
+            """Bind ``target``/``tag`` per iteration so each action keeps its own URL."""
+
             def action() -> str:
+                """Fetch the page and stash its decoded HTML under ``html:<tag>``."""
                 html = do_fetch(target)
                 scratch[f"html:{tag}"] = html.decode("utf-8", errors="replace")
                 return f"fetched {target} ({len(html)} bytes)"
@@ -117,6 +130,7 @@ def run_cowork_pipeline(
         fetch_ids.append(sid)
 
     def normalize_action() -> str:
+        """Extract, normalise and stash the text of every fetched page."""
         docs = [
             ExtractedDoc(
                 text=normalize_text(extract_text("selectolax", scratch[f"html:{sid}"])),
@@ -126,6 +140,7 @@ def run_cowork_pipeline(
             )
             for sid, url in zip(fetch_ids, unique_urls, strict=True)
         ]
+        # Dedupe after normalising so trivially different markup of the same page collapses.
         unique = dedupe_docs(docs)
         scratch["docs"] = unique
         return f"normalized {len(docs)} pages, deduped to {len(unique)}"
@@ -142,6 +157,7 @@ def run_cowork_pipeline(
     )
 
     def persist_action() -> str:
+        """Write the normalised documents to SQLite and report stored/total counts."""
         conn = connect(db_path)
         stored = put_documents(conn, scratch["docs"])
         total = count_documents(conn)
@@ -154,6 +170,7 @@ def run_cowork_pipeline(
     )
 
     def factory(step: PlanStep) -> _ActionWorker:
+        """Return the worker that runs the action registered for ``step``."""
         _sid, agent, _desc, action, _deps, _files = step_by_id[step.id]
         return _ActionWorker(agent, action)
 

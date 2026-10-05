@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from benchmark.tests.fakes import Script, ScriptedModel, answer, structured
 from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import SwarmSDK
@@ -34,7 +36,9 @@ def _sdk(tmp_path: Path, model: ScriptedModel) -> SwarmSDK:
     )
 
 
-def test_swarm_graph_factory_builds_manifest_swarm(tmp_path: Path, monkeypatch) -> None:
+def test_swarm_graph_factory_builds_manifest_swarm(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     sdk = _sdk(tmp_path, ScriptedModel(script=Script([answer("ok")])))
     monkeypatch.setattr(SwarmSDK, "from_settings", classmethod(lambda cls: sdk))
 
@@ -43,7 +47,9 @@ def test_swarm_graph_factory_builds_manifest_swarm(tmp_path: Path, monkeypatch) 
     assert {"researcher", "coder", "reviewer"} <= set(graph.nodes)
 
 
-def test_swarm_graph_for_server_carries_no_own_checkpointer(tmp_path: Path, monkeypatch) -> None:
+def test_swarm_graph_for_server_carries_no_own_checkpointer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     sdk = _sdk(tmp_path, ScriptedModel(script=Script([answer("ok")])))
     monkeypatch.setattr(SwarmSDK, "from_settings", classmethod(lambda cls: sdk))
 
@@ -113,7 +119,7 @@ async def test_plan_graph_runs_plan_end_to_end(monkeypatch) -> None:
     assert result["usage"]["llm_calls"] == 2
 
 
-def test_client_payload_extraction(monkeypatch) -> None:
+def test_client_payload_extraction(monkeypatch: pytest.MonkeyPatch) -> None:
     import asyncio
 
     import langgraph_sdk
@@ -122,6 +128,8 @@ def test_client_payload_extraction(monkeypatch) -> None:
     import swarm_sdk.serving.client as client_module
 
     class _FakeRuns:
+        """Fake LangGraph runs API returning a canned final state."""
+
         async def wait(self, thread_id: str, assistant_id: str, **kwargs: Any) -> dict[str, Any]:
             del thread_id, assistant_id, kwargs
             return {
@@ -136,6 +144,8 @@ def test_client_payload_extraction(monkeypatch) -> None:
             }
 
     class _FakeClient:
+        """Fake LangGraph client exposing the fake runs API."""
+
         runs = _FakeRuns()
 
     monkeypatch.setattr(langgraph_sdk, "get_client", lambda **kwargs: _FakeClient())
@@ -150,7 +160,9 @@ def test_client_payload_extraction(monkeypatch) -> None:
     assert payload["mode"] == "server"
 
 
-async def test_swarm_run_delegates_to_server(tmp_path: Path, monkeypatch) -> None:
+async def test_swarm_run_delegates_to_server(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     settings = Settings(
         memory_path=str(tmp_path / "mem.db"),
         cache_path=str(tmp_path / "cache.db"),

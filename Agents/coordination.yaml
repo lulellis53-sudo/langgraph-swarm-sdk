@@ -89,30 +89,15 @@ agents:
     contract: Agents/Newsletter/AGENTS.md
     manifest: Agents/Newsletter/agent.yaml
 
+  - name: Prediction
+    role: forecast_engine
+    contract: Agents/Prediction/AGENTS.md
+    manifest: Agents/Prediction/agent.yaml
+
   - name: DeepResearch
     role: deep_technical_research
     contract: Agents/DeepResearch/AGENTS.md
     manifest: Agents/DeepResearch/agent.yaml
-
-  - name: RAG
-    role: knowledge_retrieval
-    contract: Agents/RAG/AGENTS.md
-    manifest: Agents/RAG/agent.yaml
-
-  - name: math
-    role: mathematical_modeling
-    contract: Agents/math/AGENTS.md
-    manifest: Agents/math/agent.yaml
-
-  - name: Prediction
-    role: time_series_forecasting
-    contract: Agents/Prediction/AGENTS.md
-    manifest: Agents/Prediction/agent.yaml
-
-  - name: WebFetch
-    role: fetch_render
-    contract: Agents/WebFetch/AGENTS.md
-    manifest: Agents/WebFetch/agent.yaml
 
   - name: Normalizer
     role: normalize_dedupe
@@ -124,30 +109,20 @@ agents:
     contract: Agents/Persister/AGENTS.md
     manifest: Agents/Persister/agent.yaml
 
-  - name: ApiDesigner
-    role: api_contracts
-    contract: Agents/ApiDesigner/AGENTS.md
-    manifest: Agents/ApiDesigner/agent.yaml
+  - name: RAG
+    role: knowledge_retrieval
+    contract: Agents/RAG/AGENTS.md
+    manifest: Agents/RAG/agent.yaml
 
-  - name: Compilator
-    role: build_toolchain
-    contract: Agents/Compilator/AGENTS.md
-    manifest: Agents/Compilator/agent.yaml
+  - name: WebFetch
+    role: fetch_render
+    contract: Agents/WebFetch/AGENTS.md
+    manifest: Agents/WebFetch/agent.yaml
 
-  - name: Architect
-    role: structure_and_boundaries
-    contract: Agents/Architect/AGENTS.md
-    manifest: Agents/Architect/agent.yaml
-
-  - name: Benchmarker
-    role: measured_baselines
-    contract: Agents/Benchmarker/AGENTS.md
-    manifest: Agents/Benchmarker/agent.yaml
-
-  - name: WebResearcher
-    role: cited_web_lookup
-    contract: Agents/WebResearcher/AGENTS.md
-    manifest: Agents/WebResearcher/agent.yaml
+  - name: math
+    role: mathematical_modeling
+    contract: Agents/math/AGENTS.md
+    manifest: Agents/math/agent.yaml
 
 # Task board — replace with tasks for the active project.
 # Each task must have: id, title, assigned agent(s), depends_on, and status.
@@ -247,10 +222,10 @@ tasks:
 
   - id: prediction_forecast
     title: "Prediction: mlforecast engine and forecast extra"
-    assigned: [Prediction, MLSpecialist]
-    task: forecast
+    assigned: [Prediction]
+    task: forecast_series
     depends_on: []
-    status: in_progress
+    status: done
 
   - id: newsletter_mvp
     title: "Newsletter: offline digest MVP and tests"

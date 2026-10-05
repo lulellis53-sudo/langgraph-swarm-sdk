@@ -37,12 +37,16 @@ type Ranker = Callable[[str], list[str]]
 
 @dataclass(frozen=True, slots=True)
 class Passage:
+    """One corpus passage with its id and text."""
+
     id: str
     text: str
 
 
 @dataclass(frozen=True, slots=True)
 class Query:
+    """One query with the ids of the passages that are relevant to it."""
+
     q: str
     relevant: tuple[str, ...]
 

@@ -12,22 +12,21 @@ class Reranker(Protocol):
 
     def rerank(self, query: str, documents: list[str]) -> list[str]:
         """Return ``documents`` ordered best-first for ``query``."""
-        ...
 
 
 class ScoredReranker(Protocol):
     """Reranker protocol that also exposes relevance scores."""
 
     def rerank_scored(self, query: str, documents: list[str]) -> list[tuple[str, float]]:
-        """Return ``(document, score)`` pairs ordered best-first."""
-        ...
+        """Return ``(document, score)`` pairs ordered best-first for ``query``."""
 
 
 class IdentityReranker:
     """No-op reranker preserving input order (tests, offline runs)."""
 
     def rerank(self, query: str, documents: list[str]) -> list[str]:
-        """Return ``documents`` in the given order."""
+        """Return ``documents`` ordered best-first for ``query``."""
+        # Order-preserving by design: tests and offline runs need a deterministic ranking.
         del query
         return list(documents)
 
@@ -36,12 +35,14 @@ class KeywordReranker:
     """Lexical stand-in used when the ONNX cross-encoder is not installed."""
 
     def rerank(self, query: str, documents: list[str]) -> list[str]:
-        """Order documents by how many query tokens they share."""
+        """Return ``documents`` ordered best-first for ``query``."""
         needles = set(query.lower().split())
 
         def score(document: str) -> int:
+            """Count the query words that appear in ``document``."""
             return len(needles & set(document.lower().split()))
 
+        # sorted() is stable, so documents with equal overlap keep their retrieval order.
         ranked = sorted(documents, key=score, reverse=True)
         return ranked
 
@@ -52,6 +53,7 @@ class KeywordReranker:
             return [(document, 0.0) for document in documents]
 
         def score(document: str) -> float:
+            """Return the fraction of query words that appear in ``document``."""
             return len(needles & set(document.lower().split())) / len(needles)
 
         return sorted(((d, score(d)) for d in documents), key=lambda pair: pair[1], reverse=True)
@@ -61,15 +63,16 @@ class FastEmbedReranker:
     """ONNX cross-encoder reranker (FastEmbed, MiniLM by default)."""
 
     def __init__(self, model_name: str = "Xenova/ms-marco-MiniLM-L-6-v2") -> None:
-        """Store the FastEmbed cross-encoder model name."""
+        """Set the cross-encoder model; it is loaded lazily on first rerank."""
         self.model_name = model_name
         self._model: CrossEncoderProto | None = None
 
     def rerank(self, query: str, documents: list[str]) -> list[str]:
-        """Return documents ordered by cross-encoder score, highest first."""
+        """Return ``documents`` ordered best-first for ``query``."""
         if not documents:
             return []
         encoder = self._load()
+        # Scores come back one per document in input order: sort indices, then map back.
         scores = list(encoder.rerank(query, documents))
         order = sorted(range(len(documents)), key=lambda index: scores[index], reverse=True)
         return [documents[index] for index in order]
@@ -78,11 +81,13 @@ class FastEmbedReranker:
         """Return documents best-first with raw cross-encoder scores (unbounded logits)."""
         if not documents:
             return []
+        # Cast to float: the backend yields numpy scalars that are not JSON serialisable.
         scores = [float(s) for s in self._load().rerank(query, documents)]
         order = sorted(range(len(documents)), key=lambda index: scores[index], reverse=True)
         return [(documents[index], scores[index]) for index in order]
 
     def _load(self) -> CrossEncoderProto:
+        """Import fastembed and build the cross-encoder on first use."""
         if self._model is None:
             try:
                 module = importlib.import_module("fastembed.rerank.cross_encoder")
@@ -99,8 +104,7 @@ class CrossEncoderProto(Protocol):
     """Structural view of the loaded cross-encoder for type checking."""
 
     def rerank(self, query: str, documents: list[str]) -> Iterable[float]:
-        """Yield one relevance score per document."""
-        ...
+        """Return one relevance score per document, in input order."""
 
 
 __all__ = [

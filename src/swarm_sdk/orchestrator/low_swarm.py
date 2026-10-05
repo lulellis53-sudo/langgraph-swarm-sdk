@@ -79,7 +79,10 @@ class LowSwarmEngine:
     # ---------------------------------------------------------------------------
 
     def _build_graph(self) -> StateGraph:
-        builder = StateGraph(SwarmState)
+        # ty cannot narrow typing.TypedDict to langgraph's TypedDictLike protocol
+        # (same limitation as swarm_sdk.server.graphs).
+        """Wire the router, coder, lifeguard and test-verifier nodes into a state graph."""
+        builder = StateGraph(SwarmState)  # ty: ignore[invalid-argument-type]
 
         builder.add_node("jev_router_node", self.node_jev_router)
         builder.add_node("coder_node", self.node_coder)
@@ -417,16 +420,19 @@ class LowSwarmEngine:
     # ---------------------------------------------------------------------------
 
     def _route_after_router(self, state: SwarmState) -> str:
+        """Stop when the router blocked the run; otherwise hand off to the coder."""
         if state.get("status") == "blocked":
             return END
         return "coder_node"
 
     def _route_after_coder(self, state: SwarmState) -> str:
+        """Stop when the coder blocked the run; otherwise hand off to lifeguard."""
         if state.get("status") == "blocked":
             return END
         return "lifeguard_node"
 
     def _route_after_lifeguard(self, state: SwarmState) -> str:
+        """Send approved work to test verification; anything else ends or loops back."""
         if state.get("status") == "blocked":
             return END
         report = state.get("lifeguard_report") or {}

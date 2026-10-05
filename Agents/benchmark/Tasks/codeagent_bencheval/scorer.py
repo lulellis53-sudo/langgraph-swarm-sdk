@@ -35,6 +35,8 @@ token_counter: Callable[[str], int] = _token_counter()
 
 @dataclass
 class TaskMetrics:
+    """Per-case scoring result: correctness, tokens and latency."""
+
     case_id: str
     title: str
     difficulty: str

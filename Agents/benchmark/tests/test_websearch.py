@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from threading import Barrier
 
+import pytest
 from WebSearch import run_pipeline
 from WebSearch.backend import extract_and_normalize, normalize_text
 from WebSearch.frontend import (
@@ -19,7 +20,9 @@ from WebSearch.frontend import (
 )
 from WebSearch.frontend.websearchers import search_kimi
 from WebSearch.midend import crawl_then_scrape
-from WebSearch.repeater import repeater
+
+# WebSearch.repeater / .langchain_tools are sys.modules aliases that ty cannot follow.
+from WebSearch.repeater import repeater  # ty: ignore[unresolved-import]
 
 from swarm_sdk import vault
 
@@ -57,7 +60,7 @@ def test_load_providers_yaml() -> None:
     assert "https" in cfg.crawl.schemes
 
 
-def test_searcher_reads_named_key_from_dedicated_vault(monkeypatch) -> None:
+def test_searcher_reads_named_key_from_dedicated_vault(monkeypatch: pytest.MonkeyPatch) -> None:
     from WebSearch.frontend import websearchers
 
     monkeypatch.delenv("APIFY_API_KEY", raising=False)
@@ -66,7 +69,7 @@ def test_searcher_reads_named_key_from_dedicated_vault(monkeypatch) -> None:
     assert websearchers.env_key(spec) == "vault-key"
 
 
-def test_bright_data_mcp_search_normalizes_google_hits(monkeypatch) -> None:
+def test_bright_data_mcp_search_normalizes_google_hits(monkeypatch: pytest.MonkeyPatch) -> None:
     from WebSearch.frontend import websearchers
 
     monkeypatch.setenv("BRIGHTDATA_MCP_TOKEN", "synthetic-token")
@@ -86,7 +89,7 @@ def test_bright_data_mcp_search_normalizes_google_hits(monkeypatch) -> None:
     ]
 
 
-def test_parallel_search_uses_each_provider_key(monkeypatch) -> None:
+def test_parallel_search_uses_each_provider_key(monkeypatch: pytest.MonkeyPatch) -> None:
     from WebSearch import parallel_search
     from WebSearch.frontend import websearchers
 
@@ -410,7 +413,7 @@ def test_dork_builder() -> None:
         dork(["a"], after="2026-05-02", before="2026-05-01")
 
 
-def test_google_ground_parses_chunks_and_tokens(monkeypatch) -> None:
+def test_google_ground_parses_chunks_and_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
     from WebSearch import frontend
     from WebSearch.frontend import websearchers
 
@@ -462,7 +465,9 @@ def test_midend_dedupes_urls_before_cap() -> None:
 
 
 def test_langchain_tools_use_injected_backend() -> None:
-    from WebSearch.langchain_tools import websearch_langchain_tools
+    from WebSearch.langchain_tools import (
+        websearch_langchain_tools,  # ty: ignore[unresolved-import]
+    )
 
     def backend(query: str, spec: SearcherSpec) -> list[SearchHit]:
         del query

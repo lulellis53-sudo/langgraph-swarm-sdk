@@ -363,9 +363,9 @@ The repository registry actively references 35 credentials across `swarm.yaml`, 
 
 | Provider / Model Family | Environment Variable Name | Secret Storage Command | Purpose / Route |
 | :--- | :--- | :--- | :--- |
-| **Codex OAuth** | `CODEX_OAUTH_TOKEN` | `uv run swarm-vault set CODEX_OAUTH_TOKEN` | GPT-6 Luna via Codex OAuth |
+| **OpenAI** | `OPENAI_API_KEY` | `uv run swarm-vault set OPENAI_API_KEY` | GPT-4o, GPT-4o-mini router models |
 | **Anthropic** | `ANTHROPIC_API_KEY` | `uv run swarm-vault set ANTHROPIC_API_KEY` | Claude 3.5 Sonnet, Claude 3.7 Sonnet |
-| **Google Gemini** | `GEMINI_API_KEY` | `uv run swarm-vault set GEMINI_API_KEY` | Gemini 3.8 Flash. `GOOGLE_API_KEY` is accepted when this name is unset |
+| **Google Gemini** | `GEMINI_API_KEY` | `uv run swarm-vault set GEMINI_API_KEY` | Gemini 3.8 Flash. `GOOGLE_API_KEY` is accepted when the Gemini names are unset |
 | **Groq** | `GROQ_API_KEY` | `uv run swarm-vault set GROQ_API_KEY` | Llama-3.3-70b-versatile, DeepSeek |
 | **Groq Backup** | `GROQ_API_KEY_2` | `uv run swarm-vault set GROQ_API_KEY_2` | Failover pool for Groq endpoints |
 | **Cohere Primary** | `COHERE_API_KEY_1` | `uv run swarm-vault set COHERE_API_KEY_1` | Command-R, Cohere rerankers |
@@ -377,28 +377,29 @@ The repository registry actively references 35 credentials across `swarm.yaml`, 
 | **Exa Search** | `EXA_API_KEY` | `uv run swarm-vault set EXA_API_KEY` | WebSearch Exa neural search |
 | **Mem0 Platform** | `MEM0_API_KEY` | `uv run swarm-vault set MEM0_API_KEY` | Long-term user/agent memory |
 | **Jev Safety** | `JEV_API_KEY` | `uv run swarm-vault set JEV_API_KEY` | Low-Swarm safety decision gate |
-| **Grok OAuth** | `GROK_OAUTH_TOKEN` | `uv run swarm-vault set GROK_OAUTH_TOKEN` | Grok 4.6 |
+| **xAI** | `XAI_API_KEY` | `uv run swarm-vault set XAI_API_KEY` | Grok-beta / Grok-2 |
 | **Fireworks AI** | `FIREWORKS_API_KEY` | `uv run swarm-vault set FIREWORKS_API_KEY` | Serverless open-weights models |
 | **OpenRouter** | `OPENROUTER_API_KEY` | `uv run swarm-vault set OPENROUTER_API_KEY` | Unified router endpoint |
 | **SambaNova** | `SAMBANOVA_API_KEY` | `uv run swarm-vault set SAMBANOVA_API_KEY` | Ultra-fast Llama-3.1 inference |
 | **Alibaba / DashScope** | `ALIBABA_API_KEY` | `uv run swarm-vault set ALIBABA_API_KEY` | Qwen-2.5-Coder models |
-| **MiniMax** | `MINIMAX_API_KEY` | `uv run swarm-vault set MINIMAX_API_KEY` | MiniMax-M2.7 |
+| **MiniMax** | `MINIMAX_API_KEY` | `uv run swarm-vault set MINIMAX_API_KEY` | MiniMax API authentication |
 | **MiniMax URL** | `MINIMAX_BASE_URL` | `uv run swarm-vault set MINIMAX_BASE_URL` | Custom base endpoint URL |
 | **Xiaomi MiMo** | `MIMO_API_KEY` | `uv run swarm-vault set MIMO_API_KEY` | MiMo model API token |
 | **Xiaomi MiMo URL** | `MIMO_BASE_URL` | `uv run swarm-vault set MIMO_BASE_URL` | Custom base endpoint URL |
 | **Moonshot / Kimi** | `KIMI_CODE_PLAN_API_KEY` | `uv run swarm-vault set KIMI_CODE_PLAN_API_KEY` | Kimi / Moonshot planner |
 | **Moonshot URL** | `MOONSHOT_BASE_URL` | `uv run swarm-vault set MOONSHOT_BASE_URL` | Kimi base endpoint URL |
-| **Claude OAuth** | `CLAUDE_OAUTH_TOKEN` | `uv run swarm-vault set CLAUDE_OAUTH_TOKEN` | Claude Sonnet 4.6 |
+| **Claude Code** | `CLAUDE_CODE_API_KEY` | `uv run swarm-vault set CLAUDE_CODE_API_KEY` | Claude Code CLI integration |
+| **Codex OAuth** | `CODEX_OAUTH_TOKEN` | `uv run swarm-vault set CODEX_OAUTH_TOKEN` | OpenAI Codex OAuth token |
 | **NVIDIA NIM** | `NVIDIA_API_KEY` | `uv run swarm-vault set NVIDIA_API_KEY` | NVIDIA NIM microservices API |
 | **NVIDIA URL** | `NVIDIA_BASE_URL` | `uv run swarm-vault set NVIDIA_BASE_URL` | Custom NIM microservice endpoint |
 | **Ollama Local URL** | `OLLAMA_BASE_URL` | `uv run swarm-vault set OLLAMA_BASE_URL` | Local Ollama endpoint (e.g. `http://localhost:11434`) |
 | **Ollama Failover URL**| `OLLAMA_2_BASE_URL` | `uv run swarm-vault set OLLAMA_2_BASE_URL` | Secondary Ollama node URL |
 | **Ollama Cloud** | `OLLAMA_CLOUD_API_KEY` | `uv run swarm-vault set OLLAMA_CLOUD_API_KEY` | Managed Ollama Cloud token |
 | **Ollama Cloud URL** | `OLLAMA_CLOUD_BASE_URL` | `uv run swarm-vault set OLLAMA_CLOUD_BASE_URL` | Managed Ollama Cloud endpoint |
-| **Z.ai (Zhipu)** | `ZHIPU_API_KEY` | `uv run swarm-vault set ZHIPU_API_KEY` | GLM 5.2. `ZAI_API_KEY` is accepted when this name is unset |
+| **Z.ai (Zhipu)** | `ZHIPU_API_KEY` | `uv run swarm-vault set ZHIPU_API_KEY` | GLM 5.2 API key, not OAuth. `ZAI_API_KEY` is accepted when this name is unset |
 | **ZAI Base URL** | `ZAI_BASE_URL` | `uv run swarm-vault set ZAI_BASE_URL` | GLM base endpoint URL |
 | **Atlas Cloud** | `ATLASCLOUD_API_KEY` | `uv run swarm-vault set ATLASCLOUD_API_KEY` | Free chat model `dots-studio/dots-3-note-prev-free` ($0/$0 on 2026-10-05). No web-search tool |
-| **Google API key** | `GOOGLE_API_KEY` | `uv run swarm-vault set GOOGLE_API_KEY` | Alternate name for Gemini grounding and `google:` routes |
+| **Google API key** | `GOOGLE_API_KEY` | `uv run swarm-vault set GOOGLE_API_KEY` | Alternate name for Gemini routes and Google Search grounding |
 
 ---
 

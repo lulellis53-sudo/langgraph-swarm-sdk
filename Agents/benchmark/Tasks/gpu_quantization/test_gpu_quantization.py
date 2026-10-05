@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from benchmark.Tasks.gpu_quantization.benchmark_gpu_quantization import run
 
 
@@ -31,7 +32,7 @@ def test_quantization_benchmark_names_smallest_accurate_mode() -> None:
     assert best["quantize"] == smallest["quantize"]
 
 
-def test_quantization_benchmark_restores_threshold(monkeypatch) -> None:
+def test_quantization_benchmark_restores_threshold(monkeypatch: pytest.MonkeyPatch) -> None:
     import os
 
     monkeypatch.setenv("SWARM_OPENCL_MIN_ROWS", "123")

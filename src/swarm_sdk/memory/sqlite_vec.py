@@ -208,11 +208,12 @@ class SqliteVecStore:
             )
             best: list[MemoryHit] = []
             while rows := cursor.fetchmany(256):
-                vectors = [
-                    np.frombuffer(blob, dtype=np.int8).astype(np.float32) / 127.0
-                    for _, blob, _ in rows
-                ]
-                matrix = np.stack(vectors)
+                # Dequantize INT8 blobs into a single pre-allocated matrix to avoid
+                # per-row allocations and np.stack overhead.
+                matrix = np.empty((len(rows), self.dim), dtype=np.float32)
+                for i, (_, blob, _) in enumerate(rows):
+                    matrix[i] = np.frombuffer(blob, dtype=np.int8)
+                matrix /= 127.0
                 indexes, scores = topk_ip(query, matrix, min(k, len(rows)))
                 best.extend(
                     MemoryHit(

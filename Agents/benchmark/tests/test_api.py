@@ -1,3 +1,5 @@
+"""HTTP API tests: runs, plans and error mapping."""
+
 import sqlite3
 from pathlib import Path
 

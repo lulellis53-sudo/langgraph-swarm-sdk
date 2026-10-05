@@ -1,5 +1,7 @@
 """Core domain: SwarmSDK orchestrator facade."""
 
+from __future__ import annotations
+
 from swarm_sdk.core.allocator import AllocatorManager, GuardReport, MemoryStats
 from swarm_sdk.core.compression import (
     CompressedScratchpadPool,

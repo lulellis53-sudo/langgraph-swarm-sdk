@@ -1,3 +1,5 @@
+"""gRPC service tests: plan spawning, running and server startup."""
+
 from pathlib import Path
 from typing import cast
 
@@ -47,7 +49,7 @@ def test_grpc_run_and_recall(tmp_path: Path) -> None:
 
 def test_run_plan_without_plan_id_returns_pollable_id(
     tmp_path: Path,
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from swarm_sdk.orchestrator.plan import PlanResult, StepOutput, UsageTotals
     from swarm_sdk.serving import grpc as grpc_server
@@ -101,7 +103,9 @@ def test_run_plan_without_plan_id_returns_pollable_id(
     assert status.steps_done == 1
 
 
-def test_run_plan_rejects_unknown_agent_before_execution(tmp_path: Path, monkeypatch) -> None:
+def test_run_plan_rejects_unknown_agent_before_execution(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from swarm_sdk.orchestrator.plan import PlanResult, UsageTotals
     from swarm_sdk.serving import grpc as grpc_server
     from swarm_sdk.serving.grpc import SwarmServicer
@@ -161,7 +165,7 @@ def test_grpc_plan_handle_roundtrips_files_and_task() -> None:
 
 def test_spawn_plan_returns_handle_and_registers_plan(
     tmp_path: Path,
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from swarm_sdk.orchestrator.plan import Plan, PlanStep
     from swarm_sdk.serving import grpc as grpc_server
@@ -198,7 +202,7 @@ def test_spawn_plan_returns_handle_and_registers_plan(
 
 def test_spawn_plan_filters_agents_and_rejects_unknown(
     tmp_path: Path,
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from swarm_sdk.orchestrator.plan import Plan, PlanStep
     from swarm_sdk.serving import grpc as grpc_server
@@ -240,7 +244,7 @@ def test_spawn_plan_filters_agents_and_rejects_unknown(
 
 def test_run_plan_reuses_existing_plan_and_reports_status(
     tmp_path: Path,
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from swarm_sdk.orchestrator.plan import Plan, PlanResult, StepOutput, UsageTotals
     from swarm_sdk.serving import grpc as grpc_server
@@ -313,10 +317,12 @@ def test_plan_status_unknown_plan_is_failed() -> None:
     assert status.steps_total == 0
 
 
-def test_grpc_serve_fails_when_bind_returns_zero(monkeypatch) -> None:
+def test_grpc_serve_fails_when_bind_returns_zero(monkeypatch: pytest.MonkeyPatch) -> None:
     from swarm_sdk.serving import grpc as grpc_server
 
     class Server:
+        """Server double whose port bind fails (returns 0)."""
+
         started = False
 
         def add_insecure_port(self, _address: str) -> int:
@@ -383,6 +389,8 @@ def test_serve_creates_started_grpc_server(
     from swarm_sdk.serving import grpc as grpc_server
 
     class Server:
+        """Server double that binds to ephemeral port 12345."""
+
         started = False
 
         def add_insecure_port(self, address: str) -> int:

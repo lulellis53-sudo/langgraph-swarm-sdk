@@ -14,10 +14,15 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 try:
-    from playwright.async_api import BrowserContext, Page, async_playwright
+    # Optional "scrape" extra, not part of the quality-gate environment.
+    from playwright.async_api import (  # ty: ignore[unresolved-import]
+        BrowserContext,
+        Page,
+        async_playwright,
+    )
 except ImportError:
     raise ImportError(
         "Playwright is required to use PerplexitySearchEngine. "
@@ -44,9 +49,10 @@ class PerplexitySearchEngine:
         headless: bool = True,
         timeout: int = 40000,
         user_agent: str = DEFAULT_USER_AGENT,
-        storage_state_path: Optional[Path | str] = None,
-        session_cookie: Optional[str] = None,
+        storage_state_path: Path | str | None = None,
+        session_cookie: str | None = None,
     ) -> None:
+        """Configure the browser session: headless mode, timeout, user agent and credentials."""
         self.headless = headless
         self.timeout = timeout
         self.user_agent = user_agent
@@ -65,7 +71,7 @@ class PerplexitySearchEngine:
         self,
         query: str,
         focus: str = "web",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Execute an asynchronous search on Perplexity AI.
 
@@ -118,14 +124,16 @@ class PerplexitySearchEngine:
 
             # Add session cookie if provided
             if self.session_cookie:
-                await context.add_cookies([
-                    {
-                        "name": "pplx.session-id",
-                        "value": self.session_cookie,
-                        "domain": ".perplexity.ai",
-                        "path": "/",
-                    }
-                ])
+                await context.add_cookies(
+                    [
+                        {
+                            "name": "pplx.session-id",
+                            "value": self.session_cookie,
+                            "domain": ".perplexity.ai",
+                            "path": "/",
+                        }
+                    ]
+                )
 
             page: Page = await context.new_page()
             page.set_default_timeout(self.timeout)
@@ -142,7 +150,9 @@ class PerplexitySearchEngine:
 
                 # 2. Dismiss cookie dialog if present
                 try:
-                    cookie_btn = page.get_by_role("button", name=re.compile(r"Only necessary|Allow all|Accept", re.I))
+                    cookie_btn = page.get_by_role(
+                        "button", name=re.compile(r"Only necessary|Allow all|Accept", re.I)
+                    )
                     if await cookie_btn.is_visible(timeout=2000):
                         await cookie_btn.click()
                         await page.wait_for_timeout(400)
@@ -201,7 +211,7 @@ class PerplexitySearchEngine:
                 is_rate_limited = "Sign up and repeat your request" in answer_text
 
                 # 8. Extract related / follow-up queries
-                related_queries: List[str] = []
+                related_queries: list[str] = []
                 try:
                     related_queries = await page.evaluate("""() => {
                         const buttons = Array.from(document.querySelectorAll('button[aria-label]'));
@@ -226,7 +236,7 @@ class PerplexitySearchEngine:
                     pass
 
                 # 9. Extract sources from Links tab
-                sources: List[Dict[str, str]] = []
+                sources: list[dict[str, str]] = []
                 try:
                     links_tab = page.get_by_role("tab", name="Links")
                     if await links_tab.is_visible(timeout=3000):
@@ -237,12 +247,15 @@ class PerplexitySearchEngine:
                             const anchors = Array.from(document.querySelectorAll('a[href]'));
                             for (const a of anchors) {
                                 const href = a.href;
-                                if (!href.startsWith('http') || href.includes('perplexity.ai') || href.includes('cloudflare.com')) {
+                                if (!href.startsWith('http') || href.includes('perplexity.ai')
+                                    || href.includes('cloudflare.com')) {
                                     continue;
                                 }
-                                const lines = a.innerText.split('\\n').map(s => s.trim()).filter(Boolean);
+                                const lines = a.innerText.split('\\n')
+                                    .map(s => s.trim()).filter(Boolean);
                                 const domain = lines[0] || '';
-                                const title = lines.length > 2 ? lines[2] : (lines[1] || lines[0] || href);
+                                const title = lines.length > 2
+                                    ? lines[2] : (lines[1] || lines[0] || href);
                                 const snippet = lines.length > 3 ? lines.slice(3).join(' ') : '';
                                 results.push({
                                     url: href,
@@ -276,7 +289,7 @@ class PerplexitySearchEngine:
             finally:
                 await browser.close()
 
-    def search(self, query: str, focus: str = "web") -> Dict[str, Any]:
+    def search(self, query: str, focus: str = "web") -> dict[str, Any]:
         """Synchronous wrapper for search_async."""
         return asyncio.run(self.search_async(query=query, focus=focus))
 
@@ -285,8 +298,8 @@ async def ask_perplexity(
     query: str,
     focus: str = "web",
     headless: bool = True,
-    session_cookie: Optional[str] = None,
-) -> Dict[str, Any]:
+    session_cookie: str | None = None,
+) -> dict[str, Any]:
     """
     Convenience function to search Perplexity AI.
 
@@ -302,8 +315,8 @@ def ask_perplexity_sync(
     query: str,
     focus: str = "web",
     headless: bool = True,
-    session_cookie: Optional[str] = None,
-) -> Dict[str, Any]:
+    session_cookie: str | None = None,
+) -> dict[str, Any]:
     """Synchronous helper for ask_perplexity."""
     return asyncio.run(
         ask_perplexity(query=query, focus=focus, headless=headless, session_cookie=session_cookie)
@@ -316,10 +329,14 @@ def cli_main() -> None:
         description="Perplexity AI Search CLI - Query the web with Perplexity synthesis"
     )
     parser.add_argument("query", type=str, help="Search query to submit to Perplexity")
-    parser.add_argument("--focus", type=str, default="web", help="Search focus (web, academic, etc.)")
+    parser.add_argument(
+        "--focus", type=str, default="web", help="Search focus (web, academic, etc.)"
+    )
     parser.add_argument("--json", action="store_true", help="Output raw JSON results")
     parser.add_argument("--headed", action="store_true", help="Run browser in headed mode")
-    parser.add_argument("--session-cookie", type=str, default=None, help="Optional pplx.session-id cookie value")
+    parser.add_argument(
+        "--session-cookie", type=str, default=None, help="Optional pplx.session-id cookie value"
+    )
 
     args = parser.parse_args()
 
@@ -345,7 +362,9 @@ def cli_main() -> None:
 
     if result.get("rate_limited"):
         print("\n⚠️ Note: Anonymous rate limit encountered ('Sign up and repeat your request').")
-        print("To bypass: Provide PERPLEXITY_SESSION_COOKIE in environment or use --session-cookie.\n")
+        print(
+            "To bypass: Provide PERPLEXITY_SESSION_COOKIE in environment or use --session-cookie.\n"
+        )
 
     print(f"\n📝 ANSWER:\n{result['answer']}\n")
 

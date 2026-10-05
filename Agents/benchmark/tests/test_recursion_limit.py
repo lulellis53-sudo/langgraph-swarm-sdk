@@ -1,4 +1,7 @@
+"""Recursion-limit propagation and its HTTP 508 mapping."""
+
 from pathlib import Path
+from typing import Any, cast
 
 from fastapi.testclient import TestClient
 from langgraph.errors import GraphRecursionError
@@ -12,7 +15,9 @@ from swarm_sdk.serving.http import create_app
 
 
 class _LoopingSDK:
-    async def run(self, text: str, thread_id: str = "default"):
+    """SDK double whose ``run`` always hits the LangGraph recursion limit."""
+
+    async def run(self, text: str, thread_id: str = "default") -> object:
         raise GraphRecursionError("Recursion limit of 50 reached")
 
 
@@ -35,7 +40,7 @@ def test_run_config_carries_recursion_limit(tmp_path: Path) -> None:
 
 
 def test_loop_maps_to_508() -> None:
-    client = TestClient(create_app(_LoopingSDK()))
+    client = TestClient(create_app(cast(Any, _LoopingSDK())))
     response = client.post("/v1/runs", json={"text": "hi", "thread_id": "t"})
     assert response.status_code == 508
     assert response.json() == {"detail": "handoff loop: recursion limit reached"}

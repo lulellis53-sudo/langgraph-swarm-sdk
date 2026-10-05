@@ -57,10 +57,11 @@ dependencies = [
     "langgraph-sdk>=0.4.5",
     "python-dotenv>=1.2.3",
     "rich>=15.0.0",
-    "langchain-core>=1.6",
-    "jsonschema>=4.26",
-    "tree-sitter>=0.25.2,<0.26",
-    "tree-sitter-python>=0.25",
+    # ## Web search / extraction (WebSearch.backend extractors, MCP server)
+    "selectolax>=0.3",
+    "trafilatura>=2.0",
+    "beautifulsoup4>=4.12",
+    "mcp>=2,<3",
 ]
 
 [tool.uv]
@@ -70,6 +71,12 @@ no-build-package = ["cryptography"]
 constraint-dependencies = ["cryptography==48.0.1"]
 
 [project.optional-dependencies]
+langchain = [
+    "langchain-core>=1.6",
+    "jsonschema>=4.26",
+    "tree-sitter>=0.25.2,<0.26",
+    "tree-sitter-python>=0.25",
+]
 # ## Testing & property tests
 dev = [
     "hypothesis>=6.135",
@@ -147,6 +154,16 @@ forecast = [
     "lightgbm>=4.7.0",
     "mlforecast>=1.1.0",
 ]
+# ## Scraping / crawling stack (heavy: Twisted via scrapy; playwright needs `playwright install chromium`)
+scrape = [
+    "playwright",
+    "crawlee",
+    "scrapy",
+    "curl-cffi",
+    "parsel",
+    "cssselect",
+    "extruct",
+]
 
 [project.scripts]
 swarm-api = "swarm_sdk.serving.http:main"
@@ -160,7 +177,7 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
-    "langgraph-cli[inmem]>=0.1.54",
+    "langgraph-cli>=0.1.54",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -172,7 +189,7 @@ packages = ["src/swarm_sdk"]
 [tool.ruff]
 line-length = 100
 target-version = "py314"
-src = ["src", "Agents/tests", "Agents/benchmark", "WebSearch"]
+src = ["src", "Agents/tests", "Agents/benchmark", "WebSearch", "Prediction", "Main"]
 extend-exclude = ["src/swarm_sdk/pb"]
 
 [tool.ruff.lint]

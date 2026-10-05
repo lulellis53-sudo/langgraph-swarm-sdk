@@ -20,7 +20,6 @@ from swarm_sdk.agents.manifest import (
 )
 from swarm_sdk.config.loader import SwarmFileConfig, load_swarm_config
 from swarm_sdk.config.settings import Settings, load_merged_settings
-from swarm_sdk.core.jev_router import JevRouter
 from swarm_sdk.execution.executor import offload
 from swarm_sdk.execution.fanout import fan_out
 from swarm_sdk.gpu import set_enabled as set_opencl_enabled
@@ -56,6 +55,7 @@ from swarm_sdk.retrieval.rerank import FastEmbedReranker, KeywordReranker, Reran
 
 if TYPE_CHECKING:
     from langchain_core.language_models.chat_models import BaseChatModel
+    from langchain_core.runnables import RunnableConfig
     from langgraph.checkpoint.base import BaseCheckpointSaver
 
 logger = logging.getLogger(__name__)
@@ -152,6 +152,7 @@ def _websearch_tools() -> list[object]:
 
 
 def _fastembed_available() -> bool:
+    """Return whether the optional ``fastembed`` package is importable."""
     try:
         importlib.import_module("fastembed")
     except ImportError:
@@ -219,7 +220,8 @@ def open_store(settings: Settings) -> MemoryStore:
 class CompiledGraph(Protocol):
     """Structural view of the compiled handoff-swarm graph."""
 
-    def invoke(self, payload: dict[str, object], config: dict[str, object]) -> object: ...
+    def invoke(self, payload: dict[str, object], config: dict[str, object]) -> object:
+        """Run the compiled graph on ``payload`` and return its final state."""
 
 
 class SwarmSDK:
@@ -283,10 +285,6 @@ class SwarmSDK:
         self._selector = ModelSelector(self.file_config.model_select)
         self._langgraph_manifests = langgraph_manifests(load_all_agent_manifests())
         self.usage = UsageLog()
-        self._jev = JevRouter(
-            endpoint=self.settings.jev_endpoint,
-            timeout_s=self.settings.jev_timeout_s,
-        )
         from swarm_sdk.core.checkpoint import open_checkpointer
 
         self._compiled: CompiledGraph | None = None
@@ -335,8 +333,6 @@ class SwarmSDK:
                 self.settings.semantic_threshold,
                 ttl_days=self.settings.cache_ttl_days,
                 use_index=self.settings.semantic_cache_on_gpu,
-                redis_url=self.settings.redis_url,
-                redis_ttl_s=self.settings.redis_cache_ttl_s,
             )
         return self._cache
 
@@ -407,7 +403,7 @@ class SwarmSDK:
             agent = "synthesizer"
             mode = "parallel"
         else:
-            answer, tokens, agent = await self._swarm(packed, text, thread_id)
+            answer, tokens, agent = await self._swarm(packed, thread_id)
             mode = "swarm"
         tokens += route_tokens
         if answer.strip():
@@ -455,10 +451,12 @@ class SwarmSDK:
         )
 
     def _recall(self, text: str) -> list[str]:
+        """Recall memories for ``text``, ordered for the prompt (U-shape when enabled)."""
         texts = [hit.text for hit in self.recall(text)]
         return order_for_prompt(texts, enabled=self.file_config.rag.u_shape_order)
 
     def _remember(self, question: str, answer: str) -> None:
+        """Persist a truncated question/answer pair as one embedded memory record."""
         record = f"Q: {question[:200]}\nA: {answer[:400]}"
         vector = self.embedder.embed([record], query=False)[0]
         self.memory.add(record, vector)
@@ -494,8 +492,10 @@ class SwarmSDK:
         return parsed, tokens
 
     async def _route(self, packed: PackedPrompt) -> tuple[RouteDecision, int]:
+        """Choose parallel fan-out or swarm handoff, returning the decision and tokens used."""
         user = packed.suffix or packed.prefix
         if self.settings.router_structured_output:
+            # Prefer schema-constrained output; fall back to JSON-mode text when unsupported.
             decision, tokens = await self._route_structured(user)
             if decision is not None:
                 return decision, tokens
@@ -514,9 +514,11 @@ class SwarmSDK:
                 think_level=self.file_config.router.think_level,
                 json_mode=json_mode,
             )
+        # Lenient parse: malformed or adversarial router output degrades to a safe default route.
         return _parse_route(raw), tokens
 
     def _run_config(self, thread_id: str) -> dict[str, object]:
+        """Build the LangGraph run config (thread id and recursion limit)."""
         return {
             "configurable": {"thread_id": thread_id},
             "recursion_limit": self.settings.recursion_limit,
@@ -524,7 +526,8 @@ class SwarmSDK:
 
     def _is_new_thread(self, thread_id: str) -> bool:
         """True when the checkpointer holds no state for ``thread_id`` (survives restarts)."""
-        config = {"configurable": {"thread_id": thread_id}}
+        # Typed as RunnableConfig so the checkpointer call type-checks.
+        config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
         return self._checkpointer.get_tuple(config) is None
 
     def _register_thread(self, thread_id: str) -> bool:
@@ -542,7 +545,8 @@ class SwarmSDK:
             metrics.set_active_threads(len(self._threads))
             return True
 
-    async def _swarm(self, packed: PackedPrompt, text: str, thread_id: str) -> tuple[str, int, str]:
+    async def _swarm(self, packed: PackedPrompt, thread_id: str) -> tuple[str, int, str]:
+        """Run the handoff swarm for ``thread_id``; return answer, tokens and active agent."""
         graph = self._graph()
         user = packed.user or packed.system
         payload: dict[str, object] = {"messages": [{"role": "user", "content": user}]}
@@ -550,8 +554,9 @@ class SwarmSDK:
 
         def _call() -> dict[str, object]:
             # Checkpointer read is blocking disk I/O: keep it off the event loop.
+            """Invoke the graph synchronously; runs in a worker thread via ``offload``."""
             if self._is_new_thread(thread_id):
-                payload["active_agent"] = self._jev_default_agent(text)
+                payload["active_agent"] = self._default_agent
             state = graph.invoke(payload, self._run_config(thread_id))
             if not isinstance(state, dict):
                 raise TypeError("swarm state must be a dict")
@@ -572,16 +577,19 @@ class SwarmSDK:
         return answer, tokens, str(agent)
 
     def _router(self) -> BaseChatModel:
+        """Return the router model, loading it on first use."""
         if self._router_model is None:
             self._router_model = load_chat_model(self.settings.router_model)
         return self._router_model
 
     def _specialist(self) -> BaseChatModel:
+        """Return the default specialist model, loading it on first use."""
         if self._specialist_model is None:
             self._specialist_model = load_chat_model(self.settings.specialist_model)
         return self._specialist_model
 
     def _model_for_node(self, node: str) -> BaseChatModel:
+        """Return the model for a handoff node: injected model, manifest model, or default."""
         if self._specialist_model is not None:
             return self._specialist_model
         manifest = self._langgraph_manifests.get(node)
@@ -598,51 +606,21 @@ class SwarmSDK:
         nodes = set(self._langgraph_manifests) or set(_DEFAULT_NODE_PROMPTS)
         return "researcher" if "researcher" in nodes else sorted(nodes)[0]
 
-    def _jev_default_agent(self, text: str) -> str:
-        """Pick the entry agent using JEV's deterministic choice router.
-
-        Falls back to the static default when JEV routing is disabled, the router
-        raises, or the selected choice is not a wired node. This keeps new-thread
-        startup deterministic and sub-35ms when ``jev_routing`` is enabled.
-
-        Args:
-            text: The original user message.
-
-        Returns:
-            Name of the entry agent to activate.
-        """
-        if not self.settings.jev_routing:
-            return self._default_agent
-        candidates = sorted(self._langgraph_manifests) or sorted(_DEFAULT_NODE_PROMPTS)
-        try:
-            decision = self._jev.evaluate_choice(text, candidates)
-        except Exception as exc:
-            logger.debug("JEV entry-agent routing failed (%s); falling back", exc)
-            return self._default_agent
-        if decision.selected_choice in candidates:
-            return decision.selected_choice
-        return self._default_agent
-
     def _node_tools(self, manifest: AgentManifest | None, peers: list[str]) -> list[object]:
         """Tools for one swarm node: capability-gated extras plus handoffs.
 
-        A manifest advertising ``web_search`` also gets the WebSearch tools
-        when ``Settings.enable_websearch_tools`` is set. A manifest advertising
-        ``ast`` gets the Python syntax outline. Otherwise only handoff tools.
+        A manifest advertising the ``web_search`` capability also gets the
+        WebSearch LangChain tools when ``Settings.enable_websearch_tools`` is
+        set and the package is importable; otherwise only handoff tools.
         """
         handoffs = [_handoff(peer, f"Hand off {peer} work.") for peer in peers]
-        extras: list[object] = []
         if (
             manifest is not None
             and self.settings.enable_websearch_tools
             and "web_search" in manifest.capabilities
         ):
-            extras.extend(_websearch_tools())
-        if manifest is not None and "ast" in manifest.capabilities:
-            from swarm_sdk.agents.syntax_tree import syntax_tools
-
-            extras.extend(syntax_tools())
-        return [*extras, *handoffs]
+            return [*_websearch_tools(), *handoffs]
+        return handoffs
 
     def _node_middleware(self) -> list[object]:
         """Token-saving middleware for every swarm agent node.
@@ -686,11 +664,13 @@ class SwarmSDK:
         return middleware
 
     def _graph(self) -> CompiledGraph:
+        """Return the compiled handoff graph, building it on first use."""
         if self._compiled is None:
             self._compiled = self._build_graph(self._checkpointer)
         return self._compiled
 
     def _build_graph(self, checkpointer: BaseCheckpointSaver | None) -> CompiledGraph:
+        """Compile the handoff swarm from the Agents/ manifest catalog."""
         from langchain.agents import create_agent
         from langgraph_swarm import create_swarm
 

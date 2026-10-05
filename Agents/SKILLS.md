@@ -27,15 +27,13 @@ token budget, tasks, capabilities). Validation: `uv run python -m swarm_sdk.agen
 | Persona | Role | Handoff node | Task ids |
 | :--- | :--- | :--- | :--- |
 | [Coder](Coder/AGENTS.md) | implement_changes | coder | implement_feature, implement_in_files, fix_regression, add_tests |
-| [Compilator](Compilator/AGENTS.md) | build_toolchain | - | diagnose_build, select_toolchain |
 | [DataEngineer](DataEngineer/AGENTS.md) | data_pipeline_and_storage | - | pipeline_design, store_operations |
 | [Debugger](Debugger/AGENTS.md) | root_cause_failures | - | reproduce_failure, identify_root_cause |
-| [DeepResearch](DeepResearch/AGENTS.md) | deep_technical_research | - | evidence_synthesis, source_verification |
+| [DeepResearch](DeepResearch/AGENTS.md) | deep_technical_research | - | argus_evidence_graph, hardware_runtime_benchmarks |
 | [DevOps](DevOps/AGENTS.md) | ci_cd_and_environments | - | pipeline_green, environment_provision |
 | [Documenter](Documenter/AGENTS.md) | maintain_documentation | - | sync_docs, generate_reference |
 | [MLSpecialist](MLSpecialist/AGENTS.md) | model_selection_and_integration | - | model_evaluation, pipeline_integration |
-| [ModelDelegate](ModelDelegate/AGENTS.md) | model_delegation | - | route_task, resolve_fallback, delegate_embedding, delegate_math, solve_math, verify_math |
-| [Newsletter](Newsletter/AGENTS.md) | digest_generation | - | newsletter_mvp |
+| [ModelDelegate](ModelDelegate/AGENTS.md) | model_delegation | - | route_task, resolve_fallback, delegate_embedding, delegate_math |
 | [Normalizer](Normalizer/AGENTS.md) | normalize_dedupe | - | normalize_dedupe |
 | [Optimizer](Optimizer/AGENTS.md) | performance_tuning | - | profile_hotpath, apply_optimization |
 | [Orchestrator](Orchestrator/AGENTS.md) | coordinate_swarm | - | decompose_goal, assign_tasks, merge_results |
@@ -49,16 +47,22 @@ token budget, tasks, capabilities). Validation: `uv run python -m swarm_sdk.agen
 | [Tester](Tester/AGENTS.md) | write_and_run_tests | - | write_tests, run_gate |
 | [TxtToCsv](TxtToCsv/AGENTS.md) | convert_text_files_to_csv | - | infer_format, convert |
 | [WebFetch](WebFetch/AGENTS.md) | fetch_render | - | fetch_render |
-| [WebResearcher](WebResearcher/AGENTS.md) | cited_web_lookup | - | lookup_fact, collect_sources |
-| [ApiDesigner](ApiDesigner/AGENTS.md) | api_contracts | - | design_contract, review_contract |
-| [Architect](Architect/AGENTS.md) | structure_and_boundaries | - | map_boundaries, propose_layout |
-| [Benchmarker](Benchmarker/AGENTS.md) | measured_baselines | - | define_workload, measure_baseline, compare_candidates |
-| [math](math/AGENTS.md) | mathematical_modeling | - | solve_math, verify_math, numerical_stability_review |
+| [Newsletter](Newsletter/AGENTS.md) | digest_generation | - | newsletter_mvp |
+| [Prediction](Prediction/AGENTS.md) | forecast_engine | - | forecast_series |
+| [math](math/AGENTS.md) | symbolic/numerical solving | - | (see manifest) |
 
-`benchmark/` is the test harness, not a persona. Review lives on `Reviewer`.
-Web lookup is split: `Researcher` for the workspace, `WebResearcher` for a
-narrow public fact, `DeepResearch` for a sourced dossier, `WebFetch` for the
-deterministic page pipeline. Nested `ModelDelegate/*` manifests are not loaded.
+The `benchmark/` directory holds the primary test suite and evals.
+
+**Actuation (all personas):** [`_shared/ACTUATION.md`](_shared/ACTUATION.md) · depth [`AgentMethods.md`](AgentMethods.md) · shape [`TEMPLATE.md`](TEMPLATE.md) · shared gates [`_shared/COMMON.md`](_shared/COMMON.md).
+
+Removed duplicate prompt mirrors (`code-review/`, `deep-research/`): use **Reviewer** and **DeepResearch** manifests instead. Antigravity copies remain under [`antigravity-imported/`](antigravity-imported/) for reference only.
+
+Re-sync shared sections after editing manifests:
+
+```bash
+uv run python Agents/_shared/strip_template_map.py   # remove TEMPLATE map if reintroduced
+uv run python Agents/_shared/sync_agents_template.py
+```
 
 ## Coordination
 

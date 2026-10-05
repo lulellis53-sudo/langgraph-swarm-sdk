@@ -31,15 +31,18 @@ class LazyModule(types.ModuleType):
         self._loaded_module: types.ModuleType | None = None
 
     def _load(self) -> types.ModuleType:
+        """Import the wrapped module on first use and cache it."""
         if self._loaded_module is None:
             self._loaded_module = importlib.import_module(self._module_name)
         return self._loaded_module
 
-    def __getattr__(self, item: str) -> Any:
+    def __getattr__(self, name: str) -> Any:
+        """Resolve ``name`` on the real module, importing it lazily."""
         module = self._load()
-        return getattr(module, item)
+        return getattr(module, name)
 
     def __repr__(self) -> str:
+        """Show the module name and whether it has been loaded yet."""
         status = "loaded" if self._loaded_module is not None else "unloaded"
         return f"<LazyModule '{self._module_name}' ({status})>"
 
@@ -75,13 +78,15 @@ def hybrid_jit(
     """
 
     def decorator(fn: F) -> F:
+        """Compile ``fn`` with numba when JIT is enabled, else return it unchanged."""
         if is_jit_disabled():
             # NoJIT Mode: Return original pure-Python function directly
             setattr(fn, "__jit_compiled__", False)
             return fn
 
         try:
-            import numba  # type: ignore
+            # Optional dependency, absent from the dev environment.
+            import numba  # ty: ignore[unresolved-import]
 
             # Apply Numba njit with free-threaded / nogil support
             compiled_fn = numba.njit(
@@ -91,7 +96,7 @@ def hybrid_jit(
             )(fn)
             setattr(compiled_fn, "__jit_compiled__", True)
             return cast(F, compiled_fn)
-        except ImportError, Exception:
+        except Exception:
             # Graceful NoJIT fallback
             setattr(fn, "__jit_compiled__", False)
             return fn
@@ -119,14 +124,15 @@ class ZstdStateCompressor:
         self._init_backend()
 
     def _init_backend(self) -> None:
+        """Select the zstd backend: stdlib ``compression.zstd`` first, then ``zstandard``."""
         try:
-            import compression.zstd as zstd  # type: ignore
+            import compression.zstd as zstd
 
             self._zstd_mod = zstd
             self._has_native_zstd = True
         except ImportError:
             try:
-                import zstandard as zstd  # type: ignore
+                import zstandard as zstd
 
                 self._zstd_mod = zstd
                 self._has_native_zstd = False  # external library mode

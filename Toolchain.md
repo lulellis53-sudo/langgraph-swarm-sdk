@@ -15,6 +15,8 @@ Verified findings about compilers, silicon architecture, CPython runtimes, hardw
 7. [Python 3.15 Optimizations & Adoption Roadmap](#7-python-315-optimizations--adoption-roadmap)
 8. [Measured Performance Wins](#8-measured-performance-wins)
 9. [Quality Gate & Verification Commands](#9-quality-gate--verification-commands)
+10. [Swarm Native Compilation Suite: Meson, Maturin, Bison & Pixi (AVX2 x AVX-512)](#10-swarm-native-compilation-suite-meson-maturin-bison--pixi-avx2-x-avx-512)
+11. [Verified LLVM 23 Build Flags & Tool Selection](#11-verified-llvm-23-build-flags--tool-selection)
 
 ---
 
@@ -60,9 +62,31 @@ Verified on macOS `x86_64` (Darwin 25.6.0):
   ```
 - **Rule**: Never use custom LLVM clang for Python wheel builds without clearing compiler environment variables. Always prepend `CC=/usr/bin/clang CXX=/usr/bin/clang++` when building native extensions.
 
+#### 2.2.1 LLVM/Clang 23.1 Release Profile (H2 2026 Stable)
+- **Release Date**: 25 August 2026 (first stable release of the LLVM 23 series).
+- **Core Microarchitectural Features**:
+  - **x86 Lightweight Fault Isolation (LFI)**: Introduces native target support for fine-grained process isolation and memory sandboxing.
+  - **AMD Zen 6 Target (`znver6`)**: Adds instruction scheduling and AVX-512 BMM (Bfloat16 Matrix Multiply) vectorization.
+  - **NVIDIA Rigel & AMDGPU GFX1310**: Initial hardware offloading support for the NVIDIA Rosa processor (Rigel core) and AMD HIP driver.
+  - **Arm C1-Ultra**: Modern pipeline scheduling model for high-throughput server chips.
+  - **C++26 & C2Y Progress**: Partial C++26 dialect support enabled via `-std=c++2c` / `-std=c++26`, alongside latest C2Y extensions.
+  - **Linker Performance (`ld64.lld`)**: Faster parallel symbol resolution during ThinLTO linking on Darwin (`x86_64-apple-darwin25.6.0`).
+
+#### 2.2.2 GCC 16.1 Release Contrast & Linux vs. macOS Ecosystem
+- **Release Date**: 30 April 2026 (GNU Compiler Collection 16.1).
+- **Dialect Defaults**: Bumps default C++ language standard from `-std=gnu++17` to **`-std=gnu++20`**, and default C standard to **`gnu23`**.
+- **C++26 Breakthroughs in GCC 16**:
+  - **P2996R13 Reflection**: Enabled via `-std=c++26 -freflection` (including P3394R4 annotations and P3096R12 parameter reflection).
+  - **P2900R14 Contracts**: Native `-fcontracts` enforcement for runtime validation invariants.
+  - **P1306R5 Expansion Statements**: Template parameter pack iterations without recursive template metaprogramming.
+- **Linux vs. macOS Darwin Toolchain Division**:
+  - **Linux x86_64 (Ubuntu 26.10 / Fedora 45)**: Ships GCC 16.1 as default system compiler with glibc/libstdc++ and full AVX-512 BMM auto-vectorization on server hardware.
+  - **macOS Darwin x86_64 (MacBookPro16,1)**: Relies on Apple Clang for system wheels and LLVM/Clang 23.1.1 (`/Users/usuario/.local/opt/llvm-23.1.1/bin/clang`) for native AVX2 SIMD tool builds with `-march=haswell -mtune=skylake` (AVX-512 strictly excluded to avoid `SIGILL`).
+
 ### 2.3 Rust Toolchain & Maturin
 
 - **Rust Compiler**: `rustc 1.99.0` (`/Users/usuario/.cargo/bin/rustc`)
+- **Rust LLVM backend**: `rustc -vV` reports LLVM **23.1.1** on this host. The LLVM version of a separate `clang` executable does not change Rust's backend; check both before mixing Rust and C/C++ link-time optimization.
 - **Cargo**: `cargo 1.99.0` (`/Users/usuario/.cargo/bin/cargo`)
 - **Maturin**: Used for building PyO3 native extensions (`uvx maturin build`).
   - **Installed here**: no (`command -v maturin` is empty); it runs on demand through `uvx`, so the version floats unless pinned: `uvx maturin@1.15.0 build --release --interpreter <python>` (Context7/uv docs: `command@<version>` pins an exact version only, `@latest` refreshes the cache, and ranges need `--from 'maturin>=1.14,<2'`; the maturin run itself was not executed here).
@@ -76,6 +100,7 @@ Verified on macOS `x86_64` (Darwin 25.6.0):
 - **Binary**: `/usr/local/bin/ninja`
 - **Version**: 1.13.2
 - **Role**: High-speed parallel build driver for Meson packages (`numpy`, `scikit-learn`) and C++ CMake extensions. Saturates up to 12 execution threads (`ninja -j 12`).
+- **Scope**: Use Ninja only when Meson or CMake generated a Ninja build. Cargo builds Alacritty directly, and Zig builds Ghostty; adding `ninja` to those commands does not enable an optimization.
 
 ### 2.5 Astral `uv` Package & Environment Manager
 
@@ -140,9 +165,9 @@ The repository supports CPython 3.14.x as the primary runtime and is forward-com
 
 | Version | Target / Path | Status | Verification Evidence |
 | :--- | :--- | :--- | :--- |
-| **3.14.7** | `/Users/usuario/Swarm/.venv` | **Active Production** (`requires-python >=3.14.5`) | 429 benchmark tests green, Ruff clean, Agent validation clean |
+| **3.14.8** | `/Users/usuario/.local/opt/python-3.14.8` | **Active Production** (`requires-python >=3.14.5`; worktree `.python-version` = 3.14.8) | Built 2026-10-03 with `~/build/build-python-3.14.8.sh` (tarball SHA-256 matched python.org; Gate 0/3: `SOABI cpython-314-darwin`); 240 websearch/vault/model tests green on it. 3.14.7 stays at `~/.local/opt/python-3.14.7` |
 | **3.15.0rc2** | `/Users/usuario/.local/opt/python-3.15-g6413901/bin/python3.15` | **Fully Verified** | Requires local `ormsgpack` PyO3 0.28 wheel; 16/16 laziness & coordination tests pass |
-| **3.14t / 3.15t** | `/Users/usuario/.local/bin/python3.14t` | **Code Ready** (Free-Threaded / PEP 703) | `parallel_cap()` dynamically widens from 8 to 32 when the GIL is disabled (`src/swarm_sdk/execution/concurrency.py`). Awaiting wider upstream `t`-wheels |
+| **3.14t / 3.15t** | `/Users/usuario/.local/bin/python3.14t` | **Code Ready** (Free-Threaded / PEP 703) | `parallel_cap()` dynamically widens from 8 to 32 when the GIL is disabled (`src/swarm_sdk/execution/concurrency.py`). Awaiting wider upstream `t`-wheels **3.15t note (2026-10-03):** the existing 3.15t build has `SOABI=cpython-315t` (no `-darwin`) because configure ran without `SDKROOT`, so no PyPI wheel imports; a rebuild needs `SDKROOT` exported and a tag build (`v3.15.0rc3`). orjson builds only with `ORJSON_BUILD_FREETHREADED=1` (upstream experimental opt-in). Parked in favor of 3.14.8. |
 
 ### Key Python 3.14/3.15 Runtime Characteristics
 
@@ -252,6 +277,47 @@ The discrete **AMD Radeon Pro 5300M** (4 GB GDDR6) provides accelerated compute 
 - **Device Node**: Identified as `Vulkan0` (`AMD Radeon Pro 5300M`).
 - **Use Case**: Powers local GGUF embedding models via `llama-cpp-python` compiled with Vulkan support.
 
+### 6.3 AMD Radeon Pro 5300M on Arch Linux (Navi 14 / GFX1012 Architecture)
+
+On Arch Linux workstations and dual-boot MacBookPro16,1 setups, the discrete **AMD Radeon Pro 5300M** operates under the open-source `amdgpu` kernel driver with full support for hardware-accelerated OpenCL and Vulkan compute:
+
+#### 1. Kernel Driver & Power Management
+- **Hardware Architecture**: Navi 14 / RDNA 1 (`GFX1012`, 1408 stream processors, 4 GB GDDR6).
+- **Required Packages**:
+  ```bash
+  sudo pacman -S linux linux-firmware mesa lib32-mesa vulkan-radeon lib32-vulkan-radeon
+  ```
+- **Driver Module Configuration (`/etc/modprobe.d/amdgpu.conf`)**:
+  ```ini
+  options amdgpu ppfeaturemask=0xffffffff dpm=1 audio=0
+  ```
+  Enables full power play overdrive, DPM clock scaling, and disables unused HDMI/DP audio to reduce interrupt latency.
+
+#### 2. OpenCL Compute: Rusticl vs. ROCm on Arch Linux
+- **Recommended: Mesa Rusticl (OpenCL 3.0 Conformance)**:
+  Rusticl provides a modern, fast Rust-based OpenCL 3.0 implementation backed by Gallium3D and LLVM, eliminating proprietary driver conflicts:
+  ```bash
+  sudo pacman -S opencl-rusticl-mesa clinfo
+  # Activate Rusticl for radeonsi driver in shell environment
+  export RUSTICL_ENABLE=radeonsi
+  export OCL_ICD_VENDORS=rusticl.icd
+  ```
+  `clinfo` confirms `Platform Name: Rusticl`, `Device Name: AMD Radeon Pro 5300M (radeonsi, navi14, LLVM ...)`.
+- **Alternative: ROCm OpenCL / HIP Offload**:
+  Navi 14 is not officially whitelisted in upstream ROCm, requiring an environment override:
+  ```bash
+  sudo pacman -S rocm-opencl-runtime rocm-hip-sdk
+  export HSA_OVERRIDE_GFX_VERSION=10.1.0
+  ```
+
+#### 3. Vulkan Compute Engine (Mesa RADV + ACO)
+- **High-Speed GGUF Embeddings**: RADV with the default ACO compiler compiles compute shaders up to **4x faster** than traditional LLVM backends:
+  ```bash
+  export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.x86_64.json
+  # Build and run llama.cpp Vulkan backend
+  CMAKE_ARGS="-DGGML_VULKAN=ON" uv pip install --no-build-isolation llama-cpp-python
+  ```
+
 ---
 
 ## 7. Python 3.15 Optimizations & Adoption Roadmap
@@ -289,6 +355,8 @@ Empirically verified in benchmark suites:
 
 All changes in this repository must pass the full verification gate before being merged:
 
+Check `UV_PYTHON` before running this gate. On 2026-10-03, an inherited `UV_PYTHON` pointing to free-threaded Python 3.15 overrode `.python-version` (`3.14.8`), recreated `.venv`, and failed to install `faiss-cpu`. If that variable is set, pass `--python "$(cat .python-version)"` to each `uv run` command (or unset it for the shell) so the gate uses the project interpreter.
+
 ```bash
 # 1. Targeted CLI tests
 uv run --extra dev pytest tests/test_cli.py -q --tb=short
@@ -305,3 +373,308 @@ uv run --extra dev --extra observability --extra opencl --extra faiss --extra me
 # 5. Swarm agent manifest validation (22 manifests)
 uv run python -m swarm_sdk.agents.validate
 ```
+
+---
+
+## 10. Swarm Native Compilation Suite: Meson, Maturin, Bison & Pixi (AVX2 x AVX-512)
+
+This section sketches build manifests for native Swarm SIMD kernels, grammar parsers, and Python PyO3 extensions across **AVX2** (MacBookPro16,1 host baseline) and **AVX-512** (compatible Linux servers). These examples are not installed build files or a verified Swarm build; check each compiler and target before using them.
+
+### 10.1 AVX2 vs. AVX-512 Microarchitectural Profile
+
+```
++=============================================================================================================+
+|                                    AVX2 vs. AVX-512 MICROARCHITECTURAL PROFILE                              |
++=============================================================================================================+
+
+  Feature                           AVX2 Baseline (Host MacBookPro16,1)           AVX-512 (Arch Linux Server Nodes)
+  --------------------------------  -------------------------------------------  -------------------------------------------
+  Register Width                    256-bit (ymm0–ymm15)                         512-bit (zmm0–zmm31)
+  Parallel FP32 Operations / Cycle  8 floats                                     16 floats (2x arithmetic density)
+  Parallel INT8 Quantized / Cycle   32 bytes                                     64 bytes
+  Instruction Subsets               FMA3, BMI1, BMI2, POPCNT, SSE4.2             F, CD, BW, DQ, VL, VNNI, BF16
+  Frequency Impact                  Zero frequency downclocking on i7-9750H      Older Intel Xeon: frequency license downclock
+                                                                                 AMD Zen 4/5/6: Full boost clock (no drop)
+  Host Compatibility                100% Native on MacBookPro16,1                UNSUPPORTED on MacBookPro16,1 (SIGILL)
+  Compiler Flags                    -mavx2 -mfma -mbmi2                          -mavx512f -mavx512dq -mavx512bw -mavx512vl
+```
+
+#### Runtime Universal SIMD Dispatch (Google Highway NEP 54 Pattern)
+To compile separate macOS and Linux binaries from the same source while selecting a supported SIMD implementation at runtime:
+
+```c
+/* dynamic_simd_dispatch.c: Runtime CPUID feature selection */
+#include <pthread.h>
+
+typedef float (*dot_product_fn)(const float*, const float*, int);
+
+extern float dot_product_avx2(const float* a, const float* b, int n);
+extern float dot_product_avx512(const float* a, const float* b, int n);
+
+static dot_product_fn selected_dot_product;
+static pthread_once_t dispatch_once = PTHREAD_ONCE_INIT;
+
+static void resolve_dot_product(void) {
+    __builtin_cpu_init();
+    if (__builtin_cpu_supports("avx512f") && __builtin_cpu_supports("avx512vl")) {
+        selected_dot_product = dot_product_avx512;
+    } else {
+        selected_dot_product = dot_product_avx2;
+    }
+}
+
+float dot_product(const float* a, const float* b, int n) {
+    pthread_once(&dispatch_once, resolve_dot_product);
+    return selected_dot_product(a, b, n);
+}
+```
+
+---
+
+### 10.2 Pixi Multi-Platform Environment Specification (`pixi.toml`)
+
+Pixi provides hermetic, lockfile-reproducible native environments managing C/C++, Rust, Python, and OpenCL/Vulkan compilers across macOS Darwin (`osx-64`) and Arch Linux (`linux-64`):
+
+```toml
+# pixi.toml: Reproducible multi-platform native toolchain
+[project]
+name = "swarm-native-suite"
+version = "0.1.0"
+description = "Hermetic build toolchain for Swarm SIMD kernels & parsers"
+authors = ["dantenho <dantenho@gmail.com>"]
+channels = ["conda-forge"]
+platforms = ["osx-64", "linux-64"]
+
+[dependencies]
+python = ">=3.14"
+ninja = ">=1.13"
+meson = ">=1.12"
+maturin = ">=1.15"
+bison = ">=3.8"
+flex = ">=2.6"
+pkg-config = ">=0.29"
+
+[target.osx-64.dependencies]
+clang = ">=21"
+llvm-openmp = ">=19"
+
+[target.linux-64.dependencies]
+gcc = ">=16.1"
+gxx = ">=16.1"
+ocl-icd = ">=2.3"
+opencl-headers = ">=2024"
+vulkan-headers = ">=1.3"
+
+[tasks]
+build-avx2 = "meson setup build-avx2 --native-file toolchain/native-avx2.ini && ninja -C build-avx2"
+build-avx512 = "meson setup build-avx512 --native-file toolchain/native-avx512.ini && ninja -C build-avx512"
+build-rust = "maturin develop --release --features simd_avx2"
+test-simd = "pytest tests/test_simd_kernels.py -v"
+```
+
+---
+
+### 10.3 Meson Native Build Definitions
+
+#### 1. `meson.build`
+```meson
+# meson.build: High-speed compilation manifest for native Swarm extensions
+project('swarm_simd', 'c', 'cpp',
+  version : '0.1.0',
+  default_options : [
+    'warning_level=3',
+    'cpp_std=c++20',
+    'c_std=c17',
+    'b_lto=true'
+  ]
+)
+
+cc = meson.get_compiler('c')
+simd_args = []
+simd_level = get_option('simd')
+
+if simd_level == 'avx512'
+  simd_args = ['-mavx512f', '-mavx512dq', '-mavx512bw', '-mavx512vl', '-mfma']
+  add_project_arguments('-DSWARM_ENABLE_AVX512=1', language : ['c', 'cpp'])
+elif simd_level == 'avx2'
+  simd_args = ['-mavx2', '-mfma', '-mbmi2']
+  add_project_arguments('-DSWARM_ENABLE_AVX2=1', language : ['c', 'cpp'])
+endif
+
+# Bison parser generation for Swarm DSL queries
+bison = find_program('bison')
+bison_gen = generator(bison,
+  output : ['@BASENAME@.tab.c', '@BASENAME@.tab.h'],
+  arguments : ['-d', '-Wcounterexamples', '@INPUT@', '-o', '@OUTPUT0@']
+)
+
+parser_sources = bison_gen.process('src/grammar/query_parser.y')
+
+swarm_simd_lib = shared_library('swarm_simd',
+  sources : ['src/simd/vector_math.cpp', parser_sources],
+  c_args : simd_args,
+  cpp_args : simd_args,
+  install : true
+)
+```
+
+#### 2. Native Profile `native-avx2.ini` (Host MacBookPro16,1)
+```ini
+[binaries]
+c = 'clang'
+cpp = 'clang++'
+ar = 'llvm-ar'
+strip = 'llvm-strip'
+
+[built-in options]
+b_lto_mode = 'thin'
+c_args = ['-O3', '-march=native', '-mavx2', '-mfma', '-fno-semantic-interposition']
+cpp_args = ['-O3', '-march=native', '-mavx2', '-mfma', '-fno-semantic-interposition']
+c_link_args = ['-fuse-ld=lld']
+cpp_link_args = ['-fuse-ld=lld']
+simd = 'avx2'
+```
+
+#### 3. Native Profile `native-avx512.ini` (Arch Linux / Zen 4+ Server)
+```ini
+[binaries]
+c = 'gcc'
+cpp = 'g++'
+ar = 'gcc-ar'
+strip = 'strip'
+
+[built-in options]
+c_args = ['-O3', '-march=znver4', '-mavx512f', '-mavx512dq', '-mavx512bw', '-mavx512vl', '-fno-semantic-interposition']
+cpp_args = ['-O3', '-march=znver4', '-mavx512f', '-mavx512dq', '-mavx512bw', '-mavx512vl', '-fno-semantic-interposition']
+c_link_args = ['-flto']
+cpp_link_args = ['-flto']
+simd = 'avx512'
+```
+
+---
+
+### 10.4 Maturin & PyO3 Free-Threaded SIMD Cargo Configuration
+
+```toml
+# Cargo.toml: PyO3 extension with conditional AVX2/AVX-512 SIMD feature flags
+[package]
+name = "swarm_rust_core"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "swarm_rust_core"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.29", features = ["abi3-py315", "extension-module"] }
+
+[features]
+default = ["simd_avx2"]
+simd_avx2 = []
+simd_avx512 = []
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+```
+
+---
+
+### 10.5 GNU Bison Grammar Specification (`src/grammar/query_parser.y`)
+
+Re-entrant, modern GNU Bison 3.8+ specification for parsing multi-agent swarm query expressions:
+
+```yacc
+%code top {
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include "query_ast.h"
+}
+
+/* Modern Bison 3.8+ Re-Entrant & Pure Parser Directives */
+%define api.pure full
+%define api.value.type variant
+%define parse.error verbose
+%lex-param   { void *scanner }
+%parse-param { void *scanner } { QueryASTNode **result_ast }
+
+%token <char*> IDENTIFIER STRING_LITERAL
+%token <int> INTEGER_LITERAL
+%token AND OR NOT EQUALS GREATER_THAN
+
+%type <QueryASTNode*> expr comparison
+
+%%
+
+query:
+    expr { *result_ast = $1; }
+    ;
+
+expr:
+      comparison
+    | expr AND comparison { $$ = create_binary_op(OP_AND, $1, $3); }
+    | expr OR comparison  { $$ = create_binary_op(OP_OR, $1, $3); }
+    ;
+
+comparison:
+      IDENTIFIER EQUALS STRING_LITERAL { $$ = create_comparison(OP_EQ, $1, $3); }
+    | IDENTIFIER GREATER_THAN INTEGER_LITERAL { $$ = create_num_comparison(OP_GT, $1, $3); }
+    ;
+
+%%
+```
+
+---
+
+## 11. Verified LLVM 23 Build Flags & Tool Selection
+
+Use the build system and object format of the target project before selecting flags. The table separates options that affect the running binary from tools that only build or package it.
+
+| Tool or option | Correct scope on this macOS host | Verification or limit |
+| :--- | :--- | :--- |
+| Rust ThinLTO | Set `lto = "thin"` in `[profile.release]` of `Cargo.toml`; build with `cargo build --release`. | Alacritty's release profile already has this setting. `rustc -vV` reports LLVM 23.1.1. Keep `-C lto` out of global `RUSTFLAGS`, which also affect host build scripts and proc macros. |
+| LLVM 23 Clang | Use for selected C/C++ dependencies with an explicit macOS SDK sysroot. | `clang 23.1.1` could not find `wchar.h` in a `cc-rs` build until `-isysroot` pointed at the Command Line Tools SDK. Keep Apple Clang as the default for repository Python wheels (§2.2). |
+| Polly | Pass `-O3 -mllvm -polly` to the matching LLVM 23 Clang for C/C++ translation units. | The Alacritty mimalloc C dependency built with this flag. It did **not** apply Polly to Rust code, and no speedup or transformed loop was measured. See [Polly's Clang guide](https://polly.llvm.org/docs/UsingPollyWithClang.html). |
+| mimalloc | Link the Rust `mimalloc` crate and set it as the executable's single global allocator. | Alacritty built with `mimalloc 0.1.52`; its version command and macOS code signature check passed. This establishes build correctness, not a performance gain. |
+| `mini-alloc` | Do not use as a terminal's global allocator. | Its [documentation](https://docs.rs/crate/mini-alloc/latest) says `dealloc` does nothing, so a long-running terminal would leak allocations. Rust also permits only one global allocator per executable. |
+| LLVM BOLT | Use only where its binary rewriter supports the output format and a representative profile is available. | The macOS executable is Mach-O, while [BOLT's supported primary format is ELF](https://discourse.llvm.org/t/rfc-bolt-a-framework-for-binary-analysis-transformation-and-optimization/56722). No BOLT optimization was applied. |
+| Zstd | Compress a finished app archive for transfer or storage. | `zstd -t` checked the Alacritty archive. Compression does not optimize the running executable. |
+| Ninja | Drive a Meson or CMake Ninja build tree. | Alacritty uses Cargo; Ghostty uses Zig. The executable's build does not become faster by naming Ninja when no Ninja build tree exists. |
+
+### Reproduce the verified Alacritty variant
+
+On 2026-10-03, Alacritty `0.18.0-dev` at commit `d692748` built as an x86_64 macOS app using the Command Line Tools SDK. Its `Cargo.toml` already specified ThinLTO. The only source changes were `mimalloc = "0.1.52"` in the executable crate's dependencies and this global allocator declaration in `alacritty/src/main.rs`:
+
+```rust
+#[global_allocator]
+static GLOBAL_ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
+```
+
+From that source tree, the following flags built mimalloc's C code with LLVM 23 Clang and Polly. The `-march=native` setting makes this build local to a compatible CPU; omit it or choose a baseline target for distribution. `-fomit-frame-pointer` was part of the tested command but can make profiling harder.
+
+```bash
+sdk_root="$(xcrun --show-sdk-path)"
+CC="$HOME/.local/opt/llvm-23.1.1/bin/clang" \
+  CFLAGS="-O3 -march=native -mtune=native -fomit-frame-pointer -isysroot $sdk_root -mllvm -polly" \
+  make app
+target/release/osx/Alacritty.app/Contents/MacOS/alacritty --version
+codesign -vvv target/release/osx/Alacritty.app
+```
+
+Package and check the app separately:
+
+```bash
+tar -cf - -C target/release/osx Alacritty.app | zstd -T0 -19 -o /tmp/Alacritty.app.tar.zst
+zstd -t /tmp/Alacritty.app.tar.zst
+```
+
+For Ghostty, use its [Zig build instructions](https://ghostty.org/docs/install/build); the macOS app additionally requires full Xcode, its SDKs, and the Metal toolchain. These Cargo and Clang flags do not convert Ghostty's Zig build to LLVM 23 or enable BOLT on Mach-O.
+
+### Build checks for future agents
+
+1. Identify the compiler, linker, build driver, target architecture, and output format before adding flags (`rustc -vV`, `clang --version`, `xcrun --show-sdk-path`, `file <binary>`).
+2. Put LTO in the project's build profile; apply Polly only to translation units compiled by a compatible Clang; use the SDK sysroot with non-Apple Clang on macOS.
+3. Build once, then verify the executable, code signature if applicable, and archive integrity. Benchmark against an unmodified build before claiming a speedup.

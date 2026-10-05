@@ -1,3 +1,5 @@
+"""Token cache-hit benchmark task: repeated prompts hit the semantic cache."""
+
 import pytest
 from benchmark.metrics import Timer
 

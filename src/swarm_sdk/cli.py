@@ -10,7 +10,7 @@ import sys
 import time
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from swarm_sdk.config.loader import load_swarm_config
 from swarm_sdk.core.rules import HostRuleEngine
@@ -36,10 +36,10 @@ try:
 
     _RICH_AVAILABLE = True
 except ImportError:
-    _RichConsole = None  # type: ignore
-    _RichPanel = None  # type: ignore
-    _RichSyntax = None  # type: ignore
-    _RichTable = None  # type: ignore
+    _RichConsole = None
+    _RichPanel = None
+    _RichSyntax = None
+    _RichTable = None
     _RICH_AVAILABLE = False
 
 
@@ -69,6 +69,7 @@ class PlainTable:
         self.rows.append(cleaned_cells)
 
     def __str__(self) -> str:
+        """Render the table as aligned plain text."""
         lines: list[str] = []
         if self.title:
             lines.append(f"=== {self.title} ===")
@@ -105,6 +106,7 @@ class PlainPanel:
         self.title = title
 
     def __str__(self) -> str:
+        """Render the panel content with Rich markup stripped."""
         content_str = str(self.content)
         cleaned = re.sub(
             r"\[/?(?:bold|italic|underline|green|red|yellow|blue|cyan|magenta|dim|white)[^\]]*\]",
@@ -274,7 +276,7 @@ def handle_run(args: argparse.Namespace, console: Any) -> int:
         table.add_row("CPU Time", f"{cpu_ms:.2f} ms")
         table.add_row("Process RSS", f"{rss:.2f} GB")
 
-    latest_state = state
+    latest_state = cast("dict[str, Any]", state)
     console.print(create_panel(table, title="Execution Summary"))
 
     # If execution succeeded, write synthesized code to target files if existing or --apply

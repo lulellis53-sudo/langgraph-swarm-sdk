@@ -11,11 +11,26 @@ version: 1
 
 providers:
   # ---- Paid: medium tier, medium effort ----
-  # OpenAI API-key routes (gpt-4o, gpt-4o-mini) are removed.
-  # OAuth tokens: Codex, Grok, and Claude only.
+  - name: openai:gpt-4o-mini
+    provider: openai
+    api_key_env: OPENAI_API_KEY
+    effort: low
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 73
+    evidence: existing agent manifests and provider catalog
+
+  - name: openai:gpt-4o
+    provider: openai
+    api_key_env: OPENAI_API_KEY
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 74
+    evidence: existing agent manifests and provider catalog
+
   - name: zai:glm-5.2
     provider: zai
-    api_key_env: ZHIPU_API_KEY   # Z.ai is Zhipu. ZAI_API_KEY is accepted too.
+    api_key_env: ZHIPU_API_KEY   # Z.ai is Zhipu. ZAI_API_KEY is the alias.
+    api_key_fallbacks: [ZAI_API_KEY]
     base_url_env: ZAI_BASE_URL   # https://api.z.ai/api/paas/v4
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
@@ -32,21 +47,41 @@ providers:
 
   - name: moonshot:kimi-k2.7-code
     provider: moonshot
-    api_key_env: KIMI_CODE_PLAN_API_KEY
+    api_key_env: KIMI_API_KEY
+    api_key_fallbacks: [KIMI_API_KEY_DUPLICATE_1, KIMI_CODE_PLAN_API_KEY]
     base_url_env: MOONSHOT_BASE_URL   # https://api.moonshot.ai/v1
-    effort: high
+    effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 10
-    # Speed low: official standard id. Do not switch to kimi-k2.7-code-highspeed.
-    evidence: user (Kimi 2.7 Coding, effort high, standard speed); fallback key KIMI_CODE_PLAN_API_KEY_2 reserved
+    evidence: user (Kimi, two vault keys; OpenAI-compatible host api.moonshot.ai/v1)
+
+  - name: moonshot:kimi-k2.7-code-b
+    provider: moonshot
+    model_id: kimi-k2.7-code
+    api_key_env: KIMI_API_KEY_DUPLICATE_1
+    base_url_env: MOONSHOT_BASE_URL   # https://api.moonshot.ai/v1
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 11
+    evidence: user (second Kimi key, same model id)
 
   - name: google:gemini-3.8-flash
     provider: google
     api_key_env: GEMINI_API_KEY
+    api_key_fallbacks: [GEMINI_API_KEY_DUPLICATE_1, GOOGLE_API_KEY]
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 12
-    evidence: user (Gemini 3.8 Flash = Google medium tier; GOOGLE_API_KEY accepted too)
+    evidence: user (Gemini 3.8 Flash = Google medium tier)
+
+  - name: google:gemini-3.8-flash-b
+    provider: google
+    model_id: gemini-3.8-flash
+    api_key_env: GEMINI_API_KEY_DUPLICATE_1
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 13
+    evidence: user (second Gemini key, same model id)
 
   - name: xiaomi:mimo-v2.5-pro
     provider: xiaomi
@@ -59,23 +94,20 @@ providers:
 
   - name: xai:grok-4.6
     provider: xai
-    api_key_env: GROK_OAUTH_TOKEN
+    api_key_env: XAI_API_KEY
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 18
-    evidence: user (Grok 4.6 OAuth, medium effort)
+    evidence: user (Grok 4.6, medium effort)
 
-  - name: minimax:MiniMax-M2.7
+  - name: minimax:minimax-2.7-high-speed
     provider: minimax
     api_key_env: MINIMAX_API_KEY
     base_url_env: MINIMAX_BASE_URL   # https://api.minimax.io/v1
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 20
-    # User asked for MiniMax 2.6. Official chat catalog has no M2.6
-    # (platform.minimax.io models intro, checked 2026-10-05). M2.7 is the
-    # current non-highspeed text model. Speech-2.6 is not a chat model.
-    evidence: user (MINIMAX_API_KEY, not OAuth; medium effort); official id MiniMax-M2.7, not highspeed
+    evidence: user (MINIMAX_API_KEY, not OAuth; 2.7 high speed); model ID assumed - verify in Minimax console
 
   - name: openai:gpt-6-luna
     provider: codex
@@ -87,15 +119,15 @@ providers:
 
   - name: anthropic:claude-sonnet-4.6
     provider: claude-code
-    api_key_env: CLAUDE_OAUTH_TOKEN
+    api_key_env: CLAUDE_CODE_API_KEY
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 30
-    evidence: user (Claude OAuth, Sonnet 4.6)
+    evidence: user (Claude Code API, Sonnet 4.6); inactive until CLAUDE_CODE_API_KEY is stored
 
   # ---- Free: low token usage, low effort ----
-  # Atlas Cloud live catalog (GET /v1/models, 2026-10-05) has one $0 text model.
-  # It is chat-only: the catalog lists no web-search tool for it.
+  # GET https://api.atlascloud.ai/v1/models on 2026-10-05: one $0 text model.
+  # Chat only. That catalog row has no web-search tool.
   - name: atlascloud:dots-studio/dots-3-note-prev-free
     provider: atlascloud
     api_key_env: ATLASCLOUD_API_KEY
@@ -128,10 +160,10 @@ providers:
     provider: openrouter
     api_key_env: OPENROUTER_API_KEY
     base_url_env: OPENROUTER_BASE_URL
-    effort: low
+    effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 40
-    evidence: user (GLM 5.3 Flash, effort low)
+    evidence: web (#2 OpenRouter by usage, best coding value)
 
   - name: alibaba:qwen-3.8
     provider: alibaba
@@ -144,6 +176,7 @@ providers:
   - name: cohere:command-a
     provider: cohere-1
     api_key_env: COHERE_API_KEY_1
+    api_key_fallbacks: [COHERE_API_KEY]
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 60
@@ -160,6 +193,7 @@ providers:
   - name: mistral:mistral-large-latest
     provider: mistral-1
     api_key_env: MISTRAL_API_KEY_1
+    api_key_fallbacks: [MISTRAL_API_KEY]
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 65
@@ -168,6 +202,7 @@ providers:
   - name: mistral:ministral-3-8b-latest
     provider: mistral-2
     api_key_env: MISTRAL_API_KEY_2
+    api_key_fallbacks: [MISTRAL_API_KEY_DUPLICATE_1]
     effort: low
     think_levels: ["off", low, medium, high, xhigh]
     priority: 67
@@ -184,6 +219,7 @@ providers:
   - name: groq:openai/gpt-oss-20b
     provider: groq-2
     api_key_env: GROQ_API_KEY_2
+    api_key_fallbacks: [GROQ_API_KEY_DUPLICATE_1]
     effort: low
     think_levels: ["off", low, medium, high, xhigh]
     priority: 72
@@ -242,7 +278,7 @@ services:
     agents: [WebFetch]
   - name: mem0
     api_key_env: MEM0_API_KEY
-    agents: [Persister]
+    agents: [Persister]          # memory provider
   - name: jev
     api_key_env: JEV_API_KEY
-    agents: [Orchestrator]
+    agents: [Orchestrator]       # decision maker

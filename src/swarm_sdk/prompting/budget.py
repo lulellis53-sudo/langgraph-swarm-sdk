@@ -10,10 +10,12 @@ import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
 
+from swarm_sdk.observability import metrics
+
 _DEFAULT_TIKTOKEN = "cl100k_base"
 _ENCODING_CACHE: dict[str, Any] = {}
 _ENCODING_MISSING: set[str] = set()
-_COUNT_CACHE: dict[tuple[int, int], int] = {}
+_COUNT_CACHE: dict[tuple[int, str], int] = {}
 _COUNT_CACHE_MAX = 512
 _COUNT_LOCK = threading.Lock()
 _whitespace_pre: Any | None = None
@@ -25,7 +27,8 @@ if TYPE_CHECKING:
 class _HasEncode(Protocol):
     """Anything with an ``encode`` method (HF Tokenizer or tiktoken Encoding)."""
 
-    def encode(self, text: str, /, *args: Any, **kwargs: Any) -> Any: ...
+    def encode(self, text: str, /, *args: Any, **kwargs: Any) -> Any:
+        """Tokenize ``text`` into the backend's encoding object."""
 
 
 def _whitespace() -> Any:
@@ -98,9 +101,14 @@ def count_text(text: str, tokenizer: _HasEncode | None = None) -> int:
     """
     if not text:
         return 0
-    key = (hash(text), id(tokenizer) if tokenizer is not None else 0)
+    # Use the tokenizer identity and the text itself as the cache key. Hash
+    # collisions on ``hash(text)`` could silently return the wrong count, and
+    # the cache is small enough (512 entries) that storing the string is cheap.
+    tokenizer_id = id(tokenizer) if tokenizer is not None else 0
+    key = (tokenizer_id, text)
     cached = _COUNT_CACHE.get(key)
     if cached is not None:
+        metrics.record_cache_hit("token_count")
         return cached
     if tokenizer is not None:
         count = _count_with(tokenizer, text)
@@ -202,13 +210,16 @@ class TokenBudget:
         Returns:
             A ``PackedPrompt`` whose ``.text`` fits ``max_tokens``.
         """
+        # The system prompt is the stable prefix: fit it first so prefix caching keeps hitting.
         system_text = self._fit_system(system)
         memories_fit = self._take(system_text, [], self._lines("memory: ", memories))
+        # Memories take room first; turns fill what is left, newest first.
         turns_fit = self._take_newest(system_text, memories_fit, self._lines("turn: ", turns))
         user_parts = memories_fit + turns_fit
         user = "\n".join(user_parts)
         packed = PackedPrompt(system=system_text, user=user)
         if self.count(packed.text) > self.max_tokens:
+            # Last-resort guard: never return a prompt over budget, drop all context instead.
             packed = PackedPrompt(system=system_text, user="")
         return packed
 
@@ -233,6 +244,7 @@ class TokenBudget:
         return "s"
 
     def _lines(self, prefix: str, items: list[str]) -> list[str]:
+        """Prefix each non-empty item and return the resulting prompt lines."""
         lines: list[str] = []
         for item in items:
             body = item.strip()
@@ -242,6 +254,7 @@ class TokenBudget:
         return lines
 
     def _take(self, system_text: str, prior: list[str], lines: list[str]) -> list[str]:
+        """Append each line in order, keeping only those that still fit the budget."""
         chosen = list(prior)
         for line in lines:
             fitted = self._fit(system_text, chosen, line, append=True)
@@ -250,14 +263,19 @@ class TokenBudget:
         return chosen
 
     def _take_newest(self, system_text: str, memories: list[str], turns: list[str]) -> list[str]:
+        """Keep the newest turns that fit, preserving chronological order in the result."""
         chosen: list[str] = []
+        # Walk newest to oldest so the most recent turns survive when space is tight.
         for line in reversed(turns):
             fitted = self._fit(system_text, memories + chosen, line, append=False)
             if fitted:
+                # Re-insert at the front to restore chronological order.
                 chosen.insert(0, fitted)
         return chosen
 
     def _fit(self, system_text: str, parts: list[str], line: str, *, append: bool) -> str | None:
+        """Return ``line`` (or a truncated form) if the assembled prompt stays within budget."""
+
         def assembled(piece: str) -> str:
             """The packed prompt text after assembly."""
             ordered = [*parts, piece] if append else [piece, *parts]
@@ -266,6 +284,7 @@ class TokenBudget:
         if self.count(assembled(line)) <= self.max_tokens:
             return line
         best: str | None = None
+        # Binary-search the longest prefix of the line that still fits the budget.
         lo = 0
         hi = len(line)
         while lo <= hi:

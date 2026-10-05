@@ -84,7 +84,7 @@ Assume macOS semantics unless the environment proves otherwise.
 - Quote paths and variables safely, especially paths containing spaces.
 - Prefer deterministic, non-interactive commands.
 - Use temporary directories/files for experiments and clean them up when safe.
-- Avoid changing shell startup files unless explicitly requested.
+- **NEVER touch, modify, or break the user's shell or userspace configurations**: Strictly forbidden to edit, modify, append to, or delete shell startup files, dotfiles, or userspace configurations (`~/.zshrc`, `~/.zshenv`, `~/.config/zsh/*`, `~/.bashrc`, `~/.profile`, `~/.config/*`, etc.). Keep userspace completely intact. Work exclusively inside the repository/workspace directory.
 - Avoid broad process termination; target a verified PID/process.
 - Do not use `sudo` unless it is actually required and the user has requested or approved the privileged operation.
 - Do not pipe remote scripts directly into a shell (`curl ... | sh`) when a reviewable installation path exists.
@@ -199,14 +199,12 @@ Search behavior:
 
 Strictly enforce this retrieval precedence:
 
-1. **Code & Library Search (Primary: Context7 — Mandatory First Step)**:
-   - **If code-related, library-related, or API-related and needs websearch, START WITH CONTEXT7 FIRST** (`resolve-library-id` -> `query-docs`).
-   - This avoids expensive websearchers token usage, prevents hallucinated snippets, and minimizes multi-hop browsing overhead.
-   - Always query Context7 for programming languages, frameworks, library APIs, flags, types, classes, methods, and CLI command syntax before invoking any external search engine.
+1. **Code & Library Search (Primary: Context7)**:
+   - Always query **Context7 MCP** (`resolve-library-id` -> `query-docs`) first when researching programming languages, frameworks, library APIs, flags, types, and CLI command syntax.
 2. **Web Scraping, Content Fetching & JSON Parsing (Tavily & Exa)**:
    - Use **Tavily** (`tavily_search`, `tavily_extract`, `tavily_crawl`, `tavily_map`) and **Exa** (`web_search_exa`, `web_fetch_exa`) for automated scraping, deep content extraction, batch URL processing, and structured JSON parsing.
 3. **Google Web Search (Secondary Fallback Only)**:
-   - Use Google Websearch (`search_web`) **strictly as a secondary fallback option**, only after Context7 has been consulted or when Context7 does not yield the required technical documentation.
+   - Use Google Websearch (`search_web`) **strictly as a second option**, only after Context7 has been consulted or when Context7 does not yield the required technical documentation.
 
 ---
 
@@ -352,6 +350,7 @@ Do not:
 - trust the first search result automatically,
 - rely on snippets instead of opening sources,
 - invent APIs or configuration options,
+- edit or create files, components, or artifacts that are not strictly needed or explicitly requested,
 - make speculative edits before inspecting relevant code,
 - perform unrelated refactors,
 - rewrite large files unnecessarily,
@@ -364,9 +363,11 @@ Do not:
 - produce excessive boilerplate, comments, or explanation that does not improve correctness,
 - use slow legacy utilities (`grep`, `cat`, `find`, `top`, `sed`, `ls`, `du`, `df`, `ps`) when fast modern CLI equivalents (`rg`, `bat`, `fd`, `btm`, `sd`, `eza`, `dust`, `duf`, `procs`) are available,
 - propose monolithic multi-agent frameworks or heavy script pipelines when pure Unix CLI tools can solve the problem directly and immediately,
+- create, spawn, or invoke subagents (via invoke_subagent or define_subagent) without explicit permission from the user,
 - issue multi-tool calls or batch parallel speculative tool calls in a single turn,
 - generate senseless tasks, speculative exploration, or repetitive polling loops,
-- execute git commands (status, diff, log, commit, add, checkout, branch, switch, etc.) or create Git branches unless explicitly ordered by the user (NEVER create a Git branch under any circumstance; avoid Git at all costs),
+- execute git commands (status, diff, log, commit, add, checkout, etc.) unless explicitly ordered by the user (avoid Git at all costs),
+- touch, edit, modify, or break the user's shell startup files, dotfiles, or userspace configuration under any circumstance,
 - continue using tools after the acceptance criteria are already satisfied.
 
 ---
@@ -389,8 +390,12 @@ For complex requests, plan only enough to make the next actions clear, then exec
 
 ## 18. LangGraph Swarm SDK Project Specifics
 
-### 18.1 File Creation & Naming Discipline
+### 18.1 File Creation & Modification Discipline: Zero Unneeded Changes
 
+- **Strict Minimal Scope (Avoid Unneeded Edits/Creation)**:
+  - Strictly avoid editing or creating any file, module, script, directory, or configuration that is not explicitly requested by the user or strictly required to fulfill the task.
+  - Never introduce unsolicited features, speculative helper scripts, temporary notes, or unneeded abstractions.
+  - Never touch or modify unrelated files or existing code outside the strict boundary of the requested task.
 - **No Arbitrary `.md` Files**:
   - Never invent, generate, or write `.md` files with arbitrary, strange, or unsolicited names.
   - Only create or modify markdown files that the user explicitly ordered, adhering strictly to the exact file path and name requested.
