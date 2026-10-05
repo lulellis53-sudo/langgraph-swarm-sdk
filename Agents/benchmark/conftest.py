@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from benchmark.tests.fakes import Script, ScriptedModel, answer
+from swarm_sdk import vault
 from swarm_sdk.config.loader import load_swarm_config
 from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import SwarmSDK
@@ -42,3 +43,17 @@ def bench_sdk(bench_settings: Settings, file_config) -> SwarmSDK:
         embedder=HashEmbedder(32, model_name="sentence-transformers/all-MiniLM-L6-v2"),
         reranker=IdentityReranker(),
     )
+
+
+@pytest.fixture(autouse=True)
+def _isolate_secrets(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Keep real credentials out of every test.
+
+    Clears each env name the configs reference, blocks the macOS Keychain CLI and points
+    ``~`` at an empty directory so the legacy ``~/.env`` fallback finds nothing. Tests that
+    need a key set it explicitly (``monkeypatch.setenv`` or an injected vault runner).
+    """
+    for name in vault.referenced_names():
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr(vault, "run_cli", lambda argv: None)
+    monkeypatch.setenv("HOME", str(tmp_path))
