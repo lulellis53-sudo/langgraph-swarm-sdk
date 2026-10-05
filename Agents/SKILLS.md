@@ -45,6 +45,8 @@ token budget, tasks, capabilities). Validation: `uv run python -m swarm_sdk.agen
 | [Reviewer](Reviewer/AGENTS.md) | review_changes | reviewer | diff_review, security_smell_check |
 | [Security](Security/AGENTS.md) | security_review | - | secrets_audit, dependency_audit |
 | [Tester](Tester/AGENTS.md) | write_and_run_tests | - | write_tests, run_gate |
+| [Toolchain](Toolchain/AGENTS.md) | build_toolchain | - | diagnose_build, select_toolchain |
+| [Tuner](Tuner/AGENTS.md) | offline_parameter_tuning | - | define_search, run_study |
 | [TxtToCsv](TxtToCsv/AGENTS.md) | convert_text_files_to_csv | - | infer_format, convert |
 | [WebFetch](WebFetch/AGENTS.md) | fetch_render | - | fetch_render |
 | [Newsletter](Newsletter/AGENTS.md) | digest_generation | - | newsletter_mvp |

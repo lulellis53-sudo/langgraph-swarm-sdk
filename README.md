@@ -188,6 +188,18 @@ uv run --extra dev --extra observability --extra opencl --extra faiss --extra me
 uv run python -m swarm_sdk.agents.validate
 ```
 
+## Tuning (optional)
+
+Install the extra and run the routing tuner (offline, seeded, no API keys):
+
+```bash
+uv run --extra tune python -m swarm_sdk.tuning.routing --trials 40 --seed 0
+```
+
+It reports baseline versus tuned top-1 routing accuracy on a train split and a hold-out split of
+`Agents/benchmark/Tasks/routing/cases.json`. Adopt tuned parameters only if the hold-out score does
+not drop. Ax is not used: its BoTorch/PyTorch dependency has no macOS x86_64 wheels.
+
 ## Local CPython 3.14.7 runtime
 
 The standalone x86_64 CPython 3.14.7 build is available inside this checkout at

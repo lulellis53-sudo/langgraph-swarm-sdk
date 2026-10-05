@@ -1,0 +1,34 @@
+version: "1"
+name: Tuner
+role: offline_parameter_tuning
+
+model: openai:gpt-4o-mini
+think_level: medium
+effort: medium
+api_key_env: OPENAI_API_KEY
+
+token_budget:
+  max_prompt: 8192
+  max_completion: 2048
+
+tasks:
+  - id: define_search
+    description: >-
+      Pick the parameters to tune, their bounds and one deterministic offline
+      benchmark that scores them. Refuse a benchmark that needs live providers.
+    outputs:
+      - search_space
+      - benchmark
+
+  - id: run_study
+    description: >-
+      Run a seeded study that includes the current defaults as a warm start,
+      then report train and hold-out scores for baseline and best.
+    outputs:
+      - best_params
+      - scores
+
+capabilities:
+  - code_edit
+  - shell
+  - test_runner
