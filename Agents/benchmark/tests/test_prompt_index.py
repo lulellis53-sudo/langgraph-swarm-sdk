@@ -10,6 +10,8 @@ import pytest
 from benchmark.tests.fakes import Script, ScriptedModel, answer
 from swarm_sdk.agents.prompt_index import (
     AgentPromptIndex,
+    CorpusTfidfEmbedder,
+    IndexParams,
     PromptBlockedError,
     improve_prompt,
 )
@@ -75,3 +77,25 @@ def test_secrets_are_redacted_before_reaching_the_model(index: AgentPromptIndex)
     assert secret not in model.script.seen[0]
     assert "[REDACTED]" in model.script.seen[0]
     assert result.original.endswith(secret)
+
+
+def test_embedder_folds_accents_and_keeps_words_whole() -> None:
+    embedder = CorpusTfidfEmbedder.fit(["funcao de ordenacao rapida"])
+    accented = embedder.embed(["função"])[0]
+    plain = embedder.embed(["funcao"])[0]
+    assert float(accented @ plain) == pytest.approx(1.0)
+
+
+def test_smaller_chunks_produce_more_chunks() -> None:
+    default = AgentPromptIndex.build(_AGENTS)
+    small = AgentPromptIndex.build(_AGENTS, params=IndexParams(max_chunk_size=400))
+    assert small.size > default.size
+
+
+def test_name_boost_zero_still_builds_and_searches() -> None:
+    index = AgentPromptIndex.build(_AGENTS, params=IndexParams(name_boost=0, sublinear_tf=False))
+    assert index.search("refactor this module", k=2)
+
+
+def test_default_params_match_the_documented_defaults() -> None:
+    assert IndexParams() == IndexParams(max_chunk_size=1500, sublinear_tf=True, name_boost=1, k=4)
