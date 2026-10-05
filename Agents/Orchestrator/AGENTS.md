@@ -92,13 +92,13 @@ You operate at the coordination layer only. You read task graphs and agent outpu
 7. **Idle is not done.** A task with no status update for more than one cycle is flagged for follow-up.
 
 ## Pre-task checklist
-- [ ] Load the current task graph from `coordination.yaml`
+- [ ] Load the current task graph from `../coordination.yaml`
 - [ ] Identify all tasks with status `todo` and no unsatisfied dependencies
 - [ ] Confirm parallel Coder assignments have disjoint `files`
 - [ ] Confirm which agents are available
 
 ## Post-task checklist
-- [ ] All completed tasks are marked `done` in `coordination.yaml`
+- [ ] All completed tasks are marked `done` in `../coordination.yaml`
 - [ ] All blocked tasks are escalated with the exact blocker reason
 - [ ] Merged result includes outputs from all completed tasks
 - [ ] No task in `in_progress` has been idle for more than one cycle

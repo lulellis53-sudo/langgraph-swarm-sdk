@@ -106,6 +106,16 @@ jobs:
   benchmark:
     name: Benchmarks (pytest)
     runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v7
       - name: Install uv
@@ -114,9 +124,22 @@ jobs:
           python-version: "3.14.5"
           enable-cache: true
       - name: Install dev dependencies
-        run: uv sync --extra dev --frozen
+        run: uv sync --extra dev --extra redis --frozen
       - name: Run benchmark tasks
         run: uv run pytest Agents/benchmark -q
+      - name: Measure Redis cache paths
+        run: >-
+          PYTHONPATH=Agents:. uv run python
+          Agents/benchmark/Tasks/redis_cache/benchmark_redis_cache.py --write-results
+        env:
+          REDIS_URL: redis://localhost:6379/0
+      - name: Upload Redis cache benchmark report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: redis-cache-benchmark-${{ github.run_id }}-${{ github.run_attempt }}
+          path: Agents/benchmark/results/redis_cache/latest.json
+          if-no-files-found: ignore
 
   build:
     name: Build wheel
