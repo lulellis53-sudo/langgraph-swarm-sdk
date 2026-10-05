@@ -217,13 +217,14 @@ def test_service_credentials_have_agents_and_are_primed() -> None:
     registry = yaml.safe_load(registry_path.read_text(encoding="utf-8"))
     services = registry["services"]
     assert {service["api_key_env"] for service in services} == {
-        "TAVILY_API_KEY",
-        "BRAVE_API_KEY",
-        "EXA_API_KEY",
-        "MEM0_API_KEY",
-        "JEV_API_KEY",
         "APIFY_API_KEY",
+        "BRAVE_API_KEY",
         "BRIGHTDATA_MCP_TOKEN",
+        "EXA_API_KEY",
+        "JEV_API_KEY",
+        "JINA_API_KEY",
+        "MEM0_API_KEY",
+        "TAVILY_API_KEY",
     }
     agents = load_all_agent_manifests()
     assert all(
