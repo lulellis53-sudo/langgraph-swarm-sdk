@@ -27,10 +27,22 @@ def _gpu_backend(problem: MathProblem) -> MathBackend | None:
 
 
 def _rows(shape: tuple[int, ...] | None) -> int:
+    """Return the leading dimension, or ``0`` when ``shape`` is missing."""
     return shape[0] if shape else 0
 
 
+def _element_count(shape: tuple[int, ...] | None) -> int:
+    """Return the product of ``shape``, or ``0`` when ``shape`` is missing."""
+    if not shape:
+        return 0
+    total = 1
+    for dim in shape:
+        total *= dim
+    return total
+
+
 def _llm(route: dict[str, str], level: ThinkLevel, notes: str) -> MathDispatchDecision:
+    """Build an LLM dispatch decision for ``route`` at ``level``."""
     return MathDispatchDecision(
         backend="llm",
         gpu_enabled=False,
@@ -61,13 +73,24 @@ def classify_math_task(
         from swarm_sdk.gpu.opencl_math import _gpu_threshold
 
         rows = _rows(problem.shape)
+        elements = _element_count(problem.shape)
         backend = _gpu_backend(problem)
-        crossover = rows >= _gpu_threshold() or has_cache_key
+        # Cubic/complex operations win on the GPU sooner than simple matmul.
+        cubic_ops = {"solve", "eig", "svd", "inv", "det"}
+        is_cubic = problem.operation in cubic_ops
+        effective_threshold = _gpu_threshold() // 4 if is_cubic else _gpu_threshold()
+        # Float64 doubles PCIe traffic and compute; raise the bar.
+        if problem.dtype == "float64":
+            effective_threshold = int(effective_threshold * 1.5)
+        # Element-count gate: only very large matrices benefit from GPU transfer
+        # for simple matmul; cubic ops already lowered the row threshold.
+        element_gate = effective_threshold * 256 if not is_cubic else effective_threshold * 128
+        crossover = rows >= effective_threshold or elements >= element_gate or has_cache_key
         if backend is not None and rows > 0 and crossover:
             why = (
                 "resident buffer"
-                if has_cache_key and rows < _gpu_threshold()
-                else "rows >= crossover"
+                if has_cache_key and rows < effective_threshold
+                else f"rows/elements >= crossover (op={problem.operation}, dtype={problem.dtype})"
             )
             return MathDispatchDecision(
                 backend=backend,

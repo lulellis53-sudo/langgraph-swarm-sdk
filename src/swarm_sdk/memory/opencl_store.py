@@ -19,6 +19,7 @@ _SINGLE_SLAB_MAX_ROWS = 32768
 
 
 def _topk(scores: np.ndarray, k: int) -> tuple[np.ndarray, np.ndarray]:
+    """Return the ``k`` largest scores and their indices, highest first."""
     k = min(k, scores.shape[0])
     idx = np.argpartition(scores, -k)[-k:]
     idx = idx[np.argsort(-scores[idx])]
@@ -75,7 +76,9 @@ class OpenClVecStore:
         self._bits = np.empty((0, (dim + 31) // 32), dtype=np.uint32)
         self._capacity = 0
         self._size = 0
-        self._head = 0
+        # LRU tracking: 0 means empty, larger value means more recently used.
+        self._last_access = np.empty(0, dtype=np.int64)
+        self._access_counter = 1
         self._next_id = 0
         self._generation = 0
         self._cache_token = object()
@@ -103,6 +106,9 @@ class OpenClVecStore:
         ids = np.empty(capacity, dtype=np.int64)
         ids[: self._size] = self._ids[: self._size]
         self._ids = ids
+        access = np.zeros(capacity, dtype=np.int64)
+        access[: self._size] = self._last_access[: self._size]
+        self._last_access = access
         self._texts.extend([None] * (capacity - self._capacity))
         self._capacity = capacity
 
@@ -117,7 +123,7 @@ class OpenClVecStore:
             self._vectors[slot] = row[0]
 
     def add(self, text: str, vector: np.ndarray) -> int:
-        """Append a record to the resident GPU buffer."""
+        """Append a record to the resident GPU buffer, evicting the LRU slot when full."""
         row = unit(vector).reshape(1, -1).astype(np.float32)
         if row.shape[1] != self.dim:
             raise ValueError(f"expected dim {self.dim}, got {row.shape[1]}")
@@ -127,14 +133,17 @@ class OpenClVecStore:
             if self._size < self.max_vectors:
                 if self._size == self._capacity:
                     self._grow(min(self.max_vectors, max(1, self._capacity * 2)))
-                slot = (self._head + self._size) % self.max_vectors
+                slot = self._size
                 self._size += 1
             else:
-                slot = self._head
-                self._head = (self._head + 1) % self.max_vectors
+                # Evict the coldest slot (minimum non-zero last access counter).
+                active = self._last_access[: self._size]
+                slot = int(active.argmin())
             self._write_slot(slot, row)
             self._texts[slot] = text
             self._ids[slot] = index
+            self._last_access[slot] = self._access_counter
+            self._access_counter += 1
             self._generation += 1
             return index
 
@@ -193,15 +202,13 @@ class OpenClVecStore:
 
             best_scores = np.empty(0, dtype=np.float32)
             best_indexes = np.empty(0, dtype=np.int64)
-            # An unwrapped ring keeps every resident row contiguous, so one slab
-            # kernel replaces the per-chunk launches (and their sync overhead).
+            # Active slots are always compacted to [0, _size), so chunking is simple.
             step = self.chunk_rows
-            if self._head + self._size <= self.max_vectors and self._size <= _SINGLE_SLAB_MAX_ROWS:
+            if self._size <= _SINGLE_SLAB_MAX_ROWS:
                 step = self._size
             for start in range(0, self._size, step):
                 stop = min(start + self.chunk_rows, self._size)
-                logical = np.arange(start, stop, dtype=np.int64)
-                slots = (self._head + logical) % self.max_vectors
+                slots = np.arange(start, stop, dtype=np.int64)
                 local_idx, local_scores = self._score_chunk(
                     query,
                     query_bits,
@@ -217,6 +224,11 @@ class OpenClVecStore:
                 selected = selected[np.argsort(-candidates_scores[selected])]
                 best_indexes = candidates_idx[selected]
                 best_scores = candidates_scores[selected]
+
+            # Promote returned slots to most-recently-used.
+            now = self._access_counter
+            self._last_access[best_indexes] = now
+            self._access_counter += 1
 
             return [
                 MemoryHit(
