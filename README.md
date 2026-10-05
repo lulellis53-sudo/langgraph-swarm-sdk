@@ -135,7 +135,7 @@ Predefined model routes, API key variable names, and service credential owners l
 | Lane | Worktree | Branch |
 |------|----------|--------|
 | WebSearch | [`WebSearch/`](WebSearch/) | `feature/websearch` — [`PIPELINE.md`](WebSearch/PIPELINE.md) |
-| Prediction | `../Swarm-Prediction` | `feat/prediction-engine` — [`Prediction/`](Prediction/) (`uv sync --extra forecast`, [`Prediction/README.md`](Prediction/README.md)) |
+| Prediction | `../Swarm-Prediction` | `feat/prediction-engine` — [`Prediction/`](Prediction/) (`uv sync --extra forecast`, [`Prediction/README.md`](Prediction/README.md); tests: `uv run --extra forecast pytest tests/test_prediction_engine.py -q`) |
 | Newsletter | `../Newsletter` | `feat/newsletter` — [`Newsletter/`](Newsletter/) |
 
 Repo root stays on `integration/all-branches` for merges. Open [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace) for a multi-root editor layout. `SWARM_*` env vars override file defaults.
