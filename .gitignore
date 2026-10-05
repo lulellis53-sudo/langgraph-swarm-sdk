@@ -67,9 +67,8 @@ notebooks/.ipynb_checkpoints/
 # Playwright MCP page snapshots (server-side artifacts)
 .playwright-mcp/
 
-# Local MCP server configs (may reference credentials)
-mcp.json
-.mcp.json
+# --- JSON (untracked only; already-tracked *.json stay in the index until removed) ---
+*.json
 
 # Agent instruction files (local only)
 AGENTS.md

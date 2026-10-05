@@ -52,7 +52,9 @@
     "editor.wordWrapColumn": 100,
     "editor.codeActionsOnSave": {
       "source.fixAll.markdownlint": "explicit"
-    }
+    },
+    "gitlens.codeLens.enabled": false,
+    "gitlens.currentLine.enabled": false
   },
   "[yaml]": {
     "editor.defaultFormatter": "redhat.vscode-yaml",
@@ -63,7 +65,8 @@
     "editor.formatOnSave": true
   },
   "[ipynb]": {
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "gitlens.codeLens.enabled": false
   },
 
   "biome.enabled": true,
@@ -161,19 +164,47 @@
   "dev.containers.dockerComposePath": "docker compose",
   "remote.containers.workspaceMountConsistency": "cached",
 
+  "git.autofetch": true,
+  "git.autofetchPeriod": 180,
+  "git.confirmSync": false,
+  "git.enableSmartCommit": true,
+  "git.fetchOnPull": true,
+  "git.openRepositoryInParentFolders": "always",
+  "git.showPushSuccessNotification": true,
+  "scm.defaultViewMode": "tree",
+
+  "gitlens.ai.enabled": true,
+  "gitlens.ai.model": "vscode",
+  "gitlens.ai.modelOptions.temperature": 0.2,
+  "gitlens.ai.generateCommitMessage.customInstructions": "Follow Conventional Commits when it fits (feat|fix|docs|chore|refactor|test). Subject ≤72 chars; optional short body for why. Always end the full message with a blank line, then one trailer line: GitLens-Model: <provider:model> using the exact model id that produced the text (e.g. vscode:default or openai:gpt-4o). Never skip the trailer.",
+  "gitlens.ai.generateCommits.customInstructions": "Same rules for every generated commit: Conventional Commits, concise why-focused wording, and each message must end with a blank line plus GitLens-Model: <provider:model> trailer for the model used.",
+
+  "gitlens.telemetry.enabled": false,
   "gitlens.showWelcomeOnInstall": false,
   "gitlens.showWhatsNewAfterUpgrades": false,
-  "gitlens.currentLine.enabled": true,
-  "gitlens.currentLine.pullRequests.enabled": true,
-  "gitlens.currentLine.format": "${author, }${agoOrDate|14-} ${message|50?}",
+  "gitlens.integrations.enabled": true,
+  "gitlens.smartFormatting.enabled": true,
+  "gitlens.defaultDateStyle": "relative",
+  "gitlens.defaultDateSource": "committed",
   "gitlens.hovers.enabled": true,
   "gitlens.hovers.currentLine.over": "line",
   "gitlens.hovers.changes": true,
   "gitlens.hovers.avatars": true,
+  "gitlens.hovers.pullRequests.enabled": true,
+  "gitlens.hovers.autolinks.enabled": true,
+  "gitlens.hovers.autolinks.enhanced": true,
+  "gitlens.currentLine.enabled": true,
+  "gitlens.currentLine.scrollable": true,
+  "gitlens.currentLine.pullRequests.enabled": true,
+  "gitlens.currentLine.format": "${author, }${agoOrDate|14-} ${message|50?}",
+  "gitlens.currentLine.uncommittedChangesFormat": "${author, }Uncommitted ${changes}",
   "gitlens.codeLens.enabled": true,
   "gitlens.codeLens.authors.enabled": true,
   "gitlens.codeLens.recentChange.enabled": true,
-  "gitlens.codeLens.scopes": ["document"],
+  "gitlens.codeLens.includeSingleLineSymbols": false,
+  "gitlens.codeLens.scopes": ["document", "containers"],
+  "gitlens.codeLens.recentChange.command": "gitlens.showQuickCommitFileDetails",
+  "gitlens.codeLens.authors.command": "gitlens.showQuickFileHistory",
   "gitlens.statusBar.enabled": true,
   "gitlens.statusBar.alignment": "right",
   "gitlens.statusBar.format": "${author}, ${agoOrDate}",
@@ -182,13 +213,46 @@
   "gitlens.blame.heatmap.enabled": false,
   "gitlens.blame.highlight.enabled": true,
   "gitlens.fileAnnotations.preserveWhileEditing": false,
-  "gitlens.views.commitDetails.files.layout": "tree",
-  "gitlens.views.commitDetails.files.threshold": 80,
-  "gitlens.views.branches.branches.layout": "tree",
   "gitlens.graph.layout": "editor",
   "gitlens.graph.onlyFollowFirstParent": false,
-  "gitlens.smartFormatting.enabled": true,
-  "gitlens.integrations.enabled": true,
+  "gitlens.views.repositories.includeWorkingTree": true,
+  "gitlens.views.repositories.showBranches": true,
+  "gitlens.views.repositories.showRemotes": true,
+  "gitlens.views.repositories.showTags": true,
+  "gitlens.views.repositories.showStashes": true,
+  "gitlens.views.repositories.showUpstreamStatus": true,
+  "gitlens.views.repositories.showIncomingActivity": false,
+  "gitlens.views.worktrees.reveal": true,
+  "gitlens.views.worktrees.pullRequests.enabled": true,
+  "gitlens.views.worktrees.pullRequests.showForBranches": true,
+  "gitlens.views.worktrees.files.layout": "tree",
+  "gitlens.views.branches.branches.layout": "tree",
+  "gitlens.views.commitDetails.files.layout": "tree",
+  "gitlens.views.commitDetails.files.threshold": 80,
+  "gitlens.launchpad.indicator.enabled": true,
+  "gitlens.launchpad.indicator.polling.enabled": false,
+  "gitlens.launchpad.indicator.openInEditor": true,
+  "gitlens.launchpad.staleThreshold": 14,
+  "gitlens.mode.statusBar.enabled": true,
+  "gitlens.modes": {
+    "review": {
+      "name": "Review",
+      "description": "Integration / PR review (heatmap + lenses)",
+      "annotations": "heatmap",
+      "codeLens": true,
+      "currentLine": true,
+      "hovers": true
+    },
+    "focus": {
+      "name": "Focus",
+      "description": "Line blame + hovers only",
+      "annotations": false,
+      "codeLens": false,
+      "currentLine": true,
+      "hovers": true
+    }
+  },
+  "gitlens.terminalLinks.enabled": true,
   "gitlens.advanced.messages": {
     "suppressIntegrationRequestAlreadyInstalledWarning": true
   },
