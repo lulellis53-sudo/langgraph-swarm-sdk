@@ -2,8 +2,8 @@ version: "1"
 name: MLSpecialist
 role: model_selection_and_integration
 
-model: openai:gpt-4o
-api_key_env: OPENAI_API_KEY
+model: anthropic:claude-sonnet-4.6
+api_key_env: CLAUDE_OAUTH_TOKEN
 think_level: high
 
 token_budget:
@@ -23,6 +23,12 @@ tasks:
     description: >-
       Integrate a model or embedding provider into the application with
       validation that the output meets the required quality threshold.
+    outputs:
+      - changed_files
+      - validation_results
+
+  - id: forecast
+    description: Integrate and validate the forecasting pipeline and its model configuration.
     outputs:
       - changed_files
       - validation_results

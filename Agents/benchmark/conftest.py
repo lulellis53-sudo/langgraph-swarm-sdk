@@ -1,9 +1,12 @@
+"""Shared fixtures for the Agents/benchmark suite."""
+
 from pathlib import Path
 
 import pytest
 
 from benchmark.tests.fakes import Script, ScriptedModel, answer
-from swarm_sdk.config.loader import load_swarm_config
+from swarm_sdk import vault
+from swarm_sdk.config.loader import SwarmFileConfig, load_swarm_config
 from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import SwarmSDK
 from swarm_sdk.retrieval.embeddings import HashEmbedder
@@ -12,6 +15,7 @@ from swarm_sdk.retrieval.rerank import IdentityReranker
 
 @pytest.fixture
 def bench_settings(tmp_path: Path) -> Settings:
+    """Isolated SDK settings pointing at files under ``tmp_path``."""
     return Settings(
         memory_path=str(tmp_path / "mem.db"),
         cache_path=str(tmp_path / "cache.db"),
@@ -21,12 +25,14 @@ def bench_settings(tmp_path: Path) -> Settings:
 
 
 @pytest.fixture
-def file_config():
+def file_config() -> SwarmFileConfig:
+    """Load the committed ``Main/config/swarm.yaml`` registry."""
     return load_swarm_config(Path("Main/config/swarm.yaml"))
 
 
 @pytest.fixture
-def bench_sdk(bench_settings: Settings, file_config) -> SwarmSDK:
+def bench_sdk(bench_settings: Settings, file_config: SwarmFileConfig) -> SwarmSDK:
+    """Scripted SwarmSDK that never calls a live provider."""
     script = Script(
         [
             answer('{"mode":"swarm","tasks":[]}'),
@@ -42,3 +48,17 @@ def bench_sdk(bench_settings: Settings, file_config) -> SwarmSDK:
         embedder=HashEmbedder(32, model_name="sentence-transformers/all-MiniLM-L6-v2"),
         reranker=IdentityReranker(),
     )
+
+
+@pytest.fixture(autouse=True)
+def _isolate_secrets(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Keep real credentials out of every test.
+
+    Clears each env name the configs reference, blocks the macOS Keychain CLI and points
+    ``~`` at an empty directory so the legacy ``~/.env`` fallback finds nothing. Tests that
+    need a key set it explicitly (``monkeypatch.setenv`` or an injected vault runner).
+    """
+    for name in vault.referenced_names():
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr(vault, "run_cli", lambda argv: None)
+    monkeypatch.setenv("HOME", str(tmp_path))

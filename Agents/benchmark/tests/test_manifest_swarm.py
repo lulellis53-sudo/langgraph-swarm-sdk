@@ -163,7 +163,8 @@ def test_websearch_flag_off_leaves_handoffs_only(tmp_path: Path) -> None:
     tools = sdk._node_tools(manifest, ["coder", "reviewer"])
     names = [getattr(tool, "name", "") for tool in tools]
 
-    assert names == ["transfer_to_coder", "transfer_to_reviewer"]
+    assert "web_search_brief" not in names
+    assert names == ["parse_syntax", "transfer_to_coder", "transfer_to_reviewer"]
 
 
 def test_capability_without_flag_or_package_is_ignored(tmp_path: Path, monkeypatch) -> None:

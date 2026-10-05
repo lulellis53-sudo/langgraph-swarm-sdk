@@ -14,14 +14,14 @@ parallelism:
 model_select:
   default_level: medium       # off | low | medium | high | xhigh
   routes:
-    # fast daily-driver for cheap think levels
-    - name: openai:gpt-4o-mini
-      provider: openai
+    # Codex OAuth daily driver for cheap think levels
+    - name: openai:gpt-6-luna
+      provider: codex
       think_levels: ["off", "low", "medium"]
       priority: 10
-    # heavy reasoning goes to the strong model
-    - name: openai:gpt-4o
-      provider: openai
+    # Claude OAuth for heavy reasoning
+    - name: anthropic:claude-sonnet-4.6
+      provider: claude-code
       think_levels: ["medium", "high", "xhigh"]
       priority: 20
     # independent fallback route (different provider)
@@ -84,7 +84,7 @@ rerank:
   top_k: 4
 
 router:
-  router_model: openai:gpt-4o-mini
+  router_model: openai:gpt-6-luna
   think_level: low
   max_tokens: 2048
   tool_cap: 128

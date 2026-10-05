@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from langchain_core.language_models.chat_models import BaseChatModel
 
 from benchmark.tests.fakes import (
@@ -19,6 +21,13 @@ from swarm_sdk.memory.opencl_store import OpenClVecStore
 from swarm_sdk.orchestrator.spawn import spawn
 from swarm_sdk.retrieval.embeddings import HashEmbedder
 from swarm_sdk.retrieval.rerank import IdentityReranker
+
+
+@pytest.fixture(autouse=True)
+def _no_hosted_jev(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Spawn tests must not call TypeSafe when a key is present in the environment."""
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    monkeypatch.delenv("JEV_API_KEY", raising=False)
 
 
 def _router_sdk(

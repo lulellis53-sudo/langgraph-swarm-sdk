@@ -64,7 +64,7 @@ def test_agent_manifests_and_coordination() -> None:
         "fix_regression",
         "add_tests",
     }
-    assert manifests["Researcher"].model == "openai:gpt-4o-mini"
+    assert manifests["Researcher"].model == "openai:gpt-6-luna"
     assert validate_coordination(root) == []
 
 
@@ -220,6 +220,8 @@ def test_service_credentials_have_agents_and_are_primed() -> None:
         "EXA_API_KEY",
         "MEM0_API_KEY",
         "JEV_API_KEY",
+        "APIFY_API_KEY",
+        "BRIGHTDATA_MCP_TOKEN",
     }
     agents = load_all_agent_manifests()
     assert all(
@@ -251,8 +253,8 @@ def test_load_provider_catalog_parses_bundled_yaml() -> None:
     catalog = load_provider_catalog(_BUNDLED_SWARM_CONFIG.parent / "providers.yaml")
 
     assert catalog.providers
-    openai_entry = next(p for p in catalog.providers if p.name == "openai")
-    assert openai_entry.api_key_env == "OPENAI_API_KEY"
+    codex_entry = next(p for p in catalog.providers if p.name == "codex")
+    assert codex_entry.api_key_env == "CODEX_OAUTH_TOKEN"
     assert catalog.ranked()[0].priority <= catalog.ranked()[-1].priority
 
 

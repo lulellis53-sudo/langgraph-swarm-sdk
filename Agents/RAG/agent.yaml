@@ -1,7 +1,6 @@
 version: "1"
 name: RAG
 role: knowledge_retrieval
-description: "Autonomous RAG & Knowledge Retrieval Specialist for semantic caching, hybrid dense-sparse search, reciprocal rank fusion, cross-encoder reranking, and citation grounding."
 
 model: inherit
 think_level: high
@@ -14,21 +13,21 @@ token_budget:
 tasks:
   - id: hybrid_retrieval
     description: >-
-      Execute hybrid dense and sparse retrieval with Reciprocal Rank Fusion,
-      cross-encoder probability calibration, and lost-in-the-middle context packing.
+      Retrieve passages for a query with dense and sparse search, fuse the
+      rankings, and return a grounded context with provenance.
     outputs:
       - provenance_context
       - retrieval_metrics
-      - crag_assessment
 
   - id: semantic_caching
     description: >-
-      Query the semantic cache for sub-2ms hit latency and manage threshold-gated eviction.
+      Decide whether a query can be served from a semantic cache, and state
+      the hit rule, the miss path, and what must not be cached.
     outputs:
-      - cache_hit_payload
+      - cache_decision
+      - cache_policy
 
 capabilities:
-  - view_file
-  - write_to_file
-  - replace_file_content
-  - send_message
+  - retrieval
+  - semantic_cache
+  - citation

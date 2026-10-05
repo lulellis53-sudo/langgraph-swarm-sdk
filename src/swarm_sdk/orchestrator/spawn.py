@@ -9,6 +9,9 @@ The flow is deliberately simple and cheap in tokens:
 3. On malformed JSON, unknown agents, or bad dependency references: retry once,
    then fall back to a single-step plan so a confused orchestrator can never
    block the swarm.
+4. A deterministic safety check can return a one-step blocked plan. That check
+   is not Jev. A goal that passes it gets a hosted System One hint when
+   ``TYPESAFE_API_KEY`` or ``JEV_API_KEY`` is in the environment. No keychain.
 
 No free-text re-planning loops — one compact JSON exchange per goal.
 """
@@ -22,6 +25,8 @@ from typing import TYPE_CHECKING
 from pydantic import ValidationError
 
 from swarm_sdk.agents.manifest import AgentManifest, agents_root
+from swarm_sdk.core.jev_router import JevRouter
+from swarm_sdk.core.system_one import jev_advice
 from swarm_sdk.execution.executor import offload
 from swarm_sdk.models.chat import complete, load_chat_model
 
@@ -56,7 +61,31 @@ the step ids whose outputs this step needs; use only the agent names above.
 task is an agent.yaml task id for that agent (empty if any). files are exclusive
 relative write-paths. Split Coder work into sibling steps with disjoint files so
 they share a wave; never claim the same write-path in parallel; keep a module's
-tests in the same Coder step as its production files."""
+tests in the same Coder step as its production files.
+
+The JEV brief after this prompt is a hint from hosted System One, or an
+abstention. It does not block a step and it does not authorize a write."""
+
+
+def _safety_block(goal: str, manifests: dict[str, AgentManifest]) -> Plan | None:
+    """A one-step plan when the local destructive-command check matches.
+
+    This is application policy. It does not call hosted Jev.
+    """
+    decision = JevRouter(endpoint=None, api_key="").evaluate_noul(goal)
+    if decision.decision:
+        return None
+    owner = "Orchestrator" if "Orchestrator" in manifests else next(iter(manifests))
+    return Plan(
+        steps=[
+            PlanStep(
+                id="S1",
+                title="blocked",
+                description=f"deterministic safety block: {decision.reasoning_tag}",
+                agent=owner,
+            )
+        ]
+    )
 
 
 def _model_name(manifest: AgentManifest) -> str:
@@ -129,16 +158,21 @@ async def spawn(
             JSON-prompt + regex path stays as the fallback either way.
 
     Returns:
-        A validated plan. Guaranteed non-empty: malformed replies fall back to
-        a single-step plan after one retry.
+        A validated plan. A deterministic safety rejection is a one-step blocked
+        plan and does not call the model. Malformed replies fall back to a
+        single-step plan after one retry.
     """
     if structured is None:
         from swarm_sdk.config.settings import Settings
 
         structured = Settings().planner_structured_output
+    blocked = _safety_block(goal, manifests)
+    if blocked is not None:
+        return blocked
     orchestrator = manifests.get("Orchestrator") or next(iter(manifests.values()))
     roster = "\n".join(f"- {m.name}: {m.role}" for m in manifests.values())
     prompt = PLAN_PROMPT.format(goal=goal, agents=roster)
+    prompt = f"{prompt}\n\n{jev_advice(goal, list(manifests))}"
 
     if model_override is not None:
         model = model_override

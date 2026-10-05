@@ -4,10 +4,26 @@
 version: 1
 
 providers:
-  - name: openai
-    models: ["openai:gpt-4o", "openai:gpt-4o-mini"]
-    api_key_env: OPENAI_API_KEY
+  - name: codex
+    models: ["openai:gpt-6-luna"]
+    api_key_env: CODEX_OAUTH_TOKEN
     priority: 10
+  - name: claude-code
+    models: ["anthropic:claude-sonnet-4.6"]
+    api_key_env: CLAUDE_OAUTH_TOKEN
+    priority: 15
+  - name: zai
+    models: ["zai:glm-5.2"]
+    api_key_env: ZAI_API_KEY
+    priority: 16
+  - name: minimax
+    models: ["minimax:MiniMax-M2.7"]
+    api_key_env: MINIMAX_API_KEY
+    priority: 17
+  - name: xai
+    models: ["xai:grok-4.6"]
+    api_key_env: GROK_OAUTH_TOKEN
+    priority: 18
   - name: anthropic
     models: ["anthropic:claude-sonnet-4-5", "anthropic:claude-haiku-4-5"]
     api_key_env: ANTHROPIC_API_KEY

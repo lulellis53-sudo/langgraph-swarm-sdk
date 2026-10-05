@@ -8,18 +8,19 @@ import json
 import logging
 import re
 from pathlib import Path
+from types import ModuleType
 from typing import Any
 
 import numpy as np
 from pydantic import BaseModel, Field
 
-from swarm_sdk.retrieval.embeddings import HashEmbedder
+from swarm_sdk.retrieval.embeddings import Embedder, HashEmbedder
 
 logger = logging.getLogger(__name__)
 
 
 @functools.cache
-def _faiss() -> Any | None:
+def _faiss() -> ModuleType | None:
     """Import FAISS on first use (about 95 ms); ``None`` when it is not installed."""
     try:
         return importlib.import_module("faiss")
@@ -125,7 +126,7 @@ class RAGIngestionPipeline:
     def __init__(
         self,
         embedding_dim: int = 128,
-        embedder: Any = None,
+        embedder: Embedder | None = None,
         *,
         force_numpy: bool = False,
         child_size: int | None = None,
@@ -481,4 +482,5 @@ class RAGIngestionPipeline:
             raise FileNotFoundError(f"No index file found in {target_dir}")
 
     def __len__(self) -> int:
+        """Return the number of indexed chunks."""
         return len(self.chunks)

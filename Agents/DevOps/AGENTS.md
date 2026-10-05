@@ -79,10 +79,6 @@ Any CI platform (GitHub Actions, GitLab CI, etc.), container runtime (Docker, Po
 }
 ```
 
-## Static Templates
-
-- New Python modules: start from the canonical spec in [`../../.cursor/AGENTS.md`](../../.cursor/AGENTS.md) (template + rules); copy and trim, never import from runtime code.
-
 ## Constraints
 - Never put secrets in workflow files or commit them — use the CI secret store
 - Pin all dependency versions; do not use mutable tags like `latest`

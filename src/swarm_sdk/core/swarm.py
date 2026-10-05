@@ -20,6 +20,7 @@ from swarm_sdk.agents.manifest import (
 )
 from swarm_sdk.config.loader import SwarmFileConfig, load_swarm_config
 from swarm_sdk.config.settings import Settings, load_merged_settings
+from swarm_sdk.core.jev_router import JevRouter
 from swarm_sdk.execution.executor import offload
 from swarm_sdk.execution.fanout import fan_out
 from swarm_sdk.gpu import set_enabled as set_opencl_enabled
@@ -282,6 +283,10 @@ class SwarmSDK:
         self._selector = ModelSelector(self.file_config.model_select)
         self._langgraph_manifests = langgraph_manifests(load_all_agent_manifests())
         self.usage = UsageLog()
+        self._jev = JevRouter(
+            endpoint=self.settings.jev_endpoint,
+            timeout_s=self.settings.jev_timeout_s,
+        )
         from swarm_sdk.core.checkpoint import open_checkpointer
 
         self._compiled: CompiledGraph | None = None
@@ -330,6 +335,8 @@ class SwarmSDK:
                 self.settings.semantic_threshold,
                 ttl_days=self.settings.cache_ttl_days,
                 use_index=self.settings.semantic_cache_on_gpu,
+                redis_url=self.settings.redis_url,
+                redis_ttl_s=self.settings.redis_cache_ttl_s,
             )
         return self._cache
 
@@ -400,7 +407,7 @@ class SwarmSDK:
             agent = "synthesizer"
             mode = "parallel"
         else:
-            answer, tokens, agent = await self._swarm(packed, thread_id)
+            answer, tokens, agent = await self._swarm(packed, text, thread_id)
             mode = "swarm"
         tokens += route_tokens
         if answer.strip():
@@ -535,7 +542,7 @@ class SwarmSDK:
             metrics.set_active_threads(len(self._threads))
             return True
 
-    async def _swarm(self, packed: PackedPrompt, thread_id: str) -> tuple[str, int, str]:
+    async def _swarm(self, packed: PackedPrompt, text: str, thread_id: str) -> tuple[str, int, str]:
         graph = self._graph()
         user = packed.user or packed.system
         payload: dict[str, object] = {"messages": [{"role": "user", "content": user}]}
@@ -544,7 +551,7 @@ class SwarmSDK:
         def _call() -> dict[str, object]:
             # Checkpointer read is blocking disk I/O: keep it off the event loop.
             if self._is_new_thread(thread_id):
-                payload["active_agent"] = self._default_agent
+                payload["active_agent"] = self._jev_default_agent(text)
             state = graph.invoke(payload, self._run_config(thread_id))
             if not isinstance(state, dict):
                 raise TypeError("swarm state must be a dict")
@@ -591,21 +598,51 @@ class SwarmSDK:
         nodes = set(self._langgraph_manifests) or set(_DEFAULT_NODE_PROMPTS)
         return "researcher" if "researcher" in nodes else sorted(nodes)[0]
 
+    def _jev_default_agent(self, text: str) -> str:
+        """Pick the entry agent using JEV's deterministic choice router.
+
+        Falls back to the static default when JEV routing is disabled, the router
+        raises, or the selected choice is not a wired node. This keeps new-thread
+        startup deterministic and sub-35ms when ``jev_routing`` is enabled.
+
+        Args:
+            text: The original user message.
+
+        Returns:
+            Name of the entry agent to activate.
+        """
+        if not self.settings.jev_routing:
+            return self._default_agent
+        candidates = sorted(self._langgraph_manifests) or sorted(_DEFAULT_NODE_PROMPTS)
+        try:
+            decision = self._jev.evaluate_choice(text, candidates)
+        except Exception as exc:
+            logger.debug("JEV entry-agent routing failed (%s); falling back", exc)
+            return self._default_agent
+        if decision.selected_choice in candidates:
+            return decision.selected_choice
+        return self._default_agent
+
     def _node_tools(self, manifest: AgentManifest | None, peers: list[str]) -> list[object]:
         """Tools for one swarm node: capability-gated extras plus handoffs.
 
-        A manifest advertising the ``web_search`` capability also gets the
-        WebSearch LangChain tools when ``Settings.enable_websearch_tools`` is
-        set and the package is importable; otherwise only handoff tools.
+        A manifest advertising ``web_search`` also gets the WebSearch tools
+        when ``Settings.enable_websearch_tools`` is set. A manifest advertising
+        ``ast`` gets the Python syntax outline. Otherwise only handoff tools.
         """
         handoffs = [_handoff(peer, f"Hand off {peer} work.") for peer in peers]
+        extras: list[object] = []
         if (
             manifest is not None
             and self.settings.enable_websearch_tools
             and "web_search" in manifest.capabilities
         ):
-            return [*_websearch_tools(), *handoffs]
-        return handoffs
+            extras.extend(_websearch_tools())
+        if manifest is not None and "ast" in manifest.capabilities:
+            from swarm_sdk.agents.syntax_tree import syntax_tools
+
+            extras.extend(syntax_tools())
+        return [*extras, *handoffs]
 
     def _node_middleware(self) -> list[object]:
         """Token-saving middleware for every swarm agent node.

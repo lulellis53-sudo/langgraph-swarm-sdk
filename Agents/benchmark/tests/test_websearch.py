@@ -17,6 +17,7 @@ from WebSearch.frontend import (
     search_tavily,
     searcher_ids,
 )
+from WebSearch.frontend.websearchers import search_kimi
 from WebSearch.midend import crawl_then_scrape
 from WebSearch.repeater import repeater
 
@@ -37,12 +38,15 @@ def test_load_providers_yaml() -> None:
         "context7",
         "brave",
         "ddg",
+        "ddglite",
         "tavily",
         "apify",
+        "openrouter_web",
         "exa",
         "bright_data",
         "searxng",
         "google_ground",
+        "kimisearch",
     )
     assert get_searcher(cfg, "tavily").api_key_env == "TAVILY_API_KEY"
     assert get_searcher(cfg, "exa").api_key_env == "EXA_API_KEY"
@@ -129,6 +133,34 @@ def test_http_apis_fail_closed_without_keys() -> None:
     assert search_brave("q", spec) == []
     spec_t = SearcherSpec(id="tavily", kind="websearcher", api_key_env="TAVILY_API_KEY")
     assert search_tavily("q", spec_t) == []
+
+
+def test_kimisearch_spec_is_in_registry() -> None:
+    cfg = load_providers()
+    spec = get_searcher(cfg, "kimisearch")
+    assert spec.api_key_env == "MOONSHOT_API_KEY"
+    assert spec.base_url_env == "MOONSHOT_BASE_URL"
+
+
+def test_kimisearch_fails_closed_without_key() -> None:
+    spec = SearcherSpec(id="kimisearch", kind="websearcher", api_key_env="KIMI_MISSING_KEY")
+    assert search_kimi("q", spec) == []
+
+
+def test_kimisearch_parses_web_search_basic_response(monkeypatch) -> None:
+    from WebSearch.frontend import websearchers
+
+    payload = {
+        "search_results": [
+            {"title": "A", "url": "https://a.example", "snippet": "snippet a"},
+        ]
+    }
+    monkeypatch.setenv("MOONSHOT_API_KEY", "k")
+    monkeypatch.setattr(websearchers, "_httpx_json", lambda *a, **k: payload)
+    spec = SearcherSpec(id="kimisearch", kind="websearcher", api_key_env="MOONSHOT_API_KEY")
+    hits = search_kimi("q", spec)
+    assert hits and hits[0].title == "A"
+    assert hits[0].searcher_id == "kimisearch"
 
 
 def test_registry_search_injected_backend() -> None:
@@ -399,7 +431,7 @@ def test_google_ground_parses_chunks_and_tokens(monkeypatch) -> None:
         "usageMetadata": {"totalTokenCount": 42},
     }
     monkeypatch.setenv("GEMINI_API_KEY", "k")
-    monkeypatch.setattr(websearchers, "_httpx_json", lambda *a, **k: payload)
+    monkeypatch.setattr(websearchers, "request_json", lambda *a, **k: payload)
     spec = SearcherSpec(id="google_ground", kind="websearcher", api_key_env="GEMINI_API_KEY")
     hits = frontend.search_google_ground("q", spec)
     assert [h.title for h in hits] == ["a.com", "b.com"]

@@ -10,19 +10,24 @@ from typing import Protocol, cast
 class Reranker(Protocol):
     """Reranker protocol: return documents ordered best-first for the query."""
 
-    def rerank(self, query: str, documents: list[str]) -> list[str]: ...
+    def rerank(self, query: str, documents: list[str]) -> list[str]:
+        """Return ``documents`` ordered best-first for ``query``."""
+        ...
 
 
 class ScoredReranker(Protocol):
     """Reranker protocol that also exposes relevance scores."""
 
-    def rerank_scored(self, query: str, documents: list[str]) -> list[tuple[str, float]]: ...
+    def rerank_scored(self, query: str, documents: list[str]) -> list[tuple[str, float]]:
+        """Return ``(document, score)`` pairs ordered best-first."""
+        ...
 
 
 class IdentityReranker:
     """No-op reranker preserving input order (tests, offline runs)."""
 
     def rerank(self, query: str, documents: list[str]) -> list[str]:
+        """Return ``documents`` in the given order."""
         del query
         return list(documents)
 
@@ -31,6 +36,7 @@ class KeywordReranker:
     """Lexical stand-in used when the ONNX cross-encoder is not installed."""
 
     def rerank(self, query: str, documents: list[str]) -> list[str]:
+        """Order documents by how many query tokens they share."""
         needles = set(query.lower().split())
 
         def score(document: str) -> int:
@@ -55,10 +61,12 @@ class FastEmbedReranker:
     """ONNX cross-encoder reranker (FastEmbed, MiniLM by default)."""
 
     def __init__(self, model_name: str = "Xenova/ms-marco-MiniLM-L-6-v2") -> None:
+        """Store the FastEmbed cross-encoder model name."""
         self.model_name = model_name
         self._model: CrossEncoderProto | None = None
 
     def rerank(self, query: str, documents: list[str]) -> list[str]:
+        """Return documents ordered by cross-encoder score, highest first."""
         if not documents:
             return []
         encoder = self._load()
@@ -90,7 +98,9 @@ class FastEmbedReranker:
 class CrossEncoderProto(Protocol):
     """Structural view of the loaded cross-encoder for type checking."""
 
-    def rerank(self, query: str, documents: list[str]) -> Iterable[float]: ...
+    def rerank(self, query: str, documents: list[str]) -> Iterable[float]:
+        """Yield one relevance score per document."""
+        ...
 
 
 __all__ = [

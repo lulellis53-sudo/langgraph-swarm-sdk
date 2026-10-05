@@ -2,8 +2,8 @@ version: "1"
 name: Newsletter
 role: digest_generation
 
-model: openai:gpt-4o-mini
-api_key_env: OPENAI_API_KEY
+model: openai:gpt-6-luna
+api_key_env: CODEX_OAUTH_TOKEN
 think_level: low
 
 token_budget:
@@ -13,8 +13,9 @@ token_budget:
 tasks:
   - id: newsletter_mvp
     description: >-
-      Build a Markdown newsletter digest from titled source snippets;
-      dedupe lines and return metadata (title, counts). No network send.
+      Assemble a digest from titled source snippets the task supplies.
+      Dedupe lines, keep attribution, and return the body plus metadata.
+      Do not fetch or send.
     outputs:
       - digest_markdown
       - metadata

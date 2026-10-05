@@ -1,0 +1,30 @@
+name: Set up Python project
+description: Install the pinned Python toolchain and project dependencies with uv.
+inputs:
+  extras:
+    description: Space-separated uv extras to install
+    required: false
+    default: dev
+  sync:
+    description: Install project dependencies after setting up uv
+    required: false
+    default: "true"
+runs:
+  using: composite
+  steps:
+    - name: Install uv and Python
+      uses: astral-sh/setup-uv@v7
+      with:
+        python-version: "3.14.5"
+        enable-cache: true
+    - name: Install dependencies
+      if: inputs.sync == 'true'
+      shell: bash
+      env:
+        UV_EXTRAS: ${{ inputs.extras }}
+      run: |
+        args=()
+        for extra in $UV_EXTRAS; do
+          args+=(--extra "$extra")
+        done
+        uv sync --frozen "${args[@]}"

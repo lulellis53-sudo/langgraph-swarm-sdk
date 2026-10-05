@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DeepResearch handoff",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["agent", "task_id", "status", "route", "evidence_status", "claims"],
+  "properties": {
+    "agent": { "const": "DeepResearch" },
+    "task_id": { "enum": ["evidence_synthesis", "source_verification"] },
+    "status": { "enum": ["done", "blocked", "needs_input"] },
+    "route": { "enum": ["L1", "L2", "L3", "L4"] },
+    "evidence_status": {
+      "enum": ["supported", "partial", "conflicting", "not_found", "blocked"]
+    },
+    "claims": { "type": "array" }
+  }
+}

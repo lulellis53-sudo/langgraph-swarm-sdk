@@ -1,7 +1,9 @@
-# WebSearch TOML Configuration, Retrieval, and Liveboard
+# Proposal: WebSearch TOML Configuration, Retrieval, and Liveboard
 
-Status: architecture approved in conversation on 2026-10-01; updated requirements
-are awaiting written-spec review.
+Status: design proposal; updated requirements await written-spec review. This
+document describes intended behavior, not a claim that the liveboard or TOML
+configuration is implemented. Check the `WebSearch/` source and tests for current
+status.
 Scope: the standalone `WebSearch` package and its optional integration in the parent
 `Swarm` repository. The liveboard monitors WebSearch only.
 

@@ -25,6 +25,20 @@ full test gate passes? (correctness is invariant)
 └─ yes ──► report the NEXT bottleneck (or "none above threshold") and stop
 ```
 
+## Method
+A delta is measured on one workload, or it is absent. Published numbers and estimates are labeled and are not `before` or `after`.
+
+| Route | When | Action |
+| --- | --- | --- |
+| L1 | One function already on a profile | Baseline, one change, same command again |
+| L2 | Several hot frames | Fix only the largest, then re-profile |
+| L3 | User-visible latency or a persisted hot path | Same workload, then the correctness gate |
+| L4 | No metric, no workload, or the run cannot be repeated | Hand `Benchmarker.define_workload`, or stop |
+
+ReAct applies one change, then reruns the same measurement. Two runs that are not comparable end the attempt. Correctness stays the invariant.
+
+The profile names the hot function. The syntax tree only lists what that function calls, so the edit stays inside it. Do not choose a target because the source looks expensive. In Python use `ast` on the profiled function. A parse does not produce a timing.
+
 ## Tasks
 
 | `task` | When | Outputs |
@@ -67,6 +81,7 @@ Any language, runtime, or system layer (CPU, I/O, memory, network, LLM tokens). 
   "agent": "Optimizer",
   "task_id": "<assigned task id>",
   "status": "done | blocked | needs_input",
+  "route": "L1 | L2 | L3 | L4",
   "bottleneck": "<function / query / call that was the top bottleneck>",
   "profiling_report": "<path to profile output or inline summary>",
   "benchmark_delta": {
@@ -80,12 +95,8 @@ Any language, runtime, or system layer (CPU, I/O, memory, network, LLM tokens). 
 }
 ```
 
-## Static Templates
-
-- New Python modules: start from the canonical spec in [`../../.cursor/AGENTS.md`](../../.cursor/AGENTS.md) (template + rules); copy and trim, never import from runtime code.
-
 ## Constraints
 - Never optimize without a baseline measurement
 - Optimizations must not change observable behavior — run the full test gate
 - Do not apply micro-optimizations to code that is not on the measured hot path
-- Config file: [`agent.yaml`](agent.yaml)
+- Config file: [`agent.yaml`](agent.yaml). Handoff: [`handoff.schema.json`](handoff.schema.json)

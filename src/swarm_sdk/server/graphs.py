@@ -21,12 +21,14 @@ root and call it with :func:`swarm_sdk.serving.client.run_on_server`.
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING, Any, NotRequired, TypedDict, cast
 
 from langgraph.graph import END, START, StateGraph
 
 from swarm_sdk.agents.manifest import load_all_agent_manifests
 from swarm_sdk.config.loader import load_swarm_config
+from swarm_sdk.config.settings import load_merged_settings
 from swarm_sdk.orchestrator.graph import run_plan
 from swarm_sdk.orchestrator.plan import Plan, PlanResult
 from swarm_sdk.orchestrator.spawn import make_factory, spawn
@@ -67,6 +69,27 @@ class _PlanGraphState(TypedDict):
     result: NotRequired[dict[str, Any] | None]
 
 
+def _configured_worker_cache() -> SemanticCache | None:
+    """Build the worker response cache when a Redis URL is configured."""
+    if not (os.environ.get("REDIS_URL") or os.environ.get("SWARM_REDIS_URL")):
+        return None
+    settings, _ = load_merged_settings()
+    if not settings.redis_url:
+        return None
+    from swarm_sdk.core.swarm import default_embedder
+    from swarm_sdk.retrieval.cache import SemanticCache
+
+    return SemanticCache(
+        settings.cache_path,
+        default_embedder(settings),
+        settings.semantic_threshold,
+        ttl_days=settings.cache_ttl_days,
+        use_index=settings.semantic_cache_on_gpu,
+        redis_url=settings.redis_url,
+        redis_ttl_s=settings.redis_cache_ttl_s,
+    )
+
+
 def plan_graph(
     *,
     model_override: BaseChatModel | None = None,
@@ -77,12 +100,14 @@ def plan_graph(
     Args:
         model_override: Optional pre-built chat model for the planner and the
             workers (tests); ``None`` loads each manifest's own model.
-        cache: Optional semantic cache shared by the workers.
+        cache: Optional semantic cache shared by the workers. When omitted, a
+            Redis-enabled cache is built if the REDIS_URL environment variable is set.
 
     Returns:
         The graph served under the ``plan`` id: input ``{"goal": ...}``, final
         state carries ``plan`` and a ``result`` payload of the executed plan.
     """
+    worker_cache = cache or _configured_worker_cache()
 
     async def plan_node(state: _PlanGraphState) -> dict[str, Any]:
         """Decompose the goal into a validated plan (spawn)."""
@@ -99,7 +124,7 @@ def plan_graph(
         if plan is None:
             raise ValueError("execute node reached without a plan")
         factory = make_factory(
-            load_all_agent_manifests(), cache=cache, model_override=model_override
+            load_all_agent_manifests(), cache=worker_cache, model_override=model_override
         )
         max_concurrency = load_swarm_config().parallelism.max_concurrency
         result: PlanResult = await run_plan(plan, factory, max_concurrency=max_concurrency)

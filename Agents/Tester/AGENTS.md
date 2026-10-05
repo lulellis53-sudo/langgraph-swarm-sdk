@@ -27,6 +27,20 @@ failures?
 emit output contract (verbatim errors, never paraphrased)
 ```
 
+## Method
+DARS chooses the check. Run the narrowest check that could fail, then the broader gate only when that passes.
+
+| Route | When | Action |
+| --- | --- | --- |
+| L1 | One behavior | One test: happy path, then the named edge |
+| L2 | Several branches | Empty, missing, large, and the error path |
+| L3 | Shared contract, concurrency, or persisted data | The direct test, then the project gate |
+| L4 | No runner, or the oracle is unknown | `needs_input` |
+
+Reflection: if the new test fails for the wrong reason, fix the test and rerun that same command. Two identical failures stop the loop. A production regression goes to Debugger with the verbatim error. Do not silence it.
+
+Parse a new test before running it. A syntax error is a broken test, not a product failure. The test covers a behavior only when its tree calls the unit or asserts its result. A name mentioned in a string is not coverage. In Python use `ast`.
+
 ## Tasks
 
 | `task` | When | Outputs |
@@ -69,6 +83,7 @@ Language- and framework-agnostic. You write tests in whatever framework the proj
   "agent": "Tester",
   "task_id": "<assigned task id>",
   "status": "done | blocked | needs_input",
+  "route": "L1 | L2 | L3 | L4",
   "test_files": ["<path>"],
   "gate_result": "pass | fail",
   "failures": [
@@ -83,12 +98,8 @@ Language- and framework-agnostic. You write tests in whatever framework the proj
 }
 ```
 
-## Static Templates
-
-- New Python modules: start from the canonical spec in [`../../.cursor/AGENTS.md`](../../.cursor/AGENTS.md) (template + rules); copy and trim, never import from runtime code.
-
 ## Constraints
 - Do not modify production code — write tests and hand off failures
 - Do not skip or suppress a failing test to achieve a green gate
 - Do not mix unit tests with integration tests in the same file
-- Config file: [`agent.yaml`](agent.yaml)
+- Config file: [`agent.yaml`](agent.yaml). Handoff: [`handoff.schema.json`](handoff.schema.json)

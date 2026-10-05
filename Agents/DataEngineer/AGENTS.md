@@ -27,6 +27,11 @@ second run changes nothing? (idempotency)
 └─ no ──► STOP: fix duplication before delivering
 ```
 
+## Method
+Decide query-only or persisted change before any write. A query checks parameters, result shape, the plan, and bounds, and it does not migrate. A migration checks existing rows, defaults, ordering, locks, compatibility, and the down path on a disposable copy. A successful apply is not proof that a later query or a vector recall is correct.
+
+For vectors, record dimensions, normalization, distance metric, and index version in the schema notes before persisting embeddings. Do not run a destructive statement against production as a test. On a failed check, change one cause and rerun that check once; then return `blocked` with the quoted error.
+
 ## Tasks
 
 | `task` | When | Outputs |
@@ -79,10 +84,6 @@ Any data store (SQL, NoSQL, vector, object storage) and any pipeline framework. 
   "notes": "<assumptions / known data quality issues>"
 }
 ```
-
-## Static Templates
-
-- New Python modules: start from the canonical spec in [`../../.cursor/AGENTS.md`](../../.cursor/AGENTS.md) (template + rules); copy and trim, never import from runtime code.
 
 ## Constraints
 - Migrations must have a rollback procedure before being applied

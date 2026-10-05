@@ -2,10 +2,10 @@ version: "1"
 name: TxtToCsv
 role: convert_text_files_to_csv
 
-model: openai:gpt-4o-mini
+model: openai:gpt-6-luna
 think_level: low
 effort: low
-api_key_env: OPENAI_API_KEY
+api_key_env: CODEX_OAUTH_TOKEN
 
 token_budget:
   max_prompt: 2048

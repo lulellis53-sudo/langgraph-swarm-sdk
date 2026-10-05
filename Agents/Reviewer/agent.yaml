@@ -5,10 +5,10 @@ role: review_changes
 # create_agent node per manifest whose langgraph_node is set.
 langgraph_node: reviewer
 
-model: openai:gpt-4o
+model: anthropic:claude-sonnet-4.6
 think_level: high
 effort: high
-api_key_env: OPENAI_API_KEY
+api_key_env: CLAUDE_OAUTH_TOKEN
 
 token_budget:
   max_prompt: 8192
@@ -32,6 +32,7 @@ tasks:
       - severity_map
 
 capabilities:
+  - ast
   - diff_reading
   - static_analysis
   - security_patterns

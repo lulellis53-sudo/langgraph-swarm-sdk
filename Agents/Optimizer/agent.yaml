@@ -2,8 +2,8 @@ version: "1"
 name: Optimizer
 role: performance_tuning
 
-model: openai:gpt-4o-mini
-api_key_env: OPENAI_API_KEY
+model: openai:gpt-6-luna
+api_key_env: CODEX_OAUTH_TOKEN
 think_level: medium
 
 token_budget:
@@ -28,6 +28,7 @@ tasks:
       - benchmark_delta
 
 capabilities:
+  - ast
   - profiling
   - benchmarking
   - token_counting

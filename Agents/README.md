@@ -18,16 +18,20 @@
 | [Optimizer](Optimizer/AGENTS.md) | performance tuning | gpt-4o-mini | medium | [agent.yaml](Optimizer/agent.yaml) |
 | [Refactor](Refactor/AGENTS.md) | safe incremental refactors | gpt-4o | high | [agent.yaml](Refactor/agent.yaml) |
 | [TxtToCsv](TxtToCsv/AGENTS.md) | convert text files to CSV | gpt-4o-mini | low | [agent.yaml](TxtToCsv/agent.yaml) |
-| [RAG](RAG/AGENTS.md) | semantic caching, hybrid search, reranking & grounding | inherit | high | [agent.yaml](RAG/agent.yaml) |
-| [math](math/AGENTS.md) | symbolic/numerical solving and verification | mistral:ministral-3-8b-latest | high | [agent.yaml](math/agent.yaml) |
-| [WebFetch](WebFetch/AGENTS.md) | deterministic pipeline stage: fetch/render | none (no LLM) | - | [agent.yaml](WebFetch/agent.yaml) |
-| [Normalizer](Normalizer/AGENTS.md) | deterministic pipeline stage: normalize + dedupe | none (no LLM) | - | [agent.yaml](Normalizer/agent.yaml) |
-| [Persister](Persister/AGENTS.md) | deterministic pipeline stage: SQLite store | none (no LLM) | - | [agent.yaml](Persister/agent.yaml) |
+| [RAG](RAG/AGENTS.md) | retrieval, grounding, and semantic cache policy | inherit | high | [agent.yaml](RAG/agent.yaml) |
+| [math](math/AGENTS.md) | symbolic and numerical mathematics | mistral:ministral-3-8b-latest | high | [agent.yaml](math/agent.yaml) |
+| [DeepResearch](DeepResearch/AGENTS.md) | sourced multi-hop synthesis | inherit | high | [agent.yaml](DeepResearch/agent.yaml) |
+| [WebResearcher](WebResearcher/AGENTS.md) | narrow cited web lookup | gpt-4o-mini | medium | [agent.yaml](WebResearcher/agent.yaml) |
+| [Newsletter](Newsletter/AGENTS.md) | digest from supplied snippets | gpt-4o-mini | low | [agent.yaml](Newsletter/agent.yaml) |
+| [ApiDesigner](ApiDesigner/AGENTS.md) | interface contracts and compatibility | gpt-4o | high | [agent.yaml](ApiDesigner/agent.yaml) |
+| [Architect](Architect/AGENTS.md) | package and directory boundaries | gpt-4o | high | [agent.yaml](Architect/agent.yaml) |
+| [Compilator](Compilator/AGENTS.md) | compilers, linkers, and build flags | gpt-4o | high | [agent.yaml](Compilator/agent.yaml) |
+| [Benchmarker](Benchmarker/AGENTS.md) | measured baselines and comparisons | gpt-4o-mini | medium | [agent.yaml](Benchmarker/agent.yaml) |
+| [WebFetch](WebFetch/AGENTS.md) | deterministic stage: fetch and render | none (no LLM) | - | [agent.yaml](WebFetch/agent.yaml) |
+| [Normalizer](Normalizer/AGENTS.md) | deterministic stage: normalize and dedupe | none (no LLM) | - | [agent.yaml](Normalizer/agent.yaml) |
+| [Persister](Persister/AGENTS.md) | deterministic stage: store documents | none (no LLM) | - | [agent.yaml](Persister/agent.yaml) |
 
-Imported reference catalog: [`antigravity-imported/`](antigravity-imported/) holds 21 Antigravity personas
-(`AGENTS.md` + `agent.md`, frontmatter contracts) — reference material for prompt design, **not** active
-swarm manifests; they are not loaded by `swarm_sdk.agents` and are excluded from the table above.
-Mirrored catalogs: `code-review/`, `deep-research/`, `math/` companion docs, `benchmark/` (tests + evals).
+`benchmark/` is the test harness, not an agent. Do not add `Agents/Benchmark/`: on a case-insensitive volume it is the same directory. Nested folders such as `ModelDelegate/MathWorker/` are dispatch helpers. The loader reads only `Agents/*/agent.yaml`.
 
 ## How to use this swarm
 
@@ -38,9 +42,9 @@ Mirrored catalogs: `code-review/`, `deep-research/`, `math/` companion docs, `be
 5. **Each agent** reads its `AGENTS.md` for behavioral rules, executes its task, and returns a structured output contract.
 6. **Orchestrator merges** results and updates task statuses.
 
-Each agent also has a [`Benchmarks/`](Coder/Benchmarks/) folder for role-scoped case notes and thresholds; shared runners live under [`benchmark/`](benchmark/).
+Each agent has an `AGENTS.md` role contract (persona, decision tree or multipath workflow, tasks, JSON output) and an `agent.yaml` manifest. The loader does not read a JSON twin of the manifest.
 
-Static Templates (all personas): [`.cursor/templates/python_static_template.py`](../.cursor/templates/python_static_template.py) — see each `AGENTS.md` → **Static Templates**.
+Shared runners live under [`benchmark/`](benchmark/).
 
 ## Adding tasks
 

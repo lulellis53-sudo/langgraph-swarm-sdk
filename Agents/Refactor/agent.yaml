@@ -2,10 +2,10 @@ version: "1"
 name: Refactor
 role: safe_incremental_refactor
 
-model: openai:gpt-4o
+model: anthropic:claude-sonnet-4.6
 think_level: high
 effort: high
-api_key_env: OPENAI_API_KEY
+api_key_env: CLAUDE_OAUTH_TOKEN
 
 token_budget:
   max_prompt: 8192

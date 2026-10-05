@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from swarm_sdk.config.loader import SwarmFileConfig
 
 from dotenv import dotenv_values
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 MemoryBackend = Literal["sqlite-vec", "faiss", "qdrant", "opencl", "mem0"]
@@ -35,8 +35,8 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="SWARM_", extra="ignore")
 
-    router_model: str = "openai:gpt-4o-mini"
-    specialist_model: str = "openai:gpt-4o"
+    router_model: str = "openai:gpt-6-luna"
+    specialist_model: str = "anthropic:claude-sonnet-4.6"
     max_tokens: int = Field(default=2048, ge=1)
     # Hard cap on graph steps per run; a handoff ping-pong stops here (spec §17.1/§17.5).
     recursion_limit: int = Field(default=50, ge=2)
@@ -56,6 +56,12 @@ class Settings(BaseSettings):
     mem0_agent_id: str = "swarm-sdk"
     mem0_infer: bool = False
     cache_path: str = "swarm-cache.sqlite"
+    # Optional shared exact-response cache; unset keeps caching local to SQLite.
+    redis_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("REDIS_URL", "SWARM_REDIS_URL", "redis_url"),
+    )
+    redis_cache_ttl_s: int = Field(default=86400, ge=1)
     # None keeps checkpoints in memory (lost on restart); a path makes threads durable.
     checkpoint_path: str | None = None
     peer_url: str | None = None
@@ -101,6 +107,11 @@ class Settings(BaseSettings):
     # twice the edit trigger. Off by default: it spends an extra model call per
     # trigger and is not offline-deterministic.
     swarm_summarization: bool = False
+    # JEV System-1 routing: use the non-autoregressive semantic router to pick the
+    # entry agent and workflow mode instead of the LLM router / static defaults.
+    jev_routing: bool = False
+    jev_endpoint: str | None = None
+    jev_timeout_s: float = Field(default=0.030, ge=0.001)
 
 
 def load_merged_settings(

@@ -67,7 +67,7 @@ def _bench_tool(
     t0 = time.perf_counter()
     try:
         raw_hits = list(fn(query, spec))
-    except TimeoutError, OSError, ConnectionError, ValueError:
+    except (TimeoutError, OSError, ConnectionError, ValueError):
         raw_hits = []
     search_ms = (time.perf_counter() - t0) * 1000
     hits = dedupe_hits(raw_hits)

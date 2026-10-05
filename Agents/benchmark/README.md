@@ -19,6 +19,46 @@ uv run python -m benchmark.run --task token_cache_hit
 
 Results (optional): `Agents/benchmark/results/{task}/` (gitignored).
 
+### Redis and local response-cache latency (`Tasks/redis_cache/`)
+
+Compare SQLite exact hits with Redis exact hits, Redis misses that fall back to
+SQLite exact hits, and semantic misses with or without the Redis lookup. Each
+path runs at 100, 1,000, and 10,000 entries using paired ABBA batches (50
+rounds, 500 operations per sample by default). Reports include raw samples,
+p50/p95/p99, MAD, coefficient of variation, paired deltas, and a seeded 95%
+bootstrap interval. A single process run is never labeled a speedup.
+
+CI starts an ephemeral Redis 7 service and uploads the JSON report as the
+`redis-cache-benchmark-*` artifact. Run locally with a real Redis service and
+the optional client dependency:
+
+```bash
+uv sync --extra redis
+REDIS_URL=redis://localhost:6379/0 PYTHONPATH=Agents:. uv run python Agents/benchmark/Tasks/redis_cache/benchmark_redis_cache.py --write-results
+uv run pytest Agents/benchmark/Tasks/redis_cache -q
+```
+
+Tests use an explicitly enabled in-memory stand-in; the benchmark CLI refuses
+to silently treat that stand-in as real Redis. Results do not impose
+machine-dependent CI latency thresholds.
+
+### Persistent cache storage and resource use (`Tasks/cache_storage/`)
+
+Compare SQLite with DuckDB when the optional `duckdb` package is installed.
+Each engine and cache size runs in a fresh subprocess so peak RSS is not
+contaminated by a previous engine. The harness reports exact point hits and
+misses, a bounded 256-row semantic candidate scan, insert cost, process CPU,
+peak RSS, and database size. It isolates storage operations; embedding and
+Redis network time are intentionally excluded.
+
+```bash
+PYTHONPATH=Agents:. uv run python Agents/benchmark/Tasks/cache_storage/benchmark_cache_storage.py
+uv run pytest Agents/benchmark/Tasks/cache_storage -q
+```
+
+SQLite runs with the standard library. To include DuckDB, install it in the
+benchmark environment explicitly; it is not a core SDK dependency.
+
 ## Embedding throughput (CPU vs CoreML GPU)
 
 Compare ONNX Runtime providers for FastEmbed (requires `uv sync --extra jupyter`):

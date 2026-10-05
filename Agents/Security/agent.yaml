@@ -2,8 +2,8 @@ version: "1"
 name: Security
 role: security_review
 
-model: openai:gpt-4o
-api_key_env: OPENAI_API_KEY
+model: anthropic:claude-sonnet-4.6
+api_key_env: CLAUDE_OAUTH_TOKEN
 think_level: high
 
 token_budget:
@@ -28,6 +28,7 @@ tasks:
       - upgrade_plan
 
 capabilities:
+  - ast
   - secret_scanning
   - dependency_audit
   - threat_modeling

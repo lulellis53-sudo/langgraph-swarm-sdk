@@ -116,7 +116,7 @@ class ArrowCalcs:
 
     @classmethod
     def column_stats(cls, data: Sequence[float | int] | Any) -> dict[str, float]:
-        """Calculates moments (mean, stddev, sum, min, max, variance) on columnar data."""
+        """Calculates moments and median (count, mean, stddev, sum, min, median, max, variance)."""
         if not data:
             return {
                 "count": 0.0,
@@ -126,6 +126,7 @@ class ArrowCalcs:
                 "min": 0.0,
                 "max": 0.0,
                 "variance": 0.0,
+                "median": 0.0,
             }
 
         try:
@@ -140,6 +141,7 @@ class ArrowCalcs:
             min_val = pc.min(arr).as_py() or 0.0
             max_val = pc.max(arr).as_py() or 0.0
             var_val = pc.variance(arr).as_py() or 0.0
+            med_scalar = pc.quantile(arr, q=0.5)[0].as_py() or 0.0
 
             return {
                 "count": float(count),
@@ -147,23 +149,26 @@ class ArrowCalcs:
                 "stddev": round(float(std_val), 6),
                 "sum": round(float(sum_val), 6),
                 "min": round(float(min_val), 6),
+                "median": round(float(med_scalar), 6),
                 "max": round(float(max_val), 6),
                 "variance": round(float(var_val), 6),
             }
-        except ImportError, Exception:
+        except (ImportError, Exception):
             # Pure Python fallback
-            nums = [float(x) for x in data]
+            nums = sorted(float(x) for x in data)
             n = len(nums)
             s = sum(nums)
             m = s / n
             var = sum((x - m) ** 2 for x in nums) / n
             std = math.sqrt(var)
+            median = (nums[n // 2] if n % 2 else (nums[n // 2 - 1] + nums[n // 2]) / 2.0)
             return {
                 "count": float(n),
                 "mean": round(m, 6),
                 "stddev": round(std, 6),
                 "sum": round(s, 6),
                 "min": round(min(nums), 6),
+                "median": round(median, 6),
                 "max": round(max(nums), 6),
                 "variance": round(var, 6),
             }
@@ -184,7 +189,7 @@ class ArrowCalcs:
             arr_b = pa.array(b, type=pa.float64())
             prod = pc.multiply(arr_a, arr_b)
             return float(pc.sum(prod).as_py() or 0.0)
-        except ImportError, Exception:
+        except (ImportError, Exception):
             return sum(x * y for x, y in zip(a, b))
 
     @classmethod
@@ -216,14 +221,17 @@ class ArrowCalcs:
             arr = pa.array(data, type=pa.float64())
             res = pc.quantile(arr, q=q)
             return {float(q_val): float(val.as_py()) for q_val, val in zip(q, res)}
-        except ImportError, Exception:
-            # Sort fallback
+        except (ImportError, Exception):
+            # Linear-interpolation fallback matching NumPy semantics.
             sorted_nums = sorted(float(x) for x in data)
             n = len(sorted_nums)
             out: dict[float, float] = {}
             for q_val in q:
-                idx = min(n - 1, max(0, int(q_val * n)))
-                out[float(q_val)] = sorted_nums[idx]
+                pos = q_val * (n - 1)
+                low = int(pos)
+                high = min(n - 1, low + 1)
+                frac = pos - low
+                out[float(q_val)] = sorted_nums[low] + frac * (sorted_nums[high] - sorted_nums[low])
             return out
 
     @classmethod

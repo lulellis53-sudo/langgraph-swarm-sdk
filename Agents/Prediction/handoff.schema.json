@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Prediction handoff",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["agent", "task_id", "status", "task", "frequency"],
+  "properties": {
+    "agent": { "const": "Prediction" },
+    "task_id": {
+      "enum": ["forecast", "backtest", "feature_engineering"]
+    },
+    "task": {
+      "enum": ["forecast", "backtest", "feature_engineering"]
+    },
+    "status": { "enum": ["done", "blocked", "needs_input"] },
+    "frequency": { "type": "string" },
+    "horizon": { "type": ["integer", "string"] },
+    "forecast_frame": { "type": ["string", "object"] },
+    "model_settings": { "type": "object" },
+    "metrics": { "type": "object" },
+    "caveats": { "type": "array", "items": { "type": "string" } },
+    "notes": { "type": "string" }
+  }
+}

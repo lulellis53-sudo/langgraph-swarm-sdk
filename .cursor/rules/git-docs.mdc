@@ -6,17 +6,8 @@ alwaysApply: true
 # Git & docs
 
 - Create commits **only** when the user asks; follow the repo commit style; no `--no-verify` / force-push to `main`.
-- **Do not create git branches or worktrees** except the fixed three-lane layout below. Stay on the lane you were assigned. No ad-hoc `git checkout -b`, `git switch -c`, `git branch`, `git worktree add`, or best-of-n / isolated worktree runners unless the user explicitly asks for something outside this map.
-
-**Allowed fixed worktrees (three agent lanes):**
-
-| Path | Branch | Agent lane |
-|------|--------|------------|
-| `WebSearch/` (repo root worktree) | `feature/websearch` | WebSearch pipeline |
-| `../Swarm-Prediction` | `feat/prediction-engine` | Prediction / forecast |
-| `../Newsletter` | `feat/newsletter` | Newsletter MVP |
-
-Repo root (`Swarm/`) stays on `integration/all-branches` for integration merges. Do not add, remove, or re-point these worktrees without the user asking.
+- **Do not create git branches or worktrees** except the fixed map in [`.cursor/skills/multi-lane-worktrees/SKILL.md`](../skills/multi-lane-worktrees/SKILL.md). Stay on the assigned lane. No ad-hoc `git checkout -b`, `git switch -c`, `git branch`, `git worktree add`, or best-of-n / isolated worktree runners unless the user explicitly asks for something outside that map.
+- Do not add, remove, or re-point those worktrees without the user asking.
 - Update [`README.md`](../../README.md) when behavior or install steps change.
 - Keep persona rules in `Agents/*/AGENTS.md`; Cursor operating rules in `.cursor/AGENTS.md` and `.cursor/rules/`.
 - Dependencies: `pyproject.toml` + `uv lock`; respect `[tool.uv]` constraints (e.g. cryptography wheel-only for Jupyter).

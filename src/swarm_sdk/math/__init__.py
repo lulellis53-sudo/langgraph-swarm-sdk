@@ -7,13 +7,17 @@ need symbolic math.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from types import ModuleType
+from typing import TYPE_CHECKING
 
 from swarm_sdk.math.dispatch import classify_math_task
+from swarm_sdk.math.stats import rolling_mean, welford
 from swarm_sdk.math.types import (
     MathBackend,
     MathDispatchDecision,
+    MathDtype,
     MathMode,
+    MathOperation,
     MathProblem,
     MathResult,
     MathTaskType,
@@ -28,7 +32,8 @@ if TYPE_CHECKING:
     import sympy as sp
 
 
-def _sympy() -> Any:
+def _sympy() -> ModuleType:
+    """Import SymPy on first use so cold imports stay cheap."""
     import sympy as sp
 
     return sp
@@ -275,7 +280,9 @@ def symbolic_cosine() -> "sp.Eq":  # noqa: UP037
 __all__ = [
     "MathBackend",
     "MathDispatchDecision",
+    "MathDtype",
     "MathMode",
+    "MathOperation",
     "MathProblem",
     "MathResult",
     "MathTaskType",
@@ -291,6 +298,7 @@ __all__ = [
     "int8_quantize",
     "int8_scale",
     "l2_norm",
+    "rolling_mean",
     "rrf_score",
     "softmax_scores",
     "symbolic_bm25",
@@ -298,4 +306,5 @@ __all__ = [
     "symbolic_rrf",
     "symbolic_softmax",
     "verify_math_solution",
+    "welford",
 ]

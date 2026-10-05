@@ -1,5 +1,10 @@
 # MoltenVK + Vulkan GPU Acceleration Guide
-## MacBook Pro 16" (2019) | Intel Core i7-9750H (16GB RAM) | AMD Radeon Pro 5300M (4GB VRAM)
+
+> **Scope:** Hardware-specific notes for the 2019 Intel Mac configuration below. Device enumeration, driver support, model fit, and command-line flags depend on the installed Vulkan/llama.cpp builds. Treat commands as examples and verify device selection and logs on the target machine. The Swarm SDK’s supported settings are in [`Main/config/swarm.yaml`](../Main/config/swarm.yaml) and [`README.md`](../README.md).
+
+## Target hardware
+
+MacBook Pro 16-inch (2019) | Intel Core i7-9750H | 16 GB RAM | AMD Radeon Pro 5300M (4 GB VRAM)
 
 ---
 
@@ -21,7 +26,7 @@ This system configuration is a high-performance 2019 16-inch MacBook Pro (`MacBo
                |       (llama.cpp / llama-cpp-python / Kompute)        |
                +-------------------------------------------------------+
                                            |
-                                [Vulkan 1.4 Compute API]
+                                [Vulkan Compute API (supported subset)]
                                            |
                +-------------------------------------------------------+
                |                  MoltenVK Layer                       |
@@ -337,7 +342,7 @@ curl -X POST http://127.0.0.1:8080/v1/embeddings \
 
 Mathematical reasoning, algebraic derivation, and formal verification require models with high token generation quality and chain-of-thought capabilities.
 
-### 7.1 Tier 1: 100% Dedicated GPU Offload (Fits completely in 4GB VRAM)
+### 7.1 Model sizing examples (not local benchmark results)
 
 These models fit entirely inside the 4080 MiB VRAM of the Radeon 5300M, delivering **35 to 55 tokens per second** without PCIe bus bottlenecking:
 

@@ -134,7 +134,7 @@ class RagConfig(BaseModel):
 class RouterConfig(BaseModel):
     """Router model selection (think level)."""
 
-    router_model: str = "openai:gpt-4o-mini"
+    router_model: str = "openai:gpt-6-luna"
     think_level: ThinkLevel = "low"
     max_tokens: int = 2048
     tool_cap: int = 128
@@ -312,10 +312,19 @@ def settings_from_file(file_cfg: SwarmFileConfig, env: Settings | None = None) -
             (
                 r.name
                 for r in file_cfg.model_select.routes
-                if "gpt-4o" in r.name and "mini" not in r.name
+                if r.name.startswith("anthropic:claude")
             ),
             None,
         )
+        if strong is None:
+            strong = next(
+                (
+                    r.name
+                    for r in file_cfg.model_select.routes
+                    if "gpt-4o" in r.name and "mini" not in r.name
+                ),
+                None,
+            )
         if strong:
             updates["specialist_model"] = strong
     explicit = base.model_fields_set

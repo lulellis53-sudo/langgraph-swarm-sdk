@@ -91,7 +91,9 @@ _PLAN_ARGS: dict[str, Any] = {
 }
 
 
-async def test_plan_graph_runs_plan_end_to_end() -> None:
+async def test_plan_graph_runs_plan_end_to_end(monkeypatch) -> None:
+    # Agents require the key env var to be set; the scripted model never uses it.
+    monkeypatch.setenv("OPENAI_API_KEY", "test-sentinel")
     model = ScriptedModel(
         script=Script(
             [

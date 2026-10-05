@@ -1,0 +1,8 @@
+name: redis_cache
+sdk_entry: swarm_sdk.retrieval.cache.SemanticCache.lookup
+metrics: [p50, p95, p99, mad, cv_pct, paired_delta_ms, ci95_ms]
+models: none
+cases:
+  - exact_hit_sqlite_vs_redis
+  - redis_miss_sqlite_exact_fallback
+  - semantic_miss_sqlite_vs_redis_fallback

@@ -14,7 +14,7 @@ Research on the public web from the current checkout. Default posture: **read-on
 
 Do **not** create a branch or a new worktree (`git worktree add`, `/worktree`, best-of-n runners). Research from this checkout.
 
-If `WebSearch/` already points at the sibling `worktree/websearch` checkout, use that existing tree. Do not add, remove, or re-point worktrees.
+If `WebSearch/` already points at `feature/websearch`, use that existing tree. Do not add, remove, or re-point worktrees.
 
 Only create or delete a worktree when the user explicitly asks.
 

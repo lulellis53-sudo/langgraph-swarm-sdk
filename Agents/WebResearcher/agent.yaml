@@ -1,0 +1,35 @@
+version: "1"
+name: WebResearcher
+role: cited_web_lookup
+
+model: openai:gpt-6-luna
+api_key_env: CODEX_OAUTH_TOKEN
+think_level: medium
+effort: medium
+
+token_budget:
+  max_prompt: 4096
+  max_completion: 1024
+
+tasks:
+  - id: lookup_fact
+    description: >-
+      Answer one narrow question from current public sources and cite each
+      factual sentence.
+    outputs:
+      - answer
+      - citations
+
+  - id: collect_sources
+    description: >-
+      Collect a short set of primary sources for a question without writing
+      a long synthesis. Citations carry URL, locator, and coverage; notes
+      hold remaining gaps.
+    outputs:
+      - citations
+      - notes
+
+capabilities:
+  - web_search
+  - citation
+  - read_only

@@ -20,8 +20,10 @@ import os
 import time
 from typing import TYPE_CHECKING
 
+from swarm_sdk.agents.handoff import handoff_errors
 from swarm_sdk.agents.manifest import AgentManifest, role_contract
-from swarm_sdk.models.chat import complete, load_chat_model
+from swarm_sdk.execution.executor import offload
+from swarm_sdk.models.chat import complete, load_chat_model, message_text
 from swarm_sdk.prompting.budget import TokenBudget, count_text
 from swarm_sdk.retrieval.cache import SemanticCache
 
@@ -31,6 +33,9 @@ if TYPE_CHECKING:
     from langchain_core.language_models.chat_models import BaseChatModel
 
 __all__ = ["WorkerAgent", "role_contract"]
+
+#: Model rounds that may call ``parse_syntax`` before the worker keeps the reply.
+_AST_TOOL_ROUNDS = 2
 
 
 class WorkerAgent:
@@ -214,12 +219,16 @@ class WorkerAgent:
 
         self._resolve_api_key()
         model = self._model if self._model is not None else load_chat_model(self._model_name())
-        content = await complete(model, system, user)
+        if "ast" in self.manifest.capabilities:
+            content = await self._complete_with_syntax(model, system, user)
+        else:
+            content = await complete(model, system, user)
         wall = time.perf_counter() - started
 
-        # Empty replies must not poison the cache: a later near-identical step
-        # would be answered with nothing instead of calling the model.
-        if self.cache is not None and content.strip():
+        errors = handoff_errors(self.agents_root, self.name, content)
+        status = "blocked" if errors else "ok"
+        # Empty replies and invalid handoffs must not poison the cache.
+        if self.cache is not None and content.strip() and status == "ok":
             self.cache.store(cache_key, content)
 
         return StepOutput(
@@ -229,4 +238,63 @@ class WorkerAgent:
             prompt_tokens=count_text(f"{system}\n{user}" if user else system),
             completion_tokens=count_text(content),
             wall_s=wall,
+            status=status,
+            handoff_errors=errors,
         )
+
+    async def _complete_with_syntax(self, model: BaseChatModel, system: str, user: str) -> str:
+        """Call the model with ``parse_syntax`` bound, at most two tool rounds.
+
+        Args:
+            model: Chat model for this step. A model that cannot bind tools is
+                called as plain text.
+            system: Role contract.
+            user: Step prompt.
+
+        Returns:
+            The final reply text. If the model is still asking for a tool when
+            the round cap is reached, the last outline is the reply.
+        """
+        from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
+
+        from swarm_sdk.agents.syntax_tree import outline_source, syntax_tools
+
+        tools = syntax_tools()
+        bind = getattr(model, "bind_tools", None)
+        if not callable(bind):
+            return await complete(model, system, user)
+        try:
+            bound = bind(tools)
+        except NotImplementedError, TypeError, ValueError:
+            return await complete(model, system, user)
+
+        messages: list[object] = [SystemMessage(content=system), HumanMessage(content=user)]
+        last_outline = ""
+        for round_index in range(_AST_TOOL_ROUNDS + 1):
+            payload = list(messages)
+
+            def _invoke(batch: list[object] = payload) -> object:
+                return bound.invoke(batch)
+
+            result = await offload(_invoke)
+            calls = getattr(result, "tool_calls", None) or []
+            if not calls or round_index == _AST_TOOL_ROUNDS:
+                text = message_text(result)
+                return text or last_outline
+            messages.append(result)
+            for call in calls:
+                if not isinstance(call, dict):
+                    continue
+                args = call.get("args")
+                if not isinstance(args, dict):
+                    args = {}
+                source = args.get("source", "")
+                language = args.get("language", "python")
+                last_outline = outline_source(
+                    source if isinstance(source, str) else "",
+                    language if isinstance(language, str) else "python",
+                )
+                messages.append(
+                    ToolMessage(content=last_outline, tool_call_id=str(call.get("id", "")))
+                )
+        return last_outline

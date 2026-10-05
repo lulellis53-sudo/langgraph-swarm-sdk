@@ -79,5 +79,5 @@ Plain-text inputs (`.txt`, `.log`, `.env`-style, TSV, key=value). Not Excel, JSO
 ## Constraints
 - Do not modify or delete the input file
 - Do not send file contents to any external service
-- Hand credential files that should go into the Keychain to `swarm-vault import` instead of keeping them as CSV
+- Credential-shaped files are reported by count and line number. Do not write their values into a CSV unless the task says to.
 - Config file: [`agent.yaml`](agent.yaml)

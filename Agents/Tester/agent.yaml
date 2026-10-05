@@ -2,10 +2,10 @@ version: "1"
 name: Tester
 role: write_and_run_tests
 
-model: openai:gpt-4o-mini
+model: openai:gpt-6-luna
 think_level: medium
 effort: medium
-api_key_env: OPENAI_API_KEY
+api_key_env: CODEX_OAUTH_TOKEN
 
 token_budget:
   max_prompt: 4096
@@ -29,6 +29,7 @@ tasks:
       - failure_classification
 
 capabilities:
+  - ast
   - pytest
   - hypothesis
   - coverage

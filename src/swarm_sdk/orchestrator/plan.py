@@ -203,7 +203,10 @@ class StepOutput(BaseModel):
         cached: ``True`` when the answer came from the semantic/exact cache and
             no LLM call was made (zero token cost).
         wall_s: Wall-clock seconds spent on this step.
-        status: ``"ok"`` on success; reserved for failure statuses.
+        status: ``"ok"`` on success. ``"blocked"`` when a JSON handoff fails
+            its schema; dependents then do not receive this content.
+        handoff_errors: Schema errors for a blocked JSON handoff. Empty when
+            the reply is prose or a valid object.
     """
 
     step_id: str
@@ -214,6 +217,7 @@ class StepOutput(BaseModel):
     cached: bool = False
     wall_s: float = 0.0
     status: str = "ok"
+    handoff_errors: list[str] = Field(default_factory=list)
 
 
 class UsageTotals(BaseModel):

@@ -66,3 +66,14 @@ notebooks/.ipynb_checkpoints/
 
 # Playwright MCP page snapshots (server-side artifacts)
 .playwright-mcp/
+
+# Local MCP server configs (may reference credentials)
+mcp.json
+.mcp.json
+
+# Agent instruction files (local only)
+AGENTS.md
+SKILL.md
+
+# Local editor/agent config
+.cursor/

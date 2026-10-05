@@ -48,7 +48,7 @@ def test_compat_provider_uses_registry_base_url(fake_init, monkeypatch: pytest.M
 def test_compat_provider_requires_base_url(fake_init, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("MINIMAX_BASE_URL", raising=False)
     with pytest.raises(ValueError, match="MINIMAX_BASE_URL"):
-        chat.load_chat_model("minimax:minimax-2.7-high-speed")
+        chat.load_chat_model("minimax:MiniMax-M2.7")
     assert fake_init == []
 
 
