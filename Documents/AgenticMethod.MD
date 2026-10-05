@@ -18,6 +18,111 @@ They are not competing workflows. Use DARS to choose the path, ReAct to execute
 each step, Reflection when evidence or checks show a problem, and SWE to ensure
 the delivered change is complete and verified.
 
+## Master multipath decision workflow
+
+Every task enters the same gate sequence; branches are **paths**, not optional
+extras. Re-enter an earlier gate only when new evidence changes classification.
+
+```text
++=============================================================================+
+| AGENT METHODS: MULTIPATH DECISION WORKFLOW (DARS -> ACT -> VERIFY -> HANDOFF)|
++=============================================================================+
+                                      |
+                                      v
+                        +-----------------------------+
+                        | STAGE 0: INTAKE             |
+                        | goal, audience, scope,      |
+                        | constraints, success test   |
+                        +--------------+--------------+
+                                       |
+                                       v
+                        +-----------------------------+
+                        | STAGE 1: DARS CLASSIFY      |
+                        | scope, impact, risk,        |
+                        | uncertainty, verify cost    |
+                        +--------------+--------------+
+                                       |
+              +------------------------+------------------------+
+              |                        |                        |
+        L4 blocked              L1 bounded              L2 / L3 deep
+              |                        |                        |
+              v                        v                        v
+   Ask one material question    Shallowest safe path    Map contracts +
+   or report missing access    (tool / local fix)     independent evidence
+              |                        |                        |
+              +------------------------+------------------------+
+                                       |
+                                       v
+                        +-----------------------------+
+                        | STAGE 2: VERTICAL ROUTE     |
+                        | (pick one primary lane)     |
+                        +--------------+--------------+
+                                       |
+     +---------+---------+---------+---+---------+---------+---------+
+     |         |         |         |             |         |         |
+     v         v         v         v             v         v         v
+ Retrieval   Math    Coding/     Code        Database   SWE end-   Other
+ /Research  /numeric  bug fix    review      /schema    to-end    specialist
+     |         |         |         |             |         |         |
+     +---------+---------+---------+-------------+---------+---------+
+                                       |
+                                       v
+                        +-----------------------------+
+                        | STAGE 3: EXECUTION PATTERN  |
+                        | (simplest that can pass)    |
+                        +--------------+--------------+
+                                       |
+        +-----------+-----------+------+------+-----------+-----------+
+        |           |           |             |           |           |
+        v           v           v             v           v           v
+    Direct     Prompt      Router to    Parallel    Orchestrator  ReAct /
+    tool +     chain +     specialist   sectioning  -worker       observe-act
+    postcheck  gates       subgraphs    / voting    delegation    loop
+        |           |           |             |           |           |
+        +-----------+-----------+-------------+-----------+-----------+
+                                       |
+                         (optional) evaluator-optimizer OR budgeted search
+                         only if rubric/score justifies cost — see §9
+                                       |
+                                       v
+                        +-----------------------------+
+                        | STAGE 4: ACT + OBSERVE      |
+                        | one bounded action; read    |
+                        | actual tool/env result      |
+                        +--------------+--------------+
+                                       |
+                                       v
+                        +-----------------------------+
+                        | STAGE 5: DOMAIN VERIFY      |
+                        | math ACT / retrieval audit /|
+                        | tests / migration / review  |
+                        +--------------+--------------+
+                                       |
+                        +--------------+--------------+
+                        |                             |
+                   checks pass                   check fails
+                        |                             |
+                        v                             v
+              Cross-vertical handoff?          Reflection (bounded):
+                        |                      classify -> one fix ->
+              +---------+---------+            rerun same check
+              |                   |                  |
+             Yes                  No            limit / blocker?
+              |                   |                  |
+              v                   v                  v
+    Typed result +           SWE handoff      Stop; report evidence
+    provenance to next       + completion      and next action
+    specialist; E2E
+    acceptance recheck
+                                       |
+                                       v
+                        GLOBAL GUARDS (all paths):
+                          - irreversible / regulated -> human approval
+                          - no fabricated citations, paths, or tool success
+                          - retrieved facts -> reopen locators before math/code
+                          - add complexity only for a measured failure mode
+```
+
 ## 1. DARS: Route Work by Risk and Complexity
 
 In this guide, DARS means a **distribution-aware routing strategy**: classify
@@ -61,6 +166,53 @@ thresholds are useful only when the project defines and measures them.
 | Database | Is this a read/query change or a persisted schema/data change? | Migration ordering, existing rows, locks, rollback, or availability matter. |
 | Retrieval / research | Is the answer present in one known source, or spread across sources/modalities? | Ambiguous queries, conflicting sources, stale indexes, or evidence gaps matter. |
 
+### DARS multipath routing gate
+
+Use after **STAGE 0–1** in the master workflow. Each exit is a **path**; do not
+skip L4 when requirements or access are incomplete.
+
+```text
+                    +---------------------------+
+                    | Signals: scope, impact,   |
+                    | risk, uncertainty, verify |
+                    +-------------+-------------+
+                                  |
+                    +-------------v-------------+
+                    | Requirements & access OK? |
+                    +---+---------------+-------+
+                        |               |
+                       No              Yes
+                        |               |
+                        v               v
+                 +-----------+   +------------------+
+                 | PATH L4:  |   | Impact / risk    |
+                 | ask or    |   | crosses security,|
+                 | report    |   | API, data, conc? |
+                 | blocker   |   +----+--------+----+
+                 +-----------+        |        |
+                                     No       Yes
+                                      |        |
+                                      v        v
+                               +----------+ +----------+
+                               | PATH L1  | | PATH L3  |
+                               | local /  | | trace +  |
+                               | bounded  | | broad    |
+                               +----+-----+ | verify   |
+                                    |       +----+-----+
+                                    |            |
+                         multi-file / multi-step?
+                                    |
+                            +-------+-------+
+                            |               |
+                           No              Yes
+                            |               |
+                            v               v
+                     stay on L1        +----------+
+                                      | PATH L2  |
+                                      | map deps |
+                                      +----------+
+```
+
 ### Retrieval Agent: Multipath Decision Workflow
 
 Use retrieval routing when a response must be grounded in a corpus rather than
@@ -69,75 +221,73 @@ first; each path should return source evidence and locators, not just a
 free-form summary.
 
 ```text
- +--------------------------------------+
- | Intake: question, scope, date/version|
- | constraints, corpus and permissions  |
- +------------------+-------------------+
-                    |
-                    v
- +--------------------------------------+
- | Can one authoritative source be      |
- | identified from the question?        |
- +----------------+---------------------+
-                  |                     |
-              Yes |                     | No / multi-part
-                  v                     v
-        +-------------------+  +-------------------------+
-        | Search that source |  | Break into atomic       |
-        | with exact terms   |  | subquestions and named |
-        +---------+---------+  | entities / constraints  |
-                  |            +------------+------------+
-                  |                         |
-                  |                         v
-                  |            +-------------------------+
-                  |            | Select permitted paths  |
-                  |            | lexical / dense /       |
-                  |            | metadata / graph / web  |
-                  |            +------------+------------+
-                  |                         |
-                  |                +--------+--------+
-                  |                |                 |
-                  |          One best path     Complementary paths
-                  |                |                 |
-                  |                v                 v
-                  |          Search it       Parallel search by
-                  |                           subquestion/path
-                  |                |                 |
-                  +----------------+-----------------+
-                                   |
-                                   v
-                     +-----------------------------+
-                     | Normalize, deduplicate,     |
-                     | preserve provenance, fuse   |
-                     | ranked lists (if multiple) |
-                     +--------------+--------------+
-                                    |
-                                    v
-                     +-----------------------------+
-                     | Rerank candidates against  |
-                     | the question and evidence  |
-                     +--------------+--------------+
-                                    |
-                   +----------------+----------------+
-                   |                                 |
-            Evidence sufficient                 Insufficient,
-            and sourceable?                     stale, or conflicting
-                   |                                 |
-                   v                                 v
-       +-----------------------+     +-----------------------------+
-       | Return answer with    |     | Diagnose coverage /          |
-       | exact source paths,   |     | freshness / query mismatch   |
-       | locators, and caveats |     +--------------+--------------+
-       +-----------------------+                    |
-                                                    v
-                                   +-------------------------------+
-                                   | One bounded recovery path:    |
-                                   | rewrite query, broaden source,|
-                                   | alternate retriever, or ask   |
-                                   +---------------+---------------+
-                                                   |
-                                      Return to search / rerank
-                                      or report evidence gap at limit
++---------------------------------------------------------------------+
+| RETRIEVAL: MULTIPATH DECISION ROUTES (evidence-first)               |
++---------------------------------------------------------------------+
+                              |
+                              v
+                 +---------------------------+
+                 | Intake: question, scope,  |
+                 | version/date, corpus ACL  |
+                 +-------------+-------------+
+                               |
+                               v
+                 +---------------------------+
+                 | GATE: single authoritative|
+                 | source identifiable?      |
+                 +------+-----------+--------+
+                        |           |
+                       Yes         No / compound
+                        |           |
+                        v           v
+              +-------------+   +----------------------+
+              | PATH A:     |   | PATH B: decompose to |
+              | targeted    |   | atomic subquestions  |
+              | source scan |   +----------+-----------+
+              +------+------+              |
+                     |                     v
+                     |          +----------------------+
+                     |          | GATE: pick retriever|
+                     |          | lane(s) — see below |
+                     |          +--+----+----+----+----+
+                     |             |    |    |    |
+                     |        lexical dense meta graph web
+                     |             |    |    |    |
+                     |             +----+----+----+
+                     |                     |
+                     |          +----------+----------+
+                     |          |                     |
+                     |    one lane suffices    multi-lane / multi-Q
+                     |          |                     |
+                     |          v                     v
+                     |    run PATH C          PATH D: parallel
+                     |    (single)            per sub-Q + lane
+                     +----------+-------------+
+                                |
+                                v
+                 +---------------------------+
+                 | Fuse: dedupe, provenance, |
+                 | RRF / merge ranked lists  |
+                 +-------------+-------------+
+                               |
+                               v
+                 +---------------------------+
+                 | Rerank vs question + cite |
+                 +-------------+-------------+
+                               |
+                 +-------------+-------------+
+                 |                           |
+          sufficient + sourced        gap / stale / conflict
+                 |                           |
+                 v                           v
+        +----------------+        +----------------------+
+        | PATH E: answer |        | PATH F: one recovery |
+        | + locators     |        | rewrite Q / alt index|
+        +----------------+        | / broaden corpus / ask|
+                                  +----------+-----------+
+                                             |
+                                    retry fuse->rerank
+                                    or report gap at limit
 ```
 
 #### DeepResearch Agent: Research-to-Report Multipath

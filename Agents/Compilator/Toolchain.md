@@ -2987,7 +2987,7 @@ Lifeguard outputs a structured JSON file:
   4. `SubclassesAccess`: Invokes `__subclasses__()` (relies on prior module execution).
 
 #### 4. Driving the Python Runtime
-In Python 3.15+, `output.json` directly drives `sys.set_lazy_imports_filter()`; on Python 3.12–3.14, it drives a custom `importlib.util.LazyLoader` meta-path finder. See [**`Lifeguard.md`**](file:///Users/usuario/Documentos/Lifeguard.md) for the Meta Lifeguard blueprint.
+In Python 3.15+, `output.json` directly drives `sys.set_lazy_imports_filter()`; on Python 3.12–3.14, it drives a custom `importlib.util.LazyLoader` meta-path finder. See [**`Documents/Lifeguard.md`**](../../Documents/Lifeguard.md) for Meta Lifeguard + Swarm `MetaLifeguardAuditor` (host copy: `~/Documentos/Lifeguard.md`).
 
 That tool is not `low-swarm`'s auditor. `swarm_sdk.core.lifeguard_ast` rejects a top-level import of `torch`, `transformers`, `pandas`, `polars`, `scipy`, or `sklearn`, and it rejects `os.system`, `subprocess`, `eval`, `exec`, and `shutil.rmtree`. Import Polars inside the function that builds the frame (`UsageLog.summary` already does). PEP 810 `-X lazy_imports=all` is a third switch, on the 3.15 interpreter only. The three do not replace each other.
 

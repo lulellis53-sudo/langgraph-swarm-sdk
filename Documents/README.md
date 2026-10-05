@@ -26,6 +26,7 @@ linked source, configuration, and tests before applying them.
 - [Python 3.15](Python3.15.md) — canonical 3.15 / free-threading / performance dossier
 - [Python free-threaded runtime](PythonFreeThreadedRuntime.md) — redirect stub
 - [Python performance guide](PythonPerformanceGuide.md) — redirect stub
+- [Lifeguard](Lifeguard.md) — AST safety, lazy imports, ops self-healing, runtime RSS/`healthz`
 - [Enterprise databases](Database.md) — canonical dossier (merged `DATABASE.md`, `DB.md`; `DB.md` stub remains)
 - [Agent memory & vector storage](AGENTMEMORY.md) — canonical dossier (merged `VectorDB.md`)
 - [Vector DB stub](VectorDB.md) — redirect to `AGENTMEMORY.md`

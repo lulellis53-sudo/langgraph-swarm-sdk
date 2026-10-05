@@ -27,6 +27,7 @@ Personal canonical bridge manual: **`~/Documentos/SwarmSDK-Bridge.md`**. Edit th
 | [Documents/AGENTMEMORY.md](AGENTMEMORY.md) | Canonical agent memory + vector DB dossier (merged `VectorDB.md`); Mem0, handoffs, LanceDB/Redis/Qdrant |
 | [Documents/VectorDB.md](VectorDB.md) | Stub → `AGENTMEMORY.md` |
 | [Documents/GRAPH.md](GRAPH.md) | 2026 Graph architectures for embeddings, memory graph, and multi-agent coordination |
+| [Documents/Lifeguard.md](Lifeguard.md) | Lifeguard layers: Meta lazy-import CLI, `MetaLifeguardAuditor`, LifeguardSystem ops, RSS/`healthz` |
 | [Documents/Database.md](Database.md) | Canonical DB dossier (merged `DATABASE.md`, `DB.md`); pgvector, sqlite-vec, DuckDB, LangGraph persistence (`DATABASE.md` is same path on case-insensitive volumes) |
 | [Documents/DB.md](DB.md) | Stub → `Database.md` |
 | [Documents/DeepResearch.md](DeepResearch.md) | Multi-engine DeepResearch framework (#Context7, #Exa, #Brave, #ParallelSearch, #Jira, #BrightData) |
