@@ -6,6 +6,7 @@ from algorithms.errors import AlgorithmInputError
 
 __all__ = [
     "cos_diff",
+    "cramer_rao_bound",
     "expm1_stable",
     "golub_welsch_legendre",
     "kahan_sum",
@@ -172,3 +173,42 @@ def golub_welsch_legendre(n_points: int) -> tuple[np.ndarray, np.ndarray]:
     jacobi = np.diag(beta, k=1) + np.diag(beta, k=-1)
     eigenvalues, eigenvectors = np.linalg.eigh(jacobi)
     return eigenvalues, 2.0 * (eigenvectors[0, :] ** 2)
+
+
+def cramer_rao_bound(fisher_information: float | np.ndarray) -> float | np.ndarray:
+    """Invert the Fisher information into the Cramer-Rao lower bound.
+
+    For a scalar parameter the bound is ``Var(theta_hat) >= 1 / I(theta)``; for a
+    parameter vector with information matrix ``I`` the covariance bound is ``I^-1``
+    entrywise, and the bound applies to unbiased estimators only.
+
+    Args:
+        fisher_information: Positive scalar, or a symmetric positive definite
+            information matrix of shape ``(k, k)``.
+
+    Returns:
+        ``1 / I`` as a float, or the inverse matrix ``I^-1``.
+
+    Raises:
+        AlgorithmInputError: The information is not positive, not finite, or the
+            matrix is not square symmetric positive definite.
+    """
+    information = np.asarray(fisher_information, dtype=np.float64)
+    if information.ndim == 0:
+        value = float(information)
+        if not np.isfinite(value) or value <= 0.0:
+            raise AlgorithmInputError("Fisher information must be positive and finite")
+        return 1.0 / value
+    if information.ndim != 2 or information.shape[0] != information.shape[1]:
+        raise AlgorithmInputError("Fisher information matrix must be square")
+    if not np.all(np.isfinite(information)):
+        raise AlgorithmInputError("Fisher information must be finite")
+    if not np.allclose(information, information.T, rtol=1e-12, atol=0.0):
+        raise AlgorithmInputError("Fisher information matrix must be symmetric")
+    try:
+        inverse = np.linalg.inv(information)
+    except np.linalg.LinAlgError as err:
+        raise AlgorithmInputError("Fisher information matrix is singular") from err
+    if np.any(np.linalg.eigvalsh((information + information.T) / 2.0) <= 0.0):
+        raise AlgorithmInputError("Fisher information matrix must be positive definite")
+    return inverse

@@ -7,7 +7,7 @@ import sympy as sp
 
 from algorithms.errors import AlgorithmError, AlgorithmInputError
 
-__all__ = ["damped_newton_root", "verify_bm25_asymptotics"]
+__all__ = ["damped_newton_root", "stormer_verlet_integrate", "verify_bm25_asymptotics"]
 
 
 def damped_newton_root(
@@ -81,3 +81,50 @@ def verify_bm25_asymptotics() -> dict[str, bool]:
     if not monotonic or not length_identity or not saturated:
         raise AlgorithmError("BM25 asymptotic invariant failed")
     return {"monotonic_in_tf": True, "saturation_limit_is_k1_plus_1": True}
+
+
+def stormer_verlet_integrate(
+    position: np.ndarray,
+    momentum: np.ndarray,
+    grad_potential: Callable[[np.ndarray], np.ndarray],
+    dt: float,
+    steps: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Integrate separable Hamiltonian dynamics with the Störmer-Verlet scheme.
+
+    For ``H(q, p) = |p|^2 / 2 + V(q)`` (unit masses) the kick-drift-kick leapfrog
+    is symplectic: the discrete flow preserves phase-space volume and the energy
+    error stays bounded by ``O(dt^2)`` without secular drift.
+
+    Args:
+        position: Initial coordinates ``q0`` of shape ``(n,)``.
+        momentum: Initial momenta ``p0`` of shape ``(n,)``.
+        grad_potential: Gradient ``grad V(q)`` returning shape ``(n,)``.
+        dt: Positive time step.
+        steps: Number of steps. At least 1.
+
+    Returns:
+        Trajectories ``(q, p)`` of shape ``(steps + 1, n)`` including the start.
+
+    Raises:
+        AlgorithmInputError: Shapes mismatch, ``dt`` is not positive, or ``steps`` is 0.
+    """
+    if dt <= 0.0 or steps < 1:
+        raise AlgorithmInputError("dt must be positive and steps at least 1")
+    initial_q = np.asarray(position, dtype=np.float64).reshape(-1)
+    initial_p = np.asarray(momentum, dtype=np.float64).reshape(-1)
+    if initial_q.shape != initial_p.shape or initial_q.size == 0:
+        raise AlgorithmInputError("position and momentum must be matching non-empty vectors")
+    trajectory_q = np.empty((steps + 1, initial_q.size), dtype=np.float64)
+    trajectory_p = np.empty((steps + 1, initial_p.size), dtype=np.float64)
+    trajectory_q[0] = initial_q
+    trajectory_p[0] = initial_p
+    current_q = initial_q.copy()
+    current_p = initial_p.copy()
+    for step in range(1, steps + 1):
+        half_kick = current_p - 0.5 * dt * np.asarray(grad_potential(current_q), dtype=np.float64)
+        current_q = current_q + dt * half_kick
+        current_p = half_kick - 0.5 * dt * np.asarray(grad_potential(current_q), dtype=np.float64)
+        trajectory_q[step] = current_q
+        trajectory_p[step] = current_p
+    return trajectory_q, trajectory_p

@@ -7,8 +7,10 @@ from algorithms.errors import AlgorithmInputError
 __all__ = [
     "compute_homography_dlt",
     "fundamental_matrix_8point",
+    "lucas_kanade_optical_flow",
     "pinhole_project",
     "sobel_gradients_2d",
+    "solve_pnp_dlt",
 ]
 
 
@@ -167,3 +169,121 @@ def sobel_gradients_2d(
             grad_y[row, col] = float(np.sum(patch * kernel_y))
     magnitude = np.sqrt(grad_x * grad_x + grad_y * grad_y)
     return grad_x, grad_y, magnitude
+
+
+def solve_pnp_dlt(
+    points_xyz: np.ndarray,
+    points_uv: np.ndarray,
+    intrinsics: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Estimate camera pose ``[R | t]`` from 3D-2D correspondences by DLT.
+
+    Solves the 12-parameter projection ``x ~ K [R | t] X`` in least squares,
+    deprojects with ``K^-1``, and projects the linear part onto the closest
+    rotation in the Frobenius norm via SVD (special orthogonal Procrustes).
+
+    Args:
+        points_xyz: World points of shape ``(n, 3)``, ``n >= 6``, not coplanar-degenerate.
+        points_uv: Image points of the same count.
+        intrinsics: Calibration matrix of shape ``(3, 3)``.
+
+    Returns:
+        Rotation of shape ``(3, 3)`` with ``det(R) = 1`` and translation of shape ``(3,)``
+        at the DLT scale.
+
+    Raises:
+        AlgorithmInputError: Shapes mismatch, too few points, or a singular deprojection.
+    """
+    world = np.asarray(points_xyz, dtype=np.float64)
+    image = np.asarray(points_uv, dtype=np.float64)
+    matrix = np.asarray(intrinsics, dtype=np.float64)
+    if world.ndim != 2 or world.shape[1] != 3 or world.shape[0] < 6:
+        raise AlgorithmInputError("PnP DLT requires at least six (X, Y, Z) points")
+    if image.shape != (world.shape[0], 2):
+        raise AlgorithmInputError("PnP image points must match the world point count")
+    if matrix.shape != (3, 3):
+        raise AlgorithmInputError("PnP intrinsics must be 3x3")
+    homogeneous_world = np.column_stack([world, np.ones(world.shape[0])])
+    homogeneous_image = np.column_stack([image, np.ones(image.shape[0])])
+    design = np.zeros((2 * world.shape[0], 12), dtype=np.float64)
+    for index in range(world.shape[0]):
+        world_row = homogeneous_world[index]
+        u_coord, v_coord, _ = homogeneous_image[index]
+        design[2 * index, 0:4] = world_row
+        design[2 * index, 8:12] = -u_coord * world_row
+        design[2 * index + 1, 4:8] = world_row
+        design[2 * index + 1, 8:12] = -v_coord * world_row
+    right_nullspace = np.linalg.svd(design)[-1][-1]
+    projection = right_nullspace.reshape((3, 4))
+    try:
+        motion = np.linalg.inv(matrix) @ projection
+    except np.linalg.LinAlgError as err:
+        raise AlgorithmInputError("intrinsics matrix is singular") from err
+    linear = motion[:, :3]
+    left_vectors, _, right_vectors = np.linalg.svd(linear)
+    rotation = left_vectors @ right_vectors
+    if np.linalg.det(rotation) < 0.0:
+        rotation = left_vectors @ np.diag([1.0, 1.0, -1.0]) @ right_vectors
+    norms = np.linalg.norm(linear, axis=1)
+    scale = float(np.mean(norms))
+    if scale <= 0.0 or not np.isfinite(scale):
+        raise AlgorithmInputError("PnP projection collapsed to zero scale")
+    return rotation, motion[:, 3] / scale
+
+
+def lucas_kanade_optical_flow(
+    previous: np.ndarray,
+    following: np.ndarray,
+    window_size: int = 15,
+    eigenvalue_floor: float = 1e-4,
+) -> np.ndarray:
+    """Estimate dense single-scale optical flow with the Lucas-Kanade Brightness Constancy.
+
+    Spatial derivatives use central differences; the temporal derivative is the frame
+    difference ``I_t = I(x, t+1) - I(x, t)``. Each pixel window solves the 2x2 structural
+    tensor system; windows whose smaller eigenvalue falls below ``eigenvalue_floor``
+    report zero flow because the aperture problem leaves the system underdetermined.
+
+    Args:
+        previous: First frame of shape ``(h, w)``.
+        following: Second frame of the same shape.
+        window_size: Odd side length of the integration window. At least 3.
+        eigenvalue_floor: Minimum ``lambda_min`` of the tensor for a trusted flow.
+
+    Returns:
+        Flow field of shape ``(h, w, 2)`` holding ``(u, v)`` per pixel.
+    """
+    first = np.asarray(previous, dtype=np.float64)
+    second = np.asarray(following, dtype=np.float64)
+    if first.ndim != 2 or first.shape != second.shape or min(first.shape) < 3:
+        raise AlgorithmInputError("Lucas-Kanade frames must share a 2-D shape of at least 3x3")
+    if window_size < 3 or window_size % 2 == 0:
+        raise AlgorithmInputError("window_size must be an odd integer of at least 3")
+    if eigenvalue_floor <= 0.0:
+        raise AlgorithmInputError("eigenvalue_floor must be positive")
+    height, width = first.shape
+    grad_x = np.zeros_like(first)
+    grad_y = np.zeros_like(first)
+    grad_x[:, 1:-1] = 0.5 * (first[:, 2:] - first[:, :-2])
+    grad_y[1:-1, :] = 0.5 * (first[2:, :] - first[:-2, :])
+    temporal = second - first
+    flow = np.zeros((height, width, 2), dtype=np.float64)
+    radius = window_size // 2
+    for row in range(radius, height - radius):
+        for col in range(radius, width - radius):
+            i_x = grad_x[row - radius : row + radius + 1, col - radius : col + radius + 1].ravel()
+            i_y = grad_y[row - radius : row + radius + 1, col - radius : col + radius + 1].ravel()
+            i_t = temporal[row - radius : row + radius + 1, col - radius : col + radius + 1].ravel()
+            ixx = float(i_x @ i_x)
+            iyy = float(i_y @ i_y)
+            ixy = float(i_x @ i_y)
+            itx = float(i_x @ i_t)
+            ity = float(i_y @ i_t)
+            determinant = ixx * iyy - ixy * ixy
+            trace = ixx + iyy
+            lambda_min = 0.5 * (trace - np.sqrt(max(trace * trace - 4.0 * determinant, 0.0)))
+            if lambda_min < eigenvalue_floor:
+                continue
+            tensor = np.array([[ixx, ixy], [ixy, iyy]])
+            flow[row, col] = np.linalg.solve(tensor, -np.array([itx, ity]))
+    return flow

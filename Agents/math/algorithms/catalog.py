@@ -33,10 +33,15 @@ from algorithms.compute import (
     strassen_matmul,
     tiled_matmul,
 )
-from algorithms.equations import damped_newton_root, verify_bm25_asymptotics
+from algorithms.equations import (
+    damped_newton_root,
+    stormer_verlet_integrate,
+    verify_bm25_asymptotics,
+)
 from algorithms.errors import AlgorithmError, AlgorithmInputError, AlgorithmNotFoundError
 from algorithms.formula import (
     cos_diff,
+    cramer_rao_bound,
     expm1_stable,
     golub_welsch_legendre,
     kahan_sum,
@@ -54,6 +59,7 @@ from algorithms.matrix import (
     condition_number_2,
     householder_qr,
     spmv_csr,
+    truncated_svd,
 )
 from algorithms.record import Algorithm, Pillar, Precision
 from algorithms.symbolic import (
@@ -98,8 +104,10 @@ from algorithms.verify import verify_numerical_solution
 from algorithms.vision import (
     compute_homography_dlt,
     fundamental_matrix_8point,
+    lucas_kanade_optical_flow,
     pinhole_project,
     sobel_gradients_2d,
+    solve_pnp_dlt,
 )
 
 __all__ = ["by_pillar", "call", "catalog", "get", "search"]
@@ -637,6 +645,14 @@ def _build() -> tuple[Algorithm, ...]:
             precision=Precision.EXACT,
         ),
         _algorithm(
+            stormer_verlet_integrate,
+            pillar=Pillar.EQUATION,
+            summary="Symplectic Störmer-Verlet trajectory of separable Hamiltonian dynamics.",
+            time="O(steps * n)",
+            space="O(steps * n)",
+            precision=Precision.DOUBLE,
+        ),
+        _algorithm(
             pinhole_project,
             pillar=Pillar.VISION,
             summary="Pinhole projection x = K [R | t] X.",
@@ -669,6 +685,22 @@ def _build() -> tuple[Algorithm, ...]:
             precision=Precision.DOUBLE,
         ),
         _algorithm(
+            solve_pnp_dlt,
+            pillar=Pillar.VISION,
+            summary="Camera pose from 3D-2D correspondences via DLT and Procrustes.",
+            time="O(n)",
+            space="O(n)",
+            precision=Precision.DOUBLE,
+        ),
+        _algorithm(
+            lucas_kanade_optical_flow,
+            pillar=Pillar.VISION,
+            summary="Dense single-scale Lucas-Kanade optical flow with aperture gating.",
+            time="O(hw * k^2)",
+            space="O(hw)",
+            precision=Precision.DOUBLE,
+        ),
+        _algorithm(
             householder_qr,
             pillar=Pillar.MATRIX,
             summary="Householder QR factorization.",
@@ -696,6 +728,14 @@ def _build() -> tuple[Algorithm, ...]:
             condition_number_2,
             pillar=Pillar.MATRIX,
             summary="2-norm condition number from singular values.",
+            time="O(min(mn^2, m^2 n))",
+            space="O(min(m, n))",
+            precision=Precision.DOUBLE,
+        ),
+        _algorithm(
+            truncated_svd,
+            pillar=Pillar.MATRIX,
+            summary="Optimal rank-k approximation with Eckart-Young error bounds.",
             time="O(min(mn^2, m^2 n))",
             space="O(min(m, n))",
             precision=Precision.DOUBLE,
@@ -842,6 +882,14 @@ def _build() -> tuple[Algorithm, ...]:
             summary="Rank-k update inverse through the Woodbury identity.",
             time="O(n^2 k + k^3)",
             space="O(n^2)",
+            precision=Precision.DOUBLE,
+        ),
+        _algorithm(
+            cramer_rao_bound,
+            pillar=Pillar.FORMULA,
+            summary="Cramer-Rao lower bound as the Fisher information inverse.",
+            time="O(k^3)",
+            space="O(k^2)",
             precision=Precision.DOUBLE,
         ),
     ) + _the_algorithms()

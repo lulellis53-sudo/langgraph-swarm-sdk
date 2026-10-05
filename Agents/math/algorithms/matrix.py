@@ -9,6 +9,7 @@ __all__ = [
     "condition_number_2",
     "householder_qr",
     "spmv_csr",
+    "truncated_svd",
 ]
 
 
@@ -105,3 +106,39 @@ def spmv_csr(
         stop = int(pointers[row + 1])
         product[row] = np.dot(values[start:stop], dense[columns[start:stop]])
     return product
+
+
+def truncated_svd(matrix: np.ndarray, rank: int) -> dict[str, object]:
+    """Return the optimal rank-``rank`` approximation with its Eckart-Young errors.
+
+    By the Eckart-Young-Mirsky theorem the truncated SVD minimizes both the
+    spectral and the Frobenius error among all matrices of rank at most ``rank``:
+    ``min ||A - B||_2 = sigma_{rank+1}`` and
+    ``min ||A - B||_F = sqrt(sum_{i > rank} sigma_i^2)``.
+
+    Args:
+        matrix: Input of shape ``(m, n)``.
+        rank: Target rank. Between 1 and ``min(m, n)``.
+
+    Returns:
+        Dict with the approximation ``"approx"``, the spectral error
+        ``"spectral_error"``, and the Frobenius error ``"frobenius_error"``.
+
+    Raises:
+        AlgorithmInputError: The rank is outside ``1..min(m, n)`` or the shape is invalid.
+    """
+    values = np.asarray(matrix, dtype=np.float64)
+    if values.ndim != 2 or min(values.shape) < 1:
+        raise AlgorithmInputError("truncated SVD needs a non-empty 2-D matrix")
+    if rank < 1 or rank > min(values.shape):
+        raise AlgorithmInputError("rank must be between 1 and min(m, n)")
+    left, singular, right = np.linalg.svd(values, full_matrices=False)
+    approximation = left[:, :rank] @ np.diag(singular[:rank]) @ right[:rank, :]
+    tail = singular[rank:]
+    spectral = float(tail[0]) if tail.size else 0.0
+    frobenius = float(np.sqrt(np.sum(tail * tail))) if tail.size else 0.0
+    return {
+        "approx": approximation,
+        "spectral_error": spectral,
+        "frobenius_error": frobenius,
+    }
