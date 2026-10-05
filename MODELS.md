@@ -179,7 +179,6 @@ Xiaomi MiMo is not assigned. `chat.py` has no default host for it.
 | :--- | :--- | :--- | ---: | ---: | :--- | :--- |
 | `ApiDesigner` | `anthropic:claude-sonnet-4.6` | high | 8192 | 2048 | `CLAUDE_OAUTH_TOKEN` | `POST https://api.anthropic.com/v1/messages` |
 | `Architect` | `anthropic:claude-sonnet-4.6` | high | 8192 | 2048 | `CLAUDE_OAUTH_TOKEN` | `POST https://api.anthropic.com/v1/messages` |
-| `BenchmarkCreator` | `openai:gpt-6-luna` | medium | 4096 | 1024 | `CODEX_OAUTH_TOKEN` | `POST https://api.openai.com/v1/chat/completions` |
 | `Benchmarker` | `openai:gpt-6-luna` | medium | 4096 | 1024 | `CODEX_OAUTH_TOKEN` | `POST https://api.openai.com/v1/chat/completions` |
 | `Coder` | `anthropic:claude-sonnet-4.6` | high | 8192 | 2048 | `CLAUDE_OAUTH_TOKEN` | `POST https://api.anthropic.com/v1/messages` |
 | `Compilator` | `anthropic:claude-sonnet-4.6` | high | 8192 | 2048 | `CLAUDE_OAUTH_TOKEN` | `POST https://api.anthropic.com/v1/messages` |

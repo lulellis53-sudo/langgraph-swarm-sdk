@@ -85,16 +85,16 @@ def test_resolve_directory_and_manifest_name(tmp_path: Path) -> None:
     """@name matches the folder or the manifest name, ignoring case and hyphens."""
     agents = tmp_path / "Agents"
     _agent(agents, "Coder", "Coder")
-    _agent(agents, "BenchmarkCreator", "benchmark-creator")
+    _agent(agents, "Benchmarker", "Benchmarker")
     by_folder = resolve_task(parse_task_command('@coder --Task "a"'), agents_dir=agents)
     by_name = resolve_task(
-        parse_task_command('@benchmark-creator --Task "b"'),
+        parse_task_command('@Benchmarker --Task "b"'),
         agents_dir=agents,
     )
     assert by_folder.directory == "Coder"
     assert by_folder.manifest.model == "anthropic:claude-sonnet-4.6"
-    assert by_name.directory == "BenchmarkCreator"
-    assert by_name.manifest.name == "benchmark-creator"
+    assert by_name.directory == "Benchmarker"
+    assert by_name.manifest.name == "Benchmarker"
 
 
 def test_resolve_unknown_and_ambiguous(tmp_path: Path) -> None:

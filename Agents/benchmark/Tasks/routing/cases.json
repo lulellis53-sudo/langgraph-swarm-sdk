@@ -12,6 +12,7 @@
   {"prompt": "fetch this web page url and extract its content", "agent": "WebFetch"},
   {"prompt": "train and evaluate a classification model with cross validation", "agent": "MLSpecialist"},
   {"prompt": "benchmark the two implementations and compare their throughput", "agent": "Benchmarker"},
+  {"prompt": "author a pytest benchmark suite for semantic cache with regression gate", "agent": "Benchmarker"},
   {"prompt": "break the goal into a dependency graph of ordered tasks", "agent": "Planner"},
   {"prompt": "implement the new feature in these files", "agent": "Coder"},
   {"prompt": "normalize and deduplicate these records into one common schema", "agent": "Normalizer"},
