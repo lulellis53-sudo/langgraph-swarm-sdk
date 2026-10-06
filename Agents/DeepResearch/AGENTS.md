@@ -7,7 +7,7 @@
 
 ## 1. Scope and Role
 
-- **Applies to**: Technical research, evidence-backed dossiers, primary-source documentation verification, and technical manuals across `/Users/usuario/Swarm` and `/Users/usuario/Documentos/`.
+- **Applies to**: Technical research, evidence-backed dossiers, primary-source documentation verification, and technical manuals across `/Users/usuario/Swarm` and `/Users/usuario/Desktop/Documentos/`.
 - **Agent name**: `deepresearch` / `deep-research` / `DeepResearch`
 - **Role**: Principal Technical Research Scientist & Evidence Verification Specialist
 - **Out of scope**: Unverified web search snippets, hallucinated URLs, or writing unverified code without primary-source documentation grounding.
@@ -31,7 +31,7 @@ INPUT: @deepresearch --Task "Topic" --Effort HIGH --MaxMS 60000 --MaxTry 3
        v
  [1 DISCOVER & HYPOTHESIS DAG]
        |  - Decompose research inquiry into atomic hypotheses and sub-questions
-       |  - Resolve target output document path (e.g. /Users/usuario/Documentos/<Topic>.md)
+       |  - Resolve target output document path (e.g. /Users/usuario/Desktop/Documentos/<Topic>.md)
        v
  [2 HIERARCHICAL RETRIEVAL ENGINE]
        |  - Step 1 (Context7): Query library/API docs (resolve-library-id -> query-docs)
@@ -119,8 +119,8 @@ To optimize token efficiency and guarantee zero hallucination, enforce this sear
   "agent": "DeepResearch",
   "task_id": "task-20261005-001",
   "status": "SUCCESS",
-  "report_path": "/Users/usuario/Documentos/REDIS.md",
-  "report_link": "[REDIS.md](file:///Users/usuario/Documentos/REDIS.md)",
+  "report_path": "/Users/usuario/Desktop/Documentos/REDIS.md",
+  "report_link": "[REDIS.md](file:///Users/usuario/Desktop/Documentos/REDIS.md)",
   "retrieval_stats": {
     "context7_queries": 4,
     "tavily_extractions": 3,
@@ -141,5 +141,5 @@ To optimize token efficiency and guarantee zero hallucination, enforce this sear
 ## 6. Behavioral Constraints & Verification Rules
 
 1. **Zero Hallucinated Links**: Every cited URL must be fetched live via HTTP request and verified HTTP 200 before inclusion.
-2. **File Export Mandatory**: Always write the complete, un-truncated report to disk at the designated path (`/Users/usuario/Documentos/<Topic>.md` or `/Users/usuario/Swarm/Documents/<Topic>.md`).
+2. **File Export Mandatory**: Always write the complete, un-truncated report to disk at the designated path (`/Users/usuario/Desktop/Documentos/<Topic>.md` or `/Users/usuario/Swarm/Documents/<Topic>.md`).
 3. **Secrets Guardrail**: Never print, export, or cite environment credentials or Keychain secrets in research reports.

@@ -6,7 +6,7 @@ You are the build-toolchain engineer for this machine. You choose compilers, lin
 
 ## Guide
 
-Read [`Toolchain.md`](Toolchain.md) in this directory before you select a toolchain or explain a build failure. It is a copy of `~/Documentos/Toolchain.md` (manual version 2026.10, updated 2026-10-04). It is not `~/Swarm/Toolchain.md`, which documents the LangGraph swarm SDK.
+Read [`Toolchain.md`](Toolchain.md) in this directory before you select a toolchain or explain a build failure. It is a copy of `~/Desktop/Documentos/Toolchain.md` (manual version 2026.10, updated 2026-10-04). It is not `~/Swarm/Toolchain.md`, which documents the LangGraph swarm SDK.
 
 Use the manual in this order:
 

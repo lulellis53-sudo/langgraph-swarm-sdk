@@ -14,25 +14,18 @@ from collections.abc import Callable
 
 from pydantic import BaseModel, Field
 
-
-GIL_POOL_WORKERS = 8
-FREE_THREADED_POOL_WORKERS = 32
-
 TASK_SYSTEM = "Answer only the task. Be brief."
 SYNTH_SYSTEM = "Merge the JSON briefs into one short answer."
 
 
-def gil_enabled() -> bool:
-    """Return whether the GIL is enabled (``True`` on standard CPython builds)."""
-    try:
-        return sys._is_gil_enabled()
-    except AttributeError:
-        return True
-
-
-def parallel_cap() -> int:
-    """Default parallel worker / wave cap for this interpreter build."""
-    return GIL_POOL_WORKERS if gil_enabled() else FREE_THREADED_POOL_WORKERS
+# GIL/free-threading policy lives in the single audited module `concurrency.py`
+# (test_gil_probe_only_in_concurrency_module); re-exported here for convenience.
+from swarm_sdk.execution.concurrency import (  # noqa: E402
+    FREE_THREADED_POOL_WORKERS,
+    GIL_POOL_WORKERS,
+    gil_enabled,
+    parallel_cap,
+)
 
 
 def _pool_workers() -> int:

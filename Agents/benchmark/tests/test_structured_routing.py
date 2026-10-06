@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from langchain_core.language_models.chat_models import BaseChatModel
 
 from benchmark.tests.fakes import (

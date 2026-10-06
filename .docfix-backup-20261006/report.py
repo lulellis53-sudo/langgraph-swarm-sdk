@@ -12,7 +12,7 @@ Swarm can now use these backends via:
 - OpenCL-backed batch dot/cosine/normalize/top-k in `swarm_sdk.gpu`.
 - `OpenClVecStore` brute-force vector search.
 
-See ``~/Desktop/Documentos/Molten.md`` for Vulkan0 = AMD Radeon Pro 5300M setup.
+See ``~/Documentos/Molten.md`` for Vulkan0 = AMD Radeon Pro 5300M setup.
 """
 
 from __future__ import annotations

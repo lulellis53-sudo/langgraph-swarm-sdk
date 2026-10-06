@@ -55,7 +55,8 @@ def test_import_models_domain() -> None:
 
 
 def test_import_execution_and_gpu() -> None:
-    from swarm_sdk.execution import fan_out, install_uvloop, offload
+    from swarm_sdk.execution.executor import install_uvloop, offload
+    from swarm_sdk.execution.fanout import fan_out
     from swarm_sdk.gpu.report import acceleration_report
 
     assert install_uvloop is not None

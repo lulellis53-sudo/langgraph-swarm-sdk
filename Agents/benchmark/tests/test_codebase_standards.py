@@ -299,7 +299,7 @@ def _module_level_imports(body: list[ast.stmt]) -> Iterator[ast.Import | ast.Imp
 
 
 def test_concurrency_namespace_uses_static_methods() -> None:
-    """``swarm_sdk.execution.concurrency`` is the single source of the GIL/parallel policy."""
+    """``swarm_sdk.execution`` is the single source of the GIL/parallel policy."""
     from swarm_sdk.execution import concurrency
 
     assert callable(concurrency.gil_enabled)

@@ -11,7 +11,7 @@ import grpc
 from swarm_sdk.agents.manifest import load_all_agent_manifests
 from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import SwarmSDK
-from swarm_sdk.execution import install_uvloop
+from swarm_sdk.execution.executor import install_uvloop
 from swarm_sdk.orchestrator import make_factory, run_plan, spawn
 from swarm_sdk.orchestrator.plan import Plan, PlanResult
 from swarm_sdk.orchestrator.spawn import _validate_plan

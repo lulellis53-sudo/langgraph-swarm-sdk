@@ -1,4 +1,4 @@
-"""Statistical protocol from ~/Documentos/Benchmark.md.
+"""Statistical protocol from ~/Desktop/Documentos/Benchmark.md.
 
 Pure helpers for latency summaries, ABBA pairing, a percentile bootstrap
 interval, and the two-run noise-floor gate. Nothing here times a workload

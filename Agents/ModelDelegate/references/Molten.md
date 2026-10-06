@@ -140,7 +140,7 @@ Notice that **GPU0** is stably identified as the discrete **AMD Radeon Pro 5300M
 
 ## 4. Building llama.cpp with Vulkan + MoltenVK
 
-This machine-specific profile comes from `~/Documentos/toolchain.md` §4.10 and §12.4.1. It targets the i7-9750H (AVX2/FMA, no AVX-512) and builds a Vulkan-enabled `llama-server`; it is a starting profile, not a guarantee that every model or operation is faster. Homebrew build flags do not enable Vulkan in the Homebrew `llama.cpp` formula. Build upstream source directly with CMake:
+This machine-specific profile comes from `~/Desktop/Documentos/toolchain.md` §4.10 and §12.4.1. It targets the i7-9750H (AVX2/FMA, no AVX-512) and builds a Vulkan-enabled `llama-server`; it is a starting profile, not a guarantee that every model or operation is faster. Homebrew build flags do not enable Vulkan in the Homebrew `llama.cpp` formula. Build upstream source directly with CMake:
 
 ```bash
 brew install cmake ninja molten-vk vulkan-loader vulkan-headers shaderc vulkan-tools libomp

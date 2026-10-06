@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import RunResult, SwarmSDK
-from swarm_sdk.execution import install_uvloop
+from swarm_sdk.execution.executor import install_uvloop
 from swarm_sdk.vault import prime_runtime_secrets
 
 if TYPE_CHECKING:

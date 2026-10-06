@@ -95,7 +95,7 @@ def type_is_mapping(value: object) -> bool:
 
 def cowork_parallel_cap() -> int:
     try:
-        from swarm_sdk.execution.concurrency import parallel_cap
+        from swarm_sdk.execution import parallel_cap
 
         return parallel_cap()
     except ImportError:

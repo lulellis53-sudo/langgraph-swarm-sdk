@@ -180,4 +180,4 @@ Do not treat vendor-style “vs systemd” latency tables as Swarm benchmarks un
 3. **LifeguardSystem:** https://github.com/LifeguardSystem/lifeguard — scheduled validations, execute hooks, action functions.
 4. **cgroup v2 memory:** https://www.kernel.org/doc/Documentation/cgroup-v2.txt — optional Linux memory limits.
 5. **Swarm implementation:** `src/swarm_sdk/core/lifeguard_ast.py`, `src/swarm_sdk/orchestrator/low_swarm.py`.
-6. **Personal host copy (optional):** `~/Documentos/Lifeguard.md` — sync with this file when changing Lifeguard narrative repo-wide.
+6. **Personal host copy (optional):** `~/Desktop/Documentos/Lifeguard.md` — sync with this file when changing Lifeguard narrative repo-wide.

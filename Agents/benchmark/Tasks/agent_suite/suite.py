@@ -2,7 +2,7 @@
 
 Latency is WorkerAgent dispatch with a replayed reply. It is not provider
 latency. The clock, warmup, median, nearest-rank tail, MAD, CV, and macOS RSS
-rules follow ~/Documentos/Benchmark.md. One run never claims a speedup.
+rules follow ~/Desktop/Documentos/Benchmark.md. One run never claims a speedup.
 
     PYTHONPATH=Agents uv run python -m benchmark.run --task agent_suite
 """

@@ -6,7 +6,7 @@ Agent contract (coding assistants):
   Profile before optimizing hot paths; measure before/after (Optimizer norms).
   Delete unused role sections when copying; no import-time side effects.
   Parallel swarm steps: disjoint ``files`` per sibling agent; cap via ``CoworkRole``.
-  In ``src/swarm_sdk/``: use ``swarm_sdk.execution.concurrency`` for caps.
+  In ``src/swarm_sdk/``: use ``swarm_sdk.execution`` for caps.
 
 Copy this skeleton when starting a new module under ``src/swarm_sdk/``.
 Delete unused role sections. Keep roles grouped; do not interleave unrelated helpers.
@@ -21,7 +21,7 @@ Layout:
 6. ``__all__`` + optional ``main`` under ``__main__`` only
 
 PEP 810 (Explicit lazy imports, Python 3.15+): defer heavy deps; ``TYPE_CHECKING`` for types.
-PEP 703 free-threaded 3.14: ``CoworkRole`` / ``swarm_sdk.execution.concurrency.parallel_cap``.
+PEP 703 free-threaded 3.14: ``CoworkRole`` / ``swarm_sdk.execution.parallel_cap``.
 
 Canonical source: ``.cursor/templates/python_static_template.py``.
 Lite: ``python_static_template_lite.py``.
@@ -190,7 +190,7 @@ class DbRole:
 
 
 class CoworkRole:
-    """Sketch — in ``src/swarm_sdk`` import ``swarm_sdk.execution.concurrency`` instead."""
+    """Sketch — in ``src/swarm_sdk`` import ``swarm_sdk.execution`` instead."""
 
     @staticmethod
     def gil_enabled() -> bool:
@@ -270,7 +270,7 @@ def loop_chunked[T](items: Sequence[T], size: int) -> list[Sequence[T]]:
 
 def cowork_gil_enabled() -> bool:
     try:
-        from swarm_sdk.execution.concurrency import gil_enabled as sdk_gil
+        from swarm_sdk.execution import gil_enabled as sdk_gil
 
         return sdk_gil()
     except ImportError:
@@ -279,7 +279,7 @@ def cowork_gil_enabled() -> bool:
 
 def cowork_parallel_cap() -> int:
     try:
-        from swarm_sdk.execution.concurrency import parallel_cap as sdk_cap
+        from swarm_sdk.execution import parallel_cap as sdk_cap
 
         return sdk_cap()
     except ImportError:
@@ -315,7 +315,7 @@ def main() -> int:
     assert loop_chunked([1, 2, 3, 4], 2) == [[1, 2], [3, 4]]
     cap = cowork_parallel_cap()
     assert cap in (8, 32)
-    from swarm_sdk.execution.concurrency import parallel_cap as sdk_cap
+    from swarm_sdk.execution import parallel_cap as sdk_cap
 
     assert cap == sdk_cap()
     return 0

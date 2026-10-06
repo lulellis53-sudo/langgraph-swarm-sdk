@@ -3,7 +3,7 @@
 > [!NOTE]
 > **Research Dossier**: Date: 2026-10-04 | Target Ecosystem: Python performance measurement (CPython 3.14.x, uv-managed projects) | Confidence: 96% (methodology Tier 1: primary docs + machine-verified measurements; load-testing tools documented from primary docs, not exercised here) | Hardware Baseline: Intel Core i7-9750H (6c/12t, AVX2, 16 GB RAM), macOS 26.7 x86_64, Python 3.14.8 (JIT off, PEP 744 build flag not enabled), uv 0.12.17
 >
-> **Companion dossiers**: `Documents/Python3.15.md` §2.1–§11 (optimization & measurement protocol; merged performance guide), `~/Documentos/toolchain.md` §G (build/flag verification), `~/Documentos/CLITOOLS.md` ch. 21 (tool staging policy).
+> **Companion dossiers**: `Documents/Python3.15.md` §2.1–§11 (optimization & measurement protocol; merged performance guide), `~/Desktop/Documentos/toolchain.md` §G (build/flag verification), `~/Desktop/Documentos/CLITOOLS.md` ch. 21 (tool staging policy).
 
 ---
 

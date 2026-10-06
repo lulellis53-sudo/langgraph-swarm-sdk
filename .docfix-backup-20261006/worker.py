@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING
 
 from swarm_sdk.agents.handoff import handoff_errors
 from swarm_sdk.agents.manifest import AgentManifest, role_contract
-from swarm_sdk.execution import offload
+from swarm_sdk.execution.executor import offload
 from swarm_sdk.models.chat import complete, load_chat_model, message_text, ordered_key_names
 from swarm_sdk.prompting.budget import TokenBudget, count_text
 from swarm_sdk.retrieval.cache import SemanticCache

@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, NamedTuple
 import yaml
 
 from swarm_sdk import vault
-from swarm_sdk.execution import offload
+from swarm_sdk.execution.executor import offload
 from swarm_sdk.observability import metrics
 from swarm_sdk.prompting.budget import count_text
 

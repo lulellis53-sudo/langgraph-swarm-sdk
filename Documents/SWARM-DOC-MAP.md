@@ -1,6 +1,6 @@
 # Swarm documentation map (repo index)
 
-Personal canonical bridge manual: **`~/Documentos/SwarmSDK-Bridge.md`**. Edit that file first for cross-repo layout, quality gate, and lane table; keep this stub in sync when those sections change.
+Personal canonical bridge manual: **`~/Desktop/Documentos/SwarmSDK-Bridge.md`**. Edit that file first for cross-repo layout, quality gate, and lane table; keep this stub in sync when those sections change.
 
 | Repo path | Personal / related |
 | :--- | :--- |
@@ -35,7 +35,7 @@ Personal canonical bridge manual: **`~/Documentos/SwarmSDK-Bridge.md`**. Edit th
 | [Agents/AgentMethods.md](../Agents/AgentMethods.md) | Canonical 12 Agent Methods (DARS, ReAct, Reflection, SWE, etc.) |
 | [Agents/RAG/AGENTS.md](../Agents/RAG/AGENTS.md) | RAG specialist contract |
 | [.cursor/skills/multi-lane-worktrees/SKILL.md](../.cursor/skills/multi-lane-worktrees/SKILL.md) | Three-lane worktrees |
-| [Research Dossier](file:///Users/usuario/Documentos/LANGGRAPH_SWARM_ACCELERATION_RESEARCH.md) | Extended host copy (LangSmith, PyArrow, Polars, NumPy 2.x); repo summary in `LangSwarm.md` Part 0 |
+| [Research Dossier](file:///Users/usuario/Desktop/Documentos/LANGGRAPH_SWARM_ACCELERATION_RESEARCH.md) | Extended host copy (LangSmith, PyArrow, Polars, NumPy 2.x); repo summary in `LangSwarm.md` Part 0 |
 
 Quality gate (from repo root):
 

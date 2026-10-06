@@ -13,7 +13,7 @@ from collections.abc import Generator
 from dataclasses import dataclass
 from typing import Any
 
-from swarm_sdk.execution.concurrency import gil_enabled
+from swarm_sdk.execution import gil_enabled
 
 
 class _ProcTaskInfo(ctypes.Structure):

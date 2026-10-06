@@ -198,7 +198,7 @@ def vect_l2(a: Sequence[float], b: Sequence[float]) -> float:
 Optional static check (Lifeguard / lazy-import eligibility):
 
 ```bash
-uv tool run lifeguard --help   # see ~/Documentos/Lifeguard.md
+uv tool run lifeguard --help   # see ~/Desktop/Documentos/Lifeguard.md
 ```
 
 ### Skeleton outline (do not paste wholesale into runtime)

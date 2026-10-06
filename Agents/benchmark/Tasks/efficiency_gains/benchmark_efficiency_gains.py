@@ -25,7 +25,7 @@ import numpy as np
 from pydantic import ValidationError
 
 from swarm_sdk.agents.manifest import AgentManifest
-from swarm_sdk.execution.fanout import HandoffPayload
+from swarm_sdk.execution import HandoffPayload
 from swarm_sdk.memory.opencl_store import OpenClVecStore
 from swarm_sdk.memory.sqlite_vec import SqliteVecStore
 from swarm_sdk.models.chat import complete

@@ -27,7 +27,7 @@ from pydantic import ValidationError
 from swarm_sdk.agents.manifest import AgentManifest, agents_root
 from swarm_sdk.core.jev_router import JevRouter
 from swarm_sdk.core.system_one import jev_advice
-from swarm_sdk.execution import offload
+from swarm_sdk.execution.executor import offload
 from swarm_sdk.models.chat import complete, load_chat_model
 
 from .graph import WorkerFactory

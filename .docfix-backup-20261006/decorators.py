@@ -44,7 +44,7 @@ def async_wrapper(func: Callable[..., Any]) -> Callable[..., Awaitable[Any]]:
     @functools.wraps(func)
     async def inner(*args: Any, **kwargs: Any) -> Any:
         """Run the wrapped function in the executor so it never blocks the event loop."""
-        from swarm_sdk.execution import offload
+        from swarm_sdk.execution.executor import offload
 
         return await offload(lambda: func(*args, **kwargs))
 

@@ -3012,7 +3012,7 @@ Lifeguard outputs a structured JSON file:
   4. `SubclassesAccess`: Invokes `__subclasses__()` (relies on prior module execution).
 
 #### 4. Driving the Python Runtime
-In Python 3.15+, `output.json` directly drives `sys.set_lazy_imports_filter()`; on Python 3.12–3.14, it drives a custom `importlib.util.LazyLoader` meta-path finder. See [**`Documents/Lifeguard.md`**](../../Documents/Lifeguard.md) for Meta Lifeguard + Swarm `MetaLifeguardAuditor` (host copy: `~/Documentos/Lifeguard.md`).
+In Python 3.15+, `output.json` directly drives `sys.set_lazy_imports_filter()`; on Python 3.12–3.14, it drives a custom `importlib.util.LazyLoader` meta-path finder. See [**`Documents/Lifeguard.md`**](../../Documents/Lifeguard.md) for Meta Lifeguard + Swarm `MetaLifeguardAuditor` (host copy: `~/Desktop/Documentos/Lifeguard.md`).
 
 That tool is not `low-swarm`'s auditor. `swarm_sdk.core.lifeguard_ast` rejects a top-level import of `torch`, `transformers`, `pandas`, `polars`, `scipy`, or `sklearn`, and it rejects `os.system`, `subprocess`, `eval`, `exec`, and `shutil.rmtree`. Import Polars inside the function that builds the frame (`UsageLog.summary` already does). PEP 810 `-X lazy_imports=all` is a third switch, on the 3.15 interpreter only. The three do not replace each other.
 
@@ -7630,7 +7630,7 @@ Use Homebrew Bundle for package intent and workstation/project setup. A `Brewfil
 
 ```bash
 # Snapshot supported installed package types to a unique file; review before committing
-brew bundle dump --file="$HOME/Documentos/Brewfile.$(date +%Y%m%d-%H%M%S)" --force --describe
+brew bundle dump --file="$HOME/Desktop/Documentos/Brewfile.$(date +%Y%m%d-%H%M%S)" --force --describe
 
 # Verify if current machine satisfies the declared Brewfile
 brew bundle check --file=./Brewfile
@@ -7928,8 +7928,8 @@ The upstream CLI benchmark reads the named inputs into memory, measures compress
 
 ```bash
 zstd --version
-zstd -b1 -e9 -i3 -S "$HOME/Documentos/toolchain.md"
-zstd -T4 -b1 -e9 -i3 -S "$HOME/Documentos/toolchain.md"
+zstd -b1 -e9 -i3 -S "$HOME/Desktop/Documentos/toolchain.md"
+zstd -T4 -b1 -e9 -i3 -S "$HOME/Desktop/Documentos/toolchain.md"
 ```
 
 The CLI's common levels are 1–19; levels 20–22 require `--ultra` and more memory. OpenZFS exposes its own supported range (1–19) and does not take the CLI's `--ultra` switch.

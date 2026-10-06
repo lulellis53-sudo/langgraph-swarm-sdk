@@ -7,7 +7,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from swarm_sdk.execution import _pool_workers, parallel_cap
+from swarm_sdk.execution.concurrency import parallel_cap
+from swarm_sdk.execution.executor import _pool_workers
 
 ROOT = Path(__file__).resolve().parents[3]
 TEMPLATE = ROOT / ".cursor/templates/python_static_template.py"
