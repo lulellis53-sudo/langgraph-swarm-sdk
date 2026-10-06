@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-#: The WebSearch package is vendored in this lane (branch feat/websearch-ranking-quality).
+#: WebSearch is consumed from the sibling WebSearch worktree when present on PYTHONPATH.
 
 from Prediction.br_hardware import (  # noqa: E402
     PRODUCTS,

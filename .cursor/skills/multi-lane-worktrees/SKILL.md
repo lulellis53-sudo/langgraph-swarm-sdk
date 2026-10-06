@@ -13,6 +13,7 @@ description: >-
 | `WebSearch/` (under repo root) | `feature/websearch` | Search/scrape pipeline |
 | `../Swarm-Prediction` | `feat/prediction-engine` | `Prediction/` + forecast tests |
 | `../Newsletter` | `feat/newsletter` | `Newsletter/` MVP |
+| `../BotDeal` | `feat/botdeal` | `Prediction/BotDeal/` + PromoDeals pipeline (sync from prediction engine) |
 | Repo root `Swarm/` | `integration/all-branches` (integration merges; then `main`) | SDK + coordination |
 
 ## Setup (once)
@@ -24,6 +25,7 @@ git checkout main
 git branch feat/newsletter main   # if missing
 git worktree add ../Swarm-Prediction feat/prediction-engine
 git worktree add ../Newsletter feat/newsletter
+git worktree add ../BotDeal feat/botdeal   # or ./Prediction/BotDeal/sync_worktree.sh
 git worktree list
 ```
 

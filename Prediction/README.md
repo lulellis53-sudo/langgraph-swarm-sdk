@@ -49,6 +49,18 @@ saved = store.read_run(run_id, limit=500)
 | `ForecastError` | Invalid data or unfitted engine |
 | `LanceForecastStore` | Append forecast runs and read bounded run results |
 
+## BotDeal lane (worktree)
+
+PromoDeals / deal bot façade and **synced worktree** on `feat/botdeal`:
+
+```bash
+chmod +x Prediction/BotDeal/sync_worktree.sh
+./Prediction/BotDeal/sync_worktree.sh   # from ~/Swarm-Prediction (or ~/Swarm)
+uv run python -m Prediction.BotDeal mcp
+```
+
+See [`BotDeal/README.md`](BotDeal/README.md) (`~/BotDeal` worktree merges `feat/prediction-engine`).
+
 ## Offer pipeline (PromoDeals)
 
 Brazilian hardware prices, SQLite store (`Prediction/offers.db`), harvest/ingest CLIs, and MCP server (`Prediction/mcp_server.py`).
