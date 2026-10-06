@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 
-from swarm_sdk.gpu import topk_ip
+from swarm_sdk.compute import topk_ip
 from swarm_sdk.memory.base import MemoryHit
 from swarm_sdk.retrieval.embeddings import unit
 from swarm_sdk.retrieval.text import tokenize

@@ -170,6 +170,58 @@ def test_native_mode_sends_the_dork_untouched(monkeypatch: pytest.MonkeyPatch) -
     assert seen["body"]["query"] == DORK and "start_date" not in seen["body"]
 
 
+def test_parallel_search_maps_dorks_auth_and_excerpts(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: dict[str, Any] = {}
+
+    def fake(method: str, url: str, **kwargs: Any) -> Any:
+        seen.update(method=method, url=url, headers=kwargs.get("headers"), body=kwargs.get("json_body"))
+        return {
+            "results": [
+                {
+                    "title": "Example result",
+                    "url": "https://example.com/article",
+                    "excerpts": ["First passage.", "Second passage."],
+                },
+                {"title": "Invalid URL", "url": "javascript:alert(1)", "excerpts": ["skip"]},
+            ]
+        }
+
+    monkeypatch.setattr(ws, "_httpx_json", fake)
+    monkeypatch.setattr(ws, "env_key", lambda spec: "parallel-test-key")
+    hits = ws.search_parallel(
+        DORK,
+        SearcherSpec("parallel", "websearcher", dork="translate", engine="fast"),
+    )
+
+    assert seen["method"] == "POST" and seen["url"] == "https://api.parallel.ai/v1/search"
+    assert seen["headers"]["x-api-key"] == "parallel-test-key"
+    assert "Authorization" not in seen["headers"]
+    assert seen["body"]["objective"] == "lightgbm"
+    assert seen["body"]["search_queries"] == ["lightgbm"]
+    assert seen["body"]["mode"] == "fast"
+    assert seen["body"]["advanced_settings"] == {
+        "max_results": 8,
+        "source_policy": {
+            "include_domains": ["github.com"],
+            "exclude_domains": ["x.com"],
+            "after_date": "2026-06-01",
+        },
+    }
+    assert len(hits) == 1
+    assert hits[0].snippet == "First passage. Second passage."
+    assert hits[0].searcher_id == "parallel"
+
+
+def test_parallel_search_without_key_skips_request(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(ws, "env_key", lambda spec: "")
+
+    def boom(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("must not call Parallel without an API key")
+
+    monkeypatch.setattr(ws, "_httpx_json", boom)
+    assert ws.search_parallel("test query", SearcherSpec("parallel", "websearcher")) == []
+
+
 # ---------------------------------------------------------------- crawlers
 
 
@@ -574,12 +626,12 @@ def test_api_browse_without_a_model_is_422(monkeypatch: pytest.MonkeyPatch) -> N
     assert _client().post("/browse", json={"question": "q"}).status_code == 422
 
 
-# ---------------------------------------------------------------- google_ground keys
+# ---------------------------------------------------------------- google_search keys
 
 
 def _gemini_spec(*fallbacks: str) -> SearcherSpec:
     return SearcherSpec(
-        "google_ground",
+        "google_search",
         "websearcher",
         api_key_env="GK1",
         engine="gemini-3.8-flash",
@@ -636,48 +688,56 @@ def test_env_keys_orders_primary_then_fallbacks_and_skips_missing_and_duplicates
     assert ws.env_keys(SearcherSpec("x", "websearcher")) == []
 
 
-def test_google_ground_rotates_to_the_second_key_on_401_and_429(
+def test_google_search_rotates_to_the_second_key_on_401_and_429(
     monkeypatch: pytest.MonkeyPatch, gemini_keys: list[str]
 ) -> None:
     for status in ("401 Unauthorized", "429 Too Many Requests"):
         used: list[str] = []
         outcomes = {"key-one": OSError(f"Client error '{status}'"), "key-two": GROUNDED}
         monkeypatch.setattr(ws, "request_json", _fake_request(used, outcomes))
-        hits = ws.search_google_ground("q", _gemini_spec("GK2"))
+        hits = ws.search_google_search("q", _gemini_spec("GK2"))
         assert used == ["key-one", "key-two"], status
         assert [h.url for h in hits] == ["https://a.example/1"]
         assert hits[0].api_tokens == 77 and hits[0].snippet == "A cited sentence."
 
 
-def test_google_ground_stops_on_a_non_auth_error_and_when_every_key_fails(
+def test_google_search_stops_on_a_non_auth_error_and_when_every_key_fails(
     monkeypatch: pytest.MonkeyPatch, gemini_keys: list[str]
 ) -> None:
     used: list[str] = []
     outcomes = {"key-one": OSError("Server error '500 Internal Server Error'"), "key-two": GROUNDED}
     monkeypatch.setattr(ws, "request_json", _fake_request(used, outcomes))
-    assert ws.search_google_ground("q", _gemini_spec("GK2")) == []
+    assert ws.search_google_search("q", _gemini_spec("GK2")) == []
     assert used == ["key-one"]  # a 500 is not a key problem: no rotation
 
     used.clear()
     both_bad = {"key-one": OSError("401 Unauthorized"), "key-two": OSError("403 Forbidden")}
     monkeypatch.setattr(ws, "request_json", _fake_request(used, both_bad))
-    assert ws.search_google_ground("q", _gemini_spec("GK2")) == []
+    assert ws.search_google_search("q", _gemini_spec("GK2")) == []
     assert used == ["key-one", "key-two"]
 
 
-def test_google_ground_without_any_key_makes_no_request(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_google_search_without_any_key_makes_no_request(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(ws, "_resolve_secret", lambda name: "")
 
     def boom(*args: Any, **kwargs: Any) -> Any:
         raise AssertionError("must not call the API without a key")
 
     monkeypatch.setattr(ws, "request_json", boom)
-    assert ws.search_google_ground("q", _gemini_spec("GK2")) == []
+    assert ws.search_google_search("q", _gemini_spec("GK2")) == []
 
 
-def test_shipped_google_ground_has_a_fallback_key_and_current_model() -> None:
+def test_legacy_google_ground_id_still_dispatches() -> None:
+    """The pre-rename id stays wired to the same searcher, so old configs keep working."""
+    searchers = ws.builtin_searchers()
+    assert "google_search" in searchers
+    assert searchers["google_ground"] is searchers["google_search"]
+    assert ws.search_google_ground is ws.search_google_search
+
+
+def test_shipped_google_search_has_a_fallback_key_and_current_model() -> None:
     spec = next(
-        s for s in load_providers(ws.providers_yaml_path()).searchers if s.id == "google_ground"
+        s for s in load_providers(ws.providers_yaml_path()).searchers if s.id == "google_search"
     )
     assert spec.api_key_fallback_envs == ("GOOGLE_API_KEY", "GEMINI_API_KEY_2")
     assert spec.engine == "gemini-3.8-flash"

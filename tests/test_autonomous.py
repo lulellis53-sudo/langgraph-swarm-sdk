@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from tests.scripted_chat import Script, ScriptedModel, answer
 from langchain_core.messages import AIMessage
+from tests.scripted_chat import Script, ScriptedModel, answer
 from WebSearch.browser_agent import (
     choose_playwright,
     model_key_ready,

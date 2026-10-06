@@ -149,9 +149,6 @@ serialization = [
     "orjson>=3.10",
     "protobuf>=6.31",
 ]
-pydantic-ai = [
-    "pydantic-ai-slim[openai]>=2",
-]
 
 [project.scripts]
 swarm-api = "swarm_sdk.serving.http:main"
@@ -199,7 +196,7 @@ exclude = [
   "src/swarm_sdk/pb/**",
   "src/swarm_sdk/memory/faiss_store.py",
   "src/swarm_sdk/memory/qdrant_store.py",
-  "src/swarm_sdk/gpu/opencl_math.py",
+  "src/swarm_sdk/compute/opencl_math.py",
 ]
 
 [tool.pytest.ini_options]

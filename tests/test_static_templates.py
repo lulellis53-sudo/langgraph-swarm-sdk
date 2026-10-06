@@ -102,7 +102,7 @@ def test_batch_chunked(tpl: ModuleType) -> None:
 
 
 def test_cowork_cap_matches_sdk(tpl: ModuleType) -> None:
-    from swarm_sdk.execution.concurrency import gil_enabled, parallel_cap
+    from swarm_sdk.runtime.concurrency import gil_enabled, parallel_cap
 
     assert tpl.cowork_gil_enabled() == gil_enabled()
     assert tpl.cowork_parallel_cap() == parallel_cap()

@@ -39,13 +39,10 @@ def test_get_openai_key_from_keychain() -> None:
     key = vault.get_openai_key(runner=runner)
     assert key == "sk-proj-openai-key-abc"
     assert len(runner.calls) == 1
-    assert runner.calls[0] == [
-        "security",
-        "find-generic-password",
-        "-s",
-        "swarm/OPENAI_API_KEY",
-        "-w",
-    ]
+    call = runner.calls[0]
+    # Assert the contract, not the whole argv: a dedicated Keychain path
+    # (SWARM_KEYCHAIN_PATH) appends an extra argument when configured.
+    assert call[:5] == ["security", "find-generic-password", "-s", "swarm/OPENAI_API_KEY", "-w"]
 
 
 def test_get_openai_key_env_precedence(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -61,7 +58,13 @@ def test_get_jev_key_from_keychain() -> None:
     key = vault.get_jev_key(runner=runner)
     assert key == "jev-test-key-xyz"
     assert len(runner.calls) == 1
-    assert runner.calls[0] == ["security", "find-generic-password", "-s", "swarm/JEV_API_KEY", "-w"]
+    assert runner.calls[0][:5] == [
+        "security",
+        "find-generic-password",
+        "-s",
+        "swarm/JEV_API_KEY",
+        "-w",
+    ]
 
 
 def test_set_secret_success() -> None:
@@ -78,6 +81,79 @@ def test_set_secret_success() -> None:
     assert "-a" in call and call[call.index("-a") + 1] == user
     assert "-w" in call and call[call.index("-w") + 1] == secret
     assert "-U" in call
+
+
+def test_read_falls_back_to_secondary_namespace() -> None:
+    """A key absent from ``swarm/`` is read from ``APIKEYCHAIN/`` (read-only fallback)."""
+
+    def runner(argv: Sequence[str]) -> str | None:
+        service = argv[argv.index("-s") + 1]
+        return "jina-test-value" if service == "APIKEYCHAIN/JINA_API_KEY" else None
+
+    assert vault.get("JINA_API_KEY", runner=runner, environ={}) == "jina-test-value"
+
+
+def test_primary_namespace_wins_over_fallback() -> None:
+    """When both namespaces hold the key, ``swarm/`` is authoritative."""
+
+    def runner(argv: Sequence[str]) -> str | None:
+        service = argv[argv.index("-s") + 1]
+        if service == "swarm/TAVILY_API_KEY":
+            return "primary-value"
+        if service == "APIKEYCHAIN/TAVILY_API_KEY":
+            return "fallback-value"
+        return None
+
+    assert vault.get("TAVILY_API_KEY", runner=runner, environ={}) == "primary-value"
+
+
+def test_fallback_reads_only_when_primary_is_empty() -> None:
+    """The fallback namespace is not queried once the primary namespace answers."""
+
+    seen: list[str] = []
+
+    def runner(argv: Sequence[str]) -> str | None:
+        service = argv[argv.index("-s") + 1]
+        seen.append(service)
+        return "primary-value" if service == "swarm/BRAVE_API_KEY" else None
+
+    assert vault.get("BRAVE_API_KEY", runner=runner, environ={}) == "primary-value"
+    assert seen == ["swarm/BRAVE_API_KEY"]
+
+
+def test_fallback_read_uses_default_keychain_search_list() -> None:
+    """Fallback lookups must not pin the dedicated Keychain; those items live in the login one."""
+
+    def runner(argv: Sequence[str]) -> str | None:
+        service = argv[argv.index("-s") + 1]
+        return "api-keychain-value" if service.startswith("APIKEYCHAIN/") else None
+
+    vault.get("EXA_API_KEY", runner=runner, environ={})
+    # The fallback probe appends nothing beyond "-w" (no dedicated keychain path).
+    assert vault._find_cmd_default("APIKEYCHAIN/EXA_API_KEY") == [
+        "security",
+        "find-generic-password",
+        "-s",
+        "APIKEYCHAIN/EXA_API_KEY",
+        "-w",
+    ]
+
+
+def test_fallbacks_can_be_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``SWARM_KEYCHAIN_FALLBACKS=""`` restores primary-only reads."""
+    monkeypatch.setenv("SWARM_KEYCHAIN_FALLBACKS", "")
+    assert vault._fallback_prefixes() == ()
+
+    def runner(argv: Sequence[str]) -> str | None:
+        service = argv[argv.index("-s") + 1]
+        return "only-fallback" if service.startswith("APIKEYCHAIN/") else None
+
+    assert vault.get("JINA_API_KEY", runner=runner, environ={}) is None
+
+
+def test_write_verification_stays_primary_only() -> None:
+    """A write must never verify against a fallback item, or a failed write looks successful."""
+    assert vault._find_cmd("JINA_API_KEY")[3] == "swarm/JINA_API_KEY"
 
 
 def test_set_secret_failure() -> None:

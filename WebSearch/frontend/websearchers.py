@@ -74,7 +74,7 @@ class SearcherSpec:
     #: ``native`` sends the dork as typed; ``translate`` maps operators to API fields.
     dork: str = "native"
     #: Extra key env names tried in order when the primary key is missing, rejected (401/403)
-    #: or out of quota (429). Only ``google_ground`` rotates on failure today.
+    #: or out of quota (429). Only ``google_search`` rotates on failure today.
     api_key_fallback_envs: tuple[str, ...] = ()
 
 
@@ -523,21 +523,41 @@ def _parse_names[T: str](raw: object, allowed: tuple[T, ...], label: str) -> tup
     return tuple(order) or allowed
 
 
+#: Renamed searcher ids: legacy id -> current id. Kept so existing configs, scripts and
+#: docs that still say ``google_ground`` keep working after the rename to ``google_search``.
+SEARCHER_ALIASES: dict[str, str] = {
+    "google_ground": "google_search",
+}
+
+
+def canon_searcher_id(searcher_id: str) -> str:
+    """Resolve a (possibly legacy) searcher id to its current id.
+
+    Args:
+        searcher_id (str): Id as written in config or on the command line.
+
+    Returns:
+        str: The current id; unchanged when it is not an alias.
+    """
+    return SEARCHER_ALIASES.get(searcher_id, searcher_id)
+
+
 def get_searcher(config: ProvidersConfig, searcher_id: str) -> SearcherSpec:
-    """Look up a searcher by id.
+    """Look up a searcher by id, accepting legacy aliases.
 
     Args:
         config (ProvidersConfig): Loaded registry.
-        searcher_id (str): ``searchers[].id`` in YAML.
+        searcher_id (str): ``searchers[].id`` in YAML, or a legacy id.
 
     Returns:
         SearcherSpec: Matching spec.
 
     Raises:
-        KeyError: If *searcher_id* is absent.
+        KeyError: If *searcher_id* is absent (after alias resolution).
     """
+    wanted = canon_searcher_id(searcher_id)
     for spec in config.searchers:
-        if spec.id == searcher_id:
+        if spec.id == wanted:
             return spec
     raise KeyError(searcher_id)
 
@@ -1052,6 +1072,63 @@ def search_tavily(query: str, spec: SearcherSpec) -> list[SearchHit]:
     )
 
 
+def search_parallel(query: str, spec: SearcherSpec) -> list[SearchHit]:
+    """Parallel Search API.
+
+    The API uses an ``x-api-key`` header and accepts one or more search queries.
+    ``spec.engine`` selects the documented search mode; ``dork: translate`` maps
+    supported domain/date operators into ``advanced_settings.source_policy``.
+    """
+    token = env_key(spec)
+    if not token:
+        return []
+
+    body: dict[str, Any] = {
+        "objective": query,
+        "search_queries": [query],
+        "mode": spec.engine if spec.engine in {"turbo", "fast", "basic", "advanced"} else "fast",
+        "advanced_settings": {"max_results": 8},
+    }
+    if spec.dork == "translate":
+        parsed = parse_dork(query)
+        if parsed.plain():
+            body["objective"] = parsed.plain()
+            body["search_queries"] = [parsed.plain()]
+        source_policy: dict[str, Any] = {}
+        if parsed.sites:
+            source_policy["include_domains"] = list(parsed.sites)
+        if parsed.exclude_sites:
+            source_policy["exclude_domains"] = list(parsed.exclude_sites)
+        if parsed.after:
+            source_policy["after_date"] = parsed.after
+        if source_policy:
+            body["advanced_settings"]["source_policy"] = source_policy
+
+    data = _httpx_json(
+        "POST",
+        "https://api.parallel.ai/v1/search",
+        headers={"Accept": "application/json", "Content-Type": "application/json", "x-api-key": token},
+        json_body=body,
+    )
+    rows = dig(data, "results")
+    if not isinstance(rows, list):
+        return []
+    normalized: list[dict[str, str]] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        excerpts = row.get("excerpts")
+        snippet = " ".join(str(item) for item in excerpts if item) if isinstance(excerpts, list) else ""
+        normalized.append(
+            {
+                "title": str(row.get("title") or ""),
+                "url": str(row.get("url") or ""),
+                "snippet": snippet,
+            }
+        )
+    return hits_from_maps(normalized, spec.id, title="title", url="url", snippet="snippet")
+
+
 def search_jina(query: str, spec: SearcherSpec) -> list[SearchHit]:
     """Jina Search Foundation API.
 
@@ -1281,7 +1358,7 @@ def _http_status(exc: BaseException) -> int | None:
     return int(match.group(1)) if match else None
 
 
-def search_google_ground(query: str, spec: SearcherSpec) -> list[SearchHit]:
+def search_google_search(query: str, spec: SearcherSpec) -> list[SearchHit]:
     """Gemini with Google Search grounding; returns the cited web sources.
 
     ``spec.engine`` is the model id, ``spec.base_url`` the API root. Keys come from
@@ -1320,7 +1397,7 @@ def search_google_ground(query: str, spec: SearcherSpec) -> list[SearchHit]:
             status = _http_status(exc)
             # Host and status only: the message embeds the request URL.
             logger.warning(
-                "google_ground key %d/%d failed: %s %s",
+                "google_search key %d/%d failed: %s %s",
                 index,
                 len(keys),
                 type(exc).__name__,
@@ -1354,7 +1431,7 @@ def search_google_ground(query: str, spec: SearcherSpec) -> list[SearchHit]:
     hits = hits_from_maps(rows, spec.id, title="title", url="uri", snippet="snippet")
     queries = dig(meta, "webSearchQueries")
     logger.info(
-        "google_ground: %s search queries run by %s (Gemini 3 bills per query)",
+        "google_search: %s search queries run by %s (Gemini 3 bills per query)",
         len(queries) if isinstance(queries, list) else 0,
         model,
     )
@@ -1529,11 +1606,14 @@ def builtin_searchers() -> dict[str, SearchFn]:
         "ddg": search_ddg,
         "ddglite": search_ddg_lite,
         "tavily": search_tavily,
+        "parallel": search_parallel,
         "jina": search_jina,
         "apify": search_apify,
         "exa": search_exa,
         "openrouter_web": search_openrouter_web,
-        "google_ground": search_google_ground,
+        "google_search": search_google_search,
+        # Legacy id, kept so existing configs keep working.
+        "google_ground": search_google_search,
         "searxng": search_searxng,
         "kimisearch": search_kimi,
     }
@@ -1598,7 +1678,8 @@ def _select_specs(config: ProvidersConfig, searcher_id: str | None) -> list[Sear
     specs = list(config.searchers)
     if searcher_id is None:
         return specs
-    specs = [s for s in specs if s.id == searcher_id]
+    wanted = canon_searcher_id(searcher_id)
+    specs = [s for s in specs if s.id == wanted]
     if not specs:
         raise KeyError(searcher_id)
     return specs
@@ -1746,6 +1827,10 @@ def _store(sink: ResultSink, hits: Sequence[SearchHit]) -> None:
     logger.debug("sink stored=%d skipped=%d %s", report.stored, report.skipped, report.detail)
 
 
+#: Legacy name for :func:`search_google_search` (the searcher id was ``google_ground``).
+search_google_ground = search_google_search
+
+
 __all__ = [
     "CrawlerName",
     "CrawlSpec",
@@ -1791,7 +1876,9 @@ __all__ = [
     "search_ddg_lite",
     "search_exa",
     "search_openrouter_web",
-    "search_google_ground",
+    "SEARCHER_ALIASES",
+    "canon_searcher_id",
+    "search_google_search",
     "search_searxng",
     "search_tavily",
     "search_jina",

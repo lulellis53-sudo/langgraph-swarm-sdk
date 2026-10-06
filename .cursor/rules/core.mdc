@@ -25,7 +25,7 @@ Think → Check → Plan (multitasks) → Act → Context7 → Tighten → re-Ch
 - First line after the docstring: `from __future__ import annotations`
 - Prefer **lite** template for small modules: `.cursor/templates/python_static_template_lite.py`
 - No blind `@wrappers.retry` loops — use `retry_transient` on `TimeoutError` / `OSError` / `ConnectionError` only
-- Parallel caps: `swarm_sdk.execution.concurrency.parallel_cap`; disjoint files per parallel agent step
+- Parallel caps: `swarm_sdk.runtime.concurrency.parallel_cap`; disjoint files per parallel agent step
 - Do not paste the full template into `AGENTS.md` — edit the `.py` scaffold only
 
 ## Always

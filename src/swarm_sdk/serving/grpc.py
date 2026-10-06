@@ -8,14 +8,14 @@ import uuid
 
 import grpc
 
+from swarm_sdk.agents.config.settings import Settings
 from swarm_sdk.agents.manifest import load_all_agent_manifests
-from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import SwarmSDK
-from swarm_sdk.execution.executor import install_uvloop
 from swarm_sdk.orchestrator import make_factory, run_plan, spawn
 from swarm_sdk.orchestrator.plan import Plan, PlanResult
 from swarm_sdk.orchestrator.spawn import _validate_plan
 from swarm_sdk.pb import swarm_pb2, swarm_pb2_grpc
+from swarm_sdk.runtime.executor import install_uvloop
 from swarm_sdk.vault import prime_runtime_secrets
 
 #: Spawned plans awaiting execution, keyed by plan id (see module docstring).

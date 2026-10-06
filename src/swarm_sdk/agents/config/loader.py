@@ -9,7 +9,12 @@ from typing import Literal, cast
 import yaml
 from pydantic import BaseModel, Field
 
-from swarm_sdk.config.settings import EmbedBackend, MemoryBackend, Settings, VectorQuantization
+from swarm_sdk.agents.config.settings import (
+    EmbedBackend,
+    MemoryBackend,
+    Settings,
+    VectorQuantization,
+)
 from swarm_sdk.models.breaker import BreakerConfig
 from swarm_sdk.models.selection import ModelRoute, ModelSelectConfig, ThinkLevel
 from swarm_sdk.retrieval.hybrid import HybridSearchConfig
@@ -118,7 +123,7 @@ class RouterConfig(BaseModel):
 
 
 # Packaged default (also overridable via Main/config/swarm.yaml or SWARM_CONFIG_PATH).
-_BUNDLED_SWARM_CONFIG = Path(__file__).resolve().parent.parent / "agents" / "config" / "swarm.yaml"
+_BUNDLED_SWARM_CONFIG = Path(__file__).resolve().parent / "swarm.yaml"
 
 
 class SwarmFileConfig(BaseModel):

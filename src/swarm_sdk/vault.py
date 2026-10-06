@@ -21,6 +21,27 @@ logger = logging.getLogger(__name__)
 
 TIMEOUT_S = 5.0
 SERVICE_PREFIX = "swarm/"
+
+#: Read-only fallback Keychain namespaces, tried in order after SERVICE_PREFIX.
+#: This host keeps many provider keys under ``APIKEYCHAIN/`` (written by the user's own
+#: tooling), while the vault reads ``swarm/``. Reading the fallbacks lets those keys
+#: resolve without duplicating secrets into a second namespace.
+#: Never used for writes or write-verification: see ``_find_cmd``.
+SERVICE_PREFIX_FALLBACKS: tuple[str, ...] = ("APIKEYCHAIN/",)
+
+
+def _fallback_prefixes() -> tuple[str, ...]:
+    """Read-only fallback prefixes, honouring ``SWARM_KEYCHAIN_FALLBACKS``.
+
+    Set ``SWARM_KEYCHAIN_FALLBACKS=""`` (or ``off``/``none``) to disable fallback reads.
+    Any other value is treated as a colon-separated list of prefixes.
+    """
+    raw = os.environ.get("SWARM_KEYCHAIN_FALLBACKS")
+    if raw is None:
+        return SERVICE_PREFIX_FALLBACKS
+    if raw.strip().lower() in {"", "off", "none", "0"}:
+        return ()
+    return tuple(part if part.endswith("/") else f"{part}/" for part in raw.split(":") if part)
 _PROJECT_ENV = Path(__file__).resolve().parents[3] / ".env"
 KNOWN_NAMES = (
     "MEM0_API_KEY",
@@ -79,9 +100,40 @@ _FERNET_KEY_NAME = "DOTENV_FERNET_KEY"
 
 
 def _find_cmd(name: str) -> list[str]:
-    return ["security", "find-generic-password", "-s", f"{SERVICE_PREFIX}{name}", "-w"] + (
-        _keychain_args()
-    )
+    """Lookup command for the PRIMARY namespace.
+
+    Used for writes and for post-write verification. Deliberately does not fall back:
+    verifying a ``swarm/`` write against a pre-existing ``APIKEYCHAIN/`` item would
+    report success for a write that never landed.
+    """
+    return _find_cmd_for(f"{SERVICE_PREFIX}{name}")
+
+
+def _find_cmd_for(service: str) -> list[str]:
+    """Lookup command for one fully-qualified Keychain service name."""
+    return ["security", "find-generic-password", "-s", service, "-w"] + (_keychain_args())
+
+
+def _read_keychain(name: str, run: Runner) -> str | None:
+    """Return the first non-empty value for ``name`` across the read namespaces.
+
+    The primary namespace is searched in the vault's dedicated Keychain (honouring
+    ``SWARM_KEYCHAIN_PATH``). Fallback namespaces hold user-managed items in the login
+    keychain, so they are searched through the default keychain search list instead:
+    passing ``-s <dedicated keychain>`` restricts the lookup to that one file and would
+    miss them. Reads only; never writes.
+    """
+    if value := run(_find_cmd_for(f"{SERVICE_PREFIX}{name}")):
+        return value
+    for prefix in _fallback_prefixes():
+        if value := run(_find_cmd_default(f"{prefix}{name}")):
+            return value
+    return None
+
+
+def _find_cmd_default(service: str) -> list[str]:
+    """Lookup command using the default keychain search list (fallback namespaces only)."""
+    return ["security", "find-generic-password", "-s", service, "-w"]
 
 
 def _store_via_stdin(name: str, value: str) -> None:
@@ -275,16 +327,7 @@ def get_with_source(
     run = runner or run_cli
     if value := env.get(name):
         return value, "env"
-    if value := run(
-        [
-            "security",
-            "find-generic-password",
-            "-s",
-            f"{SERVICE_PREFIX}{name}",
-            "-w",
-            *_keychain_args(),
-        ]
-    ):
+    if value := _read_keychain(name, run):
         return value, "keychain"
     for path in [dotenv] if dotenv else [Path.home() / ".env", Path.cwd() / ".env"]:
         value = _from_dotenv(name, path, runner=runner)

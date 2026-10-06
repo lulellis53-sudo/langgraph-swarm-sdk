@@ -42,7 +42,7 @@ For swarm coordination: start from `[Agents/SKILLS.md](Agents/SKILLS.md)` and `[
 | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
 | `[src/swarm_sdk/](src/swarm_sdk/)`                           | Library: swarm runtime, cache, memory, routing, API/gRPC                                                 |
 | `[src/swarm_sdk/orchestrator/](src/swarm_sdk/orchestrator/)` | Parallel plan engine: `spawn` (goal → structured plan) + `run_plan` (LangGraph dependency waves)          |
-| `[src/swarm_sdk/server/](src/swarm_sdk/server/)`             | LangGraph Server graph factories referenced by `[langgraph.json](langgraph.json)` (`swarm`, `plan`)       |
+| `[src/swarm_sdk/serving/](src/swarm_sdk/serving/)`           | HTTP/gRPC/peer serving and LangGraph Server graph factories (`swarm`, `plan`)                              |
 | `[src/swarm_sdk/serving/client.py](src/swarm_sdk/serving/client.py)` | `langgraph_sdk` client; `SWARM_SERVER_URL` delegates runs to a LangGraph Server                    |
 | `[langgraph.json](langgraph.json)`                           | LangGraph Server manifest mapping the `swarm` and `plan` graph ids to factory functions                   |
 | `[src/swarm_sdk/pb/](src/swarm_sdk/pb/)`                     | gRPC: `swarm.proto` + generated `swarm_pb2*` stubs                                                       |
@@ -85,7 +85,7 @@ Use `uv run …` so commands use the project virtualenv.
 ### Subtopic: Services
 
 - **Run services:** `uv run swarm-api`, `uv run swarm-grpc`.
-- **LangGraph Server:** `[langgraph.json](langgraph.json)` serves the `swarm` (handoff graph) and `plan` (spawn → wave engine) graphs; factories in `[src/swarm_sdk/server/graphs.py](src/swarm_sdk/server/graphs.py)`. Deploy with `langgraph up` (the pinned `langgraph-cli` for Python 3.14 has no in-memory `dev` server), then call it with `SWARM_SERVER_URL=http://127.0.0.1:2024` — `SwarmSDK.run` delegates to the server via `langgraph_sdk` (`swarm_sdk.serving.client`). `swarm-api`/`swarm-grpc` remain the in-process serving paths.
+- **LangGraph Server:** `[langgraph.json](langgraph.json)` serves the `swarm` (handoff graph) and `plan` (spawn → wave engine) graphs; factories in `[src/swarm_sdk/serving/graphs.py](src/swarm_sdk/serving/graphs.py)`. Deploy with `langgraph up` (the pinned `langgraph-cli` for Python 3.14 has no in-memory `dev` server), then call it with `SWARM_SERVER_URL=http://127.0.0.1:2024` — `SwarmSDK.run` delegates to the server via `langgraph_sdk` (`swarm_sdk.serving.client`). `swarm-api`/`swarm-grpc` remain the in-process serving paths.
 
 ### Subtopic: Quality gate
 
@@ -209,7 +209,7 @@ Agent contract (coding assistants):
   Profile before optimizing hot paths; measure before/after (Optimizer norms).
   Delete unused role sections when copying; no import-time side effects.
   Parallel swarm steps: disjoint ``files`` per sibling agent; cap via ``CoworkRole``.
-  In ``src/swarm_sdk/``: use ``swarm_sdk.execution.concurrency`` for caps.
+  In ``src/swarm_sdk/``: use ``swarm_sdk.runtime.concurrency`` for caps.
 
 Copy this skeleton when starting a new module under ``src/swarm_sdk/``.
 Delete unused role sections. Keep roles grouped; do not interleave unrelated helpers.
@@ -224,7 +224,7 @@ Layout:
 6. ``__all__`` + optional ``main`` under ``__main__`` only
 
 PEP 810 (Explicit lazy imports, Python 3.15+): defer heavy deps; ``TYPE_CHECKING`` for types.
-PEP 703 free-threaded 3.14: ``CoworkRole`` / ``swarm_sdk.execution.concurrency.parallel_cap``.
+PEP 703 free-threaded 3.14: ``CoworkRole`` / ``swarm_sdk.runtime.concurrency.parallel_cap``.
 
 Canonical source: ``.cursor/templates/python_static_template.py``.
 Lite: ``python_static_template_lite.py``.
@@ -393,7 +393,7 @@ class DbRole:
 
 
 class CoworkRole:
-    """Sketch — in ``src/swarm_sdk`` import ``swarm_sdk.execution.concurrency`` instead."""
+    """Sketch — in ``src/swarm_sdk`` import ``swarm_sdk.runtime.concurrency`` instead."""
 
     @staticmethod
     def gil_enabled() -> bool:
@@ -473,7 +473,7 @@ def loop_chunked[T](items: Sequence[T], size: int) -> list[Sequence[T]]:
 
 def cowork_gil_enabled() -> bool:
     try:
-        from swarm_sdk.execution.concurrency import gil_enabled as sdk_gil
+        from swarm_sdk.runtime.concurrency import gil_enabled as sdk_gil
 
         return sdk_gil()
     except ImportError:
@@ -482,7 +482,7 @@ def cowork_gil_enabled() -> bool:
 
 def cowork_parallel_cap() -> int:
     try:
-        from swarm_sdk.execution.concurrency import parallel_cap as sdk_cap
+        from swarm_sdk.runtime.concurrency import parallel_cap as sdk_cap
 
         return sdk_cap()
     except ImportError:
@@ -518,7 +518,7 @@ def main() -> int:
     assert loop_chunked([1, 2, 3, 4], 2) == [[1, 2], [3, 4]]
     cap = cowork_parallel_cap()
     assert cap in (8, 32)
-    from swarm_sdk.execution.concurrency import parallel_cap as sdk_cap
+    from swarm_sdk.runtime.concurrency import parallel_cap as sdk_cap
 
     assert cap == sdk_cap()
     return 0
@@ -541,7 +541,7 @@ from __future__ import annotations
 - Read callers, tests, and config before editing.
 - One failed attempt → analyse → one deliberate fix (no blind retries).
 - Profile before optimizing; use `SWARM_PROFILE=1` only for `@wrappers.timed` on non-hot paths.
-- Parallel swarm steps: disjoint `files` per sibling; cap via `cowork_parallel_cap()` / `swarm_sdk.execution.concurrency.parallel_cap`.
+- Parallel swarm steps: disjoint `files` per sibling; cap via `cowork_parallel_cap()` / `swarm_sdk.runtime.concurrency.parallel_cap`.
 - Delete unused role sections when copying; no import-time side effects.
 
 ### Subtopic: When to use
@@ -563,7 +563,7 @@ Do **not** import template files from runtime package code — copy and trim.
 | math | `MathRole` | `math_*` | Scalar / reductions (no I/O) |
 | db | `DbRole` | `db_*` | Store / connection façade |
 | batch | `BatchRole` | `batch_*`, `loop_*` | Bounded batch/async (`LoopRole` = alias) |
-| cowork | `CoworkRole` | `cowork_*` | PEP 703 caps; runtime: `swarm_sdk.execution.concurrency` |
+| cowork | `CoworkRole` | `cowork_*` | PEP 703 caps; runtime: `swarm_sdk.runtime.concurrency` |
 
 ### Subtopic: Wrappers
 

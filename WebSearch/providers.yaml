@@ -21,6 +21,12 @@ searchers:
     dork: translate  # site:/-site:/after:/before: become API fields; terms stay as text
     api_key_env: TAVILY_API_KEY
     description: Tavily Search API.
+  - id: parallel
+    kind: websearcher
+    dork: translate  # site:/-site:/after: become Parallel source-policy filters
+    api_key_env: PARALLEL_API_KEY
+    engine: fast
+    description: Parallel Search API (AI-optimized web search).
   - id: jina
     kind: websearcher
     api_key_env: JINA_API_KEY
@@ -54,7 +60,7 @@ searchers:
     engine: duckduckgo,bing
     base_url_env: SEARXNG_URL
     description: Self-hosted SearXNG JSON (DuckDuckGo + Bing engines).
-  - id: google_ground
+  - id: google_search
     kind: websearcher
     api_key_env: GEMINI_API_KEY
     # GEMINI_API_KEY, else GOOGLE_API_KEY, else GEMINI_API_KEY_2. Rotate on 401/403/429.
@@ -63,7 +69,9 @@ searchers:
     base_url: https://generativelanguage.googleapis.com/v1beta
     # Gemini 3 bills each executed search query. Paid tier: 5,000 free Gemini 3.x
     # search requests per month (shared), then $14 / 1,000. Not on the free token tier.
-    description: Gemini 3.8 Flash with Google Search grounding (cited sources + token usage).
+    # Search runs as the native ``google_search`` tool call (the old ``google_search_retrieval``
+    # grounding tool is retired); cited sources come back in ``groundingMetadata``.
+    description: Gemini with the Google Search tool call (cited sources + token usage).
   - id: kimisearch
     kind: websearcher
     api_key_env: MOONSHOT_API_KEY

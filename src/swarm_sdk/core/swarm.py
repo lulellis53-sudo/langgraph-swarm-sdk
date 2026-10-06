@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING, Literal, Protocol, cast
 
 from pydantic import BaseModel, Field, ValidationError
 
+from swarm_sdk.agents.config.loader import SwarmFileConfig, load_swarm_config
+from swarm_sdk.agents.config.settings import Settings, load_merged_settings
 from swarm_sdk.agents.manifest import (
     AgentManifest,
     agents_root,
@@ -18,13 +20,10 @@ from swarm_sdk.agents.manifest import (
     load_all_agent_manifests,
     role_contract,
 )
-from swarm_sdk.config.loader import SwarmFileConfig, load_swarm_config
-from swarm_sdk.config.settings import Settings, load_merged_settings
-from swarm_sdk.execution.executor import offload
-from swarm_sdk.execution.fanout import fan_out
-from swarm_sdk.gpu import set_enabled as set_opencl_enabled
+from swarm_sdk.compute import set_enabled as set_opencl_enabled
 from swarm_sdk.memory.base import MemoryHit, MemoryStore
 from swarm_sdk.memory.sqlite_vec import SqliteVecStore
+from swarm_sdk.models.budget import PackedPrompt, TokenBudget, count_text
 from swarm_sdk.models.chat import (
     complete_with_usage,
     last_ai_text,
@@ -38,13 +37,14 @@ from swarm_sdk.models.selection import (
     ModelSelector,
     ThinkLevel,
 )
-from swarm_sdk.observability import metrics
-from swarm_sdk.observability.usage import UsageLog
-from swarm_sdk.prompting.budget import PackedPrompt, TokenBudget, count_text
 from swarm_sdk.retrieval.cache import SemanticCache
 from swarm_sdk.retrieval.embeddings import Embedder, FastEmbedder, HashEmbedder, LlamaCppEmbedder
 from swarm_sdk.retrieval.recall import recall_hits
 from swarm_sdk.retrieval.rerank import FastEmbedReranker, KeywordReranker, Reranker
+from swarm_sdk.runtime import metrics
+from swarm_sdk.runtime.executor import offload
+from swarm_sdk.runtime.fanout import fan_out
+from swarm_sdk.runtime.usage import UsageLog
 
 if TYPE_CHECKING:
     from langchain_core.language_models.chat_models import BaseChatModel
@@ -543,14 +543,6 @@ class SwarmSDK:
                     else _DEFAULT_NODE_PROMPTS.get(node, f"You are the {node}. Be brief.")
                 )
                 peers = [peer for peer in nodes if peer != node]
-                if self.settings.pydantic_ai_nodes:
-                    from swarm_sdk.core.pydantic_node import pydantic_ai_node
-
-                    model_name = (manifest.model if manifest else "") or (
-                        self.settings.specialist_model
-                    )
-                    agents.append(pydantic_ai_node(node, model_name, prompt, peers))
-                    continue
                 agents.append(
                     # Mixed handoff/websearch tool objects; the static overloads
                     # only track the literal tool-list shape (cf. load_chat_model).

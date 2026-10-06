@@ -1,6 +1,6 @@
 # Swarm runtime wiring: providers, fallbacks, parallelism, think levels,
 # embeddings, vector store, and hybrid search.
-# Consumed by swarm_sdk.config (SWARM_ env vars override these values).
+# Consumed by swarm_sdk.agents.config (SWARM_ env vars override these values).
 
 version: 1
 

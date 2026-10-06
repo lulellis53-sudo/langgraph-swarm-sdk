@@ -6,7 +6,7 @@ import importlib
 from collections.abc import Iterable
 from typing import Protocol, cast
 
-from swarm_sdk.math import bm25_keyword_rerank_score, keyword_overlap_score
+from swarm_sdk.compute.scoring import bm25_keyword_rerank_score, keyword_overlap_score
 
 
 class Reranker(Protocol):

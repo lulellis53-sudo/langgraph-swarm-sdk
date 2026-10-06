@@ -92,7 +92,7 @@ Most macOS topics above do not apply:
 | --- | --- | --- |
 | 3.14.x | **Current runtime** (`requires-python >=3.14.5`) | full gate green: 303 tests, ruff, ty |
 | 3.15.0rc2 | **Fully working** (needs the local ormsgpack wheel, see next topic) | 102 repo files compile; full dep tree compiles; `import swarm_sdk` + langgraph + langchain clean; 16/16 laziness + swarm-coordination tests pass |
-| free-threaded 3.14/3.15t | Code ready, wheels lag | `parallel_cap()` widens 8→32 when the GIL is off (`src/swarm_sdk/execution/concurrency.py`); C-extension `t`-build wheels for pydantic-core/onnxruntime are the remaining lag |
+| free-threaded 3.14/3.15t | Code ready, wheels lag | `parallel_cap()` widens 8→32 when the GIL is off (`src/swarm_sdk/runtime/concurrency.py`); C-extension `t`-build wheels for pydantic-core/onnxruntime are the remaining lag |
 
 Notes:
 

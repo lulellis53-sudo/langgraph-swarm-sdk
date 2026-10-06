@@ -18,7 +18,7 @@ import numpy as np
 from swarm_sdk.memory.base import MemoryHit
 
 if TYPE_CHECKING:
-    from swarm_sdk.config.settings import Settings
+    from swarm_sdk.agents.config.settings import Settings
 
 _CACHE_HEAD = "swarm-cache"
 

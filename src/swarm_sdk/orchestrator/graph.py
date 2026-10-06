@@ -5,7 +5,7 @@ frontier computed by :meth:`Plan.waves`). Steps inside a wave are dispatched wit
 :func:`swarm_sdk.models.selection.bounded_gather` so they run concurrently up to
 ``max_concurrency`` — under uvloop the I/O interleaves, and on free-threaded
 Python 3.14 the blocking provider SDK calls also parallelize across the widened
-runtime thread pool (see :mod:`swarm_sdk.execution.executor`).
+runtime thread pool (see :mod:`swarm_sdk.runtime.executor`).
 """
 
 from __future__ import annotations

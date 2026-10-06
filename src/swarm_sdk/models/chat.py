@@ -11,8 +11,8 @@ from typing import TYPE_CHECKING
 import yaml
 
 from swarm_sdk import vault
-from swarm_sdk.execution.executor import offload
-from swarm_sdk.prompting.budget import count_text
+from swarm_sdk.models.budget import count_text
+from swarm_sdk.runtime.executor import offload
 
 if TYPE_CHECKING:
     from langchain_core.language_models.chat_models import BaseChatModel

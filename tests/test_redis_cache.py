@@ -8,9 +8,7 @@ from types import ModuleType, SimpleNamespace
 from typing import Any, ClassVar
 
 import pytest
-
-from WebSearch.frontend import SearchHit, parallel_search, registry_search
-from WebSearch.frontend import websearchers
+from WebSearch.frontend import SearchHit, parallel_search, registry_search, websearchers
 from WebSearch.frontend.websearchers import ProvidersConfig, SearcherSpec
 
 

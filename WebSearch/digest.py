@@ -302,7 +302,7 @@ def main(
             )
         elif args.command == "weekly":
             if store is None or embedder is None:
-                from swarm_sdk.config.settings import load_merged_settings
+                from swarm_sdk.agents.config.settings import load_merged_settings
                 from swarm_sdk.core.swarm import default_embedder, open_store
 
                 settings, _ = load_merged_settings()

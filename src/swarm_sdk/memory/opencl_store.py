@@ -7,8 +7,8 @@ from typing import Literal
 
 import numpy as np
 
-from swarm_sdk.gpu import binary_dot, binary_quantize, dequant_dot, quantize_int8, topk_ip
-from swarm_sdk.math import binary_score_to_cosine
+from swarm_sdk.compute import binary_dot, binary_quantize, dequant_dot, quantize_int8, topk_ip
+from swarm_sdk.compute.scoring import binary_score_to_cosine
 from swarm_sdk.memory.base import MemoryHit
 from swarm_sdk.retrieval.embeddings import unit
 
@@ -32,7 +32,7 @@ class OpenClVecStore:
     Vectors are kept in contiguous buffers whose element type depends on
     ``quantize``: float32 (``"none"``), symmetric per-row INT8 with a float32
     scale (``"int8"``), or packed sign bits (``"binary"``). Search uses the shared
-    OpenCL dispatcher in `swarm_sdk.gpu` and falls back to NumPy if OpenCL is
+    OpenCL dispatcher in `swarm_sdk.compute` and falls back to NumPy if OpenCL is
     unavailable or fails.
 
     Score semantics:

@@ -6,8 +6,8 @@ import threading
 
 import pytest
 
+from swarm_sdk.compute.report import _gil_status
 from swarm_sdk.decorators import async_wrapper
-from swarm_sdk.gpu.report import _gil_status
 
 
 async def test_async_wrapper_runs_sync_function_off_the_event_loop_thread() -> None:
@@ -26,5 +26,5 @@ async def test_async_wrapper_runs_sync_function_off_the_event_loop_thread() -> N
 def test_gil_status_follows_the_shared_probe(
     monkeypatch: pytest.MonkeyPatch, gil: bool, label: str
 ) -> None:
-    monkeypatch.setattr("swarm_sdk.execution.concurrency.gil_enabled", lambda: gil)
+    monkeypatch.setattr("swarm_sdk.runtime.concurrency.gil_enabled", lambda: gil)
     assert _gil_status() == label

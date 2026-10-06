@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from swarm_sdk.gpu.lazy_dispatcher import VectorComputeDispatcher
+from swarm_sdk.compute.lazy_dispatcher import VectorComputeDispatcher
 
 
 class TestLazyLoading:
@@ -242,13 +242,13 @@ class TestDeviceInfo:
 
 
 class TestReExport:
-    """Verify VectorComputeDispatcher is cleanly re-exported in swarm_sdk.gpu."""
+    """Verify VectorComputeDispatcher is cleanly re-exported in swarm_sdk.compute."""
 
     def test_reexported_in_package(self) -> None:
-        import swarm_sdk.gpu as gpu_pkg
+        import swarm_sdk.compute as compute_pkg
 
-        assert hasattr(gpu_pkg, "VectorComputeDispatcher")
-        assert "VectorComputeDispatcher" in gpu_pkg.__all__
-        from swarm_sdk.gpu import VectorComputeDispatcher as ExportedDispatcher
+        assert hasattr(compute_pkg,"VectorComputeDispatcher")
+        assert "VectorComputeDispatcher" in compute_pkg.__all__
+        from swarm_sdk.compute import VectorComputeDispatcher as ExportedDispatcher
 
         assert ExportedDispatcher is VectorComputeDispatcher

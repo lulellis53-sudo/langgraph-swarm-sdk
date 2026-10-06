@@ -508,7 +508,7 @@ def _open_memory(cfg: ProvidersConfig, ready: ReadyFn) -> MemoryProvider | None:
     if select_ready(cfg.autonomous_memory, ready=ready) != "mem0":
         return None
     try:
-        from swarm_sdk.config.settings import Settings
+        from swarm_sdk.agents.config.settings import Settings
         from swarm_sdk.memory.mem0_store import Mem0Store
 
         return _Mem0Memory(Mem0Store.from_settings(Settings(memory_backend="mem0")))

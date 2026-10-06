@@ -28,7 +28,7 @@ Full ops notes: @.cursor/AGENTS.md (Static Templates). Root: @AGENTS.md (Topic: 
 
 ## Free-threading and agent cowork (PEP 703)
 
-- In `src/swarm_sdk/`: `from swarm_sdk.execution.concurrency import gil_enabled, parallel_cap`
+- In `src/swarm_sdk/`: `from swarm_sdk.runtime.concurrency import gil_enabled, parallel_cap`
 - Template sketch: `CoworkRole` / `cowork_parallel_cap()`; default `BatchRole.gather_limited(..., limit=None)` uses the cap
 - Orchestrator siblings claim **disjoint files** per wave
 

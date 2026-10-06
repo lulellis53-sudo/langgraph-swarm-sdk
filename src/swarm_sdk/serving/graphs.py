@@ -1,4 +1,4 @@
-"""Module-level graph factories referenced by ``langgraph.json``.
+"""LangGraph Server graph factories referenced by ``langgraph.json``.
 
 LangGraph Server imports this file and calls each factory with no arguments to
 obtain the compiled graphs it serves:
@@ -7,14 +7,14 @@ obtain the compiled graphs it serves:
 {
   "dependencies": ["."],
   "graphs": {
-    "swarm": "./src/swarm_sdk/server/graphs.py:swarm_graph",
-    "plan": "./src/swarm_sdk/server/graphs.py:plan_graph"
+    "swarm": "./src/swarm_sdk/serving/graphs.py:swarm_graph",
+    "plan": "./src/swarm_sdk/serving/graphs.py:plan_graph"
   }
 }
 ```
 
 All configuration comes from the environment (``SWARM_*`` prefix, see
-:mod:`swarm_sdk.config.settings`); no secrets are read here. Start a local
+:mod:`swarm_sdk.agents.config.settings`); no secrets are read here. Start a local
 server with ``langgraph dev`` (or deploy with ``langgraph up``) from the repo
 root and call it with :func:`swarm_sdk.serving.client.run_on_server`.
 """
@@ -25,8 +25,8 @@ from typing import TYPE_CHECKING, Any, NotRequired, TypedDict, cast
 
 from langgraph.graph import END, START, StateGraph
 
+from swarm_sdk.agents.config.loader import load_swarm_config
 from swarm_sdk.agents.manifest import load_all_agent_manifests
-from swarm_sdk.config.loader import load_swarm_config
 from swarm_sdk.orchestrator.graph import run_plan
 from swarm_sdk.orchestrator.plan import Plan, PlanResult
 from swarm_sdk.orchestrator.spawn import make_factory, spawn

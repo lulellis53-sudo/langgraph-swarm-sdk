@@ -15,7 +15,7 @@ def on_import_error(name: str) -> None:
     """Called by pkgutil.walk_packages when a package fails to import."""
     exc_type, exc_value, _ = sys.exc_info()
     # Only report if it's a swarm_sdk-related error or non-ImportError exception
-    if exc_type is not ImportError or "swarm_sdk" in str(exc_value):
+    if exc_type is not None and (not issubclass(exc_type, ImportError) or "swarm_sdk" in str(exc_value)):
         failures.append(f"{name}: failed to import package")
 
 

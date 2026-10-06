@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from unittest.mock import patch
+
 import pytest
 
 from swarm_sdk.orchestrator import LowSwarmEngine, SwarmState
-from swarm_sdk.core.rules import HostRuleEngine
-from swarm_sdk.core.jev_router import JevRouter
 
 
 class TestLowSwarmEngine:

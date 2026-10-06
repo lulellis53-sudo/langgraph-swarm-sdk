@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
-from swarm_sdk.math import bm25_idf, bm25_term_score
+from swarm_sdk.compute.scoring import bm25_idf, bm25_term_score
 from swarm_sdk.memory.base import MemoryHit, MemoryStore
 from swarm_sdk.retrieval.text import tokenize
 

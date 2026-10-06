@@ -17,7 +17,7 @@ import concurrent.futures
 import sys
 from collections.abc import Callable
 
-from swarm_sdk.execution.concurrency import parallel_cap
+from swarm_sdk.runtime.concurrency import parallel_cap
 
 
 def _pool_workers() -> int:

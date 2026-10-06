@@ -22,8 +22,8 @@ from typing import TYPE_CHECKING
 from pydantic import ValidationError
 
 from swarm_sdk.agents.manifest import AgentManifest, agents_root
-from swarm_sdk.execution.executor import offload
 from swarm_sdk.models.chat import complete, load_chat_model
+from swarm_sdk.runtime.executor import offload
 
 from .graph import WorkerFactory
 from .plan import Plan, PlanStep
@@ -133,7 +133,7 @@ async def spawn(
         a single-step plan after one retry.
     """
     if structured is None:
-        from swarm_sdk.config.settings import Settings
+        from swarm_sdk.agents.config.settings import Settings
 
         structured = Settings().planner_structured_output
     orchestrator = manifests.get("Orchestrator") or next(iter(manifests.values()))

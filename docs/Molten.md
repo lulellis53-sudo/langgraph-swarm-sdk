@@ -729,7 +729,7 @@ Heavier AMLs (same CPU class, optional): `import pulp`, `from pyomo.environ impo
 | `import numpy as np` | ufuncs + BLAS (Apple Accelerate / AVX2, **no AVX-512**) | **Yes** — Swarm core |
 | `import scipy.linalg as la` | LAPACK via the same BLAS | **Yes** (pulled with sklearn) |
 | `from numba import njit, prange, vectorize` | LLVM JIT + SIMD + OpenMP threads | **Yes, CPU only.** `numba.cuda` is NVIDIA |
-| `import pyopencl as cl` | OpenCL kernels on the 5300M | **Yes** — Swarm `gpu/opencl_math.py` |
+| `import pyopencl as cl` | OpenCL kernels on the 5300M | **Yes** — Swarm `compute/opencl_math.py` |
 | `import kp` | Vulkan compute tensors | **Yes** — MoltenVK (`pip install kp`) |
 | `from usearch.index import Index` | AVX2 FP16 ANN | **Yes** |
 | `import polars as pl` | CPU DataFrames (Rust) | **Yes** — Swarm core |
@@ -773,7 +773,7 @@ queue = cl.CommandQueue(ctx)
 mf = cl.mem_flags
 a_np = np.random.default_rng().random(50_000, dtype=np.float32)
 a_g = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=a_np)
-# Kernel + enqueue: see src/swarm_sdk/gpu/opencl_math.py
+# Kernel + enqueue: see src/swarm_sdk/compute/opencl_math.py
 ```
 
 Vulkan path stays `import kp` / `import vulkan as vk` (section 3). Do not set Numba `target="cuda"`.

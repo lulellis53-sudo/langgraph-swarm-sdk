@@ -6,8 +6,30 @@ import importlib
 
 import pytest
 
-REMOVED: list[str] = []
-PRESENT: list[str] = []
+REMOVED: list[str] = [
+    "swarm_sdk.server",
+    "swarm_sdk.execution",
+    "swarm_sdk.observability",
+    "swarm_sdk.prompting",
+    "swarm_sdk.gpu",
+    "swarm_sdk.math",
+]
+PRESENT: list[str] = [
+    "swarm_sdk.serving.graphs",
+    "swarm_sdk.runtime",
+    "swarm_sdk.runtime.concurrency",
+    "swarm_sdk.runtime.executor",
+    "swarm_sdk.runtime.fanout",
+    "swarm_sdk.runtime.metrics",
+    "swarm_sdk.runtime.tracing",
+    "swarm_sdk.runtime.usage",
+    "swarm_sdk.models.budget",
+    "swarm_sdk.compute",
+    "swarm_sdk.compute.scoring",
+    "swarm_sdk.compute.lazy_dispatcher",
+    "swarm_sdk.compute.opencl_math",
+    "swarm_sdk.compute.report",
+]
 
 
 @pytest.mark.parametrize("name", REMOVED)

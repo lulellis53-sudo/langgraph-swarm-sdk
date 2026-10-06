@@ -10,7 +10,7 @@ from typing import Protocol, cast
 
 import numpy as np
 
-from swarm_sdk.gpu import batch_cosine
+from swarm_sdk.compute import batch_cosine
 
 logger = logging.getLogger(__name__)
 

@@ -9,7 +9,7 @@ Your discrete AMD GPU *does* accelerate compute through:
 Swarm can now use these backends via:
 
 - `LlamaCppEmbedder` with a Vulkan/MoltenVK-capable `llama-cpp-python` build.
-- OpenCL-backed batch dot/cosine/normalize/top-k in `swarm_sdk.gpu`.
+- OpenCL-backed batch dot/cosine/normalize/top-k in `swarm_sdk.compute`.
 - `OpenClVecStore` brute-force vector search.
 
 See ``~/Documentos/Molten.md`` for Vulkan0 = AMD Radeon Pro 5300M setup.
@@ -22,7 +22,7 @@ import platform
 import shutil
 from pathlib import Path
 
-from swarm_sdk.gpu.opencl_math import opencl_status
+from swarm_sdk.compute.opencl_math import opencl_status
 
 
 def _exists(*paths: str) -> bool:
@@ -96,7 +96,7 @@ def _llama_cpp_status() -> dict[str, str]:
 
 def _gil_status() -> str:
     """Report whether the GIL is enabled (CPython 3.13+ free-threading builds)."""
-    from swarm_sdk.execution import concurrency
+    from swarm_sdk.runtime import concurrency
 
     return "enabled" if concurrency.gil_enabled() else "disabled"
 

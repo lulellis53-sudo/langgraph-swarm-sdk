@@ -10,7 +10,7 @@ import time
 
 import numpy as np
 
-from swarm_sdk.gpu import batch_cosine
+from swarm_sdk.compute import batch_cosine
 from swarm_sdk.memory.opencl_store import OpenClVecStore
 from swarm_sdk.retrieval.embeddings import Embedder, unit
 

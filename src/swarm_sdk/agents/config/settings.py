@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
-    from swarm_sdk.config.loader import SwarmFileConfig
+    from swarm_sdk.agents.config.loader import SwarmFileConfig
 
 from dotenv import dotenv_values
 from pydantic import Field
@@ -27,7 +27,7 @@ for _env_file in (Path.home() / ".env", Path.cwd() / ".env"):
                 # `enc:v1:` entries are ciphertext: swarm_sdk.vault decrypts them on demand.
                 if _value and _key not in os.environ and not _value.startswith("enc:v1:"):
                     os.environ[_key] = _value
-    except PermissionError, OSError:
+    except (PermissionError, OSError):
         pass
 
 
@@ -88,15 +88,12 @@ class Settings(BaseSettings):
     # Give manifest agents with the ``web_search`` capability the WebSearch LangChain
     # tools. Off keeps runs offline and deterministic (tests, CI).
     enable_websearch_tools: bool = False
-    # Build swarm nodes with PydanticAI (typed text-or-Handoff output) instead of
-    # langchain ``create_agent``. Needs the ``pydantic-ai`` extra; nodes get no tools.
-    pydantic_ai_nodes: bool = False
 
 
 def load_merged_settings(
     config_path: Path | None = None,
 ) -> tuple[Settings, SwarmFileConfig]:
-    from swarm_sdk.config.loader import load_settings
+    from swarm_sdk.agents.config.loader import load_settings
 
     return load_settings(config_path)
 

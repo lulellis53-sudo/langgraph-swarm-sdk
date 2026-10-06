@@ -1,6 +1,8 @@
-"""Configuration domain: runtime settings and file config loader."""
+"""Runtime settings, swarm.yaml loader, and packaged YAML (this directory)."""
 
-from swarm_sdk.config.loader import (
+from __future__ import annotations
+
+from swarm_sdk.agents.config.loader import (
     EmbeddingConfig,
     Mem0StoreConfig,
     ParallelismConfig,
@@ -15,7 +17,7 @@ from swarm_sdk.config.loader import (
     load_swarm_config,
     settings_from_file,
 )
-from swarm_sdk.config.settings import (
+from swarm_sdk.agents.config.settings import (
     EmbedBackend,
     MemoryBackend,
     Settings,

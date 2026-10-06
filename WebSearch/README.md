@@ -63,6 +63,13 @@ order, and the prefilter block (schemes, blocked_domains, min_snippet_chars,
 require_title; values are normalized on load). See
 `backend/prefilter.py::prefilter_hits` for the enforcement rules.
 
+Parallel Search is available as the `parallel` provider. Set `PARALLEL_API_KEY`
+in the environment or Keychain; the provider sends it using Parallel's required
+`x-api-key` header. Its `engine` selects a search mode (`turbo`, `fast`, `basic`,
+or `advanced`). With `dork: translate`, `site:`, `-site:`, and `after:` are mapped
+to Parallel's `advanced_settings.source_policy` fields. `before:` is not mapped
+because the Search API source policy currently documents only `after_date`.
+
 ## Document agents
 
 `GET /Agents` lists two document actions. `POST /Agents` accepts up to 100 extracted documents and an action:
@@ -157,7 +164,7 @@ browser session, which would hand an LLM-chosen URL the user's cookies.
   `NAME=enc:v1:<token>` to `FILE` (default `./.env`, mode 0600). The Fernet key lives only in the Keychain
   item `swarm/DOTENV_FERNET_KEY`, created on first use. Encrypted lines protect an `.env` that leaks by
   itself (backup, commit, copy); a process running as you with Keychain access can still decrypt it.
-  `swarm_sdk.vault.get` decrypts on demand (source `dotenv-encrypted`) and `swarm_sdk.config.settings`
+  `swarm_sdk.vault.get` decrypts on demand (source `dotenv-encrypted`) and `swarm_sdk.agents.config.settings`
   does not export `enc:v1:` lines to the environment.
 
 ## Added for structured extraction and testing

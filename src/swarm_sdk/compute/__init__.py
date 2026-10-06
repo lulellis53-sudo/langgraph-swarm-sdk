@@ -1,4 +1,4 @@
-"""GPU math dispatcher: OpenCL when available, NumPy otherwise.
+"""Compute: OpenCL/NumPy vector dispatcher; scalar scoring lives in ``compute.scoring``.
 
 All functions accept and return NumPy arrays; callers do not need to know
 whether the operation ran on the GPU.
@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from swarm_sdk.gpu.lazy_dispatcher import VectorComputeDispatcher
-from swarm_sdk.gpu.opencl_math import (
+from swarm_sdk.compute.lazy_dispatcher import VectorComputeDispatcher
+from swarm_sdk.compute.opencl_math import (
     batch_cosine,
     batch_dot,
     batch_softmax,
@@ -27,7 +27,7 @@ from swarm_sdk.gpu.opencl_math import (
     set_enabled,
     topk_ip,
 )
-from swarm_sdk.gpu.report import acceleration_report, print_report
+from swarm_sdk.compute.report import acceleration_report, print_report
 
 __all__ = [
     "VectorComputeDispatcher",
