@@ -6,8 +6,8 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
-import pandas as pd
-from Prediction.engine import ForecastEngine, ForecastError
+import polars as pl
+from Prediction.engine import ForecastError
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,7 +62,7 @@ class TextFeatureTransformer:
             self._model = SentenceTransformer(self.config.model_name, **kwargs)
         except ImportError as exc:
             raise ForecastError(
-                "Install the 'forecast' extra to use sentence-transformers embeddings"
+                "Install sentence-transformers and transformers to use this backend"
             ) from exc
 
     def tokenize(self, texts: list[str]) -> list[list[str]]:
@@ -81,30 +81,29 @@ class TextFeatureTransformer:
 
     def attach(
         self,
-        frame: Any,
+        frame: pl.DataFrame,
         *,
         text_column: str,
         prefix: str = "text_embedding_",
-    ) -> Any:
+    ) -> pl.DataFrame:
         """Add vectors aligned to each row's ``unique_id`` and ``ds`` keys."""
-        data = ForecastEngine._to_pandas(frame)
+        if not isinstance(frame, pl.DataFrame):
+            raise ForecastError("frame must be a Polars DataFrame")
         required = {"unique_id", "ds", text_column}
-        missing = required - set(data.columns)
+        missing = required - set(frame.columns)
         if missing:
             raise ForecastError(f"text feature input missing columns: {sorted(missing)}")
-        if data[["unique_id", "ds", text_column]].isna().any().any():
+        if any(frame.get_column(column).is_null().any() for column in required):
             raise ForecastError("IDs, timestamps and text must not contain null values")
-        if data.duplicated(["unique_id", "ds"]).any():
+        duplicate_keys = frame.select(pl.struct(["unique_id", "ds"]).is_duplicated().any()).item()
+        if duplicate_keys:
             raise ForecastError("text feature input has duplicate (unique_id, ds) keys")
-        vectors = self.transform(data[text_column].tolist())
-        columns = [f"{prefix}{index}" for index in range(vectors.shape[1])]
-        features = pd.DataFrame(vectors, columns=columns, index=data.index)
-        result = pd.concat([data, features], axis=1)
-        if frame.__class__.__module__.startswith("polars"):
-            import polars as pl
-
-            return pl.DataFrame(result.to_dict(orient="list"))
-        return result
+        vectors = self.transform(frame.get_column(text_column).to_list())
+        features = [
+            pl.Series(f"{prefix}{index}", vectors[:, index], dtype=pl.Float32)
+            for index in range(vectors.shape[1])
+        ]
+        return frame.with_columns(features)
 
     def transform(self, texts: list[str]) -> np.ndarray:
         """Encode a batch of sentences into a dense float32 feature matrix."""

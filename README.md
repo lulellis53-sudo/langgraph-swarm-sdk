@@ -4,7 +4,7 @@ Parallel multi-LLM swarm on [LangGraph Swarm](https://github.com/langchain-ai/la
 
 ## Requirements
 
-- Python `>=3.14.7` (`uv python install 3.14.5`)
+- Python `3.14.8` (`uv python install 3.14.8`)
 - [uv](https://docs.astral.sh/uv/)
 
 ```bash
@@ -135,7 +135,7 @@ Predefined model routes, API key variable names, and service credential owners l
 | Lane | Worktree | Branch |
 |------|----------|--------|
 | WebSearch | [`WebSearch/`](WebSearch/) | `feature/websearch` — [`PIPELINE.md`](WebSearch/PIPELINE.md) |
-| Prediction | `../Swarm-Prediction` | `feat/prediction-engine` — [`Prediction/`](Prediction/) (install `uv sync --extra forecast`; tests: `uv run --extra forecast pytest tests/test_prediction_engine.py -q`) |
+| Prediction | `../Swarm-Prediction` | `feat/prediction-engine` — [`Prediction/`](Prediction/) (`uv sync --extra forecast`, [`Prediction/README.md`](Prediction/README.md)) |
 | Newsletter | `../Newsletter` | `feat/newsletter` — [`Newsletter/`](Newsletter/) |
 
 Repo root stays on `integration/all-branches` for merges. Open [`codeworkspace/swarm.code-workspace`](codeworkspace/swarm.code-workspace) for a multi-root editor layout. `SWARM_*` env vars override file defaults.

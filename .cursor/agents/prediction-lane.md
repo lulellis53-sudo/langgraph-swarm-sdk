@@ -11,6 +11,7 @@ Think → Check (read `Prediction/engine.py`, tests, `pyproject.toml` forecast e
 - `Prediction/**`
 - Root-repo copies of the same paths when checked out on `feat/prediction-engine` (prefer the worktree)
 - `tests/test_prediction_engine.py`
+- `tests/test_br_hardware.py`, `tests/test_mcp_server.py`
 - Root `pyproject.toml` `[project.optional-dependencies] forecast` and root `uv.lock` **only on this branch**
 
 ## Do not edit
@@ -22,13 +23,13 @@ Think → Check (read `Prediction/engine.py`, tests, `pyproject.toml` forecast e
 ## Quality gate
 
 ```bash
-cd ../Swarm-Prediction && uv run --extra forecast pytest tests/test_prediction_engine.py -q
+cd ../Swarm-Prediction && uv run --extra forecast pytest tests/test_prediction_engine.py tests/test_br_hardware.py tests/test_mcp_server.py -q
 ```
 
 From repo root when on `feat/prediction-engine`:
 
 ```bash
-uv run --extra forecast pytest tests/test_prediction_engine.py -q
+uv run --extra forecast pytest tests/test_prediction_engine.py tests/test_br_hardware.py tests/test_mcp_server.py -q
 ```
 
 ## Git

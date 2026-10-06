@@ -5,7 +5,7 @@ description = "Parallel multi-LLM LangGraph swarm with memory, rerankers, tokeni
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "dantenho", email = "dantenho@gmail.com" }]
-requires-python = ">=3.14.8"
+requires-python = ">=3.14.5"
 dependencies = [
     # ## Swarm / LangGraph
     "langchain>=1.0",
@@ -19,7 +19,6 @@ dependencies = [
     "langchain-openai>=0.3",
     "pydantic>=2.11",
     "pydantic-settings>=2.10",
-    "pydantic-ai>=0.0.1",
     # ## Config & serialization
     "pyyaml>=6.0",
     "orjson>=3.10",
@@ -62,7 +61,9 @@ dependencies = [
     "beautifulsoup4>=4.12",
     "mcp>=2,<3",
 ]
-langchain = ["langchain-core>=1.6"]
+langchain = [
+    "langchain-core>=1.6",
+]
 
 [tool.uv]
 python-preference = "managed"
@@ -89,21 +90,26 @@ observability = [
     "opentelemetry-instrumentation-fastapi>=0.52b0",
     "opentelemetry-instrumentation-httpx>=0.52b0",
     "prometheus-client>=0.20",
-    "prometheus-fastapi-instrumentator>=7.0",
 ]
 # ## FAISS vector index (CPU wheels everywhere; GPU = CUDA only)
 faiss = ["faiss-cpu>=1.11"]
-faiss-gpu = ["faiss-gpu>=1.11; sys_platform == 'linux' and platform_machine == 'x86_64'"]
+faiss-gpu = [
+    "faiss-gpu>=1.11; sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
 # ## FastEmbed + ONNX runtime (MiniLM-L6-v2 INT8; explicit when not in core deps)
 embed = [
     "fastembed>=0.7",
-    "onnxruntime>=1.20",
-    "onnxruntime-openvino>=1.20; sys_platform == 'linux' or sys_platform == 'darwin'",
+    "onnxruntime>=1.20; sys_platform != 'darwin' or platform_machine != 'x86_64'",
 ]
 # ## ONNX Runtime GPU / CoreML execution providers (not Intel Mac x86_64)
-embed-gpu = ["onnxruntime-gpu>=1.20; sys_platform == 'linux' and platform_machine == 'x86_64'"]
+embed-gpu = [
+    "onnxruntime-gpu>=1.20; sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
 # ## MoltenVK / Vulkan + OpenCL (Intel Mac Radeon, llama.cpp GGUF embeddings)
-molten = ["pyopencl>=2024.1", "llama-cpp-python>=0.3.0"]
+molten = [
+    "pyopencl>=2024.1",
+    "llama-cpp-python>=0.3.0",
+]
 opencl = ["pyopencl>=2024.1"]
 llama-cpp = ["llama-cpp-python>=0.3.0"]
 # ## ML rerankers / transformers (sympy + HF stack)
@@ -111,20 +117,38 @@ ml = [
     "sympy>=1.13",
     "scikit-learn>=1.6",
     "transformers>=4.51",
-    "onnxruntime>=1.20",
-    "onnxruntime-openvino>=1.20; sys_platform == 'linux' or sys_platform == 'darwin'",
+    "onnxruntime>=1.20; sys_platform != 'darwin' or platform_machine != 'x86_64'",
 ]
 qdrant = ["qdrant-client>=1.14"]
 # ## Mem0 Platform memory (MemoryClient; API key in MEM0_API_KEY)
 mem0 = ["mem0ai>=1.0"]
-jupyter = ["cryptography==48.0.1", "ipykernel>=6", "jupyter-ai>=2", "notebook>=7", "pip>=25"]
-websearch = ["selectolax>=0.3", "trafilatura>=2.0", "beautifulsoup4>=4.12", "mcp>=2,<3"]
-forecast = ["lightgbm>=4.7.0", "mlforecast>=1.1.0"]
-forecast-lancedb = ["lancedb>=0.20"]
+jupyter = [
+    "cryptography==48.0.1",
+    "ipykernel>=6",
+    "jupyter-ai>=2",
+    "notebook>=7",
+    "pip>=25",
+]
+websearch = [
+    "selectolax>=0.3",
+    "trafilatura>=2.0",
+    "beautifulsoup4>=4.12",
+    "mcp>=2,<3",
+]
+forecast = [
+    "lightgbm>=4.7.0",
+    "mlforecast>=1.1.0",
+]
 # ## Scraping / crawling stack (heavy: Twisted via scrapy; playwright needs `playwright install chromium`)
-scrape = ["playwright", "crawlee", "scrapy", "curl-cffi", "parsel", "cssselect", "extruct"]
-viz = ["matplotlib>=1.5"]
-scraping = ["crawlee>=1.10.3", "curl-cffi>=0.16.3", "playwright>=1.63.0", "scrapy>=2.19.0"]
+scrape = [
+    "playwright",
+    "crawlee",
+    "scrapy",
+    "curl-cffi",
+    "parsel",
+    "cssselect",
+    "extruct",
+]
 
 [project.scripts]
 swarm-api = "swarm_sdk.serving.http:main"
@@ -137,7 +161,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
-dev = ["langgraph-cli[inmem]>=0.1.54"]
+dev = [
+    "langgraph-cli[inmem]>=0.1.54",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/swarm_sdk"]
@@ -165,10 +191,10 @@ python-version = "3.14"
 
 [tool.ty.src]
 exclude = [
-    "src/swarm_sdk/pb/**",
-    "src/swarm_sdk/memory/faiss_store.py",
-    "src/swarm_sdk/memory/qdrant_store.py",
-    "src/swarm_sdk/gpu/opencl_math.py",
+  "src/swarm_sdk/pb/**",
+  "src/swarm_sdk/memory/faiss_store.py",
+  "src/swarm_sdk/memory/qdrant_store.py",
+  "src/swarm_sdk/gpu/opencl_math.py",
 ]
 
 [tool.pytest.ini_options]

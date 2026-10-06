@@ -33,7 +33,7 @@ def benchmark(
         ],
         ignore_index=True,
     )
-    engine = ForecastEngine(ForecastConfig(model="prophet"))
+    engine = ForecastEngine(ForecastConfig())
     start = time.perf_counter()
     engine.fit(frame)
     fit_seconds = time.perf_counter() - start

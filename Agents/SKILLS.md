@@ -48,6 +48,7 @@ token budget, tasks, capabilities). Validation: `uv run python -m swarm_sdk.agen
 | [TxtToCsv](TxtToCsv/AGENTS.md) | convert_text_files_to_csv | - | infer_format, convert |
 | [WebFetch](WebFetch/AGENTS.md) | fetch_render | - | fetch_render |
 | [Newsletter](Newsletter/AGENTS.md) | digest_generation | - | newsletter_mvp |
+| [Prediction](Prediction/AGENTS.md) | forecast_engine | - | forecast_series |
 | [math](math/AGENTS.md) | symbolic/numerical solving | - | (see manifest) |
 
 The `benchmark/` directory holds the primary test suite and evals.

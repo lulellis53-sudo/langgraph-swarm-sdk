@@ -89,6 +89,11 @@ agents:
     contract: Agents/Newsletter/AGENTS.md
     manifest: Agents/Newsletter/agent.yaml
 
+  - name: Prediction
+    role: forecast_engine
+    contract: Agents/Prediction/AGENTS.md
+    manifest: Agents/Prediction/agent.yaml
+
   - name: DeepResearch
     role: deep_technical_research
     contract: Agents/DeepResearch/AGENTS.md
@@ -217,10 +222,10 @@ tasks:
 
   - id: prediction_forecast
     title: "Prediction: mlforecast engine and forecast extra"
-    assigned: [MLSpecialist]
-    task: pipeline_integration
+    assigned: [Prediction]
+    task: forecast_series
     depends_on: []
-    status: in_progress
+    status: done
 
   - id: newsletter_mvp
     title: "Newsletter: offline digest MVP and tests"

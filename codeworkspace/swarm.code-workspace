@@ -29,6 +29,15 @@
     "ty.importStrategy": "fromEnvironment",
     "ty.interpreter": "${workspaceFolder:SDK (integration)}/.venv/bin/python",
     "ty.diagnosticMode": "workspace",
-    "ty.experimental.useUv": "on"
+    "ty.experimental.useUv": "on",
+    "terminal.integrated.defaultProfile.osx": "zsh",
+    "terminal.integrated.profiles.osx": {
+      "zsh": {
+        "path": "/Users/usuario/.local/bin/zsh",
+        "args": ["-l"]
+      }
+    },
+    "terminal.integrated.cwd": "${workspaceFolder:SDK (integration)}",
+    "terminal.external.osxExec": "/Applications/Ghostty.app"
   }
 }
