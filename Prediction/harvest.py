@@ -8,8 +8,8 @@ median because no reference level was given). OLX is the used-market lane:
 its observations are recorded as ``used`` and reported as a separate floor
 (the new-condition floors exclude them).
 
-Run from any directory with the WebSearch venv (it carries the search extras):
-    uv run --project ~/Swarm/WebSearch python ~/Swarm-Prediction/Prediction/harvest.py
+Run from the lane root with its venv (WebSearch is vendored here):
+    uv run --no-sync python -m Prediction.harvest
 """
 
 from __future__ import annotations
@@ -20,8 +20,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-#: The WebSearch lane lives in the main Swarm checkout (package + agent_tools).
-sys.path.insert(0, str(Path.home() / "Swarm"))
+#: The WebSearch package is vendored in this lane (branch feat/websearch-ranking-quality).
 
 from Prediction.br_hardware import (  # noqa: E402
     PRODUCTS,
