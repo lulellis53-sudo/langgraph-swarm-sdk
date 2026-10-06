@@ -107,6 +107,9 @@ def count_tokens(text: str) -> int:
 
 
 _WORD = re.compile(r"\w+")
+_STOP_WORDS = frozenset(
+    "a an and are as at be by for from how in is it of on or that the the to was what with".split()
+)
 
 
 def relevance_score(hit: SearchHit, query: str) -> float:
@@ -123,8 +126,12 @@ def relevance_score(hit: SearchHit, query: str) -> float:
 
     Returns:
         float: Overlap in ``[0.0, 1.0]``; 0.0 for an empty query.
+
+    Note:
+        Common stop words and one-character terms are ignored so that
+        queries like "what is the ..." do not artificially match every result.
     """
-    terms = {t for t in _WORD.findall(query.casefold()) if len(t) > 1}
+    terms = {t for t in _WORD.findall(query.casefold()) if len(t) > 1 and t not in _STOP_WORDS}
     if not terms:
         return 0.0
     haystack = {t for t in _WORD.findall(f"{hit.title} {hit.snippet}".casefold()) if len(t) > 1}
@@ -165,7 +172,10 @@ def rank_hits(hits: list[SearchHit], query: str) -> list[SearchHit]:
     """
     if not query.strip():
         return list(hits)
-    return sorted(hits, key=lambda h: -(h.relevance or relevance_score(h, query)))
+    return sorted(
+        hits,
+        key=lambda h: -(h.relevance if h.query == query else relevance_score(h, query)),
+    )
 
 
 def tokens_saved(before: str, after: str) -> int:
@@ -210,7 +220,8 @@ def render_brief(
         snippet_chars (int): Per-hit snippet cap before normalization.
         query (str): Enables relevance ranking; empty keeps incoming order.
         min_score (float | None): Drop hits scoring below this (0..1). The best
-            hit survives even if it fails the threshold.
+            hit survives even if it fails the threshold. Filtering is skipped
+            when the query has no usable search terms (e.g. stop words only).
         show_scores (bool): Annotate each line with its relevance score. Costs
             a few tokens per hit; useful when debugging retrieval quality.
 
@@ -228,8 +239,17 @@ def render_brief(
         return ""
 
     ordered = rank_hits(list(hits), query)
-    if min_score is not None and query.strip():
-        kept = [h for h in ordered if relevance_score(h, query) >= min_score]
+    query_terms = {
+        term
+        for term in _WORD.findall(query.casefold())
+        if len(term) > 1 and term not in _STOP_WORDS
+    }
+    if min_score is not None and query_terms:
+        kept = [
+            h
+            for h in ordered
+            if (h.relevance if h.query == query else relevance_score(h, query)) >= min_score
+        ]
         ordered = kept or ordered[:1]
 
     lines: list[str] = []
@@ -238,7 +258,7 @@ def render_brief(
     for index, hit in enumerate(ordered, 1):
         title = _plain(hit.title)[:_TITLE_CHARS]
         snippet = _plain(hit.snippet[:snippet_chars])
-        score = hit.relevance or relevance_score(hit, query)
+        score = hit.relevance if hit.query == query else relevance_score(hit, query)
         marker = f" (score={score:.2f})" if show_scores else ""
         line = f"[{index}] {title}{marker} - {normalize_url(hit.url)}"
         if snippet:

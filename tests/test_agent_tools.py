@@ -108,6 +108,31 @@ def test_rank_hits_with_empty_query_preserves_order() -> None:
     assert [h.url for h in rank_hits(hits, "   ")] == [h.url for h in hits]
 
 
+def test_rank_hits_respects_an_explicit_zero_score() -> None:
+    """A scored zero remains zero when it is rendered or ranked again."""
+    from WebSearch.agent_tools import score_hits
+
+    relevant = _hit("lightgbm model", "https://a.example/1")
+    irrelevant = _hit("gardening guide", "https://b.example/2")
+    scored = score_hits([irrelevant, relevant], "lightgbm")
+    assert scored[0].relevance == 0.0
+    assert [hit.url for hit in rank_hits(scored, "lightgbm")] == [
+        relevant.url,
+        irrelevant.url,
+    ]
+    assert "(score=0.00)" in render_brief(
+        [scored[0]], max_tokens=100, query="lightgbm", show_scores=True
+    )
+
+
+def test_relevance_ignores_common_words_in_query() -> None:
+    """Common language terms do not make unrelated search results look relevant."""
+    from WebSearch.agent_tools import relevance_score
+
+    hit = _hit("LightGBM guide", snippet="gradient boosted decision trees")
+    assert relevance_score(hit, "what is the LightGBM guide for") == 1.0
+
+
 # ---------------------------------------------------------------- quality: relevance gate
 
 
@@ -129,14 +154,23 @@ def test_render_brief_min_score_keeps_best_when_all_fail() -> None:
     assert brief != ""
 
 
+def test_render_brief_does_not_filter_when_query_has_no_search_terms() -> None:
+    """Stop-word-only queries have no lexical signal and preserve provider results."""
+    hits = [
+        _hit("First provider result", "https://a.example/1"),
+        _hit("Second provider result", "https://b.example/2"),
+    ]
+    brief = render_brief(hits, max_tokens=200, query="what is the", min_score=0.99)
+    assert "First provider result" in brief
+    assert "Second provider result" in brief
+
+
 # ---------------------------------------------------------------- token savings
 
 
 def test_token_budget_saves_tokens_versus_char_budget() -> None:
     """Token budgeting is at least as tight as the old char budget on the same input."""
-    hits = [
-        _hit(f"Long result {i}", f"https://example.com/{i}", "y" * 300) for i in range(20)
-    ]
+    hits = [_hit(f"Long result {i}", f"https://example.com/{i}", "y" * 300) for i in range(20)]
     hits = [_hit(f"Long result {i}", f"https://example.com/{i}", "y" * 300) for i in range(20)]
     tight = render_brief(hits, max_tokens=100)
     generous = render_brief(hits, max_tokens=400)
