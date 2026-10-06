@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from WebSearch.cli import main
+from WebSearch.int_ import main
 
 raise SystemExit(main())

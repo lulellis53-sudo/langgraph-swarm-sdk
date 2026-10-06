@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from benchmark.tests.fakes import Script, ScriptedModel, answer
+from tests.scripted_chat import Script, ScriptedModel, answer
 from langchain_core.messages import AIMessage
 from WebSearch.browser_agent import (
     choose_playwright,
@@ -285,10 +285,8 @@ def test_model_key_ready_checks_the_registry_name_not_the_secret_value(
     """A stand-in vault returns a non-empty value. The assertion never sees that value."""
     seen: list[str] = []
 
-    from swarm_sdk.models.chat import Route
-
-    def route() -> dict[str, Route]:
-        return {"openrouter:z-ai/glm-5.3-flash": Route("OPENROUTER_API_KEY", "")}
+    def route() -> dict[str, tuple[str, str]]:
+        return {"openrouter:z-ai/glm-5.3-flash": ("OPENROUTER_API_KEY", "")}
 
     def fake_get(name: str) -> str | None:
         seen.append(name)

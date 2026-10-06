@@ -34,7 +34,7 @@ Stages live at `WebSearch/frontend/`, `WebSearch/midend/`, and `WebSearch/backen
 
 | Surface | Use | Where |
 | --- | --- | --- |
-| `run_pipeline(query, ...)` | One call: search → crawl → extract | `__init__.py` |
+| `run_pipeline(query, ...)` | One call: search → crawl → extract | `int_.py` |
 | `search_brief(query)` | Search results as a numbered prompt brief | `agent_tools.py` |
 | `search_hits(query)` | Structured hits (title, url, snippet, searcher_id) | `agent_tools.py` |
 | `websearch_langchain_tools()` | Search (`web_search_brief`, `web_search_hits`) and document (`web_dedupe_documents`, `web_summarize_documents`) tools for LangChain | `langchain_tools.py` |
