@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 from typing import Any
 
 import numpy as np
@@ -18,6 +19,7 @@ _LOCAL_SIZE_CAP = 64
 _DISCRETE_HINTS = ("radeon", "amd", "nvidia", "geforce", "quadro", "arc")
 
 _KERNEL_SOURCE = r"""
+__attribute__((work_group_size_hint(1, 64, 1)))
 __kernel void batch_dot_kernel(__global const float *a,
                                __global const float *b,
                                __global float *out,
@@ -44,6 +46,8 @@ __kernel void batch_dot_kernel(__global const float *a,
     if (l == 0) out[r] = partial[0];
 }
 
+__attribute__((vec_type_hint(float4)))
+__attribute__((work_group_size_hint(1, 64, 1)))
 __kernel void batch_dot4_kernel(__global const float4 *a,
                                 __global const float4 *b,
                                 __global float *out,
@@ -79,9 +83,17 @@ def _device_rank(device: Any) -> tuple[int, int]:
     return (discrete, -int(device.global_mem_size))
 
 
-def _wgs_for(width: int, max_wg: int) -> int:
-    """Largest power of two work-group width that fits the cap and the device."""
+def _wgs_for(width: int, max_wg: int, device_name: str = "") -> int:
+    """Largest work-group width that fits the cap, device, and workload.
+
+    Radeon RDNA/CDNA wavefronts are 64-wide, so on AMD GPUs we prefer 64
+    when the workload allows; other devices use the largest power-of-two.
+    """
     cap = max(1, min(_LOCAL_SIZE_CAP, max_wg))
+    name = device_name.lower()
+    is_radeon = "radeon" in name or "amd" in name or "ati" in name
+    if is_radeon and width >= 64 and cap >= 64:
+        return 64
     wgs = 1
     while wgs * 2 <= width and wgs * 2 <= cap:
         wgs *= 2
@@ -105,6 +117,7 @@ class VectorComputeDispatcher:
         self._kernel4: Any | None = None
         self._max_wg: int = 1
         self._device_name: str = ""
+        self._lock = threading.Lock()
 
     @property
     def is_lazy_loaded(self) -> bool:
@@ -129,57 +142,62 @@ class VectorComputeDispatcher:
 
     def _ensure_opencl(self) -> bool:
         """Initialize OpenCL context, command queue, and kernels on demand."""
-        self._cl_init_attempted = True
-        cl = self._get_opencl()
-        if cl is None:
-            self._opencl_ready = False
-            return False
-
-        try:
-            preferred = os.environ.get("SWARM_OPENCL_DEVICE", "").strip().lower()
-            gpu_devices = [
-                device
-                for platform in cl.get_platforms()
-                for device in platform.get_devices(device_type=cl.device_type.GPU)
-            ]
-
-            selected_device = None
-            if preferred and gpu_devices:
-                selected_device = next(
-                    (dev for dev in gpu_devices if preferred in dev.name.lower()),
-                    None,
-                )
-            if selected_device is None and gpu_devices:
-                selected_device = min(gpu_devices, key=_device_rank)
-
-            if selected_device is not None:
-                self._ctx = cl.Context([selected_device])
-            else:
-                for platform in cl.get_platforms():
-                    cpus = platform.get_devices(device_type=cl.device_type.CPU)
-                    if cpus:
-                        self._ctx = cl.Context(cpus)
-                        break
-
-            if self._ctx is None:
+        if self._cl_init_attempted:
+            return self._opencl_ready
+        with self._lock:
+            if self._cl_init_attempted:
+                return self._opencl_ready
+            self._cl_init_attempted = True
+            cl = self._get_opencl()
+            if cl is None:
                 self._opencl_ready = False
                 return False
 
-            device = self._ctx.devices[0]
-            self._queue = cl.CommandQueue(self._ctx)
-            self._program = cl.Program(self._ctx, _KERNEL_SOURCE).build()
-            self._kernel = cl.Kernel(self._program, "batch_dot_kernel")
-            self._kernel4 = cl.Kernel(self._program, "batch_dot4_kernel")
-            self._max_wg = int(device.max_work_group_size)
-            self._device_name = device.name.strip()
-            self._opencl_ready = True
-            self._is_lazy_loaded = True
-            logger.debug("VectorComputeDispatcher OpenCL initialized on %s", self._device_name)
-            return True
-        except Exception as exc:
-            logger.warning("OpenCL initialization failed, falling back to CPU: %s", exc)
-            self._opencl_ready = False
-            return False
+            try:
+                preferred = os.environ.get("SWARM_OPENCL_DEVICE", "").strip().lower()
+                gpu_devices = [
+                    device
+                    for platform in cl.get_platforms()
+                    for device in platform.get_devices(device_type=cl.device_type.GPU)
+                ]
+
+                selected_device = None
+                if preferred and gpu_devices:
+                    selected_device = next(
+                        (dev for dev in gpu_devices if preferred in dev.name.lower()),
+                        None,
+                    )
+                if selected_device is None and gpu_devices:
+                    selected_device = min(gpu_devices, key=_device_rank)
+
+                if selected_device is not None:
+                    self._ctx = cl.Context([selected_device])
+                else:
+                    for platform in cl.get_platforms():
+                        cpus = platform.get_devices(device_type=cl.device_type.CPU)
+                        if cpus:
+                            self._ctx = cl.Context(cpus)
+                            break
+
+                if self._ctx is None:
+                    self._opencl_ready = False
+                    return False
+
+                device = self._ctx.devices[0]
+                self._queue = cl.CommandQueue(self._ctx)
+                self._program = cl.Program(self._ctx, _KERNEL_SOURCE).build()
+                self._kernel = cl.Kernel(self._program, "batch_dot_kernel")
+                self._kernel4 = cl.Kernel(self._program, "batch_dot4_kernel")
+                self._max_wg = int(device.max_work_group_size)
+                self._device_name = device.name.strip()
+                self._opencl_ready = True
+                self._is_lazy_loaded = True
+                logger.debug("VectorComputeDispatcher OpenCL initialized on %s", self._device_name)
+                return True
+            except Exception as exc:
+                logger.warning("OpenCL initialization failed, falling back to CPU: %s", exc)
+                self._opencl_ready = False
+                return False
 
     def compute_dot_product(self, vec_a: np.ndarray, vec_b: np.ndarray) -> float:
         """Compute single vector dot product on CPU (optimized with AVX2 via NumPy)."""
@@ -243,7 +261,7 @@ class VectorComputeDispatcher:
 
         if cols % 4 == 0 and cols >= 4:
             vcols = cols // 4
-            wgs = _wgs_for(vcols, self._max_wg)
+            wgs = _wgs_for(vcols, self._max_wg, self._device_name)
             b_stride = 0 if is_broadcast_b else vcols
             self._kernel4(
                 self._queue,
@@ -257,7 +275,7 @@ class VectorComputeDispatcher:
                 np.uint32(b_stride),
             )
         else:
-            wgs = _wgs_for(cols, self._max_wg)
+            wgs = _wgs_for(cols, self._max_wg, self._device_name)
             b_stride = 0 if is_broadcast_b else cols
             self._kernel(
                 self._queue,

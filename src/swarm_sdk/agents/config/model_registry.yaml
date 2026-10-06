@@ -111,7 +111,7 @@ providers:
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 40
-    evidence: web (#2 OpenRouter by usage, best coding value)
+    evidence: "web (#2 OpenRouter by usage, best coding value)"
 
   - name: alibaba:qwen-3.8
     provider: alibaba
@@ -121,7 +121,7 @@ providers:
     priority: 58
     evidence: assumed (Alibaba Cloud Qwen 3.8 direct API)
 
-  - name: cohere:command-a
+  - name: cohere:command-a-03-2025
     provider: cohere-1
     api_key_env: COHERE_API_KEY_1
     effort: medium
@@ -129,7 +129,7 @@ providers:
     priority: 60
     evidence: assumed (Cohere primary key instance)
 
-  - name: cohere:command-r7b
+  - name: cohere:command-r7b-12-2024
     provider: cohere-2
     api_key_env: COHERE_API_KEY_2
     effort: low
@@ -177,7 +177,7 @@ providers:
     priority: 80
     evidence: assumed (fallback)
 
-  - name: fireworks:accounts/fireworks/models/kimi-k2.7
+  - name: fireworks:accounts/fireworks/models/glm-5p3-flash
     provider: fireworks
     api_key_env: FIREWORKS_API_KEY
     effort: medium
@@ -200,4 +200,4 @@ providers:
     effort: low
     think_levels: ["off", low, medium, high, xhigh]
     priority: 92
-    evidence: assumed (local Ollama instance #2)
+    evidence: "assumed (local Ollama instance #2)"

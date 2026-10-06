@@ -6,10 +6,15 @@ from pathlib import Path
 
 import httpx
 import pytest
-
 from WebSearch.frontend import websearchers
 from WebSearch.frontend.websearchers import SearchHit, load_providers, parallel_search
-from WebSearch.midend import default_fetch
+from WebSearch.midend import PrivateTarget, crawl_then_scrape, default_fetch
+
+_PUBLIC = {"example.com": ["93.184.216.34"]}
+
+
+def _public_resolver(host: str) -> list[str]:
+    return _PUBLIC.get(host, [host] if host == "127.0.0.1" else [])
 
 
 def test_default_fetch_caps_body_bytes(
@@ -33,6 +38,51 @@ def test_default_fetch_reports_errors_as_oserror(
 
     with pytest.raises(OSError):
         default_fetch("https://example.com/a", max_bytes=10)
+
+
+def test_default_fetch_stops_a_redirect_onto_a_private_host(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A public URL that redirects to loopback is refused before the body is read."""
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(str(request.url))
+        if request.url.path == "/start":
+            return httpx.Response(302, headers={"location": "http://127.0.0.1/secret"})
+        return httpx.Response(200, content=b"secret")
+
+    monkeypatch.setattr(
+        websearchers, "_HTTP_CLIENT", httpx.Client(transport=httpx.MockTransport(handler))
+    )
+    with pytest.raises(PrivateTarget, match="non-public"):
+        default_fetch("https://example.com/start", public_only=True, resolver=_public_resolver)
+    assert seen == ["https://example.com/start"]
+
+
+def test_default_fetch_follows_a_public_redirect(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A redirect that stays on a public host returns that hop's body."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/start":
+            return httpx.Response(302, headers={"location": "https://example.com/landed"})
+        return httpx.Response(200, content=b"landed")
+
+    monkeypatch.setattr(
+        websearchers, "_HTTP_CLIENT", httpx.Client(transport=httpx.MockTransport(handler))
+    )
+    assert (
+        default_fetch("https://example.com/start", public_only=True, resolver=_public_resolver)
+        == b"landed"
+    )
+
+
+def test_crawl_refuses_a_private_hit_without_fetching() -> None:
+    """Search hits aimed at loopback are recorded as blocked, not downloaded."""
+    pages = crawl_then_scrape([SearchHit("local", "http://127.0.0.1/admin", "x", "test")])
+    assert len(pages) == 1
+    assert pages[0].html == ""
+    assert pages[0].error == "PrivateTarget"
 
 
 def test_load_providers_cache_invalidates_on_rewrite(tmp_path: Path) -> None:

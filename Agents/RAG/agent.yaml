@@ -1,7 +1,10 @@
 version: "1"
 name: RAG
 role: knowledge_retrieval
-description: "Autonomous RAG & Knowledge Retrieval Specialist for semantic caching, hybrid dense-sparse search, reciprocal rank fusion, cross-encoder reranking, and citation grounding."
+description: >-
+  Autonomous RAG & Knowledge Retrieval Specialist for semantic caching,
+  hybrid dense-sparse search, reciprocal rank fusion, cross-encoder reranking,
+  and citation grounding.
 
 model: inherit
 think_level: high

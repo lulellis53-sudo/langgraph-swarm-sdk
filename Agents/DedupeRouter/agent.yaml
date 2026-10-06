@@ -1,0 +1,24 @@
+version: "1"
+name: DedupeRouter
+role: dedupe_normalize_route
+
+model: cohere:command-r7b
+
+token_budget:
+  max_prompt: 16384
+  max_completion: 512
+
+capabilities:
+  - normalize_text
+  - blake2b_dedupe
+  - route_sql
+  - route_semantic
+
+tasks:
+  - id: dedupe_normalize_route
+    description: >-
+      Normalize and dedupe the scratchpad documents once, then send the
+      same clean list to the requested paths (sql -> Persister,
+      semantic -> Summarizer) and return a short per-path summary.
+    outputs:
+      - summary

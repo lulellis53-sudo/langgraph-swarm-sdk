@@ -24,7 +24,8 @@ for _env_file in (Path.home() / ".env", Path.cwd() / ".env"):
     try:
         if _env_file.is_file():
             for _key, _value in dotenv_values(_env_file).items():
-                if _value and _key not in os.environ:
+                # `enc:v1:` entries are ciphertext: swarm_sdk.vault decrypts them on demand.
+                if _value and _key not in os.environ and not _value.startswith("enc:v1:"):
                     os.environ[_key] = _value
     except PermissionError, OSError:
         pass

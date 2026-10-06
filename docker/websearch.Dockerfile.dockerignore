@@ -1,0 +1,10 @@
+.git
+.venv
+.env
+**/.env
+**/__pycache__
+.pytest_cache
+.ruff_cache
+node_modules
+Agents/benchmark/results
+*.egg-info

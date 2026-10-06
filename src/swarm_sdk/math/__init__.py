@@ -7,6 +7,7 @@ need symbolic math.
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -32,9 +33,7 @@ def bm25_idf(n_docs: int, df: int) -> float:
     The ``+1`` inside the logarithm prevents ``log(0)`` for any valid
     ``df ∈ [1, N]``.
     """
-    from math import log
-
-    return log(1.0 + (n_docs - df + 0.5) / (df + 0.5))
+    return math.log(1.0 + (n_docs - df + 0.5) / (df + 0.5))
 
 
 def bm25_term_score(
@@ -112,13 +111,12 @@ def cosine_similarity(u: Sequence[float], v: Sequence[float]) -> float:
         \operatorname{cos}(u, v) =
             \frac{u \cdot v}{\|u\|_2 \cdot \|v\|_2}
 
-    Zero vectors are handled by returning ``0.0``.
+    Zero vectors are handled by returning ``0.0``. Uses ``math.fsum`` for
+    improved precision on long vectors.
     """
-    import math
-
-    dot = sum(float(ui) * float(vi) for ui, vi in zip(u, v, strict=True))
-    norm_u = math.sqrt(sum(float(ui) ** 2 for ui in u))
-    norm_v = math.sqrt(sum(float(vi) ** 2 for vi in v))
+    dot = math.fsum(float(ui) * float(vi) for ui, vi in zip(u, v, strict=True))
+    norm_u = math.sqrt(math.fsum(float(ui) ** 2 for ui in u))
+    norm_v = math.sqrt(math.fsum(float(vi) ** 2 for vi in v))
     if norm_u == 0.0 or norm_v == 0.0:
         return 0.0
     return dot / (norm_u * norm_v)
@@ -138,15 +136,76 @@ def softmax_scores(scores: Sequence[float]) -> list[float]:
 
     .. math::
         p_i = \frac{e^{s_i - \max_j s_j}}{\sum_j e^{s_j - \max_j s_j}}
-    """
-    import math
 
+    Uses ``math.fsum`` for improved precision on long vectors.
+    """
     if not scores:
         return []
     max_score = max(scores)
     exps = [math.exp(float(s) - max_score) for s in scores]
-    total = sum(exps)
+    total = math.fsum(exps)
     return [e / total for e in exps]
+
+
+def cosine_similarity_arrow(u: Sequence[float], v: Sequence[float]) -> float:
+    r"""Cosine similarity of two vectors using PyArrow compute.
+
+    .. math::
+        \operatorname{cos}(u, v) =
+            \frac{u \cdot v}{\|u\|_2 \cdot \|v\|_2}
+
+    This is the PyArrow-accelerated variant of :func:`cosine_similarity`.
+    It requires the ``arrow`` optional extra (``pyarrow``). Zero vectors
+    return ``0.0``.
+    """
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    a = pa.array(u, type=pa.float64())
+    b = pa.array(v, type=pa.float64())
+    dot = float(pc.sum(pc.multiply(a, b)).as_py())
+    norm_u = float(pc.sqrt(pc.sum(pc.power(a, pa.scalar(2)))).as_py())
+    norm_v = float(pc.sqrt(pc.sum(pc.power(b, pa.scalar(2)))).as_py())
+    if norm_u == 0.0 or norm_v == 0.0:
+        return 0.0
+    return dot / (norm_u * norm_v)
+
+
+def l2_norm_arrow(vector: Sequence[float]) -> float:
+    r"""Euclidean (L2) norm using PyArrow compute.
+
+    .. math::
+        \|x\|_2 = \sqrt{\sum_i x_i^2}
+
+    Requires the ``arrow`` optional extra (``pyarrow``).
+    """
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    arr = pa.array(vector, type=pa.float64())
+    return float(pc.sqrt(pc.sum(pc.power(arr, pa.scalar(2)))).as_py())
+
+
+def softmax_scores_arrow(scores: Sequence[float]) -> list[float]:
+    r"""Numerically stable softmax using PyArrow compute.
+
+    .. math::
+        p_i = \frac{e^{s_i - \max_j s_j}}{\sum_j e^{s_j - \max_j s_j}}
+
+    Requires the ``arrow`` optional extra (``pyarrow``). Returns an empty
+    list for empty input.
+    """
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    if not scores:
+        return []
+    arr = pa.array(scores, type=pa.float64())
+    max_score = pc.max(arr)
+    shifted = pc.subtract(arr, max_score)
+    exps = pc.exp(shifted)
+    total = pc.sum(exps)
+    return [float(x) for x in pc.divide(exps, total).to_pylist()]
 
 
 def int8_scale(peak: float) -> float:
@@ -189,8 +248,6 @@ def binary_cosine_estimate(hamming_distance: int, dim: int) -> float:
     where :math:`d_H` is the Hamming distance. This maps
     :math:`d_H = 0 \to 1` and :math:`d_H = \dim \to -1`.
     """
-    import math
-
     if dim <= 0:
         return 0.0
     return math.cos(math.pi * hamming_distance / dim)
@@ -210,10 +267,66 @@ def l2_norm(vector: Sequence[float]) -> float:
 
     .. math::
         \|x\|_2 = \sqrt{\sum_i x_i^2}
-    """
-    import math
 
-    return math.sqrt(sum(float(xi) ** 2 for xi in vector))
+    Uses ``math.fsum`` for improved precision on long vectors.
+    """
+    return math.sqrt(math.fsum(float(xi) ** 2 for xi in vector))
+
+
+def keyword_overlap_score(query_terms: set[str], doc_terms: set[str]) -> float:
+    r"""Normalized lexical overlap between two token sets.
+
+    .. math::
+        \operatorname{overlap}(Q, D) = \frac{|Q \cap D|}{\max(|Q|, |D|)}
+
+    Returns ``0.0`` when either set is empty, avoiding division by zero.
+    """
+    if not query_terms or not doc_terms:
+        return 0.0
+    intersection = query_terms & doc_terms
+    denominator = max(len(query_terms), len(doc_terms))
+    return len(intersection) / denominator
+
+
+def bm25_keyword_rerank_score(
+    query: str,
+    document: str,
+    *,
+    k1: float = 1.2,
+    b: float = 0.75,
+) -> float:
+    r"""BM25-style lexical score for reranking a single document against a query.
+
+    The corpus is treated as the single document being scored, so document
+    frequency is derived from the document itself and IDF collapses to a
+    constant. The formula reduces to the term-saturation component:
+
+    .. math::
+        \operatorname{score}(Q, D) = \sum_{t \in Q \cap D}
+            \frac{\operatorname{tf}(t, D) \cdot (k_1 + 1)}
+                 {\operatorname{tf}(t, D) + k_1 \cdot
+                  \left(1 - b + b \cdot \frac{|D|}{\operatorname{avgdl}}\right)}
+
+    where ``avgdl`` is taken as ``|D|`` so length normalization disappears.
+    """
+    from collections import Counter
+
+    q_terms = query.lower().split()
+    d_terms = document.lower().split()
+    if not q_terms or not d_terms:
+        return 0.0
+    q_counts = Counter(q_terms)
+    d_counts = Counter(d_terms)
+    doc_len = len(d_terms)
+    avgdl = doc_len
+    score = 0.0
+    for term in q_counts:
+        tf = d_counts.get(term, 0)
+        if tf == 0:
+            continue
+        denominator = tf + k1 * (1.0 - b + b * doc_len / avgdl)
+        score += tf * (k1 + 1.0) / denominator
+    return score
 
 
 def symbolic_bm25() -> "sp.Eq":  # noqa: UP037
@@ -259,20 +372,111 @@ def symbolic_cosine() -> "sp.Eq":  # noqa: UP037
     return sp.Eq(sp.Function("cos")(u, v), dot / (norm_u * norm_v))
 
 
+def symbolic_int8_quantization() -> "sp.Eq":  # noqa: UP037
+    """Return a SymPy equation object for symmetric INT8 quantization."""
+    sp = _sympy()
+    x, scale = sp.symbols("x scale", real=True)
+    q = sp.Max(-127, sp.Min(127, sp.round(x / scale)))
+    return sp.Eq(sp.IndexedBase("q")[x], q)
+
+
+def verify_cosine_symbolic() -> bool:
+    """Use SymPy to verify :func:`cosine_similarity` matches its definition.
+
+    Returns ``True`` when the numerical implementation equals the symbolic
+    cosine formula for random vectors. Intended for property tests and CI.
+    """
+    import random
+
+    import numpy as np
+
+    sp = _sympy()
+
+    for _ in range(20):
+        n = random.randint(2, 64)
+        u = sp.MatrixSymbol("u", n, 1)
+        v = sp.MatrixSymbol("v", n, 1)
+        dot = (u.T * v)[0, 0]
+        norm_u = sp.sqrt((u.T * u)[0, 0])
+        norm_v = sp.sqrt((v.T * v)[0, 0])
+        expr = dot / (norm_u * norm_v)
+        numeric = sp.lambdify((u, v), expr, modules="numpy")
+        a = [random.uniform(-1.0, 1.0) for _ in range(n)]
+        b = [random.uniform(-1.0, 1.0) for _ in range(n)]
+        expected = float(numeric(np.array(a).reshape(-1, 1), np.array(b).reshape(-1, 1)))
+        got = cosine_similarity(a, b)
+        if not math.isclose(got, expected, rel_tol=1e-12, abs_tol=1e-12):
+            return False
+    return True
+
+
+def verify_bm25_term_symbolic(*, k1: float = 1.2, b: float = 0.75) -> bool:
+    """Use SymPy to verify the scalar BM25 term score matches its definition.
+
+    Returns ``True`` when the numerical implementation equals the symbolic
+    formula for random positive inputs. This is intended for property tests
+    and CI, not for hot-path runtime use.
+    """
+    sp = _sympy()
+    tf, doc_len, avgdl, idf = sp.symbols(
+        "tf doc_len avgdl idf", positive=True, real=True
+    )
+    k1s, bs = sp.symbols("k1 b", positive=True, real=True)
+    symbolic = idf * (tf * (k1s + 1)) / (
+        tf + k1s * (1 - bs + bs * doc_len / avgdl)
+    )
+    numeric = sp.lambdify(
+        (tf, doc_len, avgdl, idf, k1s, bs),
+        symbolic,
+        modules="math",
+    )
+    import random
+
+    for _ in range(20):
+        vals = {
+            "tf": math.floor(1 + 10 * random.random()),
+            "doc_len": math.floor(1 + 100 * random.random()),
+            "avgdl": 1 + 100 * random.random(),
+            "idf": random.random() * 5,
+        }
+        expected = numeric(
+            vals["tf"], vals["doc_len"], vals["avgdl"], vals["idf"], k1, b
+        )
+        got = bm25_term_score(
+            int(vals["tf"]),
+            int(vals["doc_len"]),
+            float(vals["avgdl"]),
+            float(vals["idf"]),
+            k1=k1,
+            b=b,
+        )
+        if not math.isclose(got, expected, rel_tol=1e-12):
+            return False
+    return True
+
+
 __all__ = [
     "bm25_idf",
+    "bm25_keyword_rerank_score",
     "bm25_score",
     "bm25_term_score",
     "binary_cosine_estimate",
     "binary_score_to_cosine",
     "cosine_similarity",
+    "cosine_similarity_arrow",
     "int8_quantize",
     "int8_scale",
+    "keyword_overlap_score",
     "l2_norm",
+    "l2_norm_arrow",
     "rrf_score",
     "softmax_scores",
+    "softmax_scores_arrow",
     "symbolic_bm25",
     "symbolic_cosine",
+    "symbolic_int8_quantization",
     "symbolic_rrf",
     "symbolic_softmax",
+    "verify_bm25_term_symbolic",
+    "verify_cosine_symbolic",
 ]

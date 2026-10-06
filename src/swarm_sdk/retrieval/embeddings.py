@@ -27,13 +27,15 @@ def unit(vector: np.ndarray) -> np.ndarray:
     .. math::
         \hat{x} = \frac{x}{\|x\|_2}
 
-    Zero vectors are returned unchanged to avoid division by zero.
+    Zero vectors are returned unchanged to avoid division by zero. The norm is
+    accumulated in float64 for better precision on long vectors, then the
+    result is cast back to float32.
     """
     array = np.asarray(vector, dtype=np.float32).reshape(-1)
-    norm = float(np.linalg.norm(array))
+    norm = float(np.linalg.norm(array.astype(np.float64)))
     if norm == 0.0:
         return array
-    return array / norm
+    return (array / norm).astype(np.float32)
 
 
 def cosine(left: np.ndarray, right: np.ndarray) -> float:
@@ -43,9 +45,18 @@ def cosine(left: np.ndarray, right: np.ndarray) -> float:
         \operatorname{cos}(u, v) =
             \frac{u \cdot v}{\|u\|_2 \cdot \|v\|_2}
 
-    Returns a value in :math:`[-1, 1]`. Zero vectors yield ``0.0``.
+    Returns a value in :math:`[-1, 1]`. Zero vectors yield ``0.0``. Uses
+    float64 accumulation for the dot product and norms to reduce rounding
+    error on long vectors.
     """
-    return float(np.dot(unit(left), unit(right)))
+    u = np.asarray(left, dtype=np.float64).reshape(-1)
+    v = np.asarray(right, dtype=np.float64).reshape(-1)
+    dot = float(np.dot(u, v))
+    norm_u = float(np.linalg.norm(u))
+    norm_v = float(np.linalg.norm(v))
+    if norm_u == 0.0 or norm_v == 0.0:
+        return 0.0
+    return dot / (norm_u * norm_v)
 
 
 def dedupe_texts(texts: list[str], vectors: np.ndarray, threshold: float) -> list[str]:

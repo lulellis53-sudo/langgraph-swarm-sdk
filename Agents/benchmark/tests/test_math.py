@@ -112,3 +112,63 @@ def test_symbolic_softmax_is_equation() -> None:
 def test_symbolic_cosine_is_equation() -> None:
     eq = sm.symbolic_cosine()
     assert eq.func.__name__ == "Equality"
+
+
+def test_verify_bm25_term_symbolic_passes() -> None:
+    assert sm.verify_bm25_term_symbolic()
+
+
+def test_verify_cosine_symbolic_passes() -> None:
+    assert sm.verify_cosine_symbolic()
+
+
+def test_keyword_overlap_score_is_normalized() -> None:
+    assert sm.keyword_overlap_score(set(), {"a"}) == 0.0
+    assert sm.keyword_overlap_score({"a", "b"}, {"a", "b"}) == 1.0
+    assert sm.keyword_overlap_score({"a", "b"}, {"a", "c", "d"}) == pytest.approx(1 / 3)
+
+
+def test_bm25_keyword_rerank_score_rewards_matches() -> None:
+    query = "the quick brown"
+    assert sm.bm25_keyword_rerank_score(query, "the quick") > 0.0
+    assert sm.bm25_keyword_rerank_score(query, "lazy dog") == 0.0
+    # More matching terms should score higher, all else equal.
+    assert sm.bm25_keyword_rerank_score(query, "the quick brown fox") > (
+        sm.bm25_keyword_rerank_score(query, "the quick fox")
+    )
+
+
+def test_hybrid_uses_same_bm25_helpers() -> None:
+    """The retrieval module re-uses swarm_sdk.math BM25 primitives."""
+    from swarm_sdk.retrieval import hybrid
+
+    assert hybrid.bm25_idf is sm.bm25_idf
+    assert hybrid.bm25_term_score is sm.bm25_term_score
+
+
+pyarrow = pytest.importorskip("pyarrow", reason="pyarrow not installed")
+
+
+def test_cosine_similarity_arrow_matches_scalar() -> None:
+    u = [1.0, 0.0, 0.0]
+    v = [0.0, 1.0, 0.0]
+    assert sm.cosine_similarity_arrow(u, v) == pytest.approx(
+        sm.cosine_similarity(u, v), abs=1e-12
+    )
+    assert sm.cosine_similarity_arrow(u, u) == pytest.approx(1.0)
+    assert sm.cosine_similarity_arrow([0.0, 0.0], [1.0, 0.0]) == 0.0
+
+
+def test_l2_norm_arrow_matches_scalar() -> None:
+    assert sm.l2_norm_arrow([3.0, 4.0]) == pytest.approx(sm.l2_norm([3.0, 4.0]))
+    assert sm.l2_norm_arrow([0.0, 0.0]) == 0.0
+
+
+def test_softmax_scores_arrow_matches_scalar() -> None:
+    scores = [1.0, 2.0, 3.0]
+    expected = sm.softmax_scores(scores)
+    got = sm.softmax_scores_arrow(scores)
+    assert sum(got) == pytest.approx(1.0, abs=1e-12)
+    for a, b in zip(expected, got, strict=True):
+        assert a == pytest.approx(b, abs=1e-12)
+    assert sm.softmax_scores_arrow([]) == []

@@ -1,0 +1,11 @@
+name: websearch_agentic
+sdk_entry: benchmark.Tasks.websearch_agentic.benchmark_websearch_agentic.run_agent
+metrics:
+  - grounded
+  - model_tokens
+  - tool_tokens
+  - provider_status
+models: scripted offline (no network, no API keys); live via --live MODEL
+pass:
+  grounded: true
+  ungrounded_urls_max: 0

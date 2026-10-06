@@ -240,8 +240,14 @@ class SqliteVecStore:
                 """,
                 (_fts_match_query(query), k),
             ).fetchall()
+        # SQLite FTS5 bm25() returns negative values with lower (more negative)
+        # meaning a worse match, so map to a 0-1 score where larger is better.
         return [
-            MemoryHit(id=int(row_id), text=str(text), score=abs(float(rank)))
+            MemoryHit(
+                id=int(row_id),
+                text=str(text),
+                score=1.0 / (1.0 + max(0.0, abs(float(rank)))),
+            )
             for row_id, text, rank in rows
         ]
 

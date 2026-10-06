@@ -10,11 +10,13 @@ from WebSearch.frontend import (
     SearchHit,
     get_searcher,
     load_providers,
+    parallel_search,
     registry_search,
     search_brave,
     search_tavily,
     searcher_ids,
 )
+from WebSearch.frontend.websearchers import search_kimi
 from WebSearch.midend import crawl_then_scrape
 from WebSearch.repeater import repeater
 
@@ -28,19 +30,26 @@ def test_load_providers_yaml() -> None:
         "trafilatura",
         "bs4",
     )
-    assert cfg.crawl.crawler_order == ("httpx", "scrapy", "playwright", "crawlee")
+    assert cfg.crawl.crawler_order == ("httpx", "curl_cffi", "scrapy", "playwright", "crawlee")
     assert searcher_ids(cfg) == (
         "context7",
-        "bright_data",
         "brave",
         "ddg",
+        "ddglite",
         "tavily",
+        "jina",
         "apify",
+        "openrouter_web",
         "exa",
+        "bright_data",
         "searxng",
         "google_ground",
+        "kimisearch",
     )
     assert get_searcher(cfg, "tavily").api_key_env == "TAVILY_API_KEY"
+    assert get_searcher(cfg, "exa").api_key_env == "EXA_API_KEY"
+    assert get_searcher(cfg, "brave").api_key_env == "BRAVE_API_KEY"
+    assert get_searcher(cfg, "bright_data").api_key_env == "BRIGHTDATA_MCP_TOKEN"
     assert get_searcher(cfg, "searxng").engine == "duckduckgo,bing"
     assert "https" in cfg.crawl.schemes
 
@@ -50,6 +59,119 @@ def test_http_apis_fail_closed_without_keys() -> None:
     assert search_brave("q", spec) == []
     spec_t = SearcherSpec(id="tavily", kind="websearcher", api_key_env="TAVILY_API_KEY")
     assert search_tavily("q", spec_t) == []
+
+
+def test_kimisearch_spec_is_in_registry() -> None:
+    cfg = load_providers()
+    spec = get_searcher(cfg, "kimisearch")
+    assert spec.api_key_env == "MOONSHOT_API_KEY"
+    assert spec.base_url_env == "MOONSHOT_BASE_URL"
+    assert spec.engine == "kimi-k3"
+
+
+def test_jina_parses_search_foundation_response(monkeypatch) -> None:
+    from WebSearch.frontend import websearchers
+
+    captured: dict[str, object] = {}
+
+    def fake_httpx_json(method: str, url: str, **kwargs: object) -> dict[str, object]:
+        captured["method"] = method
+        captured["url"] = url
+        captured["headers"] = kwargs.get("headers")
+        captured["body"] = kwargs.get("json_body")
+        return {
+            "data": [
+                {
+                    "title": "Jina",
+                    "url": "https://jina.ai",
+                    "content": "x" * 400,
+                    "usage": {"tokens": 12},
+                }
+            ]
+        }
+
+    monkeypatch.setenv("JINA_API_KEY", "k")
+    monkeypatch.setattr(websearchers, "_httpx_json", fake_httpx_json)
+    hits = websearchers.search_jina(
+        "q", SearcherSpec(id="jina", kind="websearcher", api_key_env="JINA_API_KEY")
+    )
+    assert captured["method"] == "POST"
+    assert captured["url"] == "https://s.jina.ai/"
+    assert captured["body"] == {"q": "q", "num": 8}
+    headers = captured["headers"]
+    assert isinstance(headers, dict)
+    assert headers["Authorization"] == "Bearer k"
+    assert headers["Accept"] == "application/json"
+    assert hits[0].title == "Jina"
+    assert hits[0].url == "https://jina.ai"
+    assert hits[0].snippet == "x" * 280
+    assert hits[0].api_tokens == 12
+    monkeypatch.delenv("JINA_API_KEY")
+    assert (
+        websearchers.search_jina(
+            "q", SearcherSpec(id="jina", kind="websearcher", api_key_env="JINA_API_KEY")
+        )
+        == []
+    )
+
+
+def test_kimisearch_fails_closed_without_key() -> None:
+    spec = SearcherSpec(id="kimisearch", kind="websearcher", api_key_env="KIMI_MISSING_KEY")
+    assert search_kimi("q", spec) == []
+
+
+def test_kimisearch_parses_web_search_basic_response(monkeypatch) -> None:
+    from WebSearch.frontend import websearchers
+
+    payload = {
+        "search_results": [
+            {"title": "A", "url": "https://a.example", "snippet": "snippet a"},
+            {"title": "B", "url": "https://b.example", "snippet": "snippet b"},
+        ]
+    }
+    monkeypatch.setenv("MOONSHOT_API_KEY", "k")
+    monkeypatch.setattr(websearchers, "_httpx_json", lambda *a, **k: payload)
+    spec = SearcherSpec(id="kimisearch", kind="websearcher", api_key_env="MOONSHOT_API_KEY")
+    hits = search_kimi("q", spec)
+    assert [h.title for h in hits] == ["A", "B"]
+    assert hits[0].url == "https://a.example"
+    assert hits[0].snippet == "snippet a"
+    assert hits[0].searcher_id == "kimisearch"
+
+
+def test_kimisearch_translates_dork_to_sites_and_time_window(monkeypatch) -> None:
+    from WebSearch.frontend import websearchers
+
+    captured: dict[str, object] = {}
+
+    def fake_httpx_json(method: str, url: str, *, json_body: dict[str, object], **kwargs: object):
+        captured["url"] = url
+        captured["body"] = json_body
+        return {"search_results": []}
+
+    monkeypatch.setenv("MOONSHOT_API_KEY", "k")
+    monkeypatch.setattr(websearchers, "_httpx_json", fake_httpx_json)
+    spec = SearcherSpec(
+        id="kimisearch",
+        kind="websearcher",
+        api_key_env="MOONSHOT_API_KEY",
+        dork="translate",
+    )
+    search_kimi("site:example.com after:2026-01-01 before:2026-12-31 q", spec)
+    body = captured["body"]
+    assert body["sites"] == ["example.com"]
+    assert body["time_window"] == {"start": "2026-01-01", "end": "2026-12-31"}
+
+
+def test_parallel_search_catches_oserror_from_a_provider() -> None:
+    def ok(query: str, spec: SearcherSpec) -> list[SearchHit]:
+        return [SearchHit("OK", "https://ok.example/", "", spec.id)]
+
+    def boom(query: str, spec: SearcherSpec) -> list[SearchHit]:
+        raise OSError("simulated failure")
+
+    hits = parallel_search("q", backends={"ok": ok, "failing": boom})
+    assert [h.title for h in hits] == ["OK"]
 
 
 def test_registry_search_injected_backend() -> None:
@@ -211,9 +333,7 @@ def test_parallel_search_ranks_consensus_first() -> None:
     fused = parallel_search("q", backends={"brave": brave, "tavily": tavily})
     assert [h.title for h in fused] == ["B", "X", "Y"]
 
-    unfused = parallel_search(
-        "q", backends={"brave": brave, "tavily": tavily}, fuse=False
-    )
+    unfused = parallel_search("q", backends={"brave": brave, "tavily": tavily}, fuse=False)
     assert [h.title for h in unfused] == ["X", "B", "Y"]
 
 
@@ -322,7 +442,7 @@ def test_google_ground_parses_chunks_and_tokens(monkeypatch) -> None:
         "usageMetadata": {"totalTokenCount": 42},
     }
     monkeypatch.setenv("GEMINI_API_KEY", "k")
-    monkeypatch.setattr(websearchers, "_httpx_json", lambda *a, **k: payload)
+    monkeypatch.setattr(websearchers, "request_json", lambda *a, **k: payload)
     spec = SearcherSpec(id="google_ground", kind="websearcher", api_key_env="GEMINI_API_KEY")
     hits = frontend.search_google_ground("q", spec)
     assert [h.title for h in hits] == ["a.com", "b.com"]

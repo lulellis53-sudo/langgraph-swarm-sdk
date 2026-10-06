@@ -1,7 +1,10 @@
 version: "1"
 name: DeepResearch
 role: deep_technical_research
-description: "Authoritative evidence-focused technical research agent specialized in multi-hop retrieval, primary-source verification, synthesis trees, and zero-hallucination fact checking."
+description: >-
+  Authoritative evidence-focused technical research agent specialized in
+  multi-hop retrieval, primary-source verification, synthesis trees, and
+  zero-hallucination fact checking.
 
 model: inherit
 think_level: high

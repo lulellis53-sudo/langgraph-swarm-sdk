@@ -20,12 +20,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import time
 from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from WebSearch import (
     FetchFn,
@@ -54,6 +56,32 @@ class ToolRow:
     api_tokens: int
     search_ms: float
     scrape_ms: float
+    queries: int = 1
+    accuracy_pct: float = 0.0
+
+
+_DORK_OPS = re.compile(
+    r"\b(?:site|exclude|after|before|intitle|inurl|intext|filetype):\S*", re.IGNORECASE
+)
+
+
+def _query_terms(query: str) -> set[str]:
+    """Extract lowercase alphanumeric terms of 3+ chars, ignoring dork operators."""
+    return {t for t in re.findall(r"[a-z0-9]+", _DORK_OPS.sub(" ", query).lower()) if len(t) >= 3}
+
+
+def _hit_accuracy(hits: list[SearchHit], terms: set[str]) -> float:
+    """Share of hits whose title, snippet or URL path cover half the query terms."""
+    if not hits or not terms:
+        return 0.0
+    covered = 0
+    for h in hits:
+        path_words = re.findall(r"[a-z0-9]+", urlparse(h.url).path.lower())
+        text = f"{h.title} {h.snippet} {' '.join(path_words)}".lower()
+        hits_terms = sum(1 for t in terms if t in text)
+        if hits_terms * 2 >= len(terms):
+            covered += 1
+    return round(100 * covered / len(hits), 1)
 
 
 def _bench_tool(
@@ -64,9 +92,16 @@ def _bench_tool(
     fetch: FetchFn | None,
 ) -> tuple[ToolRow, list[SearchHit]]:
     spec = next(s for s in cfg.searchers if s.id == tool)
+    calls = 0
+
+    def counted(q: str, s: Any) -> list[SearchHit]:
+        nonlocal calls
+        calls += 1
+        return fn(q, s)
+
     t0 = time.perf_counter()
     try:
-        raw_hits = list(fn(query, spec))
+        raw_hits = list(counted(query, spec))
     except TimeoutError, OSError, ConnectionError, ValueError:
         raw_hits = []
     search_ms = (time.perf_counter() - t0) * 1000
@@ -90,6 +125,8 @@ def _bench_tool(
         api_tokens=sum(h.api_tokens for h in raw_hits),
         search_ms=round(search_ms, 1),
         scrape_ms=round(scrape_ms, 1),
+        queries=calls,
+        accuracy_pct=_hit_accuracy(hits, _query_terms(query)),
     )
     return row, hits
 
@@ -139,6 +176,8 @@ def format_table(report: Mapping[str, Any]) -> str:
         "appeared",
         "scraped",
         "norm_pct",
+        "accuracy_pct",
+        "queries",
         "tokens",
         "api_tokens",
         "search_ms",

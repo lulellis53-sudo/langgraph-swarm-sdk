@@ -1,0 +1,110 @@
+{
+  "query": "python 3.14 new features release notes",
+  "rows": [
+    {
+      "tool": "brave",
+      "appeared": 0,
+      "scraped": 0,
+      "norm_pct": 0.0,
+      "tokens": 0,
+      "api_tokens": 0,
+      "search_ms": 40.5,
+      "scrape_ms": 0.0
+    },
+    {
+      "tool": "ddg",
+      "appeared": 10,
+      "scraped": 8,
+      "norm_pct": 83.1,
+      "tokens": 50557,
+      "api_tokens": 0,
+      "search_ms": 10449.4,
+      "scrape_ms": 1604.1
+    },
+    {
+      "tool": "tavily",
+      "appeared": 8,
+      "scraped": 8,
+      "norm_pct": 87.6,
+      "tokens": 97720,
+      "api_tokens": 0,
+      "search_ms": 4000.1,
+      "scrape_ms": 1360.3
+    },
+    {
+      "tool": "apify",
+      "appeared": 8,
+      "scraped": 8,
+      "norm_pct": 89.1,
+      "tokens": 48110,
+      "api_tokens": 0,
+      "search_ms": 21476.6,
+      "scrape_ms": 1565.6
+    },
+    {
+      "tool": "openrouter_web",
+      "appeared": 8,
+      "scraped": 8,
+      "norm_pct": 80.4,
+      "tokens": 79895,
+      "api_tokens": 3274,
+      "search_ms": 5436.9,
+      "scrape_ms": 3117.9
+    },
+    {
+      "tool": "exa",
+      "appeared": 8,
+      "scraped": 8,
+      "norm_pct": 80.4,
+      "tokens": 79895,
+      "api_tokens": 0,
+      "search_ms": 6423.1,
+      "scrape_ms": 2129.2
+    },
+    {
+      "tool": "bright_data",
+      "appeared": 0,
+      "scraped": 0,
+      "norm_pct": 0.0,
+      "tokens": 0,
+      "api_tokens": 0,
+      "search_ms": 7741.7,
+      "scrape_ms": 0.0
+    },
+    {
+      "tool": "searxng",
+      "appeared": 0,
+      "scraped": 0,
+      "norm_pct": 0.0,
+      "tokens": 0,
+      "api_tokens": 0,
+      "search_ms": 0.1,
+      "scrape_ms": 0.1
+    },
+    {
+      "tool": "google_ground",
+      "appeared": 0,
+      "scraped": 0,
+      "norm_pct": 0.0,
+      "tokens": 0,
+      "api_tokens": 0,
+      "search_ms": 3101.0,
+      "scrape_ms": 0.0
+    },
+    {
+      "tool": "kimisearch",
+      "appeared": 0,
+      "scraped": 0,
+      "norm_pct": 0.0,
+      "tokens": 0,
+      "api_tokens": 0,
+      "search_ms": 65.2,
+      "scrape_ms": 0.0
+    }
+  ],
+  "merged": {
+    "raw": 42,
+    "unique": 28,
+    "duplicates": 14
+  }
+}

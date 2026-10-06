@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 TIMEOUT_S = 5.0
 SERVICE_PREFIX = "swarm/"
+_PROJECT_ENV = Path(__file__).resolve().parents[3] / ".env"
 KNOWN_NAMES = (
     "MEM0_API_KEY",
     "TAVILY_API_KEY",
@@ -36,6 +37,22 @@ type Runner = Callable[[Sequence[str]], str | None]
 
 class VaultError(ValueError):
     """Raised for an invalid secret name (never carries a secret value)."""
+
+
+def _keychain_args() -> list[str]:
+    """Find the dedicated Keychain named by the owner-only parent project env file."""
+    path = os.environ.get("SWARM_KEYCHAIN_PATH")
+    if path is None:
+        try:
+            if (_PROJECT_ENV.stat().st_mode & 0o077) == 0:
+                path = _dotenv_raw(
+                    "SWARM_KEYCHAIN_PATH", _PROJECT_ENV
+                )  # raw: decrypting needs this path
+        except OSError:
+            pass
+    if path and any(char in path for char in '\r\n"\\'):
+        raise VaultError("invalid Keychain path")
+    return [str(Path(path).expanduser())] if path else []
 
 
 def run_cli(argv: Sequence[str]) -> str | None:
@@ -57,7 +74,114 @@ def _check(name: str) -> str:
     return name
 
 
-def _from_dotenv(name: str, path: Path) -> str | None:
+ENC_PREFIX = "enc:v1:"
+_FERNET_KEY_NAME = "DOTENV_FERNET_KEY"
+
+
+def _find_cmd(name: str) -> list[str]:
+    return ["security", "find-generic-password", "-s", f"{SERVICE_PREFIX}{name}", "-w"] + (
+        _keychain_args()
+    )
+
+
+def _store_via_stdin(name: str, value: str) -> None:
+    """Add or update a Keychain item with the value on stdin (hex), never in argv or ps."""
+    command = (
+        f"add-generic-password -s {SERVICE_PREFIX}{_check(name)} -a {getpass.getuser()} "
+        f"-U -X {value.encode().hex()}"
+    )
+    keychain = _keychain_args()
+    if keychain:
+        command += f' "{keychain[0]}"'
+    try:
+        subprocess.run(
+            ["/usr/bin/security", "-i"],
+            input=command + "\n",
+            capture_output=True,
+            text=True,
+            timeout=TIMEOUT_S,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise VaultError(f"could not run security: {type(exc).__name__}") from exc
+
+
+def _fernet(*, create: bool, runner: Runner | None = None):  # noqa: ANN202 - optional import
+    """Fernet cipher keyed by the Keychain item ``DOTENV_FERNET_KEY`` (made when ``create``).
+
+    The key lives only in the Keychain, so an ``.env`` that leaks (backup, commit, copy) holds
+    ciphertext that is useless without this machine's login keychain.
+    """
+    from cryptography.fernet import Fernet
+
+    run = runner or run_cli
+    key = run(_find_cmd(_FERNET_KEY_NAME))
+    if not key:
+        if not create:
+            return None
+        key = Fernet.generate_key().decode()
+        _store_via_stdin(_FERNET_KEY_NAME, key)
+        if run(_find_cmd(_FERNET_KEY_NAME)) != key:  # read back: `security -i` hides failures
+            raise VaultError("could not store the .env encryption key in the Keychain")
+    return Fernet(key.encode())
+
+
+def encrypt_value(value: str, *, runner: Runner | None = None) -> str:
+    """Encrypt ``value`` for ``.env``; returns ``enc:v1:<token>``. Creates the key if needed."""
+    if not value:
+        raise ValueError("cannot encrypt an empty value")
+    cipher = _fernet(create=True, runner=runner)
+    assert cipher is not None  # create=True either returns a cipher or raises
+    return ENC_PREFIX + cipher.encrypt(value.encode()).decode()
+
+
+def decrypt_value(token: str, *, runner: Runner | None = None) -> str | None:
+    """Decrypt an ``enc:v1:`` value; ``None`` without the key or on a bad token (never raises)."""
+    from cryptography.fernet import InvalidToken
+
+    cipher = _fernet(create=False, runner=runner)
+    if cipher is None or not token.startswith(ENC_PREFIX):
+        return None
+    try:
+        return cipher.decrypt(token.removeprefix(ENC_PREFIX).encode()).decode()
+    except InvalidToken, UnicodeDecodeError:
+        return None
+
+
+def write_dotenv_entry(path: Path, name: str, value: str, *, runner: Runner | None = None) -> None:
+    """Write ``NAME=enc:v1:...`` into ``path``, replacing that name's line, mode 0600.
+
+    Other lines are kept as they are. The file is replaced atomically, so a failure leaves the
+    old content in place.
+    """
+    _check(name)
+    line = f"{name}={encrypt_value(value, runner=runner)}"
+    try:
+        existing = path.read_text().splitlines()
+    except FileNotFoundError:
+        existing = []
+    out: list[str] = []
+    replaced = False
+    for raw in existing:
+        head = raw.strip().removeprefix("export ").lstrip().partition("=")[0].strip()
+        if head == name:
+            if not replaced:
+                out.append(line)
+            replaced = True
+        else:
+            out.append(raw)
+    if not replaced:
+        out.append(line)
+    tmp = path.with_name(f".{path.name}.tmp")
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as handle:
+        handle.write("\n".join(out) + "\n")
+    os.replace(tmp, path)
+    path.chmod(0o600)
+
+
+def _dotenv_raw(name: str, path: Path) -> str | None:
+    """The unquoted value of ``NAME`` in ``path`` exactly as written, or ``None``."""
     try:
         lines = path.read_text().splitlines()
     except OSError:
@@ -74,6 +198,16 @@ def _from_dotenv(name: str, path: Path) -> str | None:
                 value = value[1:-1]
             return value or None
     return None
+
+
+def _from_dotenv(name: str, path: Path, *, runner: Runner | None = None) -> str | None:
+    value = _dotenv_raw(name, path)
+    if value is not None and value.startswith(ENC_PREFIX):
+        plain = decrypt_value(value, runner=runner)
+        if plain is None:
+            logger.warning("cannot decrypt %s in %s (key missing or token invalid)", name, path)
+        return plain
+    return value
 
 
 _SAFE_VALUE = re.compile(r"[A-Za-z0-9_\-.~+/=:]+")
@@ -141,11 +275,28 @@ def get_with_source(
     run = runner or run_cli
     if value := env.get(name):
         return value, "env"
-    if value := run(["security", "find-generic-password", "-s", f"{SERVICE_PREFIX}{name}", "-w"]):
+    if value := run(
+        [
+            "security",
+            "find-generic-password",
+            "-s",
+            f"{SERVICE_PREFIX}{name}",
+            "-w",
+            *_keychain_args(),
+        ]
+    ):
         return value, "keychain"
-    if value := _from_dotenv(name, dotenv or Path.home() / ".env"):
+    for path in [dotenv] if dotenv else [Path.home() / ".env", Path.cwd() / ".env"]:
+        value = _from_dotenv(name, path, runner=runner)
+        if not value:
+            continue
+        if (_dotenv_raw(name, path) or "").startswith(ENC_PREFIX):
+            return value, "dotenv-encrypted"
         logger.warning(
-            "secret %s read from ~/.env; migrate it with `swarm-vault set %s`", name, name
+            "secret %s read from %s in plaintext; use `swarm-vault dotenv-set %s` or `set`",
+            name,
+            path,
+            name,
         )
         return value, "dotenv"
     return None
@@ -201,8 +352,8 @@ def set_secret(
 
     Validates name via ``_check(name)``.
     Rejects empty or whitespace-only secret values by raising ValueError.
-    Runs ``/usr/bin/security add-generic-password -s "swarm/<NAME>"``
-    ``-a "<USER>" -w "<secret_value>" -U``.
+    Without a ``runner`` the value goes to ``security -i`` on stdin (hex), never argv, honors
+    ``SWARM_KEYCHAIN_PATH`` and is read back to confirm; a ``runner`` receives the argv form.
     Secret values are never logged or echoed in exceptions.
     Returns True on success, False on failure.
     """
@@ -232,15 +383,10 @@ def set_secret(
         return False
 
     try:
-        proc = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=TIMEOUT_S,
-            check=False,
-        )
-        return proc.returncode == 0
-    except OSError, subprocess.TimeoutExpired:
+        # stdin (hex), not argv: the value stays out of `ps` and SWARM_KEYCHAIN_PATH is honored
+        _store_via_stdin(name, secret_value)
+        return run_cli(_find_cmd(name)) == secret_value
+    except VaultError:
         return False
 
 
@@ -339,8 +485,11 @@ def prime_runtime_secrets(
 def main(argv: Sequence[str] | None = None, *, runner: Runner | None = None) -> int:
     """Run ``swarm-vault set NAME`` or ``swarm-vault status [NAME ...]``."""
     args = list(sys.argv[1:] if argv is None else argv)
-    if not args or args[0] not in {"set", "status", "import"}:
-        print("usage: swarm-vault set NAME | import FILE | status [NAME ...]", file=sys.stderr)
+    if not args or args[0] not in {"set", "status", "import", "dotenv-set"}:
+        print(
+            "usage: swarm-vault set NAME | dotenv-set NAME [FILE] | import FILE | status [NAME]",
+            file=sys.stderr,
+        )
         return 2
     cmd, names = args[0], args[1:]
     try:
@@ -352,11 +501,37 @@ def main(argv: Sequence[str] | None = None, *, runner: Runner | None = None) -> 
             print(f"stored: {', '.join(stored) or '-'}")
             print(f"skipped: {', '.join(skipped) or '-'}")
             return 1 if skipped or not stored else 0
+        if cmd == "dotenv-set":
+            if not 1 <= len(names) <= 2:
+                print("usage: swarm-vault dotenv-set NAME [FILE]", file=sys.stderr)
+                return 2
+            name = _check(names[0])
+            target = Path(names[1]).expanduser() if len(names) == 2 else Path.cwd() / ".env"
+            value = getpass.getpass(f"Value for {name} (hidden, stored encrypted): ").strip()
+            if not value:
+                print("empty value", file=sys.stderr)
+                return 2
+            write_dotenv_entry(target, name, value, runner=runner if runner else None)
+            print(f"{name} stored encrypted in {target} (key: Keychain {_FERNET_KEY_NAME})")
+            return 0
         if cmd == "set":
             if len(names) != 1:
                 print("usage: swarm-vault set NAME", file=sys.stderr)
                 return 2
             name = _check(names[0])
+            if _keychain_args():
+                # A positional keychain path cannot follow a value-less `-w` (it would be taken
+                # as the password), so prompt here and write through `security -i` on stdin.
+                value = getpass.getpass(f"Value for {name} (hidden): ").strip()
+                if not value:
+                    print("empty value", file=sys.stderr)
+                    return 2
+                _store_via_stdin(name, value)
+                if (runner or run_cli)(_find_cmd(name)) != value:  # `security -i` hides failures
+                    print(f"could not store {name} in the dedicated Keychain", file=sys.stderr)
+                    return 1
+                print(f"{name} stored in {_keychain_args()[0]}")
+                return 0
             # No value on argv: `security` prompts for it on the terminal.
             proc = subprocess.run(
                 [
@@ -391,6 +566,8 @@ __all__ = [
     "get_jev_key",
     "get_openai_key",
     "get_secret",
+    "decrypt_value",
+    "encrypt_value",
     "get_with_source",
     "import_file",
     "load_into_env",
@@ -398,6 +575,7 @@ __all__ = [
     "parse_secrets",
     "prime_runtime_secrets",
     "referenced_names",
+    "write_dotenv_entry",
     "resolve",
     "run_cli",
     "set_jev_key",

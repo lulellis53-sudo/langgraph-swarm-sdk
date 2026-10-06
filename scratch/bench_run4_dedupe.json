@@ -1,0 +1,142 @@
+{
+  "query": "python 3.14 release notes new features",
+  "rows": [
+    {
+      "tool": "brave",
+      "appeared": 0,
+      "scraped": 0,
+      "norm_pct": 0.0,
+      "tokens": 0,
+      "api_tokens": 0,
+      "search_ms": 49.0,
+      "scrape_ms": 0.1,
+      "queries": 1,
+      "accuracy_pct": 0.0
+    },
+    {
+      "tool": "ddg",
+      "appeared": 7,
+      "scraped": 7,
+      "norm_pct": 83.8,
+      "tokens": 46500,
+      "api_tokens": 0,
+      "search_ms": 9594.5,
+      "scrape_ms": 1462.1,
+      "queries": 1,
+      "accuracy_pct": 85.7
+    },
+    {
+      "tool": "ddglite",
+      "appeared": 10,
+      "scraped": 7,
+      "norm_pct": 83.5,
+      "tokens": 41648,
+      "api_tokens": 0,
+      "search_ms": 1798.4,
+      "scrape_ms": 5180.4,
+      "queries": 1,
+      "accuracy_pct": 100.0
+    },
+    {
+      "tool": "tavily",
+      "appeared": 8,
+      "scraped": 8,
+      "norm_pct": 89.1,
+      "tokens": 100817,
+      "api_tokens": 0,
+      "search_ms": 2985.9,
+      "scrape_ms": 2949.5,
+      "queries": 1,
+      "accuracy_pct": 100.0
+    },
+    {
+      "tool": "apify",
+      "appeared": 8,
+      "scraped": 8,
+      "norm_pct": 87.8,
+      "tokens": 51970,
+      "api_tokens": 0,
+      "search_ms": 26516.7,
+      "scrape_ms": 2348.7,
+      "queries": 1,
+      "accuracy_pct": 50.0
+    },
+    {
+      "tool": "openrouter_web",
+      "appeared": 8,
+      "scraped": 8,
+      "norm_pct": 80.5,
+      "tokens": 79490,
+      "api_tokens": 3186,
+      "search_ms": 5181.0,
+      "scrape_ms": 3952.3,
+      "queries": 1,
+      "accuracy_pct": 50.0
+    },
+    {
+      "tool": "exa",
+      "appeared": 8,
+      "scraped": 8,
+      "norm_pct": 82.1,
+      "tokens": 92090,
+      "api_tokens": 0,
+      "search_ms": 4208.4,
+      "scrape_ms": 4346.8,
+      "queries": 1,
+      "accuracy_pct": 62.5
+    },
+    {
+      "tool": "bright_data",
+      "appeared": 0,
+      "scraped": 0,
+      "norm_pct": 0.0,
+      "tokens": 0,
+      "api_tokens": 0,
+      "search_ms": 9070.7,
+      "scrape_ms": 0.0,
+      "queries": 1,
+      "accuracy_pct": 0.0
+    },
+    {
+      "tool": "searxng",
+      "appeared": 0,
+      "scraped": 0,
+      "norm_pct": 0.0,
+      "tokens": 0,
+      "api_tokens": 0,
+      "search_ms": 0.2,
+      "scrape_ms": 0.3,
+      "queries": 1,
+      "accuracy_pct": 0.0
+    },
+    {
+      "tool": "google_ground",
+      "appeared": 0,
+      "scraped": 0,
+      "norm_pct": 0.0,
+      "tokens": 0,
+      "api_tokens": 0,
+      "search_ms": 1958.7,
+      "scrape_ms": 0.0,
+      "queries": 1,
+      "accuracy_pct": 0.0
+    },
+    {
+      "tool": "kimisearch",
+      "appeared": 0,
+      "scraped": 0,
+      "norm_pct": 0.0,
+      "tokens": 0,
+      "api_tokens": 0,
+      "search_ms": 65.5,
+      "scrape_ms": 0.0,
+      "queries": 1,
+      "accuracy_pct": 0.0
+    }
+  ],
+  "merged": {
+    "raw": 49,
+    "unique": 22,
+    "duplicates": 27
+  }
+}

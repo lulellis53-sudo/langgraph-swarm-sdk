@@ -27,7 +27,7 @@ Embedding dispatch only. Does not perform training or model downloads.
   "agent": "ModelDelegate/Embedder",
   "task_id": "<assigned task id>",
   "status": "done | blocked",
-  "selected_route": { "name": "cohere:command-r7b", "provider": "cohere-2" },
+  "selected_route": { "name": "cohere:command-r7b-12-2024", "provider": "cohere-2" },
   "gpu_enabled": true,
   "backend": "opencl | molten | cohere",
   "notes": "<why GPU or provider was chosen>"

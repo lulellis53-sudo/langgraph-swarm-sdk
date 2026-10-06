@@ -1,0 +1,395 @@
+{
+  "researcher": {
+    "query": "python 3.14 release notes new features site:docs.python.org",
+    "rows": [
+      {
+        "tool": "brave",
+        "appeared": 0,
+        "scraped": 0,
+        "norm_pct": 0.0,
+        "tokens": 0,
+        "api_tokens": 0,
+        "search_ms": 42.7,
+        "scrape_ms": 0.0,
+        "queries": 1,
+        "accuracy_pct": 0.0
+      },
+      {
+        "tool": "ddg",
+        "appeared": 10,
+        "scraped": 8,
+        "norm_pct": 82.0,
+        "tokens": 141006,
+        "api_tokens": 0,
+        "search_ms": 2167.0,
+        "scrape_ms": 595.5,
+        "queries": 1,
+        "accuracy_pct": 60.0
+      },
+      {
+        "tool": "tavily",
+        "appeared": 8,
+        "scraped": 8,
+        "norm_pct": 80.3,
+        "tokens": 154342,
+        "api_tokens": 0,
+        "search_ms": 4316.4,
+        "scrape_ms": 451.7,
+        "queries": 1,
+        "accuracy_pct": 87.5
+      },
+      {
+        "tool": "apify",
+        "appeared": 0,
+        "scraped": 0,
+        "norm_pct": 0.0,
+        "tokens": 0,
+        "api_tokens": 0,
+        "search_ms": 13910.6,
+        "scrape_ms": 0.0,
+        "queries": 1,
+        "accuracy_pct": 0.0
+      },
+      {
+        "tool": "openrouter_web",
+        "appeared": 8,
+        "scraped": 8,
+        "norm_pct": 82.9,
+        "tokens": 101383,
+        "api_tokens": 3192,
+        "search_ms": 4972.5,
+        "scrape_ms": 1608.4,
+        "queries": 1,
+        "accuracy_pct": 50.0
+      },
+      {
+        "tool": "exa",
+        "appeared": 8,
+        "scraped": 8,
+        "norm_pct": 84.8,
+        "tokens": 133431,
+        "api_tokens": 0,
+        "search_ms": 3413.0,
+        "scrape_ms": 2941.9,
+        "queries": 1,
+        "accuracy_pct": 0.0
+      },
+      {
+        "tool": "bright_data",
+        "appeared": 0,
+        "scraped": 0,
+        "norm_pct": 0.0,
+        "tokens": 0,
+        "api_tokens": 0,
+        "search_ms": 7858.4,
+        "scrape_ms": 0.0,
+        "queries": 1,
+        "accuracy_pct": 0.0
+      },
+      {
+        "tool": "searxng",
+        "appeared": 0,
+        "scraped": 0,
+        "norm_pct": 0.0,
+        "tokens": 0,
+        "api_tokens": 0,
+        "search_ms": 0.1,
+        "scrape_ms": 0.0,
+        "queries": 1,
+        "accuracy_pct": 0.0
+      },
+      {
+        "tool": "google_ground",
+        "appeared": 0,
+        "scraped": 0,
+        "norm_pct": 0.0,
+        "tokens": 0,
+        "api_tokens": 0,
+        "search_ms": 1723.0,
+        "scrape_ms": 0.0,
+        "queries": 1,
+        "accuracy_pct": 0.0
+      },
+      {
+        "tool": "kimisearch",
+        "appeared": 0,
+        "scraped": 0,
+        "norm_pct": 0.0,
+        "tokens": 0,
+        "api_tokens": 0,
+        "search_ms": 66.4,
+        "scrape_ms": 0.1,
+        "queries": 1,
+        "accuracy_pct": 0.0
+      }
+    ],
+    "merged": {
+      "raw": 34,
+      "unique": 17,
+      "duplicates": 17
+    },
+    "wall_ms": 13928.7
+  },
+  "analyst": {
+    "query": "uv package manager adoption benchmarks after:2026-01-01",
+    "rows": [
+      {
+        "tool": "brave",
+        "appeared": 0,
+        "scraped": 0,
+        "norm_pct": 0.0,
+        "tokens": 0,
+        "api_tokens": 0,
+        "search_ms": 0.0,
+        "scrape_ms": 0.0,
+        "queries": 1,
+        "accuracy_pct": 0.0
+      },
+      {
+        "tool": "ddg",
+        "appeared": 0,
+        "scraped": 0,
+        "norm_pct": 0.0,
+        "tokens": 0,
+        "api_tokens": 0,
+        "search_ms": 8744.4,
+        "scrape_ms": 0.0,
+        "queries": 1,
+        "accuracy_pct": 0.0
+      },
+      {
+        "tool": "tavily",
+        "appeared": 8,
+        "scraped": 8,
+        "norm_pct": 90.5,
+        "tokens": 28170,
+        "api_tokens": 0,
+        "search_ms": 1665.2,
+        "scrape_ms": 1332.4,
+        "queries": 1,
+        "accuracy_pct": 62.5
+      },
+      {
+        "tool": "apify",
+        "appeared": 9,
+        "scraped": 8,
+        "norm_pct": 98.4,
+        "tokens": 6106,
+        "api_tokens": 0,
+        "search_ms": 20671.4,
+        "scrape_ms": 2216.6,
+        "queries": 1,
+        "accuracy_pct": 33.3
+      },
+      {
+        "tool": "openrouter_web",
+        "appeared": 8,
+        "scraped": 8,
+        "norm_pct": 93.3,
+        "tokens": 28482,
+        "api_tokens": 3228,
+        "search_ms": 2841.9,
+        "scrape_ms": 1916.7,
+        "queries": 1,
+        "accuracy_pct": 50.0
+      },
+      {
+        "tool": "exa",
+        "appeared": 8,
+        "scraped": 8,
+        "norm_pct": 92.2,
+        "tokens": 29596,
+        "api_tokens": 0,
+        "search_ms": 2837.3,
+        "scrape_ms": 2885.8,
+        "queries": 1,
+        "accuracy_pct": 25.0
+      },
+      {
+        "tool": "bright_data",
+        "appeared": 0,
+        "scraped": 0,
+        "norm_pct": 0.0,
+        "tokens": 0,
+        "api_tokens": 0,
+        "search_ms": 41802.3,
+        "scrape_ms": 0.0,
+        "queries": 1,
+        "accuracy_pct": 0.0
+      },
+      {
+        "tool": "searxng",
+        "appeared": 0,
+        "scraped": 0,
+        "norm_pct": 0.0,
+        "tokens": 0,
+        "api_tokens": 0,
+        "search_ms": 0.0,
+        "scrape_ms": 0.0,
+        "queries": 1,
+        "accuracy_pct": 0.0
+      },
+      {
+        "tool": "google_ground",
+        "appeared": 0,
+        "scraped": 0,
+        "norm_pct": 0.0,
+        "tokens": 0,
+        "api_tokens": 0,
+        "search_ms": 936.6,
+        "scrape_ms": 0.0,
+        "queries": 1,
+        "accuracy_pct": 0.0
+      },
+      {
+        "tool": "kimisearch",
+        "appeared": 0,
+        "scraped": 0,
+        "norm_pct": 0.0,
+        "tokens": 0,
+        "api_tokens": 0,
+        "search_ms": 0.0,
+        "scrape_ms": 0.0,
+        "queries": 1,
+        "accuracy_pct": 0.0
+      }
+    ],
+    "merged": {
+      "raw": 33,
+      "unique": 28,
+      "duplicates": 5
+    },
+    "wall_ms": 41807.8
+  },
+  "scout": {
+    "query": "langgraph 1.0 migration guide changes",
+    "rows": [
+      {
+        "tool": "brave",
+        "appeared": 0,
+        "scraped": 0,
+        "norm_pct": 0.0,
+        "tokens": 0,
+        "api_tokens": 0,
+        "search_ms": 0.0,
+        "scrape_ms": 0.0,
+        "queries": 1,
+        "accuracy_pct": 0.0
+      },
+      {
+        "tool": "ddg",
+        "appeared": 7,
+        "scraped": 7,
+        "norm_pct": 97.1,
+        "tokens": 16720,
+        "api_tokens": 0,
+        "search_ms": 8273.3,
+        "scrape_ms": 1068.7,
+        "queries": 1,
+        "accuracy_pct": 85.7
+      },
+      {
+        "tool": "tavily",
+        "appeared": 8,
+        "scraped": 8,
+        "norm_pct": 98.1,
+        "tokens": 16652,
+        "api_tokens": 0,
+        "search_ms": 1594.0,
+        "scrape_ms": 1399.0,
+        "queries": 1,
+        "accuracy_pct": 100.0
+      },
+      {
+        "tool": "apify",
+        "appeared": 9,
+        "scraped": 8,
+        "norm_pct": 94.8,
+        "tokens": 41525,
+        "api_tokens": 0,
+        "search_ms": 19522.4,
+        "scrape_ms": 1442.3,
+        "queries": 1,
+        "accuracy_pct": 88.9
+      },
+      {
+        "tool": "openrouter_web",
+        "appeared": 8,
+        "scraped": 8,
+        "norm_pct": 98.8,
+        "tokens": 10764,
+        "api_tokens": 2611,
+        "search_ms": 2323.7,
+        "scrape_ms": 1234.6,
+        "queries": 1,
+        "accuracy_pct": 62.5
+      },
+      {
+        "tool": "exa",
+        "appeared": 8,
+        "scraped": 8,
+        "norm_pct": 98.9,
+        "tokens": 11644,
+        "api_tokens": 0,
+        "search_ms": 3138.0,
+        "scrape_ms": 2012.0,
+        "queries": 1,
+        "accuracy_pct": 0.0
+      },
+      {
+        "tool": "bright_data",
+        "appeared": 0,
+        "scraped": 0,
+        "norm_pct": 0.0,
+        "tokens": 0,
+        "api_tokens": 0,
+        "search_ms": 4484.8,
+        "scrape_ms": 0.0,
+        "queries": 1,
+        "accuracy_pct": 0.0
+      },
+      {
+        "tool": "searxng",
+        "appeared": 0,
+        "scraped": 0,
+        "norm_pct": 0.0,
+        "tokens": 0,
+        "api_tokens": 0,
+        "search_ms": 0.0,
+        "scrape_ms": 0.0,
+        "queries": 1,
+        "accuracy_pct": 0.0
+      },
+      {
+        "tool": "google_ground",
+        "appeared": 0,
+        "scraped": 0,
+        "norm_pct": 0.0,
+        "tokens": 0,
+        "api_tokens": 0,
+        "search_ms": 933.1,
+        "scrape_ms": 0.0,
+        "queries": 1,
+        "accuracy_pct": 0.0
+      },
+      {
+        "tool": "kimisearch",
+        "appeared": 0,
+        "scraped": 0,
+        "norm_pct": 0.0,
+        "tokens": 0,
+        "api_tokens": 0,
+        "search_ms": 0.0,
+        "scrape_ms": 0.0,
+        "queries": 1,
+        "accuracy_pct": 0.0
+      }
+    ],
+    "merged": {
+      "raw": 40,
+      "unique": 30,
+      "duplicates": 10
+    },
+    "wall_ms": 20996.1
+  }
+}

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -29,6 +30,8 @@ _BUF_CACHE_MAX_ENTRIES = 32
 _BUF_CACHE_MAX_BYTES = 256 * 1024 * 1024
 
 _SOURCE = r"""
+__attribute__((vec_type_hint(float4)))
+__attribute__((work_group_size_hint(1, 64, 1)))
 __kernel void l2_norm2d(__global const float *matrix,
                         __global float *out,
                         const uint rows,
@@ -52,6 +55,7 @@ __kernel void l2_norm2d(__global const float *matrix,
     if (l == 0) out[r] = sqrt(partial[0]);
 }
 
+__attribute__((work_group_size_hint(1, 64, 1)))
 __kernel void norm_rows2d(__global const float *matrix,
                           __global float *out,
                           const uint rows,
@@ -80,6 +84,7 @@ __kernel void norm_rows2d(__global const float *matrix,
     }
 }
 
+__attribute__((work_group_size_hint(1, 64, 1)))
 __kernel void dot2d(__global const float *matrix,
                     __global const float *query,
                     __global float *out,
@@ -103,6 +108,8 @@ __kernel void dot2d(__global const float *matrix,
     if (l == 0) out[r] = partial[0];
 }
 
+__attribute__((vec_type_hint(float4)))
+__attribute__((work_group_size_hint(1, 64, 1)))
 __kernel void dot2d4(__global const float4 *matrix,
                      __global const float4 *query,
                      __global float *out,
@@ -126,6 +133,7 @@ __kernel void dot2d4(__global const float4 *matrix,
     if (l == 0) out[r] = partial[0];
 }
 
+__attribute__((work_group_size_hint(1, 64, 1)))
 __kernel void normdot2d(__global const float *matrix,
                         __global const float *query,
                         __global float *out,
@@ -157,6 +165,8 @@ __kernel void normdot2d(__global const float *matrix,
     if (l == 0) out[r] = part_sq[0] > 0.0f ? part_dot[0] * rsqrt(part_sq[0]) : 0.0f;
 }
 
+__attribute__((vec_type_hint(float4)))
+__attribute__((work_group_size_hint(1, 64, 1)))
 __kernel void normdot2d4(__global const float4 *matrix,
                          __global const float4 *query,
                          __global float *out,
@@ -188,6 +198,7 @@ __kernel void normdot2d4(__global const float4 *matrix,
     if (l == 0) out[r] = part_sq[0] > 0.0f ? part_dot[0] * rsqrt(part_sq[0]) : 0.0f;
 }
 
+__attribute__((work_group_size_hint(1, 64, 1)))
 __kernel void dq2d(__global const char *codes,
                    __global const float *scales,
                    __global const float *query,
@@ -212,6 +223,7 @@ __kernel void dq2d(__global const char *codes,
     if (l == 0) out[r] = partial[0] * scales[r];
 }
 
+__attribute__((work_group_size_hint(1, 64, 1)))
 __kernel void bdot2d(__global const uint *bits,
                      __global const uint *query,
                      __global float *out,
@@ -248,7 +260,11 @@ def _device_rank(device: Any) -> tuple[int, int]:
 
 
 class _ClState:
-    """Lazily-initialized OpenCL context, queue, and compiled program."""
+    """Lazily-initialized OpenCL context, queue, and compiled program.
+
+    Initialization is protected by a lock so free-threaded (no-GIL) Python
+    3.15 builds do not create duplicate contexts or compile the program twice.
+    """
 
     def __init__(self) -> None:
         self.ctx: cl.Context | None = None
@@ -261,9 +277,14 @@ class _ClState:
         self._buf_cache: dict[object, tuple[tuple[tuple[int, ...], ...], list[Any], int]] = {}
         self._buf_cache_bytes = 0
         self._initialized = False
+        self._lock = threading.Lock()
 
     def _ensure_init(self) -> None:
-        if not self._initialized:
+        if self._initialized:
+            return
+        with self._lock:
+            if self._initialized:
+                return
             self._initialized = True
             self._try_init()
 
@@ -354,9 +375,10 @@ class _ClState:
     def cached_buffers(self, cache_key: object, arrays: list[np.ndarray]) -> list[Any]:
         """Device buffers for ``arrays``, reused while ``cache_key`` stays the same."""
         shapes = tuple(a.shape for a in arrays)
-        hit = self._buf_cache.get(cache_key)
-        if hit is not None and hit[0] == shapes:
-            return hit[1]
+        with self._lock:
+            hit = self._buf_cache.get(cache_key)
+            if hit is not None and hit[0] == shapes:
+                return hit[1]
         cl = self._cl()
         mf = cl.mem_flags
         buffers = [
@@ -365,15 +387,16 @@ class _ClState:
         ]
         if cache_key is not None:
             payload = sum(int(a.nbytes) for a in arrays)
-            while self._buf_cache and (
-                len(self._buf_cache) >= _BUF_CACHE_MAX_ENTRIES
-                or self._buf_cache_bytes + payload > _BUF_CACHE_MAX_BYTES
-            ):
-                oldest = next(iter(self._buf_cache))
-                _, _, dropped = self._buf_cache.pop(oldest)
-                self._buf_cache_bytes -= dropped
-            self._buf_cache[cache_key] = (shapes, buffers, payload)
-            self._buf_cache_bytes += payload
+            with self._lock:
+                while self._buf_cache and (
+                    len(self._buf_cache) >= _BUF_CACHE_MAX_ENTRIES
+                    or self._buf_cache_bytes + payload > _BUF_CACHE_MAX_BYTES
+                ):
+                    oldest = next(iter(self._buf_cache))
+                    _, _, dropped = self._buf_cache.pop(oldest)
+                    self._buf_cache_bytes -= dropped
+                self._buf_cache[cache_key] = (shapes, buffers, payload)
+                self._buf_cache_bytes += payload
         return buffers
 
 
@@ -418,9 +441,21 @@ def _ensure_f32_contiguous(array: np.ndarray, name: str) -> np.ndarray:
     return arr
 
 
+def _is_radeon_device() -> bool:
+    """True when the active OpenCL device is an AMD/ATI Radeon GPU."""
+    name = _STATE._device_name.lower()
+    return "radeon" in name or "amd" in name or "ati" in name
+
+
 def _wgs_for(width: int) -> int:
-    """Largest power of two work-group width that fits the cap and the device."""
+    """Largest work-group width that fits the cap, device, and workload.
+
+    Radeon RDNA/CDNA wavefronts are 64-wide, so on AMD GPUs we prefer 64
+    when the workload allows; other devices use the largest power-of-two.
+    """
     cap = max(1, min(_LOCAL_SIZE_CAP, _STATE._max_wg))
+    if _is_radeon_device() and width >= 64 and cap >= 64:
+        return 64
     wgs = 1
     while wgs * 2 <= width and wgs * 2 <= cap:
         wgs *= 2

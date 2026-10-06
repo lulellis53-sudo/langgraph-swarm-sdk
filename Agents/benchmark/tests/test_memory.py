@@ -13,8 +13,9 @@ from hypothesis import given, settings
 
 from swarm_sdk.memory.base import MemoryHit, MemoryStore
 from swarm_sdk.memory.opencl_store import OpenClVecStore, Quantize
-from swarm_sdk.retrieval.embeddings import HashEmbedder, dedupe_texts, unit
+from swarm_sdk.retrieval.embeddings import HashEmbedder, cosine, dedupe_texts, unit
 from swarm_sdk.retrieval.hybrid import HybridSearchConfig, hybrid_search, rrf_merge
+from swarm_sdk.retrieval.rerank import Bm25KeywordReranker, KeywordReranker
 from swarm_sdk.retrieval.text import tokenize
 
 
@@ -272,6 +273,22 @@ def test_hybrid_search_prefers_keyword_match() -> None:
 # --- embeddings helpers ------------------------------------------------------
 
 
+def test_unit_preserves_unit_length_with_float64_precision() -> None:
+    rng = np.random.default_rng(11)
+    vector = rng.standard_normal(1024).astype(np.float32)
+    normalized = unit(vector)
+    assert pytest.approx(float(np.linalg.norm(normalized)), rel=1e-6) == 1.0
+
+
+def test_cosine_matches_symbolic_helper() -> None:
+    from swarm_sdk import math as sm
+
+    rng = np.random.default_rng(12)
+    u = rng.standard_normal(256).astype(np.float32)
+    v = rng.standard_normal(256).astype(np.float32)
+    assert cosine(u, v) == pytest.approx(sm.cosine_similarity(u.tolist(), v.tolist()), abs=1e-9)
+
+
 def test_dedupe_drops_near_duplicates() -> None:
     embedder = HashEmbedder(dim=32)
     texts = ["alpha bravo", "alpha bravo", "totally different phrase"]
@@ -307,6 +324,22 @@ def test_sqlite_store_uses_wal(tmp_path: Path) -> None:
     mode = store._conn.execute("PRAGMA journal_mode").fetchone()[0]
     store.close()
     assert mode.lower() == "wal"
+
+
+def test_sqlite_keyword_search_ranks_matches_and_ignores_unrelated(
+    tmp_path: Path,
+) -> None:
+    from swarm_sdk.memory.sqlite_vec import SqliteVecStore
+
+    store = SqliteVecStore(str(tmp_path / "fts.db"), 8)
+    store.add("alpha bravo charlie", _one_hot(8, 0))
+    store.add("alpha bravo charlie delta echo", _one_hot(8, 1))
+    store.add("unrelated document", _one_hot(8, 2))
+    hits = store.keyword_search("alpha bravo charlie", 3)
+    assert len(hits) == 2
+    assert all(hit.score > 0.0 for hit in hits)
+    assert all("alpha" in hit.text.lower() for hit in hits)
+    assert not any("unrelated" in hit.text.lower() for hit in hits)
 
 
 @pytest.mark.parametrize("mode", ["none", "int8", "binary"])
@@ -390,3 +423,22 @@ def test_mem0_cache_ignores_plain_memories() -> None:
     store = Mem0Store(FakeMem0())
     store.add("just a normal memory", np.zeros(1))
     assert store.get("anything") is None
+
+
+# --- rerankers ---------------------------------------------------------------
+
+
+def test_keyword_reranker_prefers_overlap() -> None:
+    reranker = KeywordReranker()
+    docs = ["alpha bravo", "alpha bravo charlie delta", "totally different"]
+    ranked = reranker.rerank("alpha bravo", docs)
+    assert ranked[0] == "alpha bravo"
+    assert ranked[-1] == "totally different"
+
+
+def test_bm25_keyword_reranker_prefers_term_frequency() -> None:
+    reranker = Bm25KeywordReranker()
+    docs = ["the quick", "the quick quick brown", "lazy dog"]
+    ranked = reranker.rerank("the quick brown", docs)
+    assert ranked[0] == "the quick quick brown"
+    assert ranked[-1] == "lazy dog"

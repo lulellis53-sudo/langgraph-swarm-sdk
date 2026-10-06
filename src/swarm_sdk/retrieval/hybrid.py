@@ -1,4 +1,4 @@
-"""Hybrid retrieval: dense vectors + BM25 keywords, merged with reciprocal rank fusion.
+r"""Hybrid retrieval: dense vectors + BM25 keywords, merged with reciprocal rank fusion.
 
 BM25 scores keyword matches and RRF merges rankings from different sources without
 requiring score calibration.
@@ -25,12 +25,12 @@ where ``r`` is a 0-based rank.
 
 from __future__ import annotations
 
-import math
 from collections import Counter
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
+from swarm_sdk.math import bm25_idf, bm25_term_score
 from swarm_sdk.memory.base import MemoryHit, MemoryStore
 from swarm_sdk.retrieval.text import tokenize
 
@@ -68,8 +68,10 @@ def _bm25_scores(query: str, corpus: list[str], *, k1: float = 1.2, b: float = 0
         for term, q_count in q_terms.items():
             if q_count == 0 or term not in tf:
                 continue
-            idf = math.log(1 + (n_docs - df[term] + 0.5) / (df[term] + 0.5))
-            score += idf * tf[term] * (k1 + 1) / (tf[term] + k1 * (1 - b + b * len(doc) / avgdl))
+            idf = bm25_idf(n_docs, max(1, min(df[term], n_docs)))
+            score += bm25_term_score(
+                tf[term], len(doc), avgdl, idf, k1=k1, b=b
+            )
         scores.append(score)
     return scores
 

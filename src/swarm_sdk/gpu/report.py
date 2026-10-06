@@ -94,6 +94,16 @@ def _llama_cpp_status() -> dict[str, str]:
     }
 
 
+def _gil_status() -> str:
+    """Report whether the GIL is enabled (CPython 3.13+ free-threading builds)."""
+    try:
+        import sys
+
+        return "disabled" if sys._is_gil_enabled() is False else "enabled"
+    except AttributeError:
+        return "enabled"
+
+
 def acceleration_report() -> dict[str, str]:
     """Probe host GPU stack and map it to Swarm embedding / index backends."""
     is_darwin = platform.system() == "Darwin"
@@ -107,6 +117,7 @@ def acceleration_report() -> dict[str, str]:
     cl_ok = cl_status["available"] == "true"
     return {
         "host": f"{platform.system()}-{platform.machine()}",
+        "python_gil": _gil_status(),
         "gpu_profile": "amd-radeon-pro-5300m+intel-uhd-630" if is_darwin and is_x86 else "unknown",
         # Host compute you already use for LLMs / shaders
         "moltenvk": moltenvk,

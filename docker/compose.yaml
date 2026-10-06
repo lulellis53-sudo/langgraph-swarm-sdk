@@ -1,3 +1,24 @@
+# Usage (from this directory):
+#   docker compose up -d searxng websearch-api
+#   docker compose run --rm websearch --prompt "latest python release" --json
+#   docker compose --profile browser build websearch-browser   # Chromium for the browse agent
+#   docker compose run --rm websearch-rs "rust async" --site docs.rs --limit 5
+# Provider keys: put them in ../.env (gitignored); never in this file.
+x-websearch: &websearch
+  build:
+    context: ..
+    dockerfile: docker/websearch.Dockerfile
+  env_file:
+    - path: ../.env
+      required: false
+  environment:
+    SEARXNG_URL: http://searxng:8080
+  volumes:
+    - websearch-data:/data
+  depends_on:
+    searxng:
+      condition: service_started
+
 services:
   searxng:
     build: .
@@ -8,3 +29,45 @@ services:
       SEARXNG_SECRET: "${SEARXNG_SECRET:?create docker/.env with SEARXNG_SECRET}"
     ports:
       - "127.0.0.1:8888:8080"
+
+  # One-shot CLI: docker compose run --rm websearch --prompt "..."
+  websearch:
+    <<: *websearch
+    image: websearch-cli:local
+    profiles: ["cli"]
+
+  # FastAPI server on loopback only.
+  websearch-api:
+    <<: *websearch
+    image: websearch-cli:local
+    restart: unless-stopped
+    entrypoint: ["uvicorn", "WebSearch.api:app", "--host", "0.0.0.0", "--port", "8765"]
+    ports:
+      - "127.0.0.1:8765:8765"
+
+  # Same CLI plus headless Chromium (browse agent / Playwright fetch).
+  websearch-browser:
+    <<: *websearch
+    image: websearch-cli-browser:local
+    profiles: ["browser"]
+    shm_size: 1gb
+    build:
+      context: ..
+      dockerfile: docker/websearch.Dockerfile
+      args:
+        INSTALL_BROWSER: "1"
+
+  # Rust CLI: fast SearXNG client with dork flags (rust/websearch-rs).
+  websearch-rs:
+    build:
+      context: ../rust/websearch-rs
+    image: websearch-rs:local
+    profiles: ["rust"]
+    environment:
+      SEARXNG_URL: http://searxng:8080
+    depends_on:
+      searxng:
+        condition: service_started
+
+volumes:
+  websearch-data:

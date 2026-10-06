@@ -11,6 +11,12 @@ import pytest
 from swarm_sdk import vault
 
 
+@pytest.fixture(autouse=True)
+def use_default_keychain(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("SWARM_KEYCHAIN_PATH", raising=False)
+    monkeypatch.setattr(vault, "_PROJECT_ENV", Path("/no-project-env"))
+
+
 class FakeRunner:
     """Maps a CLI binary name to stdout; records every call."""
 

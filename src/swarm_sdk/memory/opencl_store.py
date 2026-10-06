@@ -8,6 +8,7 @@ from typing import Literal
 import numpy as np
 
 from swarm_sdk.gpu import binary_dot, binary_quantize, dequant_dot, quantize_int8, topk_ip
+from swarm_sdk.math import binary_score_to_cosine
 from swarm_sdk.memory.base import MemoryHit
 from swarm_sdk.retrieval.embeddings import unit
 
@@ -171,7 +172,9 @@ class OpenClVecStore:
                 self._chunk("_bits", slots), query_bits, dim=self.dim, cache_key=cache_key
             )
             idx, best = _topk(scores, k)
-            return idx, np.cos(np.pi * (self.dim - best) / self.dim).astype(np.float32)
+            return idx, np.array(
+                [binary_score_to_cosine(float(s), self.dim) for s in best], dtype=np.float32
+            )
         return topk_ip(query, self._chunk("_vectors", slots), k, cache_key=cache_key)
 
     def search(self, vector: np.ndarray, k: int) -> list[MemoryHit]:
