@@ -543,6 +543,14 @@ class SwarmSDK:
                     else _DEFAULT_NODE_PROMPTS.get(node, f"You are the {node}. Be brief.")
                 )
                 peers = [peer for peer in nodes if peer != node]
+                if self.settings.pydantic_ai_nodes:
+                    from swarm_sdk.core.pydantic_node import pydantic_ai_node
+
+                    model_name = (manifest.model if manifest else "") or (
+                        self.settings.specialist_model
+                    )
+                    agents.append(pydantic_ai_node(node, model_name, prompt, peers))
+                    continue
                 agents.append(
                     # Mixed handoff/websearch tool objects; the static overloads
                     # only track the literal tool-list shape (cf. load_chat_model).

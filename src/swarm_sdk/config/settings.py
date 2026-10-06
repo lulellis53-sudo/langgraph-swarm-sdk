@@ -88,6 +88,9 @@ class Settings(BaseSettings):
     # Give manifest agents with the ``web_search`` capability the WebSearch LangChain
     # tools. Off keeps runs offline and deterministic (tests, CI).
     enable_websearch_tools: bool = False
+    # Build swarm nodes with PydanticAI (typed text-or-Handoff output) instead of
+    # langchain ``create_agent``. Needs the ``pydantic-ai`` extra; nodes get no tools.
+    pydantic_ai_nodes: bool = False
 
 
 def load_merged_settings(
