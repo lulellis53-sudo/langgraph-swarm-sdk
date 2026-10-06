@@ -92,4 +92,5 @@ The engine runs independent steps in the same wave concurrently. You keep that s
 - On failure: report `blocked` with the exact error after one retry
 - Stay in scope: do not modify code not required by the task
 - Do not write a path claimed by another in-flight Coder step
+- When Reviewer `pydantic_schema_check` findings name claimed `files`, convert those public payloads to Pydantic v2 (`BaseModel`, `Field`, `model_config = ConfigDict`, `model_validate` / `model_dump`). Do not invent v1 `class Config`.
 - Config file: [`agent.yaml`](agent.yaml)

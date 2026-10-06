@@ -158,3 +158,27 @@ tasks:
     task: delegate_math
     depends_on: []
     status: todo
+
+  - id: CR01
+    title: "Reviewer: Pydantic v2 schema check on selected Python modules"
+    assigned: [Reviewer]
+    task: pydantic_schema_check
+    files:
+      - digest.py
+      - forecast.py
+      - cli.py
+      - src/swarm_sdk/retrieval/rag_ingest.py
+    depends_on: []
+    status: todo
+
+  - id: CR02
+    title: "Coder: apply Reviewer Pydantic findings in claimed .py files"
+    assigned: [Coder]
+    task: implement_in_files
+    files:
+      - digest.py
+      - forecast.py
+      - cli.py
+      - src/swarm_sdk/retrieval/rag_ingest.py
+    depends_on: [CR01]
+    status: todo

@@ -64,4 +64,5 @@ Any language, any diff format. You do not modify files — you emit findings tha
 - Do not modify files — emit findings only
 - Every finding must cite a file and line
 - Do not approve a diff that contains a secret or credentials
+- On `pydantic_schema_check`, flag public `.py` APIs that pass untyped `dict` / dataclass JSON instead of Pydantic v2 `BaseModel` (`Field`, `ConfigDict`, `model_validate`). Do not edit files; hand findings to Coder. Priority: `digest.py`, `forecast.py`, `cli.py`, `src/swarm_sdk/retrieval/rag_ingest.py`.
 - Config file: [`agent.yaml`](agent.yaml)

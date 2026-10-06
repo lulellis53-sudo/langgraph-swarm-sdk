@@ -43,13 +43,30 @@
   "editor.wordBasedSuggestions": "off",
   "jupyter.askForKernelRestart": false,
   "jupyter.kernels.excludePythonEnvironments": [],
+  "jupyter.notebookFileRoot": "${workspaceFolder}",
+  "jupyter.widgetScriptSources": [
+    "jsdelivr.com",
+    "unpkg.com"
+  ],
+  "jupyter.interactiveWindow.creationMode": "perFile",
+  "jupyter.enableExtendedPythonKernelCompletions": true,
+  "jupyter.kernels.trusted": [
+    "${workspaceFolder}/**/*.ipynb"
+  ],
   "notebook.formatOnSave.enabled": true,
+  "notebook.defaultFormatter": "charliermarsh.ruff",
+  "notebook.lineNumbers": "on",
+  "notebook.output.textLineLimit": 40,
+  "[jupyter-notebook]": {
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
   "colab.logging.level": "info",
   "colab.uploading": true,
   "colab.activityBarContentView": true,
   "colab.activityBarResourceView": true,
   "colab.serverMounting": false,
-  "colab.terminal": false,
+  "colab.terminal": true,
+  "colab.importNotebookFromUrl": true,
   "chatgpt.openOnStartup": false,
   "chatgpt.followUpQueueMode": "queue",
   "chatgpt.composerEnterBehavior": "cmdIfMultiline",

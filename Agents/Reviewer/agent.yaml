@@ -31,6 +31,15 @@ tasks:
       - security_findings
       - severity_map
 
+  - id: pydantic_schema_check
+    description: >-
+      Flag public Python APIs that use untyped dict/dataclass payloads
+      instead of pydantic.BaseModel v2; emit file/line findings for Coder
+      to apply in the listed .py files. Do not edit files.
+    outputs:
+      - findings
+      - verdict
+
 capabilities:
   - diff_reading
   - static_analysis

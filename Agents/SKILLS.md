@@ -42,7 +42,7 @@ token budget, tasks, capabilities). Validation: `uv run python -m swarm_sdk.agen
 | [RAG](RAG/AGENTS.md) | knowledge_retrieval | - | hybrid_retrieval, semantic_caching |
 | [Refactor](Refactor/AGENTS.md) | safe_incremental_refactor | - | characterize, plan_refactor, execute_refactor |
 | [Researcher](Researcher/AGENTS.md) | read_only_research | researcher | code_search, summarize_domain |
-| [Reviewer](Reviewer/AGENTS.md) | review_changes | reviewer | diff_review, security_smell_check |
+| [Reviewer](Reviewer/AGENTS.md) | review_changes | reviewer | diff_review, security_smell_check, pydantic_schema_check |
 | [Security](Security/AGENTS.md) | security_review | - | secrets_audit, dependency_audit |
 | [Tester](Tester/AGENTS.md) | write_and_run_tests | - | write_tests, run_gate |
 | [TxtToCsv](TxtToCsv/AGENTS.md) | convert_text_files_to_csv | - | infer_format, convert |

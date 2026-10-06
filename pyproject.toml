@@ -17,6 +17,7 @@ dependencies = [
     "langchain-groq>=0.2",
     "langchain-mistralai>=0.2",
     "langchain-openai>=0.3",
+    # ## Schema (Pydantic v2). Reviewer task pydantic_schema_check; Coder applies BaseModel.
     "pydantic>=2.11",
     "pydantic-settings>=2.10",
     # ## Config & serialization
@@ -147,6 +148,9 @@ serialization = [
     "msgspec>=0.22",
     "orjson>=3.10",
     "protobuf>=6.31",
+]
+pydantic-ai = [
+    "pydantic-ai-slim[openai]>=2",
 ]
 
 [project.scripts]
