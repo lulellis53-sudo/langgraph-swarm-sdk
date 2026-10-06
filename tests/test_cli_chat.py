@@ -11,7 +11,7 @@ from typing import Any
 import pytest
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
-from WebSearch.browse_agent import browse
+from WebSearch.browser_agent import browse
 from WebSearch.frontend import websearchers as ws
 from WebSearch.frontend.websearchers import SearcherSpec
 

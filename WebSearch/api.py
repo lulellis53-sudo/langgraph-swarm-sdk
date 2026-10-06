@@ -16,12 +16,14 @@ from __future__ import annotations
 import os
 from collections.abc import Callable, Mapping
 from dataclasses import asdict
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from WebSearch.browse_agent import BrowseError
+from WebSearch.agent_tools import dedupe_documents, summarize_documents
+from WebSearch.backend.docs import ExtractedDoc
+from WebSearch.browser_agent import BrowseError
 from WebSearch.cli import build_parser, run
 from WebSearch.doctor import doctor
 from WebSearch.frontend.dorks import DorkError
@@ -58,6 +60,24 @@ class BrowseRequest(BaseModel):
     model: str | None = Field(default=None, max_length=100)
 
 
+class AgentDocument(BaseModel):
+    """Extracted page accepted by the summarize and dedupe agents."""
+
+    url: str = Field(min_length=1, max_length=4096)
+    text: str = Field(max_length=200_000)
+    extractor: str = Field(default="api", max_length=100)
+    raw_chars: int = Field(default=0, ge=0)
+
+
+class AgentRequest(BaseModel):
+    """Input for the ``/Agents`` document tools."""
+
+    action: Literal["summarize", "dedupe"]
+    documents: list[AgentDocument] = Field(max_length=100)
+    query: str | None = Field(default=None, max_length=1000)
+    max_results: int = Field(default=10, ge=1, le=100)
+
+
 def _namespace(**fields: Any) -> Any:
     """CLI defaults for every option, then the request's non-empty fields on top."""
     args = build_parser().parse_args(["--prompt", fields.pop("prompt")])
@@ -88,6 +108,29 @@ def create_app(
     def presets() -> dict[str, Any]:
         return load_providers().dork_presets
 
+    @app.get("/Agents")
+    @app.get("/agents")
+    def agents() -> dict[str, Any]:
+        return {
+            "agents": [
+                {"name": "summarize", "description": "Rank and summarize documents by query."},
+                {"name": "dedupe", "description": "Normalize documents and remove duplicates."},
+            ]
+        }
+
+    @app.post("/Agents")
+    @app.post("/agents")
+    def run_agent(body: AgentRequest) -> dict[str, Any]:
+        docs = [ExtractedDoc(**doc.model_dump()) for doc in body.documents]
+        if body.action == "dedupe":
+            return dedupe_documents(docs)
+        if not body.query or not body.query.strip():
+            raise HTTPException(status_code=422, detail="query is required for summarize")
+        try:
+            return summarize_documents(body.query, docs, max_results=body.max_results)
+        except (ValueError, OSError, RuntimeError, ImportError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
     @app.post("/search")
     def search(body: SearchRequest) -> dict[str, Any]:
         args = _namespace(**body.model_dump())
@@ -98,7 +141,7 @@ def create_app(
 
     @app.post("/browse")
     def browse_endpoint(body: BrowseRequest) -> dict[str, Any]:
-        from WebSearch.browse_agent import browse
+        from WebSearch.browser_agent import browse
 
         cfg = load_providers()
         try:

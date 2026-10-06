@@ -254,7 +254,7 @@ class PrivateTarget(Exception):
 
 def _require_public(url: str, resolver: Resolver | None) -> None:
     """Raise ``PrivateTarget`` unless ``url`` is public http(s)."""
-    from WebSearch.browse_agent import is_public_http_url
+    from WebSearch.browser_agent import is_public_http_url
 
     kwargs: dict[str, Resolver] = {} if resolver is None else {"resolver": resolver}
     if not is_public_http_url(url, **kwargs):

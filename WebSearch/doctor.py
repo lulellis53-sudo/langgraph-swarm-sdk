@@ -68,7 +68,7 @@ def _chromium_ready() -> bool | None:
 
 def _autonomous(cfg: ProvidersConfig) -> dict[str, Any]:
     """Roster readiness. Reports names only; secret values stay in the vault."""
-    from WebSearch.autonomous import model_key_ready, select_ready
+    from WebSearch.browser_agent import model_key_ready, select_ready
 
     cache: dict[str, bool] = {}
 

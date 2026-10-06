@@ -11,7 +11,7 @@ from typing import Any
 import pytest
 from benchmark.tests.fakes import Script, ScriptedModel, answer
 from langchain_core.messages import AIMessage
-from WebSearch.autonomous import (
+from WebSearch.browser_agent import (
     choose_playwright,
     model_key_ready,
     parse_keep,
@@ -266,7 +266,7 @@ def test_cli_autonomous_without_a_ready_model_exits_2(capsys: pytest.CaptureFixt
 
 def test_doctor_lists_roster_readiness_without_secrets(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "WebSearch.autonomous.model_key_ready",
+        "WebSearch.browser_agent.model_key_ready",
         lambda name: name == "openrouter:z-ai/glm-5.3-flash",
     )
     report = doctor()

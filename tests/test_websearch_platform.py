@@ -18,12 +18,13 @@ from langchain_core.messages import AIMessage
 from tests.scripted_chat import Script, ScriptedModel, answer
 from WebSearch import midend
 from WebSearch.api import create_app
-from WebSearch.browse_agent import BrowseError, browse, is_public_http_url
+from WebSearch.browser_agent import BrowseError, browse, is_public_http_url
 from WebSearch.cli import build_parser, build_query, main
 from WebSearch.doctor import doctor, render
 from WebSearch.frontend import websearchers as ws
 from WebSearch.frontend.dorks import DorkError, dork, parse_dork
 from WebSearch.frontend.websearchers import CrawlerName, SearcherSpec, SearchHit, load_providers
+from WebSearch.langchain_tools import websearch_langchain_tools
 from WebSearch.midend import PrivateTarget
 
 # ---------------------------------------------------------------- dorks
@@ -466,6 +467,54 @@ def test_api_health_doctor_and_presets() -> None:
     assert client.get("/health").json() == {"status": "ok"}
     assert "crawlers" in client.get("/doctor").json()
     assert "last_week" in client.get("/presets").json()
+
+
+def test_api_agents_lists_summarize_and_dedupe() -> None:
+    client = _client()
+    assert {agent["name"] for agent in client.get("/Agents").json()["agents"]} == {
+        "summarize",
+        "dedupe",
+    }
+    documents = [
+        {"url": "https://a.example", "text": "LightGBM builds gradient boosted trees."},
+        {"url": "https://b.example", "text": "lightgbm builds gradient boosted trees."},
+        {"url": "https://c.example", "text": "Cats sleep all day in warm places."},
+    ]
+    deduped = client.post("/Agents", json={"action": "dedupe", "documents": documents})
+    assert deduped.status_code == 200
+    assert deduped.json()["removed"] == 1
+    summarized = client.post(
+        "/Agents",
+        json={"action": "summarize", "query": "lightgbm forecasting", "documents": documents},
+    )
+    assert summarized.status_code == 200
+    assert summarized.json()["results"][0]["url"] == "https://a.example"
+
+
+def test_api_summarize_agent_requires_query() -> None:
+    response = _client().post("/Agents", json={"action": "summarize", "documents": []})
+    assert response.status_code == 422
+
+
+def test_langchain_tools_include_semantic_summarize_and_dedupe() -> None:
+    tools = {tool.name: tool for tool in websearch_langchain_tools()}
+    assert set(tools) == {
+        "web_search_brief",
+        "web_search_hits",
+        "web_dedupe_documents",
+        "web_summarize_documents",
+    }
+    documents = [
+        {"url": "https://a.example", "text": "LightGBM builds gradient boosted trees."},
+        {"url": "https://b.example", "text": "lightgbm builds gradient boosted trees."},
+        {"url": "https://c.example", "text": "Cats sleep all day in warm places."},
+    ]
+    deduped = tools["web_dedupe_documents"].invoke({"documents": documents})
+    assert deduped["removed"] == 1
+    summarized = tools["web_summarize_documents"].invoke(
+        {"query": "lightgbm forecasting", "documents": documents}
+    )
+    assert summarized["results"][0]["url"] == "https://a.example"
 
 
 def test_api_search_returns_hits_and_translates_options() -> None:

@@ -36,6 +36,10 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "render_brief": ("WebSearch.agent_tools", "render_brief"),
     "search_brief": ("WebSearch.agent_tools", "search_brief"),
     "search_hits": ("WebSearch.agent_tools", "search_hits"),
+    "dedupe_documents": ("WebSearch.agent_tools", "dedupe_documents"),
+    "summarize_documents": ("WebSearch.agent_tools", "summarize_documents"),
+    "websearch_langchain_tools": ("WebSearch.langchain_tools", "websearch_langchain_tools"),
+    "run_cowork_pipeline": ("WebSearch.browser_agent", "run_cowork_pipeline"),
 }
 
 
@@ -124,6 +128,7 @@ __all__ = [
     "any_of",
     "crawl_then_scrape",
     "dedupe_docs",
+    "dedupe_documents",
     "dork",
     "extract_and_normalize",
     "load_providers",
@@ -131,7 +136,10 @@ __all__ = [
     "parallel_search",
     "registry_search",
     "run_pipeline",
+    "run_cowork_pipeline",
     "render_brief",
     "search_brief",
     "search_hits",
+    "summarize_documents",
+    "websearch_langchain_tools",
 ]

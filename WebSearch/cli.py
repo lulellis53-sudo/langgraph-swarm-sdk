@@ -22,7 +22,7 @@ from WebSearch.backend.route import (
     sql_handler,
 )
 from WebSearch.backend.store import connect
-from WebSearch.browse_agent import BrowseError
+from WebSearch.browser_agent import BrowseError
 from WebSearch.forecast import ForecastUnavailable, forecast_hits, record_run
 from WebSearch.frontend.dorks import DorkError, dork
 from WebSearch.frontend.report import search_report
@@ -140,7 +140,7 @@ def _autonomous_report(
     ready: Callable[[str], bool] | None,
 ) -> dict[str, Any]:
     """``--autonomous``: browse with one model, then drop near-duplicates with another."""
-    from WebSearch.autonomous import run_autonomous
+    from WebSearch.browser_agent import run_autonomous
 
     if args.model:
         rest = tuple(name for name in cfg.autonomous_playwright if name != args.model)
@@ -182,7 +182,7 @@ def _browse_report(
     resolver: Callable[[str], list[str]] | None,
 ) -> dict[str, Any]:
     """``--browse``: hand the question to the LLM browser agent instead of a plain search."""
-    from WebSearch.browse_agent import browse
+    from WebSearch.browser_agent import browse
 
     if args.model:
         cfg = replace(cfg, llm=replace(cfg.llm, model=args.model))
@@ -256,7 +256,9 @@ def run(
         )
     report: dict[str, Any] = {"query": query, "hits": [asdict(hit) for hit in hits], **extra}
 
-    db_path = args.db or (DEFAULT_DB if ("sql" in targets or args.forecast) else None)
+    db_path = args.db or (
+        DEFAULT_DB if ("sql" in targets or "semantic" in targets or args.forecast) else None
+    )
     if db_path:
         conn = connect(db_path)
         try:
@@ -279,7 +281,9 @@ def run(
             for p in pages
             if p.html
         ]
-        handlers = {"semantic": semantic_handler(str(args.prompt))}
+        handlers = {
+            "semantic": semantic_handler(str(args.prompt), db_path=db_path or ":memory:")
+        }
         if db_path:
             handlers["sql"] = sql_handler(db_path)
         clean, results = route(docs, targets, handlers)
