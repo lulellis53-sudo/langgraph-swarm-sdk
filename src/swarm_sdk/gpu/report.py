@@ -96,12 +96,9 @@ def _llama_cpp_status() -> dict[str, str]:
 
 def _gil_status() -> str:
     """Report whether the GIL is enabled (CPython 3.13+ free-threading builds)."""
-    try:
-        import sys
+    from swarm_sdk.execution import concurrency
 
-        return "disabled" if sys._is_gil_enabled() is False else "enabled"
-    except AttributeError:
-        return "enabled"
+    return "enabled" if concurrency.gil_enabled() else "disabled"
 
 
 def acceleration_report() -> dict[str, str]:

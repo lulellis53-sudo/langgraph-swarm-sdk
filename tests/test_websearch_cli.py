@@ -7,11 +7,12 @@ import json
 import sqlite3
 from pathlib import Path
 
+import numpy as np
 import pytest
 from WebSearch.backend.docs import ExtractedDoc
 from WebSearch.backend.route import RouteError, dedupe_normalize, route, semantic_handler
-from WebSearch.backend.semantic import summarize_score
-from WebSearch.backend.store import connect, count_documents
+from WebSearch.backend.semantic import default_embedder, summarize_score
+from WebSearch.backend.store import connect, count_documents, semantic_search
 from WebSearch.cli import build_parser, build_query, main
 from WebSearch.forecast import ForecastUnavailable, forecast_hits, record_run
 from WebSearch.frontend.websearchers import SearcherSpec, SearchFn, SearchHit, load_providers
@@ -163,6 +164,60 @@ def test_summarize_score_ranks_relevant_doc_first() -> None:
 def test_summarize_score_rejects_empty_query() -> None:
     with pytest.raises(ValueError, match="query"):
         summarize_score([], "  ")
+
+
+def test_default_embedder_prefers_fastembed_when_available(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import importlib.machinery
+    import importlib.util
+
+    monkeypatch.delenv("WEBSEARCH_EMBED_BACKEND", raising=False)
+    monkeypatch.delenv("WEBSEARCH_EMBED_MODEL", raising=False)
+    monkeypatch.setattr(
+        importlib.util,
+        "find_spec",
+        lambda name: importlib.machinery.ModuleSpec(name, loader=None),
+    )
+    assert type(default_embedder()).__name__ == "FastEmbedder"
+
+
+def test_default_embedder_uses_offline_fallback_without_fastembed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import importlib.util
+
+    monkeypatch.delenv("WEBSEARCH_EMBED_BACKEND", raising=False)
+    monkeypatch.delenv("WEBSEARCH_EMBED_MODEL", raising=False)
+    monkeypatch.setattr(importlib.util, "find_spec", lambda _name: None)
+    assert type(default_embedder()).__name__ == "LexicalEmbedder"
+
+
+class _VectorEmbedder:
+    dim = 3
+
+    def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:
+        del query
+        vectors = {"alpha": [1.0, 0.0, 0.0], "beta": [0.0, 1.0, 0.0], "q": [1, 0, 0]}
+        return np.asarray([vectors[text] for text in texts], dtype=np.float32)
+
+
+def test_semantic_search_indexes_and_reuses_vectors(tmp_path: Path) -> None:
+    db = tmp_path / "vectors.db"
+    docs = [
+        ExtractedDoc("https://a.example", "alpha", "x", 5),
+        ExtractedDoc("https://b.example", "beta", "x", 4),
+    ]
+    conn = connect(db)
+    matches = semantic_search(conn, docs, "q", embedder=_VectorEmbedder(), top_k=1)
+    assert [(doc.url, score) for doc, score in matches] == [(docs[0].url, pytest.approx(1.0))]
+    conn.close()
+
+    conn = connect(db)
+    matches = semantic_search(conn, docs, "q", embedder=_VectorEmbedder(), top_k=2)
+    assert [doc.url for doc, _score in matches] == [docs[0].url, docs[1].url]
+    assert conn.execute("SELECT COUNT(*) FROM semantic_documents").fetchone()[0] == 2
+    conn.close()
 
 
 class _FakeEngine:

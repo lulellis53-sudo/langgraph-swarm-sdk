@@ -31,6 +31,7 @@ from WebSearch.midend import FetchFn, PrivateTarget, fetch_playwright
 
 if TYPE_CHECKING:
     from langchain_core.language_models.chat_models import BaseChatModel
+
     from swarm_sdk.orchestrator import PlanStep
     from swarm_sdk.orchestrator.plan import StepOutput
 

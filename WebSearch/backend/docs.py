@@ -90,6 +90,7 @@ def dedupe_docs(docs: Iterable[ExtractedDoc]) -> list[ExtractedDoc]:
         canonical = normalize_url(doc.url)
         if canonical in seen_urls:
             continue
+        seen_urls.add(canonical)
         h = hashlib.blake2b(doc.text.casefold().encode("utf-8"), digest_size=16).hexdigest()
         if h in seen:
             continue

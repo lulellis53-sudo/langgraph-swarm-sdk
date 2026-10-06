@@ -8,7 +8,7 @@ import logging
 import resource
 import sys
 import time
-from typing import Any, Optional, TypedDict, cast
+from typing import Any, TypedDict, cast
 
 from langgraph.graph import END, StateGraph
 
@@ -33,7 +33,7 @@ class SwarmState(TypedDict, total=False):
     iteration: int
     metrics: dict[str, float]
     status: str
-    error: Optional[str]
+    error: str | None
 
 
 class LowSwarmEngine:
@@ -218,9 +218,7 @@ class LowSwarmEngine:
                 elif num_params == 3:
                     raw_res = self.custom_synthesizer(task, target_files, context_chunks)
                 else:
-                    raw_res = self.custom_synthesizer(
-                        task, target_files, context_chunks, iteration
-                    )
+                    raw_res = self.custom_synthesizer(task, target_files, context_chunks, iteration)
             except TypeError:
                 raw_res = self.custom_synthesizer(state)
 
@@ -315,7 +313,8 @@ class LowSwarmEngine:
         # Handle rejection & resynthesis routing feedback
         next_iter = iteration + 1
         feedback_lines = [
-            f"{v.get('file')}:{v.get('line')}:{v.get('col')} [{v.get('category')}]: {v.get('message')}"
+            f"{v.get('file')}:{v.get('line')}:{v.get('col')} "
+            f"[{v.get('category')}]: {v.get('message')}"
             for v in all_violations
         ]
         feedback = "Lifeguard audit violations:\n" + "\n".join(feedback_lines)
@@ -477,7 +476,9 @@ class LowSwarmEngine:
                     state_res["metrics"] = {}
                 state_res["metrics"]["wall_clock_ms"] = (time.perf_counter() - start_time) * 1000.0
                 state_res["metrics"]["cpu_time_ms"] = (time.process_time() - start_cpu) * 1000.0
-                state_res["metrics"]["rss_gb"] = state_res["metrics"].get("rss_gb", self.get_current_rss_gb())
+                state_res["metrics"]["rss_gb"] = state_res["metrics"].get(
+                    "rss_gb", self.get_current_rss_gb()
+                )
             return state_res
         except MemoryError as exc:
             elapsed_ms = (time.perf_counter() - start_time) * 1000.0

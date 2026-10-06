@@ -6,13 +6,14 @@ import functools
 import json
 import logging
 import re
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 from pydantic import BaseModel, Field
 
-from swarm_sdk.retrieval.embeddings import Embedder, HashEmbedder
+from swarm_sdk.retrieval.embeddings import HashEmbedder
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,84 @@ class _NumpyVectorStore:
         return len(self.vectors)
 
 
+_HEADER_RE = re.compile(r"^(#{1,6})\s+(.+)$")
+
+
+def _iter_sections(text: str) -> Iterator[tuple[list[tuple[int, str]], list[str]]]:
+    """Yield ``(header hierarchy, body lines)`` per Markdown section, in document order.
+
+    Headers inside fenced code blocks (``` or ~~~) are body text, not section starts.
+    """
+    header_stack: list[tuple[int, str]] = []  # (level, title)
+    current_body: list[str] = []
+    in_code_block = False
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            in_code_block = not in_code_block
+            current_body.append(line)
+            continue
+
+        match = None if in_code_block else _HEADER_RE.match(stripped)
+        if match is None:
+            current_body.append(line)
+            continue
+
+        yield list(header_stack), current_body
+        current_body = []
+        level = len(match.group(1))
+        title = match.group(2).strip().strip("#").strip()
+        while header_stack and header_stack[-1][0] >= level:
+            header_stack.pop()
+        header_stack.append((level, title))
+
+    yield list(header_stack), current_body
+
+
+def _group_paragraphs(raw_content: str, max_chunk_size: int) -> list[list[str]]:
+    """Pack blank-line separated paragraphs into groups of at most ``max_chunk_size`` chars."""
+    groups: list[list[str]] = []
+    current: list[str] = []
+    current_len = 0
+    for paragraph in raw_content.split("\n\n"):
+        text = paragraph.strip()
+        if not text:
+            continue
+        if current and current_len + len(text) + 2 > max_chunk_size:
+            groups.append(current)
+            current = [text]
+            current_len = len(text)
+        else:
+            current.append(text)
+            current_len += len(text) + 2
+    if current:
+        groups.append(current)
+    return groups
+
+
+def _make_chunk(
+    source_file: str,
+    chunk_idx: int,
+    headers: list[tuple[int, str]],
+    paragraphs: list[str],
+) -> DocumentChunk:
+    header_context = " > ".join(title for _, title in headers)
+    content = "\n\n".join(paragraphs)
+    return DocumentChunk(
+        chunk_id=f"{source_file}:{chunk_idx}" if source_file else f"chunk_{chunk_idx}",
+        source_file=source_file,
+        header_context=header_context,
+        content=content,
+        full_text=f"{header_context}\n{content}" if header_context else content,
+        metadata={
+            "chunk_index": chunk_idx,
+            "source_file": source_file,
+            "headers": [title for _, title in headers],
+        },
+    )
+
+
 class RAGIngestionPipeline:
     """End-to-end RAG ingestion and retrieval pipeline.
 
@@ -148,106 +227,13 @@ class RAGIngestionPipeline:
         max_chunk_size: int = 1500,
     ) -> list[DocumentChunk]:
         """Split Markdown document into contextual chunks with section hierarchy."""
-        lines = text.splitlines()
         chunks: list[DocumentChunk] = []
-        header_stack: list[tuple[int, str]] = []  # (level, title)
-        current_body: list[str] = []
-        in_code_block = False
-
-        header_re = re.compile(r"^(#{1,6})\s+(.+)$")
-        chunk_idx = 0
-
-        def emit_section(headers: list[tuple[int, str]], body_lines: list[str]) -> None:
-            nonlocal chunk_idx
+        for headers, body_lines in _iter_sections(text):
             raw_content = "\n".join(body_lines).strip()
             if not raw_content:
-                return
-
-            header_context = " > ".join(title for _, title in headers)
-
-            # If section content exceeds max_chunk_size, split by paragraphs
-            paragraphs = raw_content.split("\n\n")
-            current_part: list[str] = []
-            current_len = 0
-
-            for p in paragraphs:
-                p_str = p.strip()
-                if not p_str:
-                    continue
-                if current_part and (current_len + len(p_str) + 2 > max_chunk_size):
-                    part_content = "\n\n".join(current_part)
-                    full_text = (
-                        f"{header_context}\n{part_content}" if header_context else part_content
-                    )
-                    chunk_id = f"{source_file}:{chunk_idx}" if source_file else f"chunk_{chunk_idx}"
-                    chunks.append(
-                        DocumentChunk(
-                            chunk_id=chunk_id,
-                            source_file=source_file,
-                            header_context=header_context,
-                            content=part_content,
-                            full_text=full_text,
-                            metadata={
-                                "chunk_index": chunk_idx,
-                                "source_file": source_file,
-                                "headers": [t for _, t in headers],
-                            },
-                        )
-                    )
-                    chunk_idx += 1
-                    current_part = [p_str]
-                    current_len = len(p_str)
-                else:
-                    current_part.append(p_str)
-                    current_len += len(p_str) + 2
-
-            if current_part:
-                part_content = "\n\n".join(current_part)
-                full_text = f"{header_context}\n{part_content}" if header_context else part_content
-                chunk_id = f"{source_file}:{chunk_idx}" if source_file else f"chunk_{chunk_idx}"
-                chunks.append(
-                    DocumentChunk(
-                        chunk_id=chunk_id,
-                        source_file=source_file,
-                        header_context=header_context,
-                        content=part_content,
-                        full_text=full_text,
-                        metadata={
-                            "chunk_index": chunk_idx,
-                            "source_file": source_file,
-                            "headers": [t for _, t in headers],
-                        },
-                    )
-                )
-                chunk_idx += 1
-
-        for line in lines:
-            stripped = line.strip()
-            # Toggle code block state
-            if stripped.startswith("```") or stripped.startswith("~~~"):
-                in_code_block = not in_code_block
-                current_body.append(line)
                 continue
-
-            if not in_code_block:
-                m = header_re.match(stripped)
-                if m:
-                    # Flush pending section under previous header hierarchy
-                    emit_section(header_stack, current_body)
-                    current_body = []
-
-                    level = len(m.group(1))
-                    title = m.group(2).strip().strip("#").strip()
-                    # Pop headers of equal or deeper level
-                    while header_stack and header_stack[-1][0] >= level:
-                        header_stack.pop()
-                    header_stack.append((level, title))
-                    continue
-
-            current_body.append(line)
-
-        # Flush trailing section
-        emit_section(header_stack, current_body)
+            for paragraphs in _group_paragraphs(raw_content, max_chunk_size):
+                chunks.append(_make_chunk(source_file, len(chunks), headers, paragraphs))
         return chunks
 
     def ingest_text(self, text: str, source_file: str = "text") -> int:

@@ -3,11 +3,72 @@
 from __future__ import annotations
 
 import sys
+from collections.abc import Callable, Mapping
 from pathlib import Path
+from typing import Any
 
 import yaml
 
-from swarm_sdk.agents.manifest import AgentManifestLoader, load_all_agent_manifests
+from swarm_sdk.agents.manifest import (
+    AgentManifest,
+    AgentManifestLoader,
+    load_all_agent_manifests,
+)
+
+
+def _load_coordination(agents_dir: Path) -> tuple[dict[str, Any] | None, list[str]]:
+    """Read ``coordination.yaml``; return ``(data, [])`` or ``(None, [error])``."""
+    coord_path = agents_dir / "coordination.yaml"
+    if not coord_path.is_file():
+        return None, [f"missing {coord_path}"]
+    data = yaml.safe_load(coord_path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        return None, ["coordination.yaml must be a mapping"]
+    if not isinstance(data.get("agents", []), list):
+        return None, ["coordination.yaml agents must be a list"]
+    return data, []
+
+
+def _check_agent_entries(
+    agents: list[Any],
+    manifests: Mapping[str, AgentManifest],
+    repo_root: Path,
+    missing_agent: Callable[[str], str],
+) -> list[str]:
+    """Check each coordination agent against its manifest path and loaded manifests."""
+    errors: list[str] = []
+    for entry in agents:
+        if not isinstance(entry, dict):
+            continue
+        name = entry.get("name")
+        if not isinstance(name, str):
+            continue
+        manifest_path = entry.get("manifest")
+        if isinstance(manifest_path, str) and not (repo_root / manifest_path).is_file():
+            errors.append(f"{name}: manifest not found: {manifest_path}")
+        if name not in manifests:
+            errors.append(missing_agent(name))
+        elif manifests[name].name != name:
+            errors.append(f"{name}: manifest name mismatch ({manifests[name].name})")
+    return errors
+
+
+def _check_task_entry(entry: dict[str, Any], manifests: Mapping[str, AgentManifest]) -> list[str]:
+    """Check one coordination task: assigned agents must exist and know the task."""
+    task_id = entry.get("id", "<unknown>")
+    assigned = entry.get("assigned", [])
+    if not isinstance(assigned, list):
+        return [f"{task_id}: assigned must be a list"]
+    errors: list[str] = []
+    for name in assigned:
+        manifest = manifests.get(name) if isinstance(name, str) else None
+        if manifest is None:
+            errors.append(f"{task_id}: unknown assigned agent {name!r}")
+            continue
+        task_name = entry.get("task")
+        if task_name and task_name not in {task.id for task in manifest.tasks}:
+            errors.append(f"{task_id}: unknown task {task_name!r} for agent {name!r}")
+    return errors
 
 
 class AgentValidator:
@@ -23,88 +84,37 @@ class AgentValidator:
         Returns:
             Validation error messages (empty if valid).
         """
-        errors: list[str] = []
-        repo_root = agents_dir.parent
-        coord_path = agents_dir / "coordination.yaml"
-        if not coord_path.is_file():
-            return [f"missing {coord_path}"]
-
-        data = yaml.safe_load(coord_path.read_text(encoding="utf-8"))
-        if not isinstance(data, dict):
-            return ["coordination.yaml must be a mapping"]
-
-        agents = data.get("agents", [])
-        if not isinstance(agents, list):
-            return ["coordination.yaml agents must be a list"]
-
-        manifests = AgentManifestLoader.load_all(agents_dir)
-        for entry in agents:
-            if not isinstance(entry, dict):
-                continue
-            name = entry.get("name")
-            if not isinstance(name, str):
-                continue
-            manifest_path = entry.get("manifest")
-            if isinstance(manifest_path, str) and not (repo_root / manifest_path).is_file():
-                errors.append(f"{name}: manifest not found: {manifest_path}")
-            if name not in manifests:
-                errors.append(f"{name}: missing Agents/{name}/agent.yaml")
-            elif manifests[name].name != name:
-                errors.append(f"{name}: manifest name mismatch ({manifests[name].name})")
-        return errors
+        data, errors = _load_coordination(agents_dir)
+        if data is None:
+            return errors
+        return _check_agent_entries(
+            data.get("agents", []),
+            AgentManifestLoader.load_all(agents_dir),
+            agents_dir.parent,
+            lambda name: f"{name}: missing Agents/{name}/agent.yaml",
+        )
 
 
 def validate_coordination(agents_dir: Path) -> list[str]:
-    errors: list[str] = []
-    repo_root = agents_dir.parent
-    coord_path = agents_dir / "coordination.yaml"
-    if not coord_path.is_file():
-        return [f"missing {coord_path}"]
-
-    data = yaml.safe_load(coord_path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict):
-        return ["coordination.yaml must be a mapping"]
-
-    agents = data.get("agents", [])
-    if not isinstance(agents, list):
-        return ["coordination.yaml agents must be a list"]
+    """Like :meth:`AgentValidator.validate_coordination`, and also check ``tasks`` entries."""
+    data, errors = _load_coordination(agents_dir)
+    if data is None:
+        return errors
 
     manifests = load_all_agent_manifests(agents_dir)
-    for entry in agents:
-        if not isinstance(entry, dict):
-            continue
-        name = entry.get("name")
-        if not isinstance(name, str):
-            continue
-        manifest_path = entry.get("manifest")
-        if isinstance(manifest_path, str) and not (repo_root / manifest_path).is_file():
-            errors.append(f"{name}: manifest not found: {manifest_path}")
-        if name not in manifests:
-            errors.append(f"{name}: missing agent.yaml")
-        elif manifests[name].name != name:
-            errors.append(f"{name}: manifest name mismatch ({manifests[name].name})")
+    errors = _check_agent_entries(
+        data.get("agents", []),
+        manifests,
+        agents_dir.parent,
+        lambda name: f"{name}: missing agent.yaml",
+    )
 
     tasks = data.get("tasks", [])
     if not isinstance(tasks, list):
         return [*errors, "coordination.yaml tasks must be a list"]
     for entry in tasks:
-        if not isinstance(entry, dict):
-            continue
-        task_id = entry.get("id", "<unknown>")
-        assigned = entry.get("assigned", [])
-        if not isinstance(assigned, list):
-            errors.append(f"{task_id}: assigned must be a list")
-            continue
-        for name in assigned:
-            manifest = manifests.get(name) if isinstance(name, str) else None
-            if manifest is None:
-                errors.append(f"{task_id}: unknown assigned agent {name!r}")
-                continue
-            task_name = entry.get("task")
-            if task_name:
-                known_tasks = {task.id for task in manifest.tasks}
-                if task_name not in known_tasks:
-                    errors.append(f"{task_id}: unknown task {task_name!r} for agent {name!r}")
+        if isinstance(entry, dict):
+            errors.extend(_check_task_entry(entry, manifests))
     return errors
 
 

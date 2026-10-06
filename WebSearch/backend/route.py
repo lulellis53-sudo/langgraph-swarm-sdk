@@ -10,8 +10,8 @@ from typing import Any
 
 from WebSearch.backend.docs import ExtractedDoc, dedupe_docs
 from WebSearch.backend.normalize import normalize_text
-from WebSearch.backend.semantic import Embedder, summarize_score
-from WebSearch.backend.store import connect, put_documents
+from WebSearch.backend.semantic import Embedder, default_embedder, summarize_score
+from WebSearch.backend.store import connect, put_documents, semantic_search
 
 type Handler = Callable[[Sequence[ExtractedDoc]], dict[str, Any]]
 
@@ -57,15 +57,39 @@ def sql_handler(db_path: str | Path) -> Handler:
     return handle
 
 
-def semantic_handler(query: str, *, embedder: Embedder | None = None) -> Handler:
-    """Path ``semantic``: extractive summary + semantic score per document (Summarizer)."""
+def semantic_handler(
+    query: str,
+    *,
+    embedder: Embedder | None = None,
+    db_path: str | Path = ":memory:",
+) -> Handler:
+    """Path ``semantic``: vector-search documents, then extract relevant summaries."""
+    chosen_embedder = embedder if embedder is not None else default_embedder()
 
     def handle(docs: Sequence[ExtractedDoc]) -> dict[str, Any]:
-        summaries = summarize_score(docs, query, embedder=embedder)
+        conn = connect(db_path)
+        try:
+            matches = semantic_search(
+                conn, docs, query, embedder=chosen_embedder, top_k=max(len(docs), 1)
+            )
+        finally:
+            conn.close()
+        ranked_docs = [doc for doc, _score in matches]
+        summaries = summarize_score(ranked_docs, query, embedder=chosen_embedder)
+        vector_scores = {doc.url: score for doc, score in matches}
         return {
             "summaries": [
-                {"url": s.url, "score": round(s.score, 4), "summary": s.summary} for s in summaries
-            ]
+                {
+                    "url": s.url,
+                    "score": round(vector_scores.get(s.url, s.score), 4),
+                    "summary": s.summary,
+                }
+                for s in sorted(
+                    summaries, key=lambda summary: vector_scores.get(summary.url, summary.score),
+                    reverse=True,
+                )
+            ],
+            "embedding": type(chosen_embedder).__name__,
         }
 
     return handle
@@ -100,7 +124,7 @@ def route(
     for target in wanted:
         try:
             results.append(RouteResult(target, True, handlers[target](clean)))
-        except (OSError, sqlite3.Error, ValueError) as exc:
+        except (OSError, sqlite3.Error, ValueError, ImportError, RuntimeError) as exc:
             results.append(RouteResult(target, False, error=f"{type(exc).__name__}: {exc}"))
     return clean, results
 

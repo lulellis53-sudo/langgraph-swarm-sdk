@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from swarm_sdk.core.rules import HostRuleEngine
-from swarm_sdk.orchestrator.low_swarm import LowSwarmEngine
+from swarm_sdk.orchestrator.low_swarm import LowSwarmEngine, SwarmState
 from swarm_sdk.retrieval.rag_ingest import RAGIngestionPipeline
 from swarm_sdk.vault import (
     _NAME,
@@ -35,10 +35,10 @@ try:
 
     _RICH_AVAILABLE = True
 except ImportError:
-    _RichConsole = None  # type: ignore
-    _RichPanel = None  # type: ignore
-    _RichSyntax = None  # type: ignore
-    _RichTable = None  # type: ignore
+    _RichConsole = None
+    _RichPanel = None
+    _RichSyntax = None
+    _RichTable = None
     _RICH_AVAILABLE = False
 
 
@@ -191,111 +191,128 @@ def normalize_service(service: str) -> str:
 
 
 # Global tracker for latest execution state (for CLI & programmatic inspection)
-latest_state: dict[str, Any] | None = None
+latest_state: SwarmState | None = None
 
 
-def get_latest_state() -> dict[str, Any] | None:
+def get_latest_state() -> SwarmState | None:
     """Returns the most recent execution state from handle_run."""
     return latest_state
+
+
+def _summary_rows(state: SwarmState) -> list[tuple[str, str]]:
+    """Build the (dimension, result) rows describing one engine run."""
+    status = state.get("status", "unknown")
+    jev = state.get("jev_decision") or {}
+    lifeguard = state.get("lifeguard_report") or {}
+
+    if status == "success":
+        status_str = "[bold green]SUCCESS[/bold green]"
+    else:
+        status_str = f"[bold red]{status.upper()}[/bold red]"
+    model_tier = jev.get("model_tier", "auto")
+    if jev.get("safe", False):
+        jev_str = f"[green]Safe[/green] (tier: {model_tier}, score: {jev.get('score', 0):.2f})"
+    else:
+        jev_str = "[red]Blocked by safety gate[/red]"
+
+    if lifeguard.get("is_approved", False):
+        lg_str = "[green]APPROVED[/green] (0 violations)"
+    else:
+        v_count = len(lifeguard.get("violations", []))
+        lg_str = f"[red]REJECTED[/red] ({v_count} violation{'s' if v_count != 1 else ''})"
+
+    rows = [
+        ("Status", status_str),
+        ("Model Tier", str(model_tier)),
+        ("Jev Decision", jev_str),
+        ("Lifeguard Audit", lg_str),
+    ]
+    if state.get("error"):
+        rows.append(("Error Detail", f"[red]{state['error']}[/red]"))
+    return rows
+
+
+def _record_profile(
+    state: SwarmState, engine: LowSwarmEngine, elapsed_ms: float, cpu_ms: float
+) -> list[tuple[str, str]]:
+    """Store timing and RSS in ``state["metrics"]`` and return the matching table rows."""
+    rss = state.get("metrics", {}).get("rss_gb", engine.get_current_rss_gb())
+    if "metrics" not in state or not isinstance(state["metrics"], dict):
+        state["metrics"] = {}
+    state["metrics"]["wall_clock_ms"] = elapsed_ms
+    state["metrics"]["cpu_time_ms"] = cpu_ms
+    state["metrics"]["rss_gb"] = rss
+    return [
+        ("Profile Latency", f"{elapsed_ms:.2f} ms"),
+        ("CPU Time", f"{cpu_ms:.2f} ms"),
+        ("Process RSS", f"{rss:.2f} GB"),
+    ]
+
+
+def _write_synthesized_code(state: SwarmState, apply: bool) -> None:
+    """Write synthesized files that already exist, or every file when ``apply`` is set."""
+    for fname, code in (state.get("synthesized_code") or {}).items():
+        fpath = Path(fname)
+        if fpath.exists() or apply:
+            try:
+                fpath.parent.mkdir(parents=True, exist_ok=True)
+                fpath.write_text(code, encoding="utf-8")
+            except OSError:
+                pass
+
+
+def _render_patches(console: Any, state: SwarmState) -> None:
+    diff_patches = state.get("diff_patches") or []
+    if not diff_patches:
+        return
+    console.rule("Synthesized Diff Patches")
+    for diff in diff_patches:
+        if _RICH_AVAILABLE and _RichSyntax is not None:
+            console.print(_RichSyntax(diff, "diff"))
+        else:
+            console.print(diff)
+
+
+def _render_verbose(console: Any, state: SwarmState) -> None:
+    console.rule("Verbose Telemetry")
+    console.print(f"Target files: {state.get('target_files')}")
+    console.print(f"Context chunks: {len(state.get('context_chunks', []))}")
+    console.print(f"Iterations: {state.get('iteration', 0)}")
 
 
 def handle_run(args: argparse.Namespace, console: Any) -> int:
     """Executes code synthesis state machine via LowSwarmEngine."""
     global latest_state
     task: str = args.task
-    files: list[str] | None = args.files
     profile: bool = bool(args.profile)
-    verbose: bool = bool(args.verbose)
 
     engine = LowSwarmEngine()
 
     start_time = time.perf_counter()
     start_cpu = time.process_time()
-    state = engine.run(task=task, target_files=files, profile=profile)
+    state = engine.run(task=task, target_files=args.files, profile=profile)
     elapsed_ms = (time.perf_counter() - start_time) * 1000.0
     cpu_ms = (time.process_time() - start_cpu) * 1000.0
 
-    status = state.get("status", "unknown")
-    is_success = status == "success"
-    jev = state.get("jev_decision") or {}
-    lifeguard = state.get("lifeguard_report") or {}
-    error = state.get("error")
+    rows = _summary_rows(state)
+    if profile:
+        rows.extend(_record_profile(state, engine, elapsed_ms, cpu_ms))
 
-    # Render primary status panel
     table = create_table(title=f"Low-Swarm Engine: {task}")
     table.add_column("Dimension", style="bold")
     table.add_column("Result")
-
-    if is_success:
-        status_str = "[bold green]SUCCESS[/bold green]"
-    else:
-        status_str = f"[bold red]{status.upper()}[/bold red]"
-    table.add_row("Status", status_str)
-
-    model_tier = jev.get("model_tier", "auto")
-    table.add_row("Model Tier", str(model_tier))
-
-    jev_safe = jev.get("safe", False)
-    jev_str = (
-        f"[green]Safe[/green] (tier: {model_tier}, score: {jev.get('score', 0):.2f})"
-        if jev_safe
-        else "[red]Blocked by safety gate[/red]"
-    )
-    table.add_row("Jev Decision", jev_str)
-
-    lg_approved = lifeguard.get("is_approved", False)
-    violations = lifeguard.get("violations", [])
-    if lg_approved:
-        lg_str = "[green]APPROVED[/green] (0 violations)"
-    else:
-        v_count = len(violations)
-        lg_str = f"[red]REJECTED[/red] ({v_count} violation{'s' if v_count != 1 else ''})"
-    table.add_row("Lifeguard Audit", lg_str)
-
-    if error:
-        table.add_row("Error Detail", f"[red]{error}[/red]")
-
-    if profile:
-        rss = state.get("metrics", {}).get("rss_gb", engine.get_current_rss_gb())
-        if "metrics" not in state or not isinstance(state["metrics"], dict):
-            state["metrics"] = {}
-        state["metrics"]["wall_clock_ms"] = elapsed_ms
-        state["metrics"]["cpu_time_ms"] = cpu_ms
-        state["metrics"]["rss_gb"] = rss
-        table.add_row("Profile Latency", f"{elapsed_ms:.2f} ms")
-        table.add_row("CPU Time", f"{cpu_ms:.2f} ms")
-        table.add_row("Process RSS", f"{rss:.2f} GB")
+    for dimension, result in rows:
+        table.add_row(dimension, result)
 
     latest_state = state
     console.print(create_panel(table, title="Execution Summary"))
 
-    # If execution succeeded, write synthesized code to target files if existing or --apply
+    is_success = state.get("status", "unknown") == "success"
     if is_success:
-        synthesized_code = state.get("synthesized_code") or {}
-        for fname, code in synthesized_code.items():
-            fpath = Path(fname)
-            if fpath.exists() or getattr(args, "apply", False):
-                try:
-                    fpath.parent.mkdir(parents=True, exist_ok=True)
-                    fpath.write_text(code, encoding="utf-8")
-                except OSError:
-                    pass
-
-    # Render diff patches if synthesized
-    diff_patches = state.get("diff_patches") or []
-    if diff_patches:
-        console.rule("Synthesized Diff Patches")
-        for diff in diff_patches:
-            if _RICH_AVAILABLE and _RichSyntax is not None:
-                console.print(_RichSyntax(diff, "diff"))
-            else:
-                console.print(diff)
-
-    if verbose:
-        console.rule("Verbose Telemetry")
-        console.print(f"Target files: {state.get('target_files')}")
-        console.print(f"Context chunks: {len(state.get('context_chunks', []))}")
-        console.print(f"Iterations: {state.get('iteration', 0)}")
+        _write_synthesized_code(state, bool(getattr(args, "apply", False)))
+    _render_patches(console, state)
+    if args.verbose:
+        _render_verbose(console, state)
 
     return 0 if is_success else 1
 
@@ -380,9 +397,7 @@ def handle_ingest(args: argparse.Namespace, console: Any) -> int:
     try:
         count = pipeline.ingest_files([source_path])
         pipeline.save(output_path)
-        console.print(
-            f"[green]Successfully ingested {count} chunks into {output_path}[/green]"
-        )
+        console.print(f"[green]Successfully ingested {count} chunks into {output_path}[/green]")
         return 0
     except Exception as exc:
         console.print(f"[red]Error during RAG ingestion: {exc}[/red]")

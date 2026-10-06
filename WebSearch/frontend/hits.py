@@ -19,6 +19,18 @@ _SHINGLE = 3
 _BITS = 64
 
 
+def _simhash_bands(fingerprint: int, max_distance: int) -> tuple[tuple[int, int], ...]:
+    """Partition bits so candidates within the threshold share at least one key."""
+    count = max_distance + 1
+    bands: list[tuple[int, int]] = []
+    offset = 0
+    for band in range(count):
+        width = _BITS // count + (band < _BITS % count)
+        bands.append((band, (fingerprint >> offset) & ((1 << width) - 1)))
+        offset += width
+    return tuple(bands)
+
+
 def _alnum(text: str) -> str:
     return _NON_ALNUM.sub("", text.casefold())
 
@@ -93,25 +105,36 @@ def near_dedupe(hits: Sequence[SearchHit], *, max_distance: int = 6) -> list[Sea
     Returns:
         list[SearchHit]: Hits with near-duplicates removed, order preserved.
     """
+    if max_distance < 0:
+        raise ValueError("max_distance must be >= 0")
     kept: list[SearchHit] = []
     prints: list[int | None] = []
     merged: list[list[str]] = []
+    band_index: dict[tuple[int, int], list[int]] = {}
     for hit in hits:
         fingerprint = _simhash(f"{hit.title} {hit.snippet}")
         match = None
         if fingerprint is not None:
-            match = next(
-                (
-                    index
-                    for index, other in enumerate(prints)
-                    if other is not None and (fingerprint ^ other).bit_count() <= max_distance
-                ),
-                None,
-            )
+            if max_distance >= _BITS:
+                candidates = range(len(prints))
+            else:
+                candidate_ids: set[int] = set()
+                for band in _simhash_bands(fingerprint, max_distance):
+                    candidate_ids.update(band_index.get(band, ()))
+                candidates = sorted(candidate_ids)
+            for index in candidates:
+                other = prints[index]
+                if other is not None and (fingerprint ^ other).bit_count() <= max_distance:
+                    match = index
+                    break
         if match is None:
             kept.append(hit)
             prints.append(fingerprint)
             merged.append([])
+            if fingerprint is not None and max_distance < _BITS:
+                index = len(prints) - 1
+                for band in _simhash_bands(fingerprint, max_distance):
+                    band_index.setdefault(band, []).append(index)
         elif hit.searcher_id != kept[match].searcher_id and hit.searcher_id not in merged[match]:
             merged[match].append(hit.searcher_id)
     return [

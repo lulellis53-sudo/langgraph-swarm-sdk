@@ -10,9 +10,13 @@ results straight into a prompt use :func:`search_brief`.
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from dataclasses import asdict
+from typing import Any
 
+from WebSearch.backend.docs import ExtractedDoc
 from WebSearch.backend.normalize import normalize_text
+from WebSearch.backend.route import dedupe_normalize, semantic_handler
 from WebSearch.frontend.websearchers import (
     _SEARCH_CACHE_TTL_S,
     ProvidersConfig,
@@ -147,4 +151,37 @@ def search_brief(
     return render_brief(hits, max_chars=max_chars)
 
 
-__all__ = ["render_brief", "search_brief", "search_hits"]
+def dedupe_documents(docs: Sequence[ExtractedDoc]) -> dict[str, Any]:
+    """Normalize and deduplicate extracted documents for agent workflows."""
+    clean = dedupe_normalize(docs)
+    return {
+        "action": "dedupe",
+        "input": len(docs),
+        "kept": len(clean),
+        "removed": len(docs) - len(clean),
+        "documents": [asdict(doc) for doc in clean],
+    }
+
+
+def summarize_documents(
+    query: str,
+    docs: Sequence[ExtractedDoc],
+    *,
+    max_results: int = 10,
+) -> dict[str, Any]:
+    """Rank normalized documents with the semantic vector index and summarize them."""
+    if not query.strip():
+        raise ValueError("query is required for summarize")
+    if max_results < 1:
+        raise ValueError("max_results must be >= 1")
+    clean = dedupe_normalize(docs)
+    detail = semantic_handler(query, db_path=":memory:")(clean)
+    return {
+        "action": "summarize",
+        "count": len(clean),
+        "embedding": detail["embedding"],
+        "results": detail["summaries"][:max_results],
+    }
+
+
+__all__ = ["dedupe_documents", "render_brief", "search_brief", "search_hits", "summarize_documents"]

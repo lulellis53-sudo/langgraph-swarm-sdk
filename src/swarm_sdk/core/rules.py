@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 import re
 import shlex
-from typing import Any, Callable, ClassVar, TypeVar
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any, ClassVar, TypeVar
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -68,9 +69,7 @@ class HostInvariants(BaseModel):
     ram_total_gb: float = 16.0
     ram_ceiling_gb: float = 13.6
     max_subagents: int = 3
-    modern_cli_tools: dict[str, str] = Field(
-        default_factory=lambda: dict(DEFAULT_MODERN_CLI_TOOLS)
-    )
+    modern_cli_tools: dict[str, str] = Field(default_factory=lambda: dict(DEFAULT_MODERN_CLI_TOOLS))
 
     @model_validator(mode="after")
     def validate_simd_constraints(self) -> HostInvariants:
@@ -143,7 +142,9 @@ class HostRuleEngine:
         # Parse subagent concurrency cap
         max_subagents = 3
         subagents_match = re.search(
-            r"(?i)(?:concurrency cap:\s*(?:never\s+spawn\s+more\s+than\s+)?|never\s+spawn\s+more\s+than\s+(?:\d+\s+to\s+)?|max_subagents:\s*)(\d+)",
+            r"(?i)(?:concurrency cap:\s*(?:never\s+spawn\s+more\s+than\s+)?"
+            r"|never\s+spawn\s+more\s+than\s+(?:\d+\s+to\s+)?"
+            r"|max_subagents:\s*)(\d+)",
             content,
         )
         if subagents_match:
@@ -174,7 +175,7 @@ class HostRuleEngine:
 
         try:
             content = target_path.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
+        except OSError, UnicodeDecodeError:
             return HostInvariants()
 
         return self._parse_invariants_content(content)
@@ -195,8 +196,10 @@ class HostRuleEngine:
             f"- Target Architecture: `{invariants.cpu_arch}`\n"
             f"- CPU Model: `{invariants.cpu_model}`\n"
             f"- Supported SIMD: {simd_sup}\n"
-            f"- Strictly Prohibited SIMD: {simd_prohib} (STRICTLY PROHIBITED: Host hardware lacks AVX-512 support)\n"
-            f"- RAM Budget: {invariants.ram_total_gb} GB total, {invariants.ram_ceiling_gb} GB hard ceiling\n"
+            f"- Strictly Prohibited SIMD: {simd_prohib} "
+            "(STRICTLY PROHIBITED: Host hardware lacks AVX-512 support)\n"
+            f"- RAM Budget: {invariants.ram_total_gb} GB total, "
+            f"{invariants.ram_ceiling_gb} GB hard ceiling\n"
             f"- Concurrency Cap: Maximum {invariants.max_subagents} concurrent active subagents\n\n"
             "## Mandated Modern CLI Tooling (Legacy Unix Commands Prohibited)\n"
             "Always use the modern replacements; do NOT fall back to legacy commands:\n"
@@ -212,17 +215,22 @@ class HostRuleEngine:
         """Checks if a command enables or targets prohibited SIMD instructions."""
         for simd in self.invariants.simd_prohibited:
             if simd.upper() == "AVX-512":
-                # Look for flags like -mavx512, +avx512, --enable-avx512, CFLAGS="-mavx512", -DENABLE_AVX512
-                flag_match = re.search(r"(?i)(?:-m|\+|--enable-|-enable-|-D[A-Za-z0-9_]*?)avx-?512\w*", command_line)
+                # Look for flags like -mavx512, +avx512, --enable-avx512,
+                # CFLAGS="-mavx512", -DENABLE_AVX512
+                flag_match = re.search(
+                    r"(?i)(?:-m|\+|--enable-|-enable-|-D[A-Za-z0-9_]*?)avx-?512\w*", command_line
+                )
                 if flag_match:
-                    prefix = command_line[max(0, flag_match.start() - 5):flag_match.start()]
+                    prefix = command_line[max(0, flag_match.start() - 5) : flag_match.start()]
                     if not prefix.endswith("-mno-") and not prefix.endswith("-no-"):
                         return f"Command attempts to use prohibited SIMD instruction set: {simd}"
 
                 # Look for word matches like avx512 / AVX-512 unless preceded by negation
-                for m in re.finditer(r"(?i)(?:^|[^a-zA-Z0-9_-])(?:[A-Za-z0-9_]+_)?avx-?512\w*", command_line):
+                for m in re.finditer(
+                    r"(?i)(?:^|[^a-zA-Z0-9_-])(?:[A-Za-z0-9_]+_)?avx-?512\w*", command_line
+                ):
                     start = m.start()
-                    prefix = command_line[max(0, start - 10):start]
+                    prefix = command_line[max(0, start - 10) : start]
                     if re.search(r"(?i)(?:-mno-?|no[-_\s]+)$", prefix):
                         continue
                     return f"Command attempts to use prohibited SIMD instruction set: {simd}"
@@ -257,58 +265,69 @@ class HostRuleEngine:
             commands.append(current_cmd)
         return commands
 
-    @_ClassOrInstanceMethod
-    def validate_command_safety(self, command_line: str) -> tuple[bool, str | None]:
-        """Validates that a command does not invoke prohibited SIMD or legacy CLI tools."""
-        # 1. Check prohibited SIMD instructions
-        simd_error = self._check_prohibited_simd(command_line)
-        if simd_error is not None:
-            return False, simd_error
+    @staticmethod
+    def _strip_command_prefix(cmd_tokens: list[str]) -> list[str]:
+        """Drop leading ``VAR=val`` assignments and wrappers (``sudo``, ``xargs``, ...)."""
+        tokens = list(cmd_tokens)
+        while tokens and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=.*$", tokens[0]):
+            tokens.pop(0)
 
-        # 2. Check nested subshell executions e.g. $(cat file) or `cat file`
-        subshells = re.findall(r"\$\((.*?)\)|`([^`]+)`", command_line)
-        for s1, s2 in subshells:
+        while tokens and os.path.basename(tokens[0]) in WRAPPER_COMMANDS:
+            tokens.pop(0)
+            while tokens and tokens[0].startswith("-"):
+                flag = tokens.pop(0)
+                if (
+                    flag in {"-u", "-n", "-I", "-s", "-P", "-C"}
+                    and tokens
+                    and not tokens[0].startswith("-")
+                ):
+                    tokens.pop(0)
+        return tokens
+
+    def _check_subshells(self, command_line: str) -> tuple[bool, str | None]:
+        """Validate ``$(...)`` and backtick substitutions as commands of their own."""
+        for s1, s2 in re.findall(r"\$\((.*?)\)|`([^`]+)`", command_line):
             sub_cmd = s1 or s2
             if sub_cmd.strip():
                 safe, reason = self.validate_command_safety(sub_cmd)
                 if not safe:
                     return safe, reason
+        return True, None
 
-        # 3. Check individual pipeline commands
-        commands = self._split_pipeline_commands(command_line)
+    def _check_command_tokens(self, tokens: list[str]) -> tuple[bool, str | None]:
+        """Reject a legacy tool, or recurse into ``sh -c "..."`` payloads."""
+        executable = tokens[0]
+        cmd_name = os.path.basename(executable)
+
         modern_tools = self.invariants.modern_cli_tools
+        if cmd_name in modern_tools:
+            replacement = modern_tools[cmd_name]
+            return False, f"Legacy tool '{cmd_name}' is prohibited; use '{replacement}' instead"
 
-        for cmd_tokens in commands:
-            tokens = list(cmd_tokens)
-            # Strip environment variable assignments (e.g. VAR=val cmd)
-            while tokens and re.match(r"^[A-Za-z_][A-Za-z0-9_]*=.*$", tokens[0]):
-                tokens.pop(0)
+        # Check nested sh -c "cat ..." or bash -c "..."
+        if cmd_name in {"sh", "bash", "zsh"} and "-c" in tokens:
+            c_idx = tokens.index("-c")
+            if c_idx + 1 < len(tokens):
+                return self.validate_command_safety(tokens[c_idx + 1])
+        return True, None
 
-            # Strip command wrappers like sudo, xargs, etc.
-            while tokens and os.path.basename(tokens[0]) in WRAPPER_COMMANDS:
-                tokens.pop(0)
-                while tokens and tokens[0].startswith("-"):
-                    flag = tokens.pop(0)
-                    if flag in {"-u", "-n", "-I", "-s", "-P", "-C"} and tokens and not tokens[0].startswith("-"):
-                        tokens.pop(0)
+    @_ClassOrInstanceMethod
+    def validate_command_safety(self, command_line: str) -> tuple[bool, str | None]:
+        """Validates that a command does not invoke prohibited SIMD or legacy CLI tools."""
+        simd_error = self._check_prohibited_simd(command_line)
+        if simd_error is not None:
+            return False, simd_error
 
+        safe, reason = self._check_subshells(command_line)
+        if not safe:
+            return safe, reason
+
+        for cmd_tokens in self._split_pipeline_commands(command_line):
+            tokens = self._strip_command_prefix(cmd_tokens)
             if not tokens:
                 continue
-
-            executable = tokens[0]
-            cmd_name = os.path.basename(executable)
-
-            if cmd_name in modern_tools:
-                replacement = modern_tools[cmd_name]
-                return False, f"Legacy tool '{cmd_name}' is prohibited; use '{replacement}' instead"
-
-            # Check nested sh -c "cat ..." or bash -c "..."
-            if cmd_name in {"sh", "bash", "zsh"} and "-c" in tokens:
-                c_idx = tokens.index("-c")
-                if c_idx + 1 < len(tokens):
-                    sub_str = tokens[c_idx + 1]
-                    safe, reason = self.validate_command_safety(sub_str)
-                    if not safe:
-                        return safe, reason
+            safe, reason = self._check_command_tokens(tokens)
+            if not safe:
+                return safe, reason
 
         return True, None

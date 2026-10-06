@@ -31,6 +31,29 @@ Verified 2026-10-01 on the Intel MacBook Pro (macOS x86_64).
 
 ---
 
+## Topic: Rust crates with C build scripts (websearch-rs)
+
+Verified 2026-10-06 (macOS x86_64, cargo/rustc stable, `cc-rs`, `aws-lc-sys 0.45.0`).
+
+- A plain `cargo build` died in `aws-lc-sys` (reqwest `rustls` default provider) for two
+  reasons, both from the shell exports: `CC` is the sysroot-less LLVM 23 clang
+  (`'stdlib.h' file not found`) and `CFLAGS=-O3 -march=native ...` leaked into jitterentropy,
+  which must build at `-O0` (`#error "must not be compiled with optimizations"`).
+- Fix in `rust/websearch-rs`: reqwest `rustls-no-provider` + `rustls` with the `ring` feature
+  (provider installed in `main` before the client is built), plus `.cargo/config.toml` with
+  `[env] CC/CXX = { value = "/usr/bin/clang(++)", force = true }`. `aws-lc-sys` is gone from
+  the graph (`cargo tree -i aws-lc-sys` finds nothing); the release binary went from
+  5,096,392 to 2,920,008 bytes; the 5 crate tests pass.
+- Do not override `CFLAGS` in a crate-level `[env]`: `~/.cargo/config.toml` defines it as a
+  string, and a table-form entry fails with "failed to merge key `env`". Target-specific
+  `CFLAGS_<triple>` does not stop `aws-lc-sys` from also reading the shell `CFLAGS`.
+- `~/.cargo/config.toml` already sets `[profile.release] panic = "abort"`; adding it to a
+  crate manifest changes nothing (binaries were byte-identical in size).
+- Any other crate that drags in `aws-lc-sys` still needs the command-line recipe from the
+  previous topic: `CC=/usr/bin/clang CXX=/usr/bin/clang++ CFLAGS= LDFLAGS= cargo build`.
+
+---
+
 ## Topic: Arch Linux on the MacBook 2019 (x86_64, AMD Radeon Pro 5300M)
 
 Wheel coverage verified 2026-10-01 against PyPI metadata for Linux x86_64;

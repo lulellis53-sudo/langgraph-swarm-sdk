@@ -230,7 +230,8 @@ class VectorComputeDispatcher:
     def _run_opencl_batch_dot(self, matrix_a: np.ndarray, matrix_b: np.ndarray) -> np.ndarray:
         """Execute OpenCL batch dot product kernel."""
         cl = self._cl_module
-        if cl is None or not self._opencl_ready:
+        kernel, kernel4 = self._kernel, self._kernel4
+        if cl is None or not self._opencl_ready or kernel is None or kernel4 is None:
             raise RuntimeError("OpenCL is not ready")
 
         a = np.asarray(matrix_a, dtype=np.float32, order="C")
@@ -263,7 +264,7 @@ class VectorComputeDispatcher:
             vcols = cols // 4
             wgs = _wgs_for(vcols, self._max_wg, self._device_name)
             b_stride = 0 if is_broadcast_b else vcols
-            self._kernel4(
+            kernel4(
                 self._queue,
                 (rows, wgs),
                 (1, wgs),
@@ -277,7 +278,7 @@ class VectorComputeDispatcher:
         else:
             wgs = _wgs_for(cols, self._max_wg, self._device_name)
             b_stride = 0 if is_broadcast_b else cols
-            self._kernel(
+            kernel(
                 self._queue,
                 (rows, wgs),
                 (1, wgs),

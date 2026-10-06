@@ -32,7 +32,7 @@ def Static[F: Callable[..., Any]](func: F) -> staticmethod:
 
 
 def async_wrapper(func: Callable[..., Any]) -> Callable[..., Awaitable[Any]]:
-    """Run a sync callable on the shared executor via ``runtime.offload``.
+    """Run a sync callable on the shared executor via ``execution.executor.offload``.
 
     Args:
         func: Blocking function to expose as async.
@@ -43,7 +43,7 @@ def async_wrapper(func: Callable[..., Any]) -> Callable[..., Awaitable[Any]]:
 
     @functools.wraps(func)
     async def inner(*args: Any, **kwargs: Any) -> Any:
-        from swarm_sdk.runtime import offload
+        from swarm_sdk.execution.executor import offload
 
         return await offload(lambda: func(*args, **kwargs))
 

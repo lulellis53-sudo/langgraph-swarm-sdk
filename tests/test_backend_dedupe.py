@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from WebSearch.backend.docs import ExtractedDoc, dedupe_docs
 from WebSearch.backend.normalize import normalize_text, normalize_url
+from WebSearch.repeater import normalize_url as shared_normalize_url
 
 
 @pytest.mark.parametrize(
@@ -51,6 +52,10 @@ def test_normalize_text_still_canonicalizes_lines() -> None:
     assert normalize_text(noisy) == "Title Body text here"
 
 
+def test_normalize_text_keeps_language_join_controls() -> None:
+    assert normalize_text("क्\u200dष") == "क्\u200dष"
+
+
 def test_dedupe_docs_drops_same_canonical_url_with_different_text() -> None:
     first = ExtractedDoc(
         url="https://example.com/post?utm_source=news",
@@ -65,6 +70,15 @@ def test_dedupe_docs_drops_same_canonical_url_with_different_text() -> None:
         raw_chars=17,
     )
     assert dedupe_docs([first, second]) == [first]
+
+
+def test_dedupe_docs_claims_url_even_if_content_was_seen_elsewhere() -> None:
+    docs = [
+        ExtractedDoc("https://a.example/1", "shared text", "x", 11),
+        ExtractedDoc("https://b.example/2", "shared text", "x", 11),
+        ExtractedDoc("https://b.example/2?utm_source=copy", "other text", "x", 10),
+    ]
+    assert [doc.url for doc in dedupe_docs(docs)] == ["https://a.example/1"]
 
 
 def test_dedupe_docs_keeps_distinct_urls_with_similar_short_text() -> None:
@@ -92,6 +106,11 @@ def test_dedupe_docs_still_drops_empty_exact_and_near_duplicates() -> None:
 
 def test_normalize_url_preserves_ipv6_host_brackets() -> None:
     assert normalize_url("HTTPS://[2001:DB8::1]:443/a#top") == "https://[2001:db8::1]/a"
+
+
+def test_all_url_normalization_callers_share_tracking_and_www_rules() -> None:
+    url = "https://www.example.com/a/?msclkid=click&id=3"
+    assert normalize_url(url) == shared_normalize_url(url) == "https://example.com/a?id=3"
 
 
 def test_dedupe_docs_can_stream_a_generator() -> None:

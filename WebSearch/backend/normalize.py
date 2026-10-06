@@ -9,7 +9,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 import regex as re
 
 _WHITESPACE = re.compile(r"\s+")
-_INVISIBLE = re.compile(r"[\p{Cf}\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+_INVISIBLE = re.compile(r"(?![\u200c\u200d])[\p{Cf}\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 #: Separator/ornament lines: punctuation, symbols and spaces only (e.g. "— — —").
 _NON_TEXT = re.compile(r"^[\p{P}\p{S}\s\d]+$")
 
@@ -18,6 +18,7 @@ _TRACKING_EXACT = frozenset(
     {
         "gclid",
         "fbclid",
+        "msclkid",
         "mc_cid",
         "mc_eid",
         "igshid",
@@ -52,10 +53,13 @@ def normalize_url(url: str) -> str:
         str: Canonical form suitable as a set key across providers.
     """
     cleaned = url.strip()
-    parsed = urlsplit(cleaned)
+    try:
+        parsed = urlsplit(cleaned)
+    except ValueError:
+        return cleaned
     if not parsed.scheme or not parsed.netloc:
         return cleaned
-    host = parsed.hostname or ""
+    host = (parsed.hostname or "").removeprefix("www.")
     try:
         port = parsed.port
     except ValueError:

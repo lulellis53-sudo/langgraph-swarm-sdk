@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
+import os
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -51,6 +53,38 @@ class LexicalEmbedder:
         return rows
 
 
+def default_embedder() -> Embedder:
+    """Choose dense local embeddings when installed; otherwise use lexical vectors.
+
+    ``WEBSEARCH_EMBED_BACKEND=fastembed`` selects FastEmbed and accepts an
+    optional model name in ``WEBSEARCH_EMBED_MODEL``. ``llama-cpp`` requires a
+    local GGUF path in that variable. Auto mode uses FastEmbed when installed;
+    unsupported systems use deterministic lexical vectors without a download.
+    """
+    backend = os.environ.get("WEBSEARCH_EMBED_BACKEND", "auto").strip().lower()
+    model_name = os.environ.get("WEBSEARCH_EMBED_MODEL", "").strip()
+    dim = int(os.environ.get("WEBSEARCH_EMBED_DIM", "384"))
+    if dim < 1:
+        raise ValueError("WEBSEARCH_EMBED_DIM must be positive")
+    if backend == "lexical":
+        return LexicalEmbedder(dim)
+    if backend == "llama-cpp":
+        if not model_name:
+            raise ValueError("WEBSEARCH_EMBED_MODEL must be a local GGUF path for llama-cpp")
+        from swarm_sdk.retrieval.embeddings import LlamaCppEmbedder
+
+        return LlamaCppEmbedder(model_path=model_name, dim=dim)
+    if backend not in {"auto", "fastembed"}:
+        raise ValueError("WEBSEARCH_EMBED_BACKEND must be auto, fastembed, llama-cpp, or lexical")
+    if backend == "auto" and importlib.util.find_spec("fastembed") is None:
+        return LexicalEmbedder(dim)
+    from swarm_sdk.retrieval.embeddings import FastEmbedder
+
+    return FastEmbedder(
+        model_name=model_name or "sentence-transformers/all-MiniLM-L6-v2", dim=dim
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class ScoredSummary:
     """Summary of one document and how close it is to the query.
@@ -79,7 +113,7 @@ def summarize_score(
     Args:
         docs: Normalized documents.
         query: What the summary should answer; embedded as a query.
-        embedder: Default :class:`LexicalEmbedder` (word overlap, no model download).
+        embedder: Default :func:`default_embedder`; lexical fallback is offline.
         max_sentences: Sentences kept per document.
         max_chars: Hard cap on summary length.
 
@@ -94,7 +128,7 @@ def summarize_score(
     if max_sentences < 1 or max_chars < 1:
         raise ValueError("max_sentences and max_chars must be >= 1")
     if embedder is None:
-        embedder = LexicalEmbedder()
+        embedder = default_embedder()
     query_vec = embedder.embed([query], query=True)[0]
 
     results: list[ScoredSummary] = []
@@ -111,4 +145,10 @@ def summarize_score(
     return sorted(results, key=lambda r: -r.score)
 
 
-__all__ = ["Embedder", "LexicalEmbedder", "ScoredSummary", "summarize_score"]
+__all__ = [
+    "Embedder",
+    "LexicalEmbedder",
+    "ScoredSummary",
+    "default_embedder",
+    "summarize_score",
+]
