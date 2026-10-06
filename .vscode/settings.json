@@ -161,7 +161,7 @@
   "gitlens.hovers.enabled": true,
   "gitlens.statusBar.enabled": true,
   "gitlens.telemetry.enabled": false,
-  "gitlens.ai.enabled": false,
+  "gitlens.ai.enabled": true,
   "dev.containers.copyGitConfig": true,
   "dev.containers.enableSSHAgentForwarding": true,
   "dev.containers.showReopenInContainerPrompt": true,

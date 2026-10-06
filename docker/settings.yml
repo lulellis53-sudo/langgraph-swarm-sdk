@@ -12,3 +12,5 @@ server:
   public_instance: false
   image_proxy: false
 # secret_key comes from the SEARXNG_SECRET env var (docker/.env, untracked).
+
+
