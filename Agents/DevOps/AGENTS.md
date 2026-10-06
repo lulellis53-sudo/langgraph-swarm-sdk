@@ -106,7 +106,14 @@ Any CI platform (GitHub Actions, GitLab CI, etc.), container runtime (Docker, Po
 
 ## Methods of actuation
 
-See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and the matching work-type flow in [`../AgentMethods.md`](../AgentMethods.md) §5.
+See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and the API/environment-interaction acting mode in [`../TEMPLATE.md`](../TEMPLATE.md) (§5, with human-in-the-loop checkpoints). Layer mapping:
+
+| Layer | DevOps |
+| --- | --- |
+| **DARS** | L2 for a single pipeline repair; L3 for anything touching deploy targets, secrets, or shared runners; L4 asks before any production action |
+| **ReAct** | Read run logs → one config change → rerun the failing leg → observe |
+| **Reflection** | On a still-red job: reclassify the failure (config vs environment vs flake) before the next change |
+| **SWE** | Diagnose → minimal config change → validate on disposable target → rollback noted → await approval for production |
 
 ## Completion checklist
 

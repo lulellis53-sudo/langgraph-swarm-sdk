@@ -82,7 +82,7 @@ class OpenClVecStore:
         self._next_id = 0
         self._generation = 0
         self._cache_token = object()
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
     @staticmethod
     def _layout_for(mode: Quantize, dim: int) -> dict[str, tuple[tuple[int, ...], type]]:

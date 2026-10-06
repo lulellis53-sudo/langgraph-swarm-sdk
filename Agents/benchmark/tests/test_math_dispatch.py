@@ -108,7 +108,7 @@ def test_empty_or_zero_shapes_do_not_crash(monkeypatch: pytest.MonkeyPatch, shap
 @pytest.mark.parametrize(
     ("task_type", "provider", "level"),
     [
-        ("arithmetic", "mistral-2", "low"),
+        ("arithmetic", "moonshot", "low"),
         ("stats", "openai", "medium"),
         ("calculus", None, "high"),
         ("optimization", None, "high"),

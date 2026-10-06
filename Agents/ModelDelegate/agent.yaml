@@ -3,6 +3,7 @@ name: ModelDelegate
 role: model_delegation
 
 model: openrouter:z-ai/glm-5.3-flash
+# api_endpoint: POST https://openrouter.ai/api/v1/chat/completions
 think_level: medium
 effort: low
 api_key_env: OPENROUTER_API_KEY

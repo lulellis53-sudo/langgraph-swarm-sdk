@@ -100,27 +100,43 @@ official_references:
 
 # Modern Systems & Runtimes Toolchain Reference: Clang, Rust, GCC, Python & Node.js
 
-Reference manual for compiler architectures, link-time and post-link binary layout optimizations (LTO, PGO, AutoFDO, BOLT, Propeller, Polly), memory allocators, package managers, build systems, and language runtimes. It includes general guidance and machine-specific notes. The front matter separates upstream reference versions from the locally verified toolchain; benchmark claims are estimates unless explicitly marked as measured. The verified-environment date is a point-in-time snapshot and is separate from the document update date.
+## Summary
+
+Reference manual for compiler architectures, link-time and post-link binary
+layout optimizations (LTO, PGO, AutoFDO, BOLT, Propeller, Polly), memory
+allocators, package managers, build systems, and language runtimes. It includes
+general guidance and machine-specific notes. The front matter separates
+upstream reference versions from the locally verified toolchain; benchmark
+claims are estimates unless explicitly marked as measured. The
+verified-environment date is a point-in-time snapshot and is separate from the
+document update date.
 
 ---
 
 > [!IMPORTANT]
-> Use the table of contents and chapter indexes to find relevant sections. Version-specific commands and flags can differ by platform; check the stated platform and verification notes before applying them.
+> Use the topic map and chapter indexes to find relevant sections. Version-specific commands and flags can differ by platform; check the stated platform and verification notes before applying them.
 
-## Master Table of Contents
+## Topic: Compilers and Core Language Toolchains
 
-**Part I: Compilers & Core Language Toolchains**
+### Subtopic: Language and compiler chapters
+
 - [Chapter 1: Clang & LLVM Compiler Architecture](#chapter-1-clang--llvm-compiler-architecture)
 - [Chapter 2: Rust Toolchain](#chapter-2-rust-toolchain)
 - [Chapter 3: GCC Toolchain (GNU Compiler Collection)](#chapter-3-gcc-toolchain-gnu-compiler-collection)
 - [Chapter 4: Python Toolchain (Python 3.14+, uv, Pixi, C-Extensions & Lifeguard)](#chapter-4-python-toolchain-python-314-uv-pixi-c-extensions--lifeguard)
 - [Chapter 5: NodeJS Runtime Toolchain (Node.js 26+)](#chapter-5-nodejs-runtime-toolchain-nodejs-26)
 
-**Part II: Advanced Binary Optimization & Compiler Internals**
+## Topic: Binary Optimization and Compiler Internals
+
+### Subtopic: Cross-toolchain optimization and LLVM pass engineering
+
 - [Chapter 6: Advanced Binary Optimization: LTO, PGO, BOLT & Propeller (Cross-Toolchain)](#chapter-6-advanced-binary-optimization-lto-pgo-bolt--propeller-cross-toolchain)
 - [Chapter 13: LLVM New Pass Manager (NPM) Architecture & Pass Engineering](#chapter-13-llvm-new-pass-manager-npm-architecture--pass-engineering)
 
-**Part III: Build Systems & Environment Orchestration**
+## Topic: Build Systems and Environment Orchestration
+
+### Subtopic: Build tools, package managers, and reproducible environments
+
 - [Chapter 7: Build Systems (CMake & Ninja)](#chapter-7-build-systems-cmake--ninja)
 - [Extra Chapter A: Pixi for Multi-Toolchain Workspaces](#extra-chapter-a-pixi-for-multi-toolchain-workspaces)
 - [Extra Chapter B: Ninja in Depth](#extra-chapter-b-ninja-in-depth)
@@ -129,14 +145,23 @@ Reference manual for compiler architectures, link-time and post-link binary layo
 - [Extra Chapter E: Fast Native Build Acceleration](#extra-chapter-e-fast-native-build-acceleration)
 - [Chapter 12: Homebrew Package Management & macOS System Architecture](#chapter-12-homebrew-package-management--macos-system-architecture)
 
-**Part IV: Storage & System Infrastructure**
+## Topic: Storage and System Infrastructure
+
+### Subtopic: Developer workstation storage
+
 - [Chapter 8: Storage Optimization: OpenZFS for Developer Workstations](#chapter-8-storage-optimization-openzfs-for-developer-workstations)
 
-**Part V: Operational Runbooks & Reference Catalogs**
+## Topic: Operational Runbooks and Reference Catalogs
+
+### Subtopic: Recipes and source indexes
+
 - [Chapter 10: Operational Task Recipes & RAG Quick-Lookup](#chapter-10-operational-task-recipes--rag-quick-lookup)
 - [Chapter 11: Authoritative References & Documentation Repository Index](#chapter-11-authoritative-references--documentation-repository-index)
 
-**Part VI: Session Findings & Empirical Root Cause Logs**
+## Topic: Session Findings and Empirical Root Cause Logs
+
+### Subtopic: Dated host findings and failure investigations
+
 - [Appendix F: Session Findings — 2026-09-27](#appendix-f-session-findings--2026-09-27)
 - [Appendix G: 2026-09-28 Session — Zsh Environment Organization, 2026 Version Pins & Compilation Script Inventory](#appendix-g-2026-09-28-session--zsh-environment-organization-2026-version-pins--compilation-script-inventory)
 - [Appendix H: 2026-09-28 Node.js 26 Build Errors — Root Causes, Fixes & Learnings](#appendix-h-2026-09-28-nodejs-26-build-errors--root-causes-fixes--learnings)
@@ -2987,7 +3012,7 @@ Lifeguard outputs a structured JSON file:
   4. `SubclassesAccess`: Invokes `__subclasses__()` (relies on prior module execution).
 
 #### 4. Driving the Python Runtime
-In Python 3.15+, `output.json` directly drives `sys.set_lazy_imports_filter()`; on Python 3.12–3.14, it drives a custom `importlib.util.LazyLoader` meta-path finder. See [**`Lifeguard.md`**](file:///Users/usuario/Documentos/Lifeguard.md) for the Meta Lifeguard blueprint.
+In Python 3.15+, `output.json` directly drives `sys.set_lazy_imports_filter()`; on Python 3.12–3.14, it drives a custom `importlib.util.LazyLoader` meta-path finder. See [**`Documents/Lifeguard.md`**](../../Documents/Lifeguard.md) for Meta Lifeguard + Swarm `MetaLifeguardAuditor` (host copy: `~/Documentos/Lifeguard.md`).
 
 That tool is not `low-swarm`'s auditor. `swarm_sdk.core.lifeguard_ast` rejects a top-level import of `torch`, `transformers`, `pandas`, `polars`, `scipy`, or `sklearn`, and it rejects `os.system`, `subprocess`, `eval`, `exec`, and `shutil.rmtree`. Import Polars inside the function that builds the frame (`UsageLog.summary` already does). PEP 810 `-X lazy_imports=all` is a third switch, on the 3.15 interpreter only. The three do not replace each other.
 
@@ -3781,7 +3806,7 @@ uv pip install --python "$HOME/Swarm/.venv/bin/python" --no-binary <name> <name>
 
 #### Tokens, milliseconds, RAM
 
-The interpreter does not decide prompt size. Swarm does. Think level `low` is 512 tokens, `medium` is 2048, `high` is 8192, `xhigh` is 32768 (`swarm_sdk.models.selection.THINK_TOKEN_BUDGET`). Retrieval keeps 10 chunks after a 20-wide rerank. A cache hit at cosine 0.97 sends no prompt. The write-up is `RAG.md` §10.1. Measured interpreter micros stay in `Python3.15.md` §7.6. The large Δ% tables in the performance manuals are design targets.
+The interpreter does not decide prompt size. Swarm does. Think level `low` is 512 tokens, `medium` is 2048, `high` is 8192, `xhigh` is 32768 (`swarm_sdk.models.selection.THINK_TOKEN_BUDGET`). Retrieval keeps 10 chunks after a 20-wide rerank. A cache hit at cosine 0.97 sends no prompt. The write-up is `Documents/RAGTECHNIQUES.MD` (Swarm SDK map + token budgets in `swarm_sdk.prompting.budget`). Measured interpreter micros stay in `Python3.15.md` §7.6. The large Δ% tables in the performance manuals are design targets.
 
 ---
 

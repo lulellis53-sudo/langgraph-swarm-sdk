@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 from swarm_sdk.agents.handoff import handoff_errors
 from swarm_sdk.agents.manifest import AgentManifest, role_contract
 from swarm_sdk.execution.executor import offload
-from swarm_sdk.models.chat import complete, load_chat_model, message_text
+from swarm_sdk.models.chat import complete, load_chat_model, message_text, ordered_key_names
 from swarm_sdk.prompting.budget import TokenBudget, count_text
 from swarm_sdk.retrieval.cache import SemanticCache
 
@@ -154,8 +154,8 @@ class WorkerAgent:
         ``setdefault`` so an explicitly configured environment wins.
 
         Raises:
-            RuntimeError: When neither the named env var nor the provider's own key
-                (``<PROVIDER>_API_KEY``) is set at call time.
+            RuntimeError: When the named env var, its registry fallbacks, and the
+                provider's own key (``<PROVIDER>_API_KEY``) are all unset.
         """
         env = self.manifest.api_key_env
         if not env:
@@ -163,7 +163,12 @@ class WorkerAgent:
         provider_env = f"{self._model_name().split(':', 1)[0].upper()}_API_KEY"
         from swarm_sdk import vault
 
-        value = os.environ.get(env) or vault.get(env)
+        names = ordered_key_names(self._model_name(), env)
+        value = ""
+        for name in names:
+            value = os.environ.get(name) or vault.get(name) or ""
+            if value:
+                break
         if not value:
             # Per-agent override unset: the provider's own key (e.g. primed from the
             # Keychain by prime_runtime_secrets) is enough.

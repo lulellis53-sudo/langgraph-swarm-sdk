@@ -16,11 +16,12 @@
 | [DataEngineer](DataEngineer/AGENTS.md) | data pipelines and storage | gpt-4o-mini | medium | [agent.yaml](DataEngineer/agent.yaml) |
 | [MLSpecialist](MLSpecialist/AGENTS.md) | model evaluation and integration | gpt-4o | high | [agent.yaml](MLSpecialist/agent.yaml) |
 | [Optimizer](Optimizer/AGENTS.md) | performance tuning | gpt-4o-mini | medium | [agent.yaml](Optimizer/agent.yaml) |
+| [Benchmarker](Benchmarker/AGENTS.md) | workloads, baselines, suites & regression gates | gpt-6-luna | medium | [agent.yaml](Benchmarker/agent.yaml) |
 | [Refactor](Refactor/AGENTS.md) | safe incremental refactors | gpt-4o | high | [agent.yaml](Refactor/agent.yaml) |
 | [TxtToCsv](TxtToCsv/AGENTS.md) | convert text files to CSV | gpt-4o-mini | low | [agent.yaml](TxtToCsv/agent.yaml) |
 | [RAG](RAG/AGENTS.md) | semantic caching, hybrid search, reranking & grounding | inherit | high | [agent.yaml](RAG/agent.yaml) |
 | [DeepResearch](DeepResearch/AGENTS.md) | deep technical research & evidence graphs | inherit | high | [agent.yaml](DeepResearch/agent.yaml) |
-| [math](math/AGENTS.md) | symbolic/numerical solving and verification | mistral:ministral-3-8b-latest | high | [agent.yaml](math/agent.yaml) |
+| [math](math/AGENTS.md) | symbolic/numerical solving and verification | moonshot:kimi-k2.7-code | high | [agent.yaml](math/agent.yaml) |
 | [WebFetch](WebFetch/AGENTS.md) | deterministic pipeline stage: fetch/render | none (no LLM) | - | [agent.yaml](WebFetch/agent.yaml) |
 | [Normalizer](Normalizer/AGENTS.md) | deterministic pipeline stage: normalize + dedupe | none (no LLM) | - | [agent.yaml](Normalizer/agent.yaml) |
 | [Persister](Persister/AGENTS.md) | deterministic pipeline stage: SQLite store | none (no LLM) | - | [agent.yaml](Persister/agent.yaml) |
@@ -46,6 +47,16 @@ Canonical research/review personas: [DeepResearch](DeepResearch/AGENTS.md), [Rev
 Each agent also has a [`Benchmarks/`](Coder/Benchmarks/) folder for role-scoped case notes and thresholds; shared runners live under [`benchmark/`](benchmark/).
 
 Static Templates (all personas): [`.cursor/templates/python_static_template.py`](../.cursor/templates/python_static_template.py) — see each `AGENTS.md` → **Static Templates**.
+
+## Adding or editing agents
+
+Before creating an agent or editing an existing persona, read and analyze
+[`TEMPLATE.md`](TEMPLATE.md). Use it to decide which sections apply, follow its
+lean-profile guidance, and verify the persona's role, permissions, workflow,
+validation, and handoff contract. Then adapt the relevant guidance to the
+agent; do not copy unverified examples or retain irrelevant sections. When
+updating an agent manifest, run the template sync command documented in
+[`TEMPLATE.md`](TEMPLATE.md) and review the resulting diff.
 
 ## Adding tasks
 

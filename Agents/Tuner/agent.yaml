@@ -2,10 +2,11 @@ version: "1"
 name: Tuner
 role: offline_parameter_tuning
 
-model: openai:gpt-4o-mini
+model: xai:grok-4.6
+# api_endpoint: POST https://api.x.ai/v1/chat/completions
 think_level: medium
 effort: medium
-api_key_env: OPENAI_API_KEY
+api_key_env: GROK_OAUTH_TOKEN
 
 token_budget:
   max_prompt: 8192

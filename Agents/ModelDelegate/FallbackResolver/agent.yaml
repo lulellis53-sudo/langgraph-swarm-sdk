@@ -3,6 +3,7 @@ name: ModelDelegate/FallbackResolver
 role: resolve_fallback
 
 model: sambanova:Meta-Llama-3.3-70B-Instruct
+# api_endpoint: POST https://api.sambanova.ai/v1/chat/completions
 think_level: medium
 effort: medium
 api_key_env: SAMBANOVA_API_KEY

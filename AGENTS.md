@@ -8,7 +8,7 @@ Instructions for humans and AI assistants working in this repository. Read this 
 | --------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | [Project overview](#topic-project-overview)               | What LangGraph Swarm SDK is; coding assistant vs swarm specialists               |
 | [Repository layout](#topic-repository-layout)             | Path map; protobuf note; quick links                                             |
-| [Development environment](#topic-development-environment) | Python/uv, services, quality gate, Colab, extensions                       |
+| [Development environment](#topic-development-environment) | Python/uv, static template entry, services, quality gate, Colab, extensions |
 | [Workflow](#topic-workflow)                               | How to change code; when stuck                                                   |
 | [Benchmarks](#topic-benchmarks)                           | Task layout; SQL Pro suite                                                       |
 | [Security and compliance](#topic-security-and-compliance) | Secrets; network exfiltration                                                    |
@@ -84,6 +84,10 @@ Edit `[src/swarm_sdk/pb/swarm.proto](src/swarm_sdk/pb/swarm.proto)` then `uv run
 - **Install:** `uv sync --extra dev` (add `--extra faiss`, `--extra faiss-gpu`, `--extra embed`, `--extra molten`, `--extra observability`, `--extra qdrant`, `--extra mem0`, `--extra jupyter` as needed).
 
 Use `uv run …` so commands use the project virtualenv.
+
+### Subtopic: Python Static Template
+
+New modules under `src/swarm_sdk/`, `Agents/benchmark/`, or `Main/` start from the static scaffolds — not an empty file. Use **lite** for small modules; **full** when you need vect/math/db/batch roles. Copy, rename, delete unused role sections; never import template files from runtime code. Full rules: [Topic: Python Static Template](#topic-python-static-template); Cursor detail: [`.cursor/AGENTS.md` → Static Templates](.cursor/AGENTS.md#static-templates).
 
 ### Subtopic: Services
 
@@ -178,10 +182,14 @@ uv run python -m swarm_sdk.agents.validate
 
 ## Topic: Python Static Template
 
-Runnable (full): [@.cursor/templates/python_static_template.py](.cursor/templates/python_static_template.py).  
-Default for small modules (lite): [@.cursor/templates/python_static_template_lite.py](.cursor/templates/python_static_template_lite.py).
+Canonical scaffolds (attach in Cursor with `@`):
 
-Rule: [`.cursor/rules/python-static-template.mdc`](.cursor/rules/python-static-template.mdc). Ops: [`.cursor/AGENTS.md`](.cursor/AGENTS.md). **Do not** paste the full template into this file — single source of truth is the `.py` files (CI enforces).
+| Scaffold | File |
+| -------- | ---- |
+| **Full** | [@.cursor/templates/python_static_template.py](.cursor/templates/python_static_template.py) |
+| **Lite** | [@.cursor/templates/python_static_template_lite.py](.cursor/templates/python_static_template_lite.py) |
+
+Rule: [`.cursor/rules/python-static-template.mdc`](.cursor/rules/python-static-template.mdc) (applies to `**/*.py`). Ops: [`.cursor/AGENTS.md` → Static Templates](.cursor/AGENTS.md#static-templates). **Do not** paste the full template into this file — single source of truth is the `.py` files (CI enforces).
 
 ### Subtopic: Mandatory first import
 
@@ -207,6 +215,28 @@ from __future__ import annotations
 | **full** | Needs vect/math/db/batch roles |
 
 Do **not** import template files from runtime package code — copy and trim.
+
+### Subtopic: Required shape
+
+1. Module docstring, then `from __future__ import annotations`.
+2. Imports — stdlib OK at top; heavy third-party deps inside functions (PEP 810–ready; see [PEP 810](https://peps.python.org/pep-0810/)).
+3. **`wrappers`** — `retry_transient` (transient I/O only), `timed` (when `SWARM_PROFILE`), `logged`.
+4. Role classes in order: `TypeRole` → `HintRole` → `VectRole` → `MathRole` → `DbRole` → `BatchRole` → `CoworkRole` (`LoopRole` = `BatchRole`).
+5. Role functions: `type_*`, `hint_*`, `vect_*`, `math_*`, `db_*`, `batch_*` / `loop_*`, `cowork_*` (runtime caps: `swarm_sdk.execution.concurrency`).
+6. Explicit `__all__`; smoke only under `if __name__ == "__main__":`.
+
+### Subtopic: Scaffold outline
+
+```text
+[docstring]
+from __future__ import annotations
+→ imports / TYPE_CHECKING
+→ wrappers (retry_transient, timed, logged)
+→ TypeRole … CoworkRole
+→ type_* … cowork_*  (delete unused roles)
+→ __all__
+→ main()  # optional smoke
+```
 
 ### Subtopic: Roles at a glance (full template)
 

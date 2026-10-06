@@ -3,7 +3,9 @@ name: Documenter
 role: maintain_documentation
 
 model: openai:gpt-6-luna
+# api_endpoint: POST https://api.openai.com/v1/chat/completions
 api_key_env: CODEX_OAUTH_TOKEN
+effort: low
 think_level: low
 
 token_budget:

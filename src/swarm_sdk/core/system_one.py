@@ -105,7 +105,7 @@ def jev_advice(
         A one-paragraph hint. Never includes the API key.
     """
     env = os.environ if environ is None else environ
-    key = env.get("TYPESAFE_API_KEY") or env.get("JEV_API_KEY") or ""
+    key = _jev_key(env)
     if not key:
         return _ABSTAIN.format(reason="no TYPESAFE_API_KEY or JEV_API_KEY")
     state = goal.strip()
@@ -125,6 +125,28 @@ def jev_advice(
     except TimeoutError, urllib.error.URLError, json.JSONDecodeError, OSError:
         return _ABSTAIN.format(reason="unavailable")
     return _format(body, names)
+
+
+def _jev_key(env: Mapping[str, str]) -> str:
+    """Return the Jev bearer token. An explicit mapping does not read the vault.
+
+    Args:
+        env: Key source. The process environment may fall back to the vault.
+
+    Returns:
+        The token, or an empty string when none is available. The value is not logged.
+    """
+    key = env.get("TYPESAFE_API_KEY") or env.get("JEV_API_KEY") or ""
+    if key or env is not os.environ:
+        return key
+    try:
+        from swarm_sdk.vault import VaultError, get_jev_key
+    except ImportError:
+        return ""
+    try:
+        return get_jev_key() or ""
+    except VaultError, OSError:
+        return ""
 
 
 def _names(candidates: list[str]) -> list[str]:

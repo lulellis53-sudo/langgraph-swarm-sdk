@@ -34,7 +34,7 @@ Dispatch mode (unchanged fields):
   "agent": "ModelDelegate/MathWorker",
   "task_id": "<assigned task id>",
   "status": "done | blocked",
-  "selected_route": { "name": "mistral:ministral-3-8b-latest", "provider": "mistral-2" },
+  "selected_route": { "name": "moonshot:kimi-k2.7-code", "provider": "moonshot" },
   "gpu_enabled": true,
   "backend": "opencl | molten | numpy | llm",
   "notes": "<why this backend or route was chosen>"
@@ -68,7 +68,7 @@ Solve mode adds:
 3. Proofs, symbolic calculus and constrained optimization use a frontier route with
    `think_level` high or xhigh, and every closed form is checked with SymPy.
 4. Applied statistics use the balanced route (`think_level` medium).
-5. Pure arithmetic uses the fast route (Ministral, `think_level` low).
+5. Pure arithmetic uses the fast route (Kimi, `think_level` low).
 6. If no route is usable, return `status: blocked` with the reason in `notes`.
 
 ## Verification rules

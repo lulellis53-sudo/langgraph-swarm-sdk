@@ -19,11 +19,6 @@ agents:
     contract: Agents/Planner/AGENTS.md
     manifest: Agents/Planner/agent.yaml
 
-  - name: Researcher
-    role: read-only research and synthesis
-    contract: Agents/Researcher/AGENTS.md
-    manifest: Agents/Researcher/agent.yaml
-
   - name: Coder
     role: implement code changes
     contract: Agents/Coder/AGENTS.md
@@ -128,6 +123,41 @@ agents:
     role: offline parameter tuning
     contract: Agents/Tuner/AGENTS.md
     manifest: Agents/Tuner/agent.yaml
+
+  - name: PythonCoder
+    role: python implementation
+    contract: Agents/PythonCoder/AGENTS.md
+    manifest: Agents/PythonCoder/agent.yaml
+
+  - name: JSCoder
+    role: js_ts implementation
+    contract: Agents/JSCoder/AGENTS.md
+    manifest: Agents/JSCoder/agent.yaml
+
+  - name: RustCoder
+    role: rust implementation
+    contract: Agents/RustCoder/AGENTS.md
+    manifest: Agents/RustCoder/agent.yaml
+
+  - name: Simplify
+    role: complexity reduction
+    contract: Agents/Simplify/AGENTS.md
+    manifest: Agents/Simplify/agent.yaml
+
+  - name: Infra
+    role: ci_cd and environments
+    contract: Agents/Infra/AGENTS.md
+    manifest: Agents/Infra/agent.yaml
+
+  - name: Caching
+    role: cache_layer_specialist
+    contract: Agents/Caching/AGENTS.md
+    manifest: Agents/Caching/agent.yaml
+
+  - name: Databaser
+    role: schema_migrations_queries
+    contract: Agents/Databaser/AGENTS.md
+    manifest: Agents/Databaser/agent.yaml
 
 # Task board — replace with tasks for the active project.
 # Each task must have: id, title, assigned agent(s), depends_on, and status.

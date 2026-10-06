@@ -2,14 +2,16 @@ version: "1"
 name: Orchestrator
 role: coordinate_swarm
 
-model: openai:gpt-6-luna
-think_level: low
-effort: low
-api_key_env: CODEX_OAUTH_TOKEN
+model: anthropic:claude-opus-5-5
+# api_endpoint: POST https://api.anthropic.com/v1/messages
+# Jev hint: POST https://api.typesafe.ai/v1/systemone model jev-latest, key JEV_API_KEY
+think_level: medium
+effort: medium
+api_key_env: CLAUDE_OAUTH_TOKEN
 
 token_budget:
-  max_prompt: 2048
-  max_completion: 512
+  max_prompt: 8192
+  max_completion: 2048
 
 tasks:
   - id: decompose_goal

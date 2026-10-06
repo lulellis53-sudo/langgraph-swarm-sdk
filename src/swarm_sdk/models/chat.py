@@ -150,6 +150,68 @@ def _first_value(names: tuple[str, ...]) -> str:
     return ""
 
 
+def ordered_key_names(model_name: str, preferred: str | None = None) -> tuple[str, ...]:
+    """Env var names for a route, preferred name first, then registry fallbacks.
+
+    Args:
+        model_name: Registry route, such as ``moonshot:kimi-k2.7-code``.
+        preferred: Manifest ``api_key_env``, kept first when it is set.
+
+    Returns:
+        Names only. Secret values are not read.
+    """
+    route = _route_index().get(model_name)
+    names: list[str] = []
+    if preferred:
+        names.append(preferred)
+    if route is not None:
+        if route.api_key_env:
+            names.append(route.api_key_env)
+        names.extend(route.key_fallbacks)
+    return tuple(dict.fromkeys(name for name in names if name))
+
+
+def _key_at(route: Route, index: int) -> tuple[str, str] | None:
+    """Return the present key at ``index`` as ``(env name, secret)``.
+
+    The secret is for the provider client only. Callers must not log it.
+    """
+    present: list[tuple[str, str]] = []
+    for name in (route.api_key_env, *route.key_fallbacks):
+        if name and (value := _value(name)):
+            present.append((name, value))
+    if index < 0 or index >= len(present):
+        return None
+    return present[index]
+
+
+def _next_key_index(route: Route, current: int) -> int | None:
+    """Index of the next present key whose value differs from the current one."""
+    selected = _key_at(route, current)
+    if selected is None:
+        return None
+    index = current + 1
+    while True:
+        nxt = _key_at(route, index)
+        if nxt is None:
+            return None
+        if nxt[1] != selected[1]:
+            return index
+        index += 1
+
+
+def _status_code(err: BaseException) -> int | None:
+    """HTTP status from a provider exception, when it exposes one."""
+    status = getattr(err, "status_code", None)
+    if isinstance(status, int):
+        return status
+    response = getattr(err, "response", None)
+    status = getattr(response, "status_code", None)
+    if isinstance(status, int):
+        return status
+    return None
+
+
 def _base_url(provider: str, route: Route) -> str:
     """Resolve the base URL from the route's env var, falling back to the provider default."""
     configured = _value(route.base_url_env).strip() if route.base_url_env else ""
@@ -177,6 +239,10 @@ _MODEL_CACHE: dict[str, BaseChatModel] = {}
 _MODEL_CACHE_LOCK = threading.Lock()
 # Small bound: a swarm uses a handful of distinct models; the oldest entry is evicted past it.
 _MODEL_CACHE_MAX = 32
+# Which registry key built the cached client. The value is an index into the
+# present keys, so a 401 can advance to the next fallback without logging it.
+_KEY_INDEX: dict[str, int] = {}
+_ROUTE_FOR: dict[int, str] = {}
 
 
 def load_chat_model(model_name: str) -> BaseChatModel:
@@ -207,7 +273,7 @@ def load_chat_model(model_name: str) -> BaseChatModel:
             metrics.record_cache_hit("chat_model")
             return cached
 
-    chat_model = _build_chat_model(model_name)
+    chat_model = _build_chat_model(model_name, key_index=0)
 
     with _MODEL_CACHE_LOCK:
         if len(_MODEL_CACHE) >= _MODEL_CACHE_MAX:
@@ -221,21 +287,31 @@ def load_chat_model_cache_clear() -> None:
     """Clear the chat-model cache (useful in tests and after key rotation)."""
     with _MODEL_CACHE_LOCK:
         _MODEL_CACHE.clear()
+        _KEY_INDEX.clear()
+        _ROUTE_FOR.clear()
 
 
 # Expose the same ``cache_clear`` attribute tests and callers expect from ``lru_cache``.
 load_chat_model.cache_clear = load_chat_model_cache_clear  # type: ignore
 
 
-def _build_chat_model(model_name: str) -> BaseChatModel:
-    """Construct a fresh chat-model instance for ``model_name``."""
+def _build_chat_model(model_name: str, *, key_index: int) -> BaseChatModel:
+    """Construct a fresh chat-model instance for ``model_name``.
+
+    Args:
+        model_name: Registry route name.
+        key_index: Index into the present keys. ``0`` is the primary key.
+    """
     from langchain.chat_models import init_chat_model
     from langchain_core.language_models.chat_models import BaseChatModel
 
     provider, _, suffix = model_name.partition(":")
     route = _route_index().get(model_name, Route("", ""))
     model = route.model_id or suffix
-    key_value = _first_value((route.api_key_env, *route.key_fallbacks))
+    selected = _key_at(route, key_index)
+    key_name = selected[0] if selected is not None else ""
+    key_value = selected[1] if selected is not None else ""
+    used_index = key_index if selected is not None else 0
     if provider == "google":
         kwargs = {"google_api_key": key_value} if key_value else {}
         chat_model = init_chat_model(f"google_genai:{model}", **kwargs)
@@ -265,7 +341,52 @@ def _build_chat_model(model_name: str) -> BaseChatModel:
         chat_model = init_chat_model(model_name, **kwargs)  # ty: ignore[no-matching-overload]
     if not isinstance(chat_model, BaseChatModel):
         raise TypeError(f"expected a chat model, got {type(chat_model).__name__}")
+    _ROUTE_FOR[id(chat_model)] = model_name
+    _KEY_INDEX[model_name] = used_index
+    if key_name:
+        logger.info("route %s is using %s", model_name, key_name)
     return chat_model
+
+
+def _invoke(model: BaseChatModel, messages: list[object], *, json_mode: bool) -> object:
+    """Call ``model`` once. A JSON-mode rejection falls back to plain text."""
+    result = None
+    if json_mode:
+        try:
+            result = model.bind(response_format={"type": "json_object"}).invoke(messages)
+        except Exception as err:
+            if _status_code(err) == 401:
+                raise
+            logger.warning("provider rejected response_format; retrying without it")
+    if result is None:
+        result = model.invoke(messages)
+    return result
+
+
+def _model_with_next_key(model: BaseChatModel) -> BaseChatModel | None:
+    """Rebuild ``model``'s route with its next fallback key after a 401."""
+    route_name = _ROUTE_FOR.get(id(model))
+    if route_name is None:
+        return None
+    route = _route_index().get(route_name)
+    if route is None:
+        return None
+    current = _KEY_INDEX.get(route_name, 0)
+    nxt = _next_key_index(route, current)
+    if nxt is None:
+        return None
+    current_name = _key_at(route, current)
+    next_name = _key_at(route, nxt)
+    logger.warning(
+        "route %s rejected %s; trying %s",
+        route_name,
+        current_name[0] if current_name is not None else "the current key",
+        next_name[0] if next_name is not None else "the next key",
+    )
+    built = _build_chat_model(route_name, key_index=nxt)
+    with _MODEL_CACHE_LOCK:
+        _MODEL_CACHE[route_name] = built
+    return built
 
 
 def message_tokens(message: object) -> int | None:
@@ -332,14 +453,18 @@ async def complete_with_usage(
         from langchain_core.messages import HumanMessage, SystemMessage
 
         messages = [SystemMessage(content=system), HumanMessage(content=user)]
-        result = None
-        if json_mode:
+        active = model
+        while True:
             try:
-                result = model.bind(response_format={"type": "json_object"}).invoke(messages)
-            except Exception:
-                logger.warning("provider rejected response_format; retrying without it")
-        if result is None:
-            result = model.invoke(messages)
+                result = _invoke(active, messages, json_mode=json_mode)
+                break
+            except Exception as err:
+                if _status_code(err) != 401:
+                    raise
+                nxt = _model_with_next_key(active)
+                if nxt is None:
+                    raise
+                active = nxt
         text = message_text(result)
         reported = message_tokens(result)
         if reported is None:

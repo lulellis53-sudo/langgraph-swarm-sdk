@@ -59,6 +59,30 @@ uv run pytest Agents/benchmark/Tasks/cache_storage -q
 SQLite runs with the standard library. To include DuckDB, install it in the
 benchmark environment explicitly; it is not a core SDK dependency.
 
+### Cache lookup-path latency by cache size (`Tasks/cache_lookup_latency/`)
+
+Measures the shipped `SemanticCache.lookup` path offline: exact hit, semantic hit,
+and miss at 100 / 1,000 / 10,000 entries, plus a paired ABBA comparison of
+`lookup_batch` against per-query `lookup` (Benchmark.md §2.6 protocol via
+`benchmark.stats`). Query pools rotate beyond the cache's 256-row query-embedding
+LRU so every timed lookup pays the real embed + scan path. The semantic layer uses
+a deterministic topic embedder injected at the cache's embedder extension point —
+`HashEmbedder` vectors are uncorrelated across distinct texts, so its semantic
+layer cannot fire after an exact miss by design.
+
+```bash
+PYTHONPATH=Agents:. uv run python -m benchmark.Tasks.cache_lookup_latency.benchmark_cache_lookup_latency --write-results
+PYTHONPATH=Agents uv run python -m benchmark.run --task cache_lookup_latency
+uv run pytest Agents/benchmark/Tasks/cache_lookup_latency -q
+```
+
+Quick smoke measured 2026-10-05 (100 entries, `--quick`): exact hit p50 15.8 µs,
+semantic hit p50 428 µs (the LRU-touch commit dominates), miss p50 176 µs, and
+`lookup_batch` 118 µs/query vs 452 µs/query for single lookups (verdict
+`B_faster`, median delta −2.64 ms per 8-query slot, bootstrap CI [−3.15, −1.89],
+noise floor 0.63 ms). Full `--write-results` runs land in the gitignored
+`results/cache_lookup_latency/latest.json`.
+
 ## Embedding throughput (CPU vs CoreML GPU)
 
 Compare ONNX Runtime providers for FastEmbed (requires `uv sync --extra jupyter`):
