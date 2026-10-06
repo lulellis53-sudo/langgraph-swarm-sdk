@@ -194,6 +194,10 @@ class SearchHit:
     api_tokens: int = 0
     #: Searcher ids whose near-duplicate hit was merged into this one.
     also_from: tuple[str, ...] = ()
+    #: The query this hit was retrieved for; set by ``agent_tools.score_hits``.
+    query: str = ""
+    #: Lexical relevance of this hit to ``query`` in ``[0.0, 1.0]`` (0.0 = unscored).
+    relevance: float = 0.0
 
 
 class WebSearcher(Protocol):
@@ -1395,7 +1399,7 @@ def search_google_search(query: str, spec: SearcherSpec) -> list[SearchHit]:
     if not keys:
         return []
     root = env_base(spec) or "https://generativelanguage.googleapis.com/v1beta"
-    model = spec.engine or "gemini-3.8-flash"
+    model = spec.engine or "gemini-3.5-flash"
     body = {"contents": [{"parts": [{"text": query}]}], "tools": [{"google_search": {}}]}
     data: Any = None
     for index, token in enumerate(keys, start=1):

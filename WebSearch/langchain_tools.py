@@ -35,12 +35,26 @@ def websearch_langchain_tools(
     """
     from langchain_core.tools import StructuredTool
 
-    def web_search_brief(query: str, limit: int = 5, max_chars: int = 1200) -> str:
-        """Run parallel multi-provider web search and return a numbered prompt brief."""
+    def web_search_brief(
+        query: str,
+        limit: int = 5,
+        max_tokens: int = 400,
+        max_chars: int | None = None,
+        min_score: float | None = None,
+    ) -> str:
+        """Run parallel multi-provider web search and return a numbered prompt brief.
+
+        ``max_tokens`` is a tiktoken (cl100k_base) budget, which is what the model
+        actually pays; ``max_chars`` is kept only for callers bound to the old
+        character cap. ``min_score`` (0..1) drops hits whose query overlap is too
+        low, so an agent does not spend tokens on irrelevant results.
+        """
         return search_brief(
             query,
             limit=limit,
+            max_tokens=max_tokens,
             max_chars=max_chars,
+            min_score=min_score,
             config=config,
             backends=backends,
         )
