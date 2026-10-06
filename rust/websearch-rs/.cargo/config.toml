@@ -1,0 +1,7 @@
+# The shell exports CC=<upstream LLVM 23 clang>, which has no macOS sysroot
+# ("'stdlib.h' file not found" in C build scripts such as ring). Use Apple clang here.
+# Do not set CFLAGS: ~/.cargo/config.toml defines it as a string and the keys cannot merge.
+# See Toolchain.md ("Rust crates with C build scripts").
+[env]
+CC = { value = "/usr/bin/clang", force = true }
+CXX = { value = "/usr/bin/clang++", force = true }

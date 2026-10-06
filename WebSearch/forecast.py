@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 if TYPE_CHECKING:
     import pandas as pd
+
     from WebSearch.frontend.websearchers import SearchHit
 
 _SCHEMA = """
@@ -75,7 +76,7 @@ def run_series(conn: sqlite3.Connection, query: str) -> pd.DataFrame:
 
 def _default_engine() -> _Engine:
     try:
-        from Prediction import ForecastConfig, ForecastEngine
+        from Prediction import ForecastConfig, ForecastEngine  # ty: ignore[unresolved-import]
     except ImportError as exc:
         raise ForecastUnavailable(
             "Prediction engine not importable: put the Swarm repo root on PYTHONPATH and "

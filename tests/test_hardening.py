@@ -77,6 +77,21 @@ def test_default_fetch_follows_a_public_redirect(monkeypatch: pytest.MonkeyPatch
     )
 
 
+@pytest.mark.parametrize(
+    "fetcher_name",
+    ["fetch_httpx2", "fetch_requests", "fetch_aiohttp", "fetch_curl_cffi", "fetch_crawlee"],
+)
+def test_non_httpx_crawlers_refuse_non_public_urls(fetcher_name: str) -> None:
+    """Requests/aiohttp/curl_cffi/httpx2/crawlee share the httpx public-URL allowlist."""
+    from WebSearch import midend
+
+    fetcher = getattr(midend, fetcher_name)
+    with pytest.raises(PrivateTarget, match="non-public"):
+        fetcher("file:///etc/passwd", public_only=True, resolver=_public_resolver)
+    with pytest.raises(PrivateTarget, match="non-public"):
+        fetcher("http://127.0.0.1/secret", public_only=True, resolver=_public_resolver)
+
+
 def test_crawl_refuses_a_private_hit_without_fetching() -> None:
     """Search hits aimed at loopback are recorded as blocked, not downloaded."""
     pages = crawl_then_scrape([SearchHit("local", "http://127.0.0.1/admin", "x", "test")])

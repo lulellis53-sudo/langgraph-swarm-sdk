@@ -122,6 +122,9 @@ fn render_text(hits: &[Hit]) -> String {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     let query = build_query(&cli)?;
+    // reqwest's `rustls-no-provider` panics at client build time without a provider.
+    // Err only means one is already installed, which is fine.
+    let _ = rustls::crypto::ring::default_provider().install_default();
     let client = reqwest::blocking::Client::builder()
         .timeout(Duration::from_secs(cli.timeout))
         .user_agent(concat!("websearch-rs/", env!("CARGO_PKG_VERSION")))

@@ -84,9 +84,10 @@ def model_key_ready(model_name: str) -> bool:
     provider, _, _ = model_name.partition(":")
     if provider in _CLI_PROVIDERS:
         return True
-    from swarm_sdk.models.chat import route_is_ready
+    from swarm_sdk.models.chat import _route_index
 
-    return route_is_ready(model_name)
+    key_env, _ = _route_index().get(model_name, ("", ""))
+    return bool(key_env) and _secret_present(key_env)
 
 
 def _secret_present(name: str) -> bool:
@@ -114,19 +115,11 @@ def _jev_choice(query: str, candidates: Sequence[str]) -> str:
     A stored ``JEV_API_KEY`` calls TypeSafe ``/v1/systemone``. ``JEV_ENDPOINT``
     still selects the older evaluate service. Otherwise the local classifier runs.
     """
-    from swarm_sdk.core.jev_router import JevRouter, typesafe_choice
+    from swarm_sdk.core.jev_router import JevRouter
 
     endpoint = os.environ.get("JEV_ENDPOINT")
-    if endpoint:
-        return JevRouter(endpoint=endpoint).evaluate_choice(query, list(candidates)).selected_choice
-    picked = typesafe_choice(query, candidates)
-    if picked in candidates:
-        return picked
-    return (
-        JevRouter(api_key="", endpoint=None)
-        .evaluate_choice(query, list(candidates))
-        .selected_choice
-    )
+    router = JevRouter(endpoint=endpoint) if endpoint else JevRouter(api_key="", endpoint=None)
+    return router.evaluate_choice(query, list(candidates)).selected_choice
 
 
 def choose_playwright(

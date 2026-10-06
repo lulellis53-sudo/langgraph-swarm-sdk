@@ -22,8 +22,8 @@ Full ops notes: @.cursor/AGENTS.md (Static Templates). Root: @AGENTS.md (Topic: 
    ```
 
 2. **`wrappers`** — `@wrappers.retry_transient` (transient errors only), `@wrappers.timed` (only when `SWARM_PROFILE` is set), `@wrappers.logged`
-3. Role classes: `Type` → `Hint` → `Vect` → `Math` → `Db` → `Batch` → `Cowork` (`LoopRole` = `BatchRole` alias)
-4. Role functions: `type_*`, `hint_*`, `vect_*`, `math_*`, `db_*`, `batch_*` / `loop_*`, `cowork_*`
+3. Role classes (state only): `Type` → `Hint` → `Vect` → `Db` → `Batch` → `Cowork`
+4. Exactly **eleven** role functions: `type_is_mapping`, `type_ensure_str`, `hint_tag`, `vect_dot`, `vect_l2`, `math_clamp`, `math_safe_div`, `db_uri`, `batch_chunked`, `cowork_gil_enabled`, `cowork_parallel_cap` (enforced by `tests/test_static_templates.py`)
 5. Explicit `__all__`; smoke only under `__main__`
 
 ## Free-threading and agent cowork (PEP 703)

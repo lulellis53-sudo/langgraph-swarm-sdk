@@ -26,7 +26,7 @@ jobs:
       - name: Install dev dependencies
         run: uv sync --extra dev --frozen
       - name: Ruff check
-        run: uv run ruff check src Agents/benchmark Main
+        run: uv run ruff check src Agents/benchmark Main WebSearch tests
       - name: YAML lint
         run: uv run yamllint .
 
@@ -58,7 +58,7 @@ jobs:
       - name: Install dev dependencies
         run: uv sync --extra dev --frozen
       - name: ty check
-        run: uv run ty check src Agents/benchmark Main
+        run: uv run ty check src Agents/benchmark Main WebSearch tests
 
   agents-schema:
     name: Agent manifests
@@ -101,7 +101,7 @@ jobs:
       - name: Install dev dependencies
         run: uv sync --extra dev --frozen
       - name: Run tests
-        run: uv run pytest Agents/benchmark/tests -q
+        run: uv run pytest Agents/benchmark/tests tests/test_websearch.py tests/test_hardening.py tests/test_backend_dedupe.py -q
 
   benchmark:
     name: Benchmarks (pytest)

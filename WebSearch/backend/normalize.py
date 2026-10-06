@@ -56,7 +56,12 @@ def normalize_url(url: str) -> str:
     if not parsed.scheme or not parsed.netloc:
         return cleaned
     host = parsed.hostname or ""
-    port = parsed.port
+    try:
+        port = parsed.port
+    except ValueError:
+        return cleaned
+    if ":" in host:
+        host = f"[{host}]"
     default = (parsed.scheme.lower() == "http" and port == 80) or (
         parsed.scheme.lower() == "https" and port == 443
     )

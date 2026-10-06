@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from urllib.parse import parse_qs, urlparse
 
@@ -80,7 +81,7 @@ def unwrap_redirect(url: str) -> str:
 
 
 def prefilter_hits(
-    hits: list[SearchHit], policy: PrefilterPolicy
+    hits: Sequence[SearchHit], policy: PrefilterPolicy
 ) -> tuple[list[SearchHit], list[Rejected]]:
     """Drop hits that fail scheme, domain, title, or snippet checks.
 

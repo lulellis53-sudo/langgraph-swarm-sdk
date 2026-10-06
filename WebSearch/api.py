@@ -20,6 +20,7 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
+
 from WebSearch.browse_agent import BrowseError
 from WebSearch.cli import build_parser, run
 from WebSearch.doctor import doctor

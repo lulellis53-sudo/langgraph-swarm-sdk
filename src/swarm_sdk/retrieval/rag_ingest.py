@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import json
 import logging
 import re
@@ -15,13 +16,15 @@ from swarm_sdk.retrieval.embeddings import Embedder, HashEmbedder
 
 logger = logging.getLogger(__name__)
 
-try:
-    import faiss
 
-    _FAISS_AVAILABLE = True
-except ImportError:  # pragma: no cover
-    faiss = None
-    _FAISS_AVAILABLE = False
+@functools.cache
+def _faiss() -> Any | None:
+    """Import ``faiss`` on first use (it costs startup time and RSS); ``None`` if absent."""
+    try:
+        import faiss
+    except ImportError:  # pragma: no cover
+        return None
+    return faiss
 
 
 class DocumentChunk(BaseModel):
@@ -111,7 +114,8 @@ class RAGIngestionPipeline:
 
     def _init_index(self) -> None:
         """Initialize the vector index with FAISS or fallback to NumPy."""
-        if not self._force_numpy and _FAISS_AVAILABLE and faiss is not None:
+        faiss = None if self._force_numpy else _faiss()
+        if faiss is not None:
             try:
                 self.index = faiss.IndexFlatIP(self.embedding_dim)
                 self._is_faiss = True
@@ -328,7 +332,7 @@ class RAGIngestionPipeline:
         (target_dir / "meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
 
         # 3. Vector Index
-        if self._is_faiss and faiss is not None:
+        if self._is_faiss and (faiss := _faiss()) is not None:
             faiss.write_index(self.index, str(target_dir / "index.faiss"))
             # Also save vectors.npy as universal fallback
             if hasattr(self.index, "reconstruct_n"):
@@ -361,12 +365,13 @@ class RAGIngestionPipeline:
         faiss_file = target_dir / "index.faiss"
         numpy_file = target_dir / "vectors.npy"
 
-        if not self._force_numpy and _FAISS_AVAILABLE and faiss is not None and faiss_file.exists():
+        faiss = None if self._force_numpy else _faiss()
+        if faiss is not None and faiss_file.exists():
             self.index = faiss.read_index(str(faiss_file))
             self._is_faiss = True
         elif numpy_file.exists():
             vectors = np.load(numpy_file)
-            if not self._force_numpy and _FAISS_AVAILABLE and faiss is not None:
+            if faiss is not None:
                 self.index = faiss.IndexFlatIP(self.embedding_dim)
                 if len(vectors) > 0:
                     self.index.add(np.ascontiguousarray(vectors, dtype=np.float32))

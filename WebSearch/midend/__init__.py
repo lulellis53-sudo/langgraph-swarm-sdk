@@ -116,20 +116,44 @@ def _fetch_named(
             resolver=resolver,
         )
     if name == "httpx2":
-        return fetch_httpx2(url, timeout_s=timeout_s, max_bytes=max_bytes)
+        return fetch_httpx2(
+            url,
+            timeout_s=timeout_s,
+            max_bytes=max_bytes,
+            public_only=public_only,
+            resolver=resolver,
+        )
     if name == "requests":
-        return fetch_requests(url, timeout_s=timeout_s, max_bytes=max_bytes)
+        return fetch_requests(
+            url,
+            timeout_s=timeout_s,
+            max_bytes=max_bytes,
+            public_only=public_only,
+            resolver=resolver,
+        )
     if name == "aiohttp":
-        return fetch_aiohttp(url, timeout_s=timeout_s, max_bytes=max_bytes)
+        return fetch_aiohttp(
+            url,
+            timeout_s=timeout_s,
+            max_bytes=max_bytes,
+            public_only=public_only,
+            resolver=resolver,
+        )
     if name == "curl_cffi":
-        return fetch_curl_cffi(url, timeout_s=timeout_s, max_bytes=max_bytes)
+        return fetch_curl_cffi(
+            url,
+            timeout_s=timeout_s,
+            max_bytes=max_bytes,
+            public_only=public_only,
+            resolver=resolver,
+        )
     if name == "scrapy":
         return fetch_scrapy(url, timeout_s=timeout_s, public_only=public_only, resolver=resolver)
     if name == "playwright":
         return fetch_playwright(
             url, timeout_s=timeout_s, public_only=public_only, resolver=resolver
         )
-    return fetch_crawlee(url, timeout_s=timeout_s)
+    return fetch_crawlee(url, timeout_s=timeout_s, public_only=public_only, resolver=resolver)
 
 
 class _ByteStream(Protocol):
@@ -237,6 +261,12 @@ def _require_public(url: str, resolver: Resolver | None) -> None:
         raise PrivateTarget("non-public host refused")
 
 
+def _guard_url(url: str, public_only: bool, resolver: Resolver | None) -> None:
+    """Apply the httpx allowlist when ``public_only`` is set."""
+    if public_only:
+        _require_public(url, resolver)
+
+
 def _capped(chunks: Iterable[bytes], max_bytes: int | None) -> bytes:
     """Join body chunks, keeping at most ``max_bytes`` (``None`` keeps all)."""
     if max_bytes is None:
@@ -252,12 +282,21 @@ def _capped(chunks: Iterable[bytes], max_bytes: int | None) -> bytes:
 
 
 @repeater.s
-def fetch_httpx2(url: str, *, timeout_s: float = 20.0, max_bytes: int | None = None) -> bytes:
+def fetch_httpx2(
+    url: str,
+    *,
+    timeout_s: float = 20.0,
+    max_bytes: int | None = None,
+    public_only: bool = False,
+    resolver: Resolver | None = None,
+) -> bytes:
     """HTTP GET via ``httpx2`` (the pydantic/httpx2 successor to httpx).
 
     Raises:
         OSError: Missing ``httpx2``, HTTP error status, or network failure.
+        PrivateTarget: ``public_only`` and the URL is not a public http(s) host.
     """
+    _guard_url(url, public_only, resolver)
     try:
         httpx2 = importlib.import_module("httpx2")
     except ImportError as exc:
@@ -265,7 +304,9 @@ def fetch_httpx2(url: str, *, timeout_s: float = 20.0, max_bytes: int | None = N
     try:
         with (
             httpx2.Client(
-                timeout=timeout_s, follow_redirects=True, headers={"User-Agent": _USER_AGENT}
+                timeout=timeout_s,
+                follow_redirects=not public_only,
+                headers={"User-Agent": _USER_AGENT},
             ) as client,
             client.stream("GET", url) as response,
         ):
@@ -276,19 +317,32 @@ def fetch_httpx2(url: str, *, timeout_s: float = 20.0, max_bytes: int | None = N
 
 
 @repeater.s
-def fetch_requests(url: str, *, timeout_s: float = 20.0, max_bytes: int | None = None) -> bytes:
+def fetch_requests(
+    url: str,
+    *,
+    timeout_s: float = 20.0,
+    max_bytes: int | None = None,
+    public_only: bool = False,
+    resolver: Resolver | None = None,
+) -> bytes:
     """HTTP GET via ``requests`` (streamed, so ``max_bytes`` limits the download).
 
     Raises:
         OSError: Missing ``requests``, HTTP error status, or network failure.
+        PrivateTarget: ``public_only`` and the URL is not a public http(s) host.
     """
+    _guard_url(url, public_only, resolver)
     try:
         requests = importlib.import_module("requests")
     except ImportError as exc:
         raise OSError("requests not installed") from exc
     try:
         with requests.get(
-            url, timeout=timeout_s, stream=True, headers={"User-Agent": _USER_AGENT}
+            url,
+            timeout=timeout_s,
+            stream=True,
+            allow_redirects=not public_only,
+            headers={"User-Agent": _USER_AGENT},
         ) as response:
             response.raise_for_status()
             return _capped(response.iter_content(chunk_size=65536), max_bytes)
@@ -297,12 +351,21 @@ def fetch_requests(url: str, *, timeout_s: float = 20.0, max_bytes: int | None =
 
 
 @repeater.s
-def fetch_aiohttp(url: str, *, timeout_s: float = 20.0, max_bytes: int | None = None) -> bytes:
+def fetch_aiohttp(
+    url: str,
+    *,
+    timeout_s: float = 20.0,
+    max_bytes: int | None = None,
+    public_only: bool = False,
+    resolver: Resolver | None = None,
+) -> bytes:
     """HTTP GET via ``aiohttp``, run to completion on its own event loop in this thread.
 
     Raises:
         OSError: Missing ``aiohttp``, HTTP error status, timeout, or network failure.
+        PrivateTarget: ``public_only`` and the URL is not a public http(s) host.
     """
+    _guard_url(url, public_only, resolver)
     try:
         aiohttp = importlib.import_module("aiohttp")
     except ImportError as exc:
@@ -312,7 +375,7 @@ def fetch_aiohttp(url: str, *, timeout_s: float = 20.0, max_bytes: int | None = 
         timeout = aiohttp.ClientTimeout(total=timeout_s)
         async with (
             aiohttp.ClientSession(timeout=timeout, headers={"User-Agent": _USER_AGENT}) as session,
-            session.get(url) as response,
+            session.get(url, allow_redirects=not public_only) as response,
         ):
             response.raise_for_status()
             chunks = [chunk async for chunk in response.content.iter_chunked(65536)]
@@ -325,20 +388,34 @@ def fetch_aiohttp(url: str, *, timeout_s: float = 20.0, max_bytes: int | None = 
 
 
 @repeater.s
-def fetch_curl_cffi(url: str, *, timeout_s: float = 20.0, max_bytes: int | None = None) -> bytes:
+def fetch_curl_cffi(
+    url: str,
+    *,
+    timeout_s: float = 20.0,
+    max_bytes: int | None = None,
+    public_only: bool = False,
+    resolver: Resolver | None = None,
+) -> bytes:
     """HTTP GET via ``curl_cffi`` with a Chrome TLS/HTTP2 fingerprint.
 
     Gets past sites that reject the TLS handshake of plain Python HTTP clients.
 
     Raises:
         OSError: Missing ``curl_cffi``, HTTP error status, or network failure.
+        PrivateTarget: ``public_only`` and the URL is not a public http(s) host.
     """
+    _guard_url(url, public_only, resolver)
     try:
         cffi_requests = importlib.import_module("curl_cffi.requests")
     except ImportError as exc:
         raise OSError("curl_cffi not installed") from exc
     try:
-        response = cffi_requests.get(url, impersonate="chrome", timeout=timeout_s)
+        response = cffi_requests.get(
+            url,
+            impersonate="chrome",
+            timeout=timeout_s,
+            allow_redirects=not public_only,
+        )
         response.raise_for_status()
     except cffi_requests.RequestsError as exc:
         raise OSError(str(exc)) from exc
@@ -370,6 +447,7 @@ def fetch_scrapy(
     except ImportError as exc:
         raise OSError("scrapy not installed") from exc
     html_response = scrapy_http.HtmlResponse
+    _guard_url(url, public_only, resolver)
     raw = default_fetch(url, timeout_s=timeout_s, public_only=public_only, resolver=resolver)
     html_response(url=url, body=raw, encoding="utf-8")
     return raw
@@ -429,6 +507,7 @@ def fetch_playwright(
     except ImportError:
         stealth_sync = None
     playwright_error = sync_api.Error
+    _guard_url(url, public_only, resolver)
     try:
         browser = _thread_browser(sync_api)
         page = browser.new_page()
@@ -450,7 +529,13 @@ def fetch_playwright(
 
 
 @repeater.s
-def fetch_crawlee(url: str, *, timeout_s: float = 20.0) -> bytes:
+def fetch_crawlee(
+    url: str,
+    *,
+    timeout_s: float = 20.0,
+    public_only: bool = False,
+    resolver: Resolver | None = None,
+) -> bytes:
     """Single-URL fetch via Crawlee HttpCrawler. Fails if crawlee is missing.
 
     Args:
@@ -462,8 +547,10 @@ def fetch_crawlee(url: str, *, timeout_s: float = 20.0) -> bytes:
 
     Raises:
         OSError: Missing crawlee, empty body, or runtime error.
+        PrivateTarget: ``public_only`` and the URL is not a public http(s) host.
     """
     del timeout_s
+    _guard_url(url, public_only, resolver)
     try:
         crawlee_crawlers = importlib.import_module("crawlee.crawlers")
     except ImportError as exc:

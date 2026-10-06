@@ -88,3 +88,15 @@ def test_dedupe_docs_still_drops_empty_exact_and_near_duplicates() -> None:
     )
     result = dedupe_docs([empty, exact, exact_copy, keep])
     assert [doc.url for doc in result] == ["https://a.example/2", "https://a.example/3"]
+
+
+def test_normalize_url_preserves_ipv6_host_brackets() -> None:
+    assert normalize_url("HTTPS://[2001:DB8::1]:443/a#top") == "https://[2001:db8::1]/a"
+
+
+def test_dedupe_docs_can_stream_a_generator() -> None:
+    docs = (
+        ExtractedDoc(f"https://example.com/{i}", f"different content {i}", "x", 10)
+        for i in range(2)
+    )
+    assert len(dedupe_docs(docs)) == 2

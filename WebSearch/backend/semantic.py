@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     import numpy as np
+
     from WebSearch.backend.docs import ExtractedDoc
 
 _SENTENCE = re.compile(r"(?<=[.!?])\s+")

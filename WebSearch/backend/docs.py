@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 import regex as re
+
 from WebSearch.backend.extractors import extract_text, strip_tags
 from WebSearch.backend.normalize import normalize_text, normalize_url
 from WebSearch.frontend.websearchers import ProvidersConfig, load_providers
@@ -16,6 +17,7 @@ _SHINGLE = 5
 _BITS = 64
 #: Hamming distance at which two docs count as mirrors of the same page.
 _NEAR_MAX_DISTANCE = 12
+_SIMHASH_BANDS = 13
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,6 +53,17 @@ def _simhash(text: str) -> int | None:
     return sum(1 << bit for bit, vote in enumerate(votes) if vote > 0)
 
 
+def _simhash_bands(fingerprint: int) -> tuple[tuple[int, int], ...]:
+    """Return 13 locality-sensitive keys; any pair within distance 12 shares one."""
+    bands: list[tuple[int, int]] = []
+    offset = 0
+    for band in range(_SIMHASH_BANDS):
+        width = min(5, _BITS - offset)
+        bands.append((band, (fingerprint >> offset) & ((1 << width) - 1)))
+        offset += width
+    return tuple(bands)
+
+
 def dedupe_docs(docs: Iterable[ExtractedDoc]) -> list[ExtractedDoc]:
     """Drop empty docs and docs duplicating an earlier one, by URL, exact, or near.
 
@@ -68,7 +81,8 @@ def dedupe_docs(docs: Iterable[ExtractedDoc]) -> list[ExtractedDoc]:
     """
     seen_urls: set[str] = set()
     seen: set[str] = set()
-    prints: list[int] = []
+    fingerprints: list[int] = []
+    band_index: dict[tuple[int, int], list[int]] = {}
     unique: list[ExtractedDoc] = []
     for doc in docs:
         if not doc.text:
@@ -81,9 +95,18 @@ def dedupe_docs(docs: Iterable[ExtractedDoc]) -> list[ExtractedDoc]:
             continue
         fingerprint = _simhash(doc.text)
         if fingerprint is not None:
-            if any((fingerprint ^ other).bit_count() <= _NEAR_MAX_DISTANCE for other in prints):
+            candidates: set[int] = set()
+            for band in _simhash_bands(fingerprint):
+                candidates.update(band_index.get(band, ()))
+            if any(
+                (fingerprint ^ fingerprints[index]).bit_count() <= _NEAR_MAX_DISTANCE
+                for index in candidates
+            ):
                 continue
-            prints.append(fingerprint)
+            index = len(fingerprints)
+            fingerprints.append(fingerprint)
+            for band in _simhash_bands(fingerprint):
+                band_index.setdefault(band, []).append(index)
         seen_urls.add(canonical)
         seen.add(h)
         unique.append(doc)

@@ -14,15 +14,16 @@ from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field, replace
 from functools import lru_cache
+from importlib.resources import files
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 from urllib.parse import urlencode, urlsplit
 
 import yaml
-from WebSearch.frontend.dorks import parse_dork
-from WebSearch.repeater import normalize_url, repeater
 
 from swarm_sdk.retrieval.redis_exact import RedisExactCache
+from WebSearch.frontend.dorks import parse_dork
+from WebSearch.repeater import normalize_url, repeater
 
 if TYPE_CHECKING:
     from httpx import Client as HttpxClient
@@ -259,10 +260,13 @@ def dedupe_hits(hits: Sequence[SearchHit]) -> list[SearchHit]:
 def providers_yaml_path() -> Path:
     """Return the path to the packaged ``providers.yaml``.
 
+    Resolves via ``importlib.resources`` so an installed wheel loads
+    ``WebSearch/providers.yaml``, not a nested ``WebSearch/WebSearch/`` copy.
+
     Returns:
-        Path: Absolute path next to the ``WebSearch`` package.
+        Path: Absolute path of the package data file.
     """
-    return Path(__file__).resolve().parents[1] / "providers.yaml"
+    return Path(str(files("WebSearch").joinpath("providers.yaml")))
 
 
 def providers_config_path() -> Path:
@@ -1424,7 +1428,7 @@ def search_ddg(query: str, spec: SearcherSpec) -> list[SearchHit]:
         from ddgs import DDGS
     except ImportError:
         try:
-            from duckduckgo_search import DDGS
+            from duckduckgo_search import DDGS  # ty: ignore[unresolved-import]
         except ImportError as exc:
             raise OSError("ddgs not installed (uv sync --extra websearch)") from exc
 

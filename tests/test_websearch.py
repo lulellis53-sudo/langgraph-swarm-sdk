@@ -7,7 +7,6 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
-
 from WebSearch.backend.prefilter import prefilter_hits, unwrap_redirect
 from WebSearch.frontend import SearchHit, parallel_search, registry_search
 from WebSearch.frontend.hits import near_dedupe, normalize_hit
@@ -81,6 +80,18 @@ def test_prefilter_non_bool_require_title_names_the_field(tmp_path: Path) -> Non
 
 def test_packaged_providers_yaml_has_permissive_prefilter() -> None:
     assert load_providers().prefilter == PrefilterPolicy()
+
+
+def test_providers_yaml_loads_from_package_root_not_nested() -> None:
+    """Installed layout is ``<pkg>/providers.yaml``, not ``<pkg>/WebSearch/providers.yaml``."""
+    from importlib.resources import files
+
+    pkg_root = Path(str(files("WebSearch")))
+    path = pkg_root / "providers.yaml"
+    assert path.is_file()
+    assert pkg_root.name == "WebSearch"
+    assert not (pkg_root / "WebSearch" / "providers.yaml").is_file()
+    assert load_providers(path).prefilter == PrefilterPolicy()
 
 
 # ---- Prefilter -------------------------------------------------------------------------------
@@ -499,3 +510,28 @@ def test_either_package_can_be_imported_first(first: str) -> None:
         check=False,
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_import_websearch_does_not_eager_load_pipeline() -> None:
+    """``import WebSearch`` must not pull agent_tools/backend/frontend/midend until used."""
+    code = (
+        "import sys, WebSearch\n"
+        "mods = set(sys.modules)\n"
+        "assert 'WebSearch.agent_tools' not in mods\n"
+        "assert 'WebSearch.backend' not in mods\n"
+        "assert 'WebSearch.midend' not in mods\n"
+        "assert callable(WebSearch.run_pipeline)\n"
+        "from WebSearch import search_hits\n"
+        "assert callable(search_hits)\n"
+        "assert 'WebSearch.agent_tools' in sys.modules\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+

@@ -13,9 +13,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from benchmark.tests.fakes import Script, ScriptedModel, answer
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage
+from tests.scripted_chat import Script, ScriptedModel, answer
 from WebSearch import midend
 from WebSearch.api import create_app
 from WebSearch.browse_agent import BrowseError, browse, is_public_http_url

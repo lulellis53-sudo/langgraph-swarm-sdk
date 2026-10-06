@@ -1,8 +1,9 @@
 # WebSearch pipeline
 
-Entry point for the search/scrape/extract workflow in this worktree
-(`feature/websearch` branch of the Swarm repo — a real git worktree, not a
-symlink). Three stages, each a small package, connected by plain data types:
+Entry point for the search/scrape/extract workflow in the Hatch package
+`WebSearch/` (`packages = ["src/swarm_sdk", "WebSearch"]` in `pyproject.toml`).
+Stages live at `WebSearch/frontend/`, `WebSearch/midend/`, and `WebSearch/backend/`
+(plain data types between them):
 
 ```
   query
@@ -64,11 +65,8 @@ require_title; values are normalized on load). See
 
 ## Layout note
 
-This directory is a **git worktree** of the Swarm repo (branch
-`feature/websearch`). Files mirrored from the main tree (AGENTS.md, Main/,
-Toolchain.md, src/…) are worktree checkouts of the same branch — edit the
-pipeline code here and merge `feature/websearch` upstream, not the other way
-around.
+This file lives in the **`WebSearch/`** Python package. Sibling paths are
+`frontend/`, `midend/`, `backend/`, and `providers.yaml`.
 
 ## Providers file: YAML or JSON
 
