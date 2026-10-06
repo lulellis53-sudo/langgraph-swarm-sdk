@@ -78,7 +78,7 @@ class TestSpawnDecomposition:
 
         with patch("swarm_sdk.orchestrator.spawn.complete", new_callable=AsyncMock) as mock_complete:
             mock_complete.return_value = mock_response
-            plan = await spawn("Build core module and test it", mock_manifests, model_override=mock_model)
+            plan = await spawn("Build core module and test it", mock_manifests, model_override=mock_model, structured=False)
 
             assert len(plan.steps) == 2
             assert plan.steps[0].id == "S1"
@@ -104,7 +104,7 @@ class TestSpawnDecomposition:
 
         with patch("swarm_sdk.orchestrator.spawn.complete", new_callable=AsyncMock) as mock_complete:
             mock_complete.side_effect = [bad_response, good_response]
-            plan = await spawn("Do work", mock_manifests, model_override=mock_model)
+            plan = await spawn("Do work", mock_manifests, model_override=mock_model, structured=False)
 
             assert len(plan.steps) == 1
             assert plan.steps[0].id == "S1"
@@ -123,7 +123,7 @@ class TestSpawnDecomposition:
 
         with patch("swarm_sdk.orchestrator.spawn.complete", new_callable=AsyncMock) as mock_complete:
             mock_complete.return_value = bad_response
-            plan = await spawn("Unrecoverable goal", mock_manifests, model_override=mock_model)
+            plan = await spawn("Unrecoverable goal", mock_manifests, model_override=mock_model, structured=False)
 
             assert len(plan.steps) == 1
             assert plan.steps[0].id == "S1"

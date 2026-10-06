@@ -746,4 +746,4 @@ def test_shipped_google_search_has_a_fallback_key_and_current_model() -> None:
         s for s in load_providers(ws.providers_yaml_path()).searchers if s.id == "google_search"
     )
     assert spec.api_key_fallback_envs == ("GOOGLE_API_KEY", "GEMINI_API_KEY_2")
-    assert spec.engine == "gemini-3.8-flash"
+    assert spec.engine == "gemini-3.5-flash"
