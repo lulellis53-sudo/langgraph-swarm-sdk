@@ -5,30 +5,37 @@ version: 1
 searchers:
   - id: context7
     kind: docs
+    enabled: false
     description: Library and API docs (Context7 MCP).
   - id: brave
     kind: websearcher
+    enabled: false
     api_key_env: BRAVE_API_KEY
     description: Brave Search API (web).
   - id: ddg
     kind: websearcher
+    enabled: false
     description: DuckDuckGo text search (no API key).
   - id: ddglite
     kind: websearcher
+    enabled: false
     description: DuckDuckGo Lite plain-HTML search (no API key, no package).
   - id: tavily
     kind: websearcher
+    enabled: false
     dork: translate  # site:/-site:/after:/before: become API fields; terms stay as text
     api_key_env: TAVILY_API_KEY
     description: Tavily Search API.
   - id: parallel
     kind: websearcher
+    enabled: false
     dork: translate  # site:/-site:/after: become Parallel source-policy filters
     api_key_env: PARALLEL_API_KEY
     engine: fast
     description: Parallel Search API (AI-optimized web search).
   - id: jina
     kind: websearcher
+    enabled: false
     api_key_env: JINA_API_KEY
     base_url: https://s.jina.ai
     description: >-
@@ -36,32 +43,44 @@ searchers:
       on api.jina.ai.
   - id: apify
     kind: websearcher
+    enabled: false
     api_key_env: APIFY_API_KEY
     base_url: https://api.apify.com/v2
     description: Apify API (fails without token / actor config).
   - id: openrouter_web
     kind: websearcher
+    enabled: false
     dork: translate  # site:/-site: become the plugin's include_domains / exclude_domains
     api_key_env: OPENROUTER_API_KEY
     engine: qwen/qwen3.8-27b:free  # model that runs the search; any OpenRouter slug works
     description: OpenRouter web-search plugin (cited pages as hits; usage in tokens).
   - id: exa
     kind: websearcher
+    enabled: false
     dork: translate
     api_key_env: EXA_API_KEY
     description: Exa Search API.
   - id: bright_data
     kind: websearcher
+    enabled: false
     engine: google
     api_key_env: BRIGHTDATA_MCP_TOKEN
     description: Live SERP via Bright Data MCP search_engine.
-  - id: searxng
+  - id: searxng_ddg
     kind: websearcher
-    engine: duckduckgo,bing
+    enabled: true
+    engine: duckduckgo
     base_url_env: SEARXNG_URL
-    description: Self-hosted SearXNG JSON (DuckDuckGo + Bing engines).
+    description: Self-hosted SearXNG JSON (DuckDuckGo engine).
+  - id: searxng_bing
+    kind: websearcher
+    enabled: true
+    engine: bing
+    base_url_env: SEARXNG_URL
+    description: Self-hosted SearXNG JSON (Bing engine).
   - id: google_search
     kind: websearcher
+    enabled: false
     api_key_env: GEMINI_API_KEY
     # GEMINI_API_KEY, else GOOGLE_API_KEY, else GEMINI_API_KEY_2. Rotate on 401/403/429.
     api_key_env_fallbacks: [GOOGLE_API_KEY, GEMINI_API_KEY_2]
@@ -74,6 +93,7 @@ searchers:
     description: Gemini with the Google Search tool call (cited sources + token usage).
   - id: kimisearch
     kind: websearcher
+    enabled: false
     api_key_env: MOONSHOT_API_KEY
     base_url_env: MOONSHOT_BASE_URL
     engine: kimi-k3
@@ -95,7 +115,6 @@ crawlers:
   order:
     - httpx
     - curl_cffi
-    - scrapy
     - playwright
     - crawlee
 

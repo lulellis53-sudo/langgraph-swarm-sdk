@@ -9,9 +9,10 @@ results straight into a prompt use :func:`search_brief`.
 
 from __future__ import annotations
 
+import asyncio
 import functools
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, replace
 from typing import Any
 
@@ -25,7 +26,9 @@ from WebSearch.frontend.websearchers import (
     ProvidersConfig,
     SearchFn,
     SearchHit,
+    SearchResult,
     parallel_search,
+    search,
 )
 from WebSearch.repeater import normalize_url
 
@@ -202,19 +205,20 @@ def render_brief(
     query: str = "",
     min_score: float | None = None,
     show_scores: bool = False,
+    counter: Callable[[str], int] | None = None,
 ) -> str:
     """Render hits as a numbered, token-budgeted brief for an agent prompt.
 
     Titles and snippets pass through :func:`normalize_text` (entities decoded,
     control chars dropped, repeated lines removed); URLs are canonicalized (no
     tracking params, no fragments). Hits are ranked by relevance to ``query``
-    first, optionally filtered by ``min_score``, then added until the tiktoken
+    first, optionally filtered by ``min_score``, then added until the token
     budget is reached. At least one hit is always kept: a brief that says
     nothing is worse than one that overruns slightly.
 
     Args:
         hits (list[SearchHit]): Merged hits (best first).
-        max_tokens (int): Soft cap measured with tiktoken (cl100k_base).
+        max_tokens (int): Soft cap measured with ``counter`` (default tiktoken).
         max_chars (int | None): Deprecated character cap; when set it applies in
             addition to ``max_tokens`` so existing callers keep their bound.
         snippet_chars (int): Per-hit snippet cap before normalization.
@@ -224,6 +228,8 @@ def render_brief(
             when the query has no usable search terms (e.g. stop words only).
         show_scores (bool): Annotate each line with its relevance score. Costs
             a few tokens per hit; useful when debugging retrieval quality.
+        counter (Callable[[str], int] | None): Token counter; default uses
+            tiktoken (cl100k_base).
 
     Returns:
         str: The brief, or an empty string when ``hits`` is empty.
@@ -238,6 +244,7 @@ def render_brief(
     if not hits:
         return ""
 
+    counter = counter if counter is not None else count_tokens
     ordered = rank_hits(list(hits), query)
     query_terms = {
         term
@@ -266,8 +273,8 @@ def render_brief(
         # The footer is emitted after the hits, so reserve its cost: budgeting
         # only the lines lets the brief overshoot ``max_tokens`` on the footer.
         next_sources = sources if hit.searcher_id in sources else [*sources, hit.searcher_id]
-        footer_tokens = count_tokens(f"\nSources: {', '.join(next_sources)}")
-        prospective = used + count_tokens(line) + 1 + footer_tokens
+        footer_tokens = counter(f"\nSources: {', '.join(next_sources)}")
+        prospective = used + counter(line) + 1 + footer_tokens
         over_tokens = bool(lines) and prospective > max_tokens
         over_chars = max_chars is not None and bool(lines) and used + len(line) > max_chars
         if over_tokens or over_chars:
@@ -286,6 +293,7 @@ def search_brief(
     max_tokens: int = 400,
     max_chars: int | None = None,
     min_score: float | None = None,
+    counter: Callable[[str], int] | None = None,
     config: ProvidersConfig | None = None,
     backends: Mapping[str, SearchFn] | None = None,
     searcher_id: str | None = None,
@@ -297,7 +305,10 @@ def search_brief(
     Args:
         query (str): User query (a dork string works as-is).
         limit (int): Max hits in the brief.
-        max_chars (int): Soft cap on brief length.
+        max_tokens (int): Soft token cap on brief length.
+        max_chars (int | None): Soft character cap; kept for backwards compat.
+        min_score (float | None): Drop hits below this relevance threshold.
+        counter (Callable[[str], int] | None): Token counter; default tiktoken.
         config (ProvidersConfig | None): Registry; default ``load_providers()``.
         backends (Mapping[str, SearchFn] | None): id → callable; default HTTP APIs.
         searcher_id (str | None): Restrict to one searcher.
@@ -317,8 +328,116 @@ def search_brief(
         timeout_s=timeout_s,
     )
     return render_brief(
-        hits, max_tokens=max_tokens, max_chars=max_chars, query=query, min_score=min_score
+        hits,
+        max_tokens=max_tokens,
+        max_chars=max_chars,
+        query=query,
+        min_score=min_score,
+        counter=counter,
     )
+
+
+async def asearch(
+    query: str,
+    *,
+    config: ProvidersConfig | None = None,
+    backends: Mapping[str, SearchFn] | None = None,
+    enabled_ids: Sequence[str] | None = None,
+    count_tokens: Callable[[str], int] | None = None,
+    cache_ttl_s: float = _SEARCH_CACHE_TTL_S,
+    max_workers: int = 8,
+    timeout_s: float = 30.0,
+    limit: int = 0,
+) -> SearchResult:
+    """Async wrapper around :func:`search` that runs the sync call in a thread.
+
+    Args:
+        query (str): User query.
+        config (ProvidersConfig | None): Registry; default ``load_providers()``.
+        backends (Mapping[str, SearchFn] | None): id → callable; default HTTP APIs.
+        enabled_ids (Sequence[str] | None): Override active searcher ids.
+        count_tokens (Callable[[str], int] | None): Token estimator for result metadata.
+        cache_ttl_s (float): Query-level cache lifetime.
+        max_workers (int): Concurrent searcher cap.
+        timeout_s (float): Overall wall-clock budget.
+        limit (int): Max hits returned; ``0`` returns everything.
+
+    Returns:
+        SearchResult: Hits, per-searcher status/timings, and token estimate.
+    """
+    return await asyncio.to_thread(
+        search,
+        query,
+        config=config,
+        backends=backends,
+        enabled_ids=enabled_ids,
+        count_tokens=count_tokens,
+        cache_ttl_s=cache_ttl_s,
+        max_workers=max_workers,
+        timeout_s=timeout_s,
+        limit=limit,
+    )
+
+
+def as_tool(
+    *,
+    max_tokens: int = 400,
+    max_chars: int | None = None,
+    min_score: float | None = None,
+    counter: Callable[[str], int] | None = None,
+    config: ProvidersConfig | None = None,
+    backends: Mapping[str, SearchFn] | None = None,
+    enabled_ids: Sequence[str] | None = None,
+    cache_ttl_s: float = _SEARCH_CACHE_TTL_S,
+    max_workers: int = 8,
+    timeout_s: float = 30.0,
+    limit: int = 5,
+) -> Callable[[str], str]:
+    """Build a synchronous search-and-render tool for LLM agent tool calling.
+
+    The returned callable accepts a query string and returns a token-budgeted
+    brief. It uses the new keyless-by-default :func:`search` entry point, so
+    only enabled providers with available credentials contribute results.
+
+    Args:
+        max_tokens (int): Soft token cap for the rendered brief.
+        max_chars (int | None): Optional character cap.
+        min_score (float | None): Drop hits below this relevance threshold.
+        counter (Callable[[str], int] | None): Token counter; default tiktoken.
+        config (ProvidersConfig | None): Registry; default ``load_providers()``.
+        backends (Mapping[str, SearchFn] | None): id → callable; default HTTP APIs.
+        enabled_ids (Sequence[str] | None): Override active searcher ids.
+        cache_ttl_s (float): Query-level cache lifetime.
+        max_workers (int): Concurrent searcher cap.
+        timeout_s (float): Overall wall-clock budget.
+        limit (int): Max hits returned from search.
+
+    Returns:
+        Callable[[str], str]: ``(query: str) -> brief: str``.
+    """
+
+    def _tool(query: str) -> str:
+        result = search(
+            query,
+            config=config,
+            backends=backends,
+            enabled_ids=enabled_ids,
+            count_tokens=counter,
+            cache_ttl_s=cache_ttl_s,
+            max_workers=max_workers,
+            timeout_s=timeout_s,
+            limit=limit,
+        )
+        return render_brief(
+            list(result.hits),
+            max_tokens=max_tokens,
+            max_chars=max_chars,
+            query=query,
+            min_score=min_score,
+            counter=counter,
+        )
+
+    return _tool
 
 
 def dedupe_documents(docs: Sequence[ExtractedDoc]) -> dict[str, Any]:
@@ -355,6 +474,8 @@ def summarize_documents(
 
 
 __all__ = [
+    "asearch",
+    "as_tool",
     "count_tokens",
     "dedupe_documents",
     "rank_hits",

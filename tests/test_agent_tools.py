@@ -198,7 +198,7 @@ def test_langchain_brief_tool_exposes_token_budget_and_relevance() -> None:
 
     tools = {t.name: t for t in websearch_langchain_tools(backends={"brave": fake_search})}
     brief_tool = tools["web_search_brief"]
-    out = brief_tool.func("lightgbm gradient boosting", max_tokens=150, min_score=0.5)
+    out = getattr(brief_tool, "func")("lightgbm gradient boosting", max_tokens=150, min_score=0.5)
 
     assert isinstance(out, str)
     assert "lightgbm" in out
@@ -214,7 +214,7 @@ def test_langchain_brief_tool_defaults_still_work() -> None:
         return [SearchHit("a result", "https://a.example/x", "body", "brave")]
 
     tools = {t.name: t for t in websearch_langchain_tools(backends={"brave": fake_search})}
-    out = tools["web_search_brief"].func("anything")
+    out = getattr(tools["web_search_brief"], "func")("anything")
     assert "a result" in out
 
 
@@ -304,3 +304,33 @@ def test_search_brief_signature_accepts_new_knobs() -> None:
     params = inspect.signature(search_brief).parameters
     for name in ("max_tokens", "min_score", "max_chars"):
         assert name in params, f"search_brief is missing {name}"
+
+
+def test_search_brief_min_score_filters_through_search_layer() -> None:
+    """``search_brief`` with ``min_score`` drops low-relevance hits from a fake backend."""
+    from WebSearch.agent_tools import search_brief
+    from WebSearch.frontend.websearchers import ProvidersConfig, SearcherSpec
+
+    def fake_search(query: str, spec: object) -> list[SearchHit]:
+        return [
+            SearchHit(
+                "lightgbm gradient boosting", "https://a.example/x", "gradient boosting", "fake"
+            ),
+            SearchHit("cooking pasta recipe", "https://b.example/y", "boil water and salt", "fake"),
+        ]
+
+    config = ProvidersConfig(
+        version=1,
+        searchers=(SearcherSpec(id="fake", kind="websearcher"),),
+        extractor_order=("selectolax", "selectolax_regex", "regex", "trafilatura", "bs4"),
+    )
+    brief = search_brief(
+        "lightgbm gradient boosting",
+        min_score=0.5,
+        max_tokens=500,
+        config=config,
+        backends={"fake": fake_search},
+        searcher_id="fake",
+    )
+    assert "lightgbm" in brief
+    assert "pasta" not in brief

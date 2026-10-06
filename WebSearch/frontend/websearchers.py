@@ -76,6 +76,9 @@ class SearcherSpec:
     #: Extra key env names tried in order when the primary key is missing, rejected (401/403)
     #: or out of quota (429). Only ``google_search`` rotates on failure today.
     api_key_fallback_envs: tuple[str, ...] = ()
+    #: Whether the searcher is active. Disabled searchers are skipped and reported as
+    #: ``disabled``; they never need a key.
+    enabled: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -198,6 +201,32 @@ class SearchHit:
     query: str = ""
     #: Lexical relevance of this hit to ``query`` in ``[0.0, 1.0]`` (0.0 = unscored).
     relevance: float = 0.0
+
+
+SearcherStatusName = Literal[
+    "ok", "empty", "no_key", "unreachable", "error", "not_implemented", "disabled"
+]
+
+
+@dataclass(frozen=True, slots=True)
+class SearcherStatus:
+    """Outcome of one searcher invocation."""
+
+    status: SearcherStatusName
+    hint: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class SearchResult:
+    """Full result of a multi-searcher query."""
+
+    query: str
+    hits: tuple[SearchHit, ...]
+    status: dict[str, SearcherStatus]
+    timings_ms: dict[str, float]
+    tokens: int
+    pages: tuple[object, ...] = ()
+    docs: tuple[object, ...] = ()
 
 
 class WebSearcher(Protocol):
@@ -377,6 +406,8 @@ def _parse_providers(target: Path) -> ProvidersConfig:
         dork_mode = str(item.get("dork") or "native")
         if dork_mode not in {"native", "translate"}:
             raise ValueError(f"searcher {item.get('id')!r}: dork must be native or translate")
+        enabled_raw = item.get("enabled")
+        enabled = bool(enabled_raw) if enabled_raw is not None else True
         searchers.append(
             SearcherSpec(
                 id=str(item["id"]),
@@ -388,6 +419,7 @@ def _parse_providers(target: Path) -> ProvidersConfig:
                 base_url_env=str(base_env) if isinstance(base_env, str) else None,
                 dork=dork_mode,
                 api_key_fallback_envs=fallbacks,
+                enabled=enabled,
             )
         )
     extractors_block = raw.get("extractors")
@@ -1102,6 +1134,7 @@ def search_parallel(query: str, spec: SearcherSpec) -> list[SearchHit]:
         "mode": spec.engine if spec.engine in {"turbo", "fast", "basic", "advanced"} else "fast",
         "advanced_settings": {"max_results": 8},
     }
+    advanced: dict[str, Any] = body["advanced_settings"]
     if spec.dork == "translate":
         parsed = parse_dork(query)
         if parsed.plain():
@@ -1115,7 +1148,7 @@ def search_parallel(query: str, spec: SearcherSpec) -> list[SearchHit]:
         if parsed.after:
             source_policy["after_date"] = parsed.after
         if source_policy:
-            body["advanced_settings"]["source_policy"] = source_policy
+            advanced["source_policy"] = source_policy
 
     data = _httpx_json(
         "POST",
@@ -1634,6 +1667,8 @@ def builtin_searchers() -> dict[str, SearchFn]:
         # Legacy id, kept so existing configs keep working.
         "google_ground": search_google_search,
         "searxng": search_searxng,
+        "searxng_ddg": search_searxng,
+        "searxng_bing": search_searxng,
         "kimisearch": search_kimi,
     }
 
@@ -1702,6 +1737,198 @@ def _select_specs(config: ProvidersConfig, searcher_id: str | None) -> list[Sear
     if not specs:
         raise KeyError(searcher_id)
     return specs
+
+
+def _word_count_tokens(text: str) -> int:
+    """Default token budget: whitespace-separated words."""
+    return len(text.split()) if text else 0
+
+
+_QUERY_CACHE: OrderedDict[tuple[str, tuple[str, ...]], tuple[float, SearchResult]] = OrderedDict()
+_QUERY_CACHE_TTL_S = 300.0
+_QUERY_CACHE_MAX = 128
+_QUERY_CACHE_LOCK = threading.Lock()
+
+
+def _query_cache_key(query: str, enabled_ids: tuple[str, ...]) -> tuple[str, tuple[str, ...]]:
+    return (query, enabled_ids)
+
+
+def _searcher_ready_status(spec: SearcherSpec, table: dict[str, SearchFn]) -> SearcherStatus | None:
+    """Return a status if the searcher should be skipped, otherwise ``None``."""
+    if spec.kind != "websearcher":
+        return SearcherStatus("not_implemented", "searcher kind is not websearcher")
+    if canon_searcher_id(spec.id) not in table and spec.id not in table:
+        return SearcherStatus("not_implemented", "no backend registered for this id")
+    if spec.api_key_env and not env_key(spec):
+        return SearcherStatus("no_key", f"set {spec.api_key_env}")
+    if spec.base_url_env and not env_base(spec):
+        return SearcherStatus("no_key", f"set {spec.base_url_env}")
+    return None
+
+
+def _run_searcher(
+    query: str,
+    spec: SearcherSpec,
+    fn: SearchFn,
+    cache_ttl_s: float,
+) -> tuple[list[SearchHit], SearcherStatus, float]:
+    """Run one searcher and classify the outcome.
+
+    Returns:
+        tuple of (hits, status, elapsed_ms).
+    """
+    start = time.perf_counter()
+    try:
+        hits = list(_cached_provider_search(spec, query, fn, cache_ttl_s))
+    except (TimeoutError, OSError, ConnectionError) as exc:
+        elapsed = (time.perf_counter() - start) * 1000
+        return [], SearcherStatus("unreachable", str(exc)), elapsed
+    except Exception as exc:  # noqa: BLE001 - provider boundary
+        elapsed = (time.perf_counter() - start) * 1000
+        return [], SearcherStatus("error", str(exc)), elapsed
+    elapsed = (time.perf_counter() - start) * 1000
+    if hits:
+        return hits, SearcherStatus("ok"), elapsed
+    return hits, SearcherStatus("empty"), elapsed
+
+
+def search(
+    query: str,
+    *,
+    config: ProvidersConfig | None = None,
+    backends: Mapping[str, SearchFn] | None = None,
+    enabled_ids: Sequence[str] | None = None,
+    count_tokens: Callable[[str], int] | None = None,
+    cache_ttl_s: float = _QUERY_CACHE_TTL_S,
+    max_workers: int = _MAX_WORKERS,
+    timeout_s: float = 30.0,
+    limit: int = 0,
+) -> SearchResult:
+    """Run ``query`` across enabled searchers and return a structured result.
+
+    This is the agent-facing entry point: it filters by ``enabled``/``enabled_ids``,
+    reports per-searcher status, deduplicates and near-deduplicates hits, and
+    estimates token usage with the supplied ``count_tokens`` function.
+
+    Args:
+        query: User query.
+        config: Registry; default ``load_providers()``.
+        backends: id → callable; default HTTP APIs.
+        enabled_ids: Override which ids are active. When omitted, ``spec.enabled``
+            from the registry controls eligibility.
+        count_tokens: Token budget function; default is whitespace word count.
+        cache_ttl_s: Query-level result cache lifetime; ``<= 0`` disables caching.
+        max_workers: Concurrent searcher cap.
+        timeout_s: Overall wall-clock budget for all searchers.
+        limit: Max hits returned; ``0`` returns everything.
+
+    Returns:
+        SearchResult: Hits, per-searcher status/timings, and token estimate.
+    """
+    from WebSearch.backend.prefilter import prefilter_hits
+    from WebSearch.frontend.hits import near_dedupe, normalize_hit
+
+    cfg = config or load_providers()
+    table = dict(backends if backends is not None else builtin_searchers())
+    counter = count_tokens if count_tokens is not None else _word_count_tokens
+    enabled_override = None
+    if enabled_ids is not None:
+        enabled_override = {canon_searcher_id(sid) for sid in enabled_ids}
+
+    if enabled_override is not None:
+        effective_enabled = sorted(enabled_override)
+    else:
+        effective_enabled = sorted(spec.id for spec in cfg.searchers if spec.enabled)
+    cache_key = _query_cache_key(query, tuple(effective_enabled))
+    if cache_ttl_s > 0:
+        with _QUERY_CACHE_LOCK:
+            entry = _QUERY_CACHE.get(cache_key)
+            if entry is not None:
+                expires_at, result = entry
+                if time.monotonic() < expires_at:
+                    _QUERY_CACHE.move_to_end(cache_key)
+                    return result
+                del _QUERY_CACHE[cache_key]
+
+    status: dict[str, SearcherStatus] = {}
+    timings_ms: dict[str, float] = {}
+    batches: list[list[SearchHit]] = []
+    jobs: list[tuple[SearcherSpec, SearchFn]] = []
+
+    for spec in cfg.searchers:
+        sid = spec.id
+        if enabled_override is not None:
+            is_enabled = canon_searcher_id(sid) in enabled_override
+        else:
+            is_enabled = spec.enabled
+        if not is_enabled:
+            status[sid] = SearcherStatus("disabled", "disabled in providers.yaml or by enabled_ids")
+            continue
+        ready = _searcher_ready_status(spec, table)
+        if ready is not None:
+            status[sid] = ready
+            continue
+        fn = table.get(sid) or table.get(canon_searcher_id(sid))
+        if fn is None:
+            status[sid] = SearcherStatus("not_implemented", "no backend registered")
+            continue
+        jobs.append((spec, fn))
+
+    if jobs:
+        semaphore = threading.Semaphore(max(1, min(max_workers, len(jobs))))
+
+        _RunResult = tuple[str, list[SearchHit], SearcherStatus, float]
+
+        def run(job: tuple[SearcherSpec, SearchFn]) -> _RunResult:
+            spec, fn = job
+            with semaphore:
+                hits, st, elapsed = _run_searcher(query, spec, fn, cache_ttl_s)
+            return spec.id, hits, st, elapsed
+
+        executor = shared_executor()
+        wait = timeout_s if timeout_s and timeout_s > 0 else None
+        futures = {executor.submit(run, job): job for job in jobs}
+        by_spec: dict[str, tuple[list[SearchHit], SearcherStatus, float]] = {}
+        try:
+            for future in as_completed(futures, timeout=wait):
+                sid, hits, st, elapsed = future.result()
+                by_spec[sid] = (hits, st, elapsed)
+        except TimeoutError:
+            for future in futures:
+                future.cancel()
+            for spec, _ in jobs:
+                if spec.id not in by_spec:
+                    by_spec[spec.id] = ([], SearcherStatus("unreachable", "search timeout"), 0.0)
+
+        for spec, _ in jobs:
+            hits, st, elapsed = by_spec.get(spec.id, ([], SearcherStatus("error", "unknown"), 0.0))
+            status[spec.id] = st
+            timings_ms[spec.id] = round(elapsed, 3)
+            if hits:
+                batches.append(prefilter_hits(hits, cfg.prefilter)[0])
+
+    merged = _rrf_fuse(batches) if len(batches) > 1 else [hit for batch in batches for hit in batch]
+    hits = [normalize_hit(hit) for hit in dedupe_hits(merged)]
+    if hits and len(batches) > 1:
+        hits = near_dedupe(hits, max_distance=6)
+    if limit and limit > 0:
+        hits = hits[:limit]
+
+    tokens = sum(counter(f"{hit.title} {hit.snippet}") for hit in hits)
+    result = SearchResult(
+        query=query,
+        hits=tuple(hits),
+        status=status,
+        timings_ms=timings_ms,
+        tokens=tokens,
+    )
+    if cache_ttl_s > 0:
+        with _QUERY_CACHE_LOCK:
+            while len(_QUERY_CACHE) >= _QUERY_CACHE_MAX:
+                _QUERY_CACHE.popitem(last=False)
+            _QUERY_CACHE[cache_key] = (time.monotonic() + cache_ttl_s, result)
+    return result
 
 
 def _rrf_fuse(batches: Sequence[Sequence[SearchHit]], *, k: int = 60) -> list[SearchHit]:
@@ -1866,9 +2093,13 @@ __all__ = [
     "ResultSink",
     "SearchFn",
     "SearchHit",
+    "SearchResult",
     "SearcherKind",
     "SearcherSpec",
+    "SearcherStatus",
+    "SearcherStatusName",
     "SinkReport",
+    "search",
     "WebSearcher",
     "_httpx_json",
     "_rrf_fuse",
