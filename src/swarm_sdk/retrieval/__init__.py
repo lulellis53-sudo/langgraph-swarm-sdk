@@ -41,6 +41,11 @@ from swarm_sdk.retrieval.rerank import (
     KeywordReranker,
     Reranker,
 )
+from swarm_sdk.retrieval.strips import (
+    KnowledgeStrip,
+    StripRefinement,
+    refine_strips,
+)
 from swarm_sdk.retrieval.text import tokenize
 
 __all__ = [
@@ -64,9 +69,11 @@ __all__ = [
     "RecallResult",
     "Reflection",
     "RetrievalPlan",
+    "KnowledgeStrip",
     "Reranker",
     "RetrievalResult",
     "SemanticCache",
+    "StripRefinement",
     "classify",
     "hybrid_search",
     "order_for_prompt",
@@ -75,6 +82,7 @@ __all__ = [
     "recall_hits",
     "route_query",
     "recall_texts",
+    "refine_strips",
     "recall_with_confidence",
     "tokenize",
     "u_shape",
