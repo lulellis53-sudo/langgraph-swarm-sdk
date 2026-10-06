@@ -15,6 +15,14 @@
     "ruff.interpreter": ["${workspaceFolder:SDK (integration)}/.venv/bin/python"],
     "ty.interpreter": "${workspaceFolder:SDK (integration)}/.venv/bin/python",
     "jupyter.notebookFileRoot": "${workspaceFolder:SDK (integration)}",
+    "jupyter.allowUnauthorizedRemoteConnection": false,
+    "colab.logging.level": "info",
+    "colab.uploading": true,
+    "colab.activityBarContentView": true,
+    "colab.activityBarResourceView": true,
+    "colab.serverMounting": false,
+    "colab.terminal": true,
+    "colab.importNotebookFromUrl": true,
     "docker.composeFile": "${workspaceFolder:SDK (integration)}/docker/compose.yaml"
   }
 }

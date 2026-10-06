@@ -44,6 +44,16 @@ verdict = approve (empty findings = verified, not skimmed)
 |--------|------|---------|
 | `diff_review` | Review a diff/PR for correctness, security, style, coverage | `verdict`, `findings`, `coverage_gaps` |
 | `security_smell_check` | Scan a diff for injection, secret exposure, unsafe deserialization, OWASP Top 10 | `findings` (security), `verdict` |
+| `pydantic_schema_check` | Public `.py` APIs using untyped `dict` / dataclass JSON instead of Pydantic v2 | `verdict`, `findings` for Coder |
+
+This task is **read-only inspection** (CR01 in `coordination.yaml`). There is no separate linter binary: walk the claimed files, emit `findings`, and stop. Coder applies models in CR02 (`implement_in_files`).
+
+**Procedure**
+
+1. Open only the `files` list on the coordination task (default: `WebSearch/digest.py`, `WebSearch/forecast.py`, `WebSearch/cli.py`, `src/swarm_sdk/retrieval/rag_ingest.py`).
+2. Flag exported callables / HTTP or CLI payloads whose types are `dict[str, Any]`, untyped `dict`, or `@dataclass` used as JSON, instead of `pydantic.BaseModel` with `Field`, `model_config = ConfigDict(...)`, `model_validate` / `model_dump` (not v1 `class Config`).
+3. Skip hot numeric kernels and generated protobuf stubs.
+4. Each finding: `severity` (usually `major` for a public untyped payload), `file`, `line`, `issue`, `suggestion` (proposed model name). `verdict` is `request_changes` if any such finding exists, else `approve`.
 
 ## Responsibilities
 - Review diffs and PRs for correctness, security, style, and test coverage
@@ -86,6 +96,7 @@ See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and code-review flow in
 4. **Test coverage check.** For every changed behavior, confirm a test covers it. If not, flag it as `major`.
 5. **Do not rubber-stamp.** An empty findings list means you verified correctness, not that you skimmed.
 6. **Escalate security findings.** Any potential secret exposure, injection, or unsafe deserialization → escalate to Security agent.
+7. **Pydantic v2 on public Python contracts.** On `pydantic_schema_check` (and as **major** on `diff_review` when new public payloads ship as raw `dict[str, Any]`), require `pydantic.BaseModel` + `Field` + `model_config = ConfigDict(...)`. Use `model_validate` / `model_dump`, not a hand-rolled `class Config`. Do not edit files — each finding names a path and a suggested model. Priority files: `WebSearch/digest.py`, `WebSearch/forecast.py`, `WebSearch/cli.py`, `src/swarm_sdk/retrieval/rag_ingest.py`. Skip hot numeric kernels and protobuf stubs. Dependency: `pydantic>=2.11` in `pyproject.toml`.
 
 ## Pre-task checklist
 - [ ] Read the full diff, not just the summary

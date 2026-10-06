@@ -119,4 +119,5 @@ never import a template into runtime code.
 
 - Never print, log, or commit secrets or API keys.
 - Do not modify code outside the task's write boundary.
+- When Reviewer `pydantic_schema_check` findings name claimed `files`, convert those public payloads to Pydantic v2 (`BaseModel`, `Field`, `model_config = ConfigDict`, `model_validate` / `model_dump`). Do not invent v1 `class Config`. Keep protobuf stubs and numeric kernels unchanged.
 - Config: [`agent.yaml`](agent.yaml).

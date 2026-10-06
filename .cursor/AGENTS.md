@@ -14,6 +14,17 @@ Scoped instructions for Agent work under `.cursor/`. Complements the root [`AGEN
 8. **Docs after editing** — after substantive library/API edits, use **Context7** (preferred), then **Tavily** or **Exa**; tighten from current docs before claiming done.
 9. **Delegated work** — use Cursor subagents (`.cursor/agents/` when present) or Swarm personas (`Agents/*`) with clear prompts; parallelize independent multitasks only when they do not fragment the same feature across files.
 
+## Cursor IDE usage
+
+Use **Agent** chat (not Ask). Project subagents: [`.cursor/agents/`](agents/). Slash commands: [`.cursor/commands/`](commands/). Official: [cursor.com/docs/subagents](https://cursor.com/docs/subagents).
+
+| You type | Cursor runs |
+| -------- | ----------- |
+| `/code-fixer` | [commands/code-fixer.md](commands/code-fixer.md) |
+| `@code-fixer` or “send CodeFixer” | [agents/code-fixer.md](agents/code-fixer.md) (`name: code-fixer`) |
+
+Attach `@WebSearch` or the Reviewer table first. CodeFixer applies **critical** then **major**, proves with `uv run pytest` on touched tests, does not commit unless asked. Also works from Cursor CLI and Cloud Agents.
+
 ## STOP — anti-patterns
 
 | Stop | Do instead |
@@ -223,5 +234,6 @@ uv run python .cursor/templates/python_static_template_lite.py
 - Swarm roles: [`../Agents/README.md`](../Agents/README.md)
 - Extensions: [`extensions.txt`](extensions.txt)
 - Example command: [`commands/sql-pro.md`](commands/sql-pro.md)
+- CodeFixer: [`agents/code-fixer.md`](agents/code-fixer.md) · [`commands/code-fixer.md`](commands/code-fixer.md)
 - Static template: [@templates/python_static_template.py](templates/python_static_template.py)
 - PEP 810: <https://peps.python.org/pep-0810/>

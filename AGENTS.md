@@ -110,6 +110,17 @@ uv run python -m swarm_sdk.agents.validate
 
 - Cursor/VS Code will prompt from `[.vscode/extensions.json](.vscode/extensions.json)`, or `xargs -n1 code --install-extension < .cursor/extensions.txt`.
 
+### Subtopic: Cursor IDE usage
+
+Custom subagents: `[.cursor/agents/](.cursor/agents/)`. Slash commands: `[.cursor/commands/](.cursor/commands/)`. Docs: [Cursor subagents](https://cursor.com/docs/subagents).
+
+| In Agent chat | Runs |
+| ------------- | ---- |
+| `/code-fixer` | `[.cursor/commands/code-fixer.md](.cursor/commands/code-fixer.md)` |
+| `@code-fixer` or “send CodeFixer” | `[.cursor/agents/code-fixer.md](.cursor/agents/code-fixer.md)` |
+
+Open **Agent** mode, `@`-attach the review or files, then `/code-fixer`. Fixes **critical** / **major**; skips **nit** unless asked. Does not commit unless you ask. Same files exist on the WebSearch worktree.
+
 ---
 
 ## Topic: Workflow

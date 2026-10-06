@@ -29,6 +29,30 @@ tasks:
       - cache_decision
       - cache_policy
 
+  - id: ingest_and_chunk
+    description: >-
+      Structure-aware markdown/AST chunking with overlap, SHA-256 ids, and
+      index write via rag_ingest (FAISS / NumPy fallback).
+    outputs:
+      - chunks
+      - index_uri
+
+  - id: rerank_and_pack
+    description: >-
+      Cross-encoder rerank Top-K1 to Top-K2 and Lost-in-the-Middle pack
+      within the token budget.
+    outputs:
+      - packed_context
+      - scores
+
+  - id: adaptive_crag
+    description: >-
+      When max score is low or the pool is empty, run DarS (HyDE, step-back,
+      WebSearch fallback) and return CRAG CORRECT / INCORRECT / AMBIGUOUS.
+    outputs:
+      - crag_assessment
+      - fallback
+
 capabilities:
   - retrieval
   - semantic_cache

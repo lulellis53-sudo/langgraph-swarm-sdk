@@ -135,7 +135,8 @@
   "colab.activityBarContentView": true,
   "colab.activityBarResourceView": true,
   "colab.serverMounting": false,
-  "colab.terminal": false,
+  "colab.terminal": true,
+  "colab.importNotebookFromUrl": true,
 
   "docker.showStartPage": false,
   "docker.composeBuild": true,

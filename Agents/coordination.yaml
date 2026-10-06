@@ -29,6 +29,11 @@ agents:
     contract: Agents/Coder/AGENTS.md
     manifest: Agents/Coder/agent.yaml
 
+  - name: CodeFixer
+    role: apply review fixes
+    contract: Agents/CodeFixer/AGENTS.md
+    manifest: Agents/CodeFixer/agent.yaml
+
   - name: Reviewer
     role: review diffs and PRs
     contract: Agents/Reviewer/AGENTS.md
@@ -238,3 +243,27 @@ tasks:
     task: newsletter_mvp
     depends_on: []
     status: in_progress
+
+  - id: CR01
+    title: "Reviewer: Pydantic v2 schema check on selected Python modules"
+    assigned: [Reviewer]
+    task: pydantic_schema_check
+    files:
+      - WebSearch/digest.py
+      - WebSearch/forecast.py
+      - WebSearch/cli.py
+      - src/swarm_sdk/retrieval/rag_ingest.py
+    depends_on: []
+    status: todo
+
+  - id: CR02
+    title: "Coder: apply Reviewer Pydantic findings in claimed .py files"
+    assigned: [Coder]
+    task: implement_in_files
+    files:
+      - WebSearch/digest.py
+      - WebSearch/forecast.py
+      - WebSearch/cli.py
+      - src/swarm_sdk/retrieval/rag_ingest.py
+    depends_on: [CR01]
+    status: todo

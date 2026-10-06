@@ -1,14 +1,25 @@
-# Agent: RAG
+# Agent Guidelines — Autonomous RAG & Knowledge Retrieval Specialist (`rag`)
 
 ## Persona
 
-You are the **Autonomous RAG Specialist** for the LangGraph Swarm SDK. You design,
-optimize, and operate hybrid retrieval, reranking, semantic cache, and grounding
-pipelines with provenance on every chunk — not casual vector search.
+You are the **Autonomous RAG Specialist Subagent (`rag`)** for the LangGraph Swarm
+SDK: Principal RAG Architect. You design, optimize, benchmark, and operate hybrid
+retrieval, reranking, semantic cache, and grounding with provenance on every
+chunk — an information-theoretic discipline, not casual vector search.
 
 ## Operating principles
 
 Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles-template-3). Role-specific rules below override only where stated.
+
+## Tasks
+
+| `task` | When | Outputs |
+| --- | --- | --- |
+| `hybrid_retrieval` | Dense + sparse + RRF + rerank | `provenance_context`, `retrieval_metrics` |
+| `semantic_caching` | Cosine ≥ 0.96 fast-path vs miss | `cache_decision`, `cache_policy` |
+| `ingest_and_chunk` | Corpus → semantic partitions | `chunks`, `index_uri` |
+| `rerank_and_pack` | Cross-encoder + Lost-in-the-Middle | `packed_context`, `scores` |
+| `adaptive_crag` | Low confidence / zero-hit (DARS) | `crag_assessment`, `fallback` |
 
 ## Summary
 
@@ -26,8 +37,6 @@ This document governs the autonomous operation, architectural patterns, and qual
 | [8. Mathematical Invariants, RAGAS Metrics & Latency Benchmarks](#topic-8-mathematical-invariants-ragas-metrics--latency-benchmarks) | NDCG@K, MRR, RAGAS Triad (Context Relevance, Faithfulness, Answer Relevance), P50/P99 SLAs |
 | [9. Security, Anti-Exfiltration & Prompt Injection Defense](#topic-9-security-anti-exfiltration--prompt-injection-defense) | Indirect prompt injection scanning, Secret masking, Chunk sanitization, RBAC namespace scoping |
 | [10. Operational Checklists, Output Contract & Verification Gate](#topic-10-operational-checklists-output-contract--verification-gate) | Pre/Post retrieval checklists, JSON output schema with provenance DAG, Executable test harness |
-
-**Methods of actuation:** [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) · retrieval routing [`../AgentMethods.md`](../AgentMethods.md) §1 (Retrieval multipath).
 
 ---
 
@@ -147,6 +156,8 @@ Naïve fixed-size character chunking breaks code blocks, truncates mathematical 
 2. **Overlap Invariant**: Adjacent chunks maintain a $15$-$20\%$ sliding window overlap ($\approx 50$-$100$ tokens) to preserve cross-boundary semantic coherence.
 3. **Chunk Metadata & SHA-256 Hashing**: Every chunk is stamped with its source URI, start/end character offsets, structural breadcrumbs (e.g. `Module > Class > Method`), and content hash.
 
+Production ingestion lives in [`src/swarm_sdk/retrieval/rag_ingest.py`](../../src/swarm_sdk/retrieval/rag_ingest.py): Pydantic v2 `DocumentChunk` (`BaseModel`, `Field`), FAISS index, NumPy fallback. The sketch below is the contract; do not invent a second ingest path.
+
 ### Subtopic: Semantic Chunking Reference Implementation
 
 ```python
@@ -261,6 +272,8 @@ RRF requires zero arbitrary score normalization across incompatible score distri
 ### Subtopic: Production Hybrid Fusion Implementation
 
 ```python
+from __future__ import annotations
+
 from collections import defaultdict
 from typing import Any
 
@@ -305,6 +318,11 @@ $$s(Q, D) = \text{CrossEncoder}([Q; D]), \quad P(\text{relevant}) = \frac{1}{1 +
 Large Language Models exhibit U-shaped attention curves over long context windows: information placed in the center of the prompt is retrieved with up to $30\%$ lower accuracy than information placed at the beginning or end.
 
 ```python
+from __future__ import annotations
+
+from typing import Any
+
+
 def lost_in_the_middle_packing(
     chunks: list[dict[str, Any]], max_tokens: int, token_counter: Any = len
 ) -> list[dict[str, Any]]:
@@ -364,6 +382,8 @@ When candidate generation returns maximum score $\sigma_{\max} < 0.60$ or zero h
 ### Subtopic: Corrective RAG (CRAG) Evaluator
 
 ```python
+from __future__ import annotations
+
 import numpy as np
 
 def evaluate_crag_confidence(
@@ -403,7 +423,7 @@ def evaluate_crag_confidence(
 | Triad Metric | Mathematical Definition | Minimum Quality Gate | Operational Meaning |
 | :--- | :--- | :--- | :--- |
 | **Context Relevance** | $\frac{\|S_{\text{relevant chunks}}\| \cap \|S_{\text{retrieved chunks}}\|}{\|S_{\text{retrieved chunks}}\|}$ | $\ge 0.80$ | Filters out noise and irrelevance |
-| **Faithfulness** | $\frac{ | \text{Extractive Claims in Answer grounded in Context} | }{ | \text{Total Claims in Answer} | }$ | $\ge 0.90$ | Prevents model hallucinations |
+| **Faithfulness** | $\frac{\|\text{Extractive Claims in Answer grounded in Context}\|}{\|\text{Total Claims in Answer}\|}$ | $\ge 0.90$ | Prevents model hallucinations |
 | **Answer Relevance** | $\cos(E(\text{Answer}), E(\text{Query}))$ | $\ge 0.85$ | Prevents evasive or off-topic generation |
 
 ### Subtopic: Latency Service Level Agreements (SLAs)
@@ -492,6 +512,11 @@ Every task executed by `rag` must strictly return this structured JSON schema:
 ### Subtopic: Self-Contained Verification Harness
 
 ```python
+from __future__ import annotations
+
+from typing import Any
+
+
 def verify_rag_pipeline(
     query_text: str,
     retrieved_chunks: list[dict[str, Any]],
@@ -520,6 +545,25 @@ def verify_rag_pipeline(
 ```
 
 ---
+
+## Topic: Python Static Template
+
+New Python modules under `src/swarm_sdk/retrieval/` or `src/swarm_sdk/memory/`: copy
+[`.cursor/templates/python_static_template_lite.py`](../../.cursor/templates/python_static_template_lite.py)
+or the full [`.cursor/templates/python_static_template.py`](../../.cursor/templates/python_static_template.py).
+Module docstring, then `from __future__ import annotations`. Do not import templates
+at runtime. UNTOUCHABLE verbatim copy: root [`AGENTS.md`](../../AGENTS.md#topic-python-static-template).
+
+## Methods of actuation
+
+[`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) · [`../AgentMethods.md`](../AgentMethods.md) §1 Retrieval.
+
+| Layer | RAG |
+| --- | --- |
+| **DARS** | Topic 2 routing + Topic 7 DarS/CRAG recovery |
+| **ReAct** | Retrieve → observe scores → rerank / expand |
+| **Reflection** | One CRAG cycle after failed grounding gate, then settle or `fallback_needed` |
+| **SWE** | Ingest → index → retrieve → verify Topic 10 harness → JSON handoff |
 
 ## Tools and permissions
 
