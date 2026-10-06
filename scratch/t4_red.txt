@@ -1,0 +1,19 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+______________ TestAgenticAndHelp.test_agentic_is_an_alias_of_run ______________
+tests/test_cli_commands.py:361: in test_agentic_is_an_alias_of_run
+    assert cli.main(["agentic", "task two"]) == 0
+E   AssertionError: assert 2 == 0
+E    +  where 2 = <function main at 0x116866da0>(['agentic', 'task two'])
+E    +    where <function main at 0x116866da0> = cli.main
+----------------------------- Captured stderr call -----------------------------
+usage: low-swarm [-h] {run,vault,ingest,doctor,spawn,swarm,parallel} ...
+low-swarm: error: argument command: invalid choice: 'agentic' (choose from 'run', 'vault', 'ingest', 'doctor', 'spawn', 'swarm', 'parallel')
+____________ TestAgenticAndHelp.test_help_lists_all_command_groups _____________
+tests/test_cli_commands.py:368: in test_help_lists_all_command_groups
+    assert name in out
+E   AssertionError: assert 'agentic' in 'usage: low-swarm [-h] {run,vault,ingest,doctor,spawn,swarm,parallel} ...\n\nLow-Resource Autonomous Code Synthesis Sw...th bounded\n                        parallelism\n\noptions:\n  -h, --help            show this help message and exit\n'
+=========================== short test summary info ============================
+FAILED tests/test_cli_commands.py::TestAgenticAndHelp::test_agentic_is_an_alias_of_run
+FAILED tests/test_cli_commands.py::TestAgenticAndHelp::test_help_lists_all_command_groups
+2 failed, 27 deselected in 1.83s

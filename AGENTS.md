@@ -13,7 +13,7 @@ Instructions for humans and AI assistants working in this repository. Read this 
 | [Benchmarks](#topic-benchmarks)                           | Task layout; SQL Pro suite                                                       |
 | [Security and compliance](#topic-security-and-compliance) | Secrets; network exfiltration                                                    |
 | [Git and documentation](#topic-git-and-documentation)     | Commits, README, dependencies                                                    |
-| [Python Static Template](#topic-python-static-template)   | UNTOUCHABLE full scaffold (verbatim `.py`) + lite link; agent contract   |
+| [Python Static Template](#topic-python-static-template)   | UNTOUCHABLE full scaffold + Python 3.15 app template; lite link; agent contract |
 
 Human-oriented overview: `[README.md](README.md)`.
 
@@ -189,339 +189,603 @@ Also available in **Cursor CLI** and Cloud Agents. Swarm persona `Agents/CodeFix
 
 ---
 
-## Topic: Python Static Template
-
-Runnable (full): [@.cursor/templates/python_static_template.py](.cursor/templates/python_static_template.py).  
-Default for small modules (lite): [@.cursor/templates/python_static_template_lite.py](.cursor/templates/python_static_template_lite.py).
-
-Rule: [`.cursor/rules/python-static-template.mdc`](.cursor/rules/python-static-template.mdc). Ops: [`.cursor/AGENTS.md`](.cursor/AGENTS.md).
-
-### Subtopic: UNTOUCHABLE — full template (verbatim)
-
-Do **not** edit the fenced block. It must stay **exactly** as `.cursor/templates/python_static_template.py`. Change the `.py` file first, then replace this block with a byte-for-byte copy. Agents must copy from here or the `.py` file; never rewrite the scaffold in place.
+## Topic: Python Static Template #DO NOT TOUCH
 
 ```python
-"""Python Static Template — Swarm (PEP 810–ready).
+#!/usr/bin/env python3.15
+"""Typed Python 3.15 application template using regular classes."""
 
-Agent contract (coding assistants):
-  Read callers, tests, and config before editing.
-  One failed attempt → analyse root cause → one deliberate fix (no retry loops).
-  Profile before optimizing hot paths; measure before/after (Optimizer norms).
-  Delete unused role sections when copying; no import-time side effects.
-  Parallel swarm steps: disjoint ``files`` per sibling agent; cap via ``CoworkRole``.
-  In ``src/swarm_sdk/``: use ``swarm_sdk.runtime.concurrency`` for caps.
-
-Copy this skeleton when starting a new module under ``src/swarm_sdk/``.
-Delete unused role sections. Keep roles grouped; do not interleave unrelated helpers.
-
-Layout:
-
-1. Module docstring, then **always** ``from __future__ import annotations`` (first statement)
-2. Stdlib / third-party / local imports (no import-time side effects)
-3. ``@wrappers`` — reusable decorators
-4. Role classes — ``Type``, ``Hint``, ``Vect``, ``Math``, ``Db``, ``Batch``, ``Cowork``, …
-5. Role functions — same order as classes (``loop_*`` aliases for ``batch_*``)
-6. ``__all__`` + optional ``main`` under ``__main__`` only
-
-PEP 810 (Explicit lazy imports, Python 3.15+): defer heavy deps; ``TYPE_CHECKING`` for types.
-PEP 703 free-threaded 3.14: ``CoworkRole`` / ``swarm_sdk.runtime.concurrency.parallel_cap``.
-
-Canonical source: ``.cursor/templates/python_static_template.py``.
-Lite: ``python_static_template_lite.py``.
-Ops: root ``AGENTS.md`` → Topic: Python Static Template. Do not import this file from runtime code.
-"""
-
-# ALWAYS: first statement after the module docstring — before any other import.
 from __future__ import annotations
 
-import functools
-import os
-import sys
+import argparse
+import csv
+import json
+import logging
 import time
-from collections.abc import Awaitable, Callable, Iterable, Sequence
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Annotated, Any, ParamSpec, Protocol, TypeVar
+from collections.abc import Callable, Iterable, Iterator, Sequence
+from pathlib import Path
+from typing import Any, Protocol, TypeVar
 
-if TYPE_CHECKING:
-    pass
+lazy import numpy as np
 
-# =============================================================================
-# Python Static Template
-# =============================================================================
-
-P = ParamSpec("P")
-R = TypeVar("R")
 T = TypeVar("T")
-
-type Vec = Sequence[float]
-type Matrix = Sequence[Sequence[float]]
-type RowId = Annotated[int, "primary key"]
-
-_DEFAULT_TRANSIENT: tuple[type[BaseException], ...] = (
-    TimeoutError,
-    OSError,
-    ConnectionError,
-)
+R = TypeVar("R")
+LOGGER = logging.getLogger("app")
+DEFAULTS = frozendict({"batch_size": 100, "multiplier": 1.0, "format": "auto"})
+MISSING = sentinel("MISSING", module=__name__)
 
 
-class wrappers:
-    """Static namespace for decorator factories. Prefer `@wrappers.name`."""
+# ============================================================================
+# DECORATORS
+# ============================================================================
 
-    @staticmethod
-    def timed(fn: Callable[P, R]) -> Callable[P, R]:
-        """Record wall time only when ``SWARM_PROFILE`` is set (not for hot paths)."""
-        if not os.environ.get("SWARM_PROFILE"):
-            return fn
+def timed(function: Callable[..., R]) -> Callable[..., R]:
+    """Measure and log function runtime.
 
-        @functools.wraps(fn)
-        def _inner(*args: P.args, **kwargs: P.kwargs) -> R:
-            start = time.perf_counter()
-            try:
-                return fn(*args, **kwargs)
-            finally:
-                _ = time.perf_counter() - start
+    Args:
+        function: Callable to wrap.
 
-        return _inner
+    Returns:
+        Wrapped callable.
+    """
 
-    @staticmethod
-    def logged(fn: Callable[P, R]) -> Callable[P, R]:
-        @functools.wraps(fn)
-        def _inner(*args: P.args, **kwargs: P.kwargs) -> R:
-            return fn(*args, **kwargs)
-
-        return _inner
-
-    @staticmethod
-    def retry_transient(
-        times: int = 2,
-        on: tuple[type[BaseException], ...] = _DEFAULT_TRANSIENT,
-    ) -> Callable[[Callable[P, R]], Callable[P, R]]:
-        """Retry only on transient errors — never on validation or logic bugs."""
-
-        def _decorate(fn: Callable[P, R]) -> Callable[P, R]:
-            @functools.wraps(fn)
-            def _inner(*args: P.args, **kwargs: P.kwargs) -> R:
-                last: BaseException | None = None
-                attempts = max(times, 1)
-                for _ in range(attempts):
-                    try:
-                        return fn(*args, **kwargs)
-                    except on as exc:
-                        last = exc
-                if last is not None:
-                    raise last
-                return fn(*args, **kwargs)
-
-            return _inner
-
-        return _decorate
-
-    @staticmethod
-    def retry(times: int = 1) -> Callable[[Callable[P, R]], Callable[P, R]]:
-        """Alias for :meth:`retry_transient` (prefer ``retry_transient`` explicitly)."""
-        return wrappers.retry_transient(times=times)
-
-
-class TypeRole:
-    class SupportsClose(Protocol):
-        def close(self) -> None: ...
-
-    @staticmethod
-    def ensure_str(value: object) -> str:
-        if not isinstance(value, str):
-            raise TypeError(f"expected str, got {type(value).__name__}")
-        return value
-
-
-@dataclass(frozen=True, slots=True)
-class HintRole:
-    name: str
-    description: str = ""
-    tags: tuple[str, ...] = field(default_factory=tuple)
-
-    def as_annotated(self) -> Any:
-        return Annotated[str, self]
-
-
-@dataclass(slots=True)
-class VectRole:
-    dim: int
-
-    def zeros(self) -> list[float]:
-        return [0.0] * self.dim
-
-    def dot(self, a: Vec, b: Vec) -> float:
-        if len(a) != len(b):
-            raise ValueError("vector length mismatch")
-        return sum(x * y for x, y in zip(a, b, strict=True))
-
-
-class MathRole:
-    @staticmethod
-    def clamp(x: float, lo: float, hi: float) -> float:
-        return max(lo, min(hi, x))
-
-    @staticmethod
-    def mean(xs: Iterable[float]) -> float:
-        total = 0.0
-        n = 0
-        for x in xs:
-            total += x
-            n += 1
-        if n == 0:
-            raise ValueError("empty sequence")
-        return total / n
-
-
-@dataclass(slots=True)
-class DbRole:
-    path: str
-    _open: bool = False
-
-    def connect(self) -> None:
-        self._open = True
-
-    def close(self) -> None:
-        self._open = False
-
-    @wrappers.logged
-    def get(self, key: str) -> bytes | None:
-        if not self._open:
-            raise RuntimeError("db not connected")
-        _ = key
-        return None
-
-
-class CoworkRole:
-    """Sketch — in ``src/swarm_sdk`` import ``swarm_sdk.runtime.concurrency`` instead."""
-
-    @staticmethod
-    def gil_enabled() -> bool:
+    def wrapper(*args: Any, **kwargs: Any) -> R:
+        started = time.perf_counter()
         try:
-            return sys._is_gil_enabled()
-        except AttributeError:
-            return True
+            return function(*args, **kwargs)
+        finally:
+            elapsed = time.perf_counter() - started
+            LOGGER.debug("%s completed in %.4fs", function.__name__, elapsed)
+
+    return wrapper
+
+
+# ============================================================================
+# CONFIGURATION TYPE
+# ============================================================================
+
+class AppConfig:
+    """Validated runtime configuration.
+
+    Args:
+        input_path: CSV or JSON source file.
+        database_path: SQLite database destination.
+        input_format: csv, json, or auto.
+        batch_size: Number of rows per batch.
+        multiplier: Positive numeric multiplier.
+        dry_run: Skip database writes when True.
+        verbose: Enable DEBUG logging when True.
+    """
+
+    def __init__(
+        self,
+        input_path: Path,
+        database_path: Path,
+        input_format: str = "auto",
+        batch_size: int = 100,
+        multiplier: float = 1.0,
+        dry_run: bool = False,
+        verbose: bool = False,
+    ) -> None:
+        self.input_path = input_path
+        self.database_path = database_path
+        self.input_format = input_format
+        self.batch_size = batch_size
+        self.multiplier = multiplier
+        self.dry_run = dry_run
+        self.verbose = verbose
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return the configuration as a dictionary."""
+        return {
+            "input_path": str(self.input_path),
+            "database_path": str(self.database_path),
+            "input_format": self.input_format,
+            "batch_size": self.batch_size,
+            "multiplier": self.multiplier,
+            "dry_run": self.dry_run,
+            "verbose": self.verbose,
+        }
+
+
+class Record:
+    """Normalized application record.
+
+    Args:
+        identifier: Unique row identifier.
+        name: Human-readable label.
+        value: Original numeric value.
+        score: Computed score.
+    """
+
+    def __init__(
+        self,
+        identifier: str,
+        name: str,
+        value: float,
+        score: float = 0.0,
+    ) -> None:
+        self.identifier = identifier
+        self.name = name
+        self.value = value
+        self.score = score
+
+    def to_row(self) -> tuple[str, str, float, float]:
+        """Return the record in SQLite parameter order."""
+        return (self.identifier, self.name, self.value, self.score)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return the record as a serializable dictionary."""
+        return {
+            "identifier": self.identifier,
+            "name": self.name,
+            "value": self.value,
+            "score": self.score,
+        }
+
+
+class RunResult:
+    """Aggregate summary of a completed application run."""
+
+    def __init__(
+        self,
+        total_rows: int,
+        valid_rows: int,
+        invalid_rows: int,
+        saved_rows: int,
+        elapsed_seconds: float,
+    ) -> None:
+        self.total_rows = total_rows
+        self.valid_rows = valid_rows
+        self.invalid_rows = invalid_rows
+        self.saved_rows = saved_rows
+        self.elapsed_seconds = elapsed_seconds
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a serializable run summary."""
+        return {
+            "total_rows": self.total_rows,
+            "valid_rows": self.valid_rows,
+            "invalid_rows": self.invalid_rows,
+            "saved_rows": self.saved_rows,
+            "elapsed_seconds": self.elapsed_seconds,
+        }
+
+
+# ============================================================================
+# PROTOCOLS BY TYPE
+# ============================================================================
+
+class RecordParser(Protocol):
+    """Protocol for source parsers."""
+
+    def parse(self, path: Path) -> Iterator[dict[str, Any]]:
+        """Yield raw row dictionaries."""
+        ...
+
+
+class RecordRepository(Protocol):
+    """Protocol for persistence implementations."""
+
+    def initialize(self) -> None:
+        """Prepare storage structures."""
+        ...
+
+    def upsert_many(self, records: Sequence[Record]) -> int:
+        """Insert or update records and return row count."""
+        ...
+
+
+# ============================================================================
+# VALIDATION TYPE
+# ============================================================================
+
+class RecordValidator:
+    """Validate and normalize untrusted input rows."""
+
+    REQUIRED_FIELDS = frozenset({"id", "name", "value"})
+
+    @classmethod
+    def normalize(cls, raw: dict[str, Any]) -> Record:
+        """Convert one raw row into a validated Record.
+
+        Args:
+            raw: Untrusted row dictionary.
+
+        Returns:
+            Validated record.
+
+        Raises:
+            ValueError: If required values are missing or malformed.
+        """
+        missing = cls.REQUIRED_FIELDS - raw.keys()
+        if missing:
+            raise ValueError(f"Missing fields: {sorted(missing)}")
+
+        identifier = str(raw.get("id", MISSING)).strip()
+        name = str(raw.get("name", MISSING)).strip()
+
+        if not identifier or identifier == str(MISSING):
+            raise ValueError("Field 'id' cannot be blank")
+
+        if not name or name == str(MISSING):
+            raise ValueError("Field 'name' cannot be blank")
+
+        try:
+            value = float(raw["value"])
+        except (TypeError, ValueError) as error:
+            raise ValueError("Field 'value' must be numeric") from error
+
+        return Record(identifier=identifier, name=name, value=value)
+
+
+# ============================================================================
+# MATH TYPES
+# ============================================================================
+
+class ScalarMath:
+    """Scalar math functions for one value at a time."""
 
     @staticmethod
-    def parallel_cap() -> int:
-        return 8 if CoworkRole.gil_enabled() else 32
+    def score(value: float, multiplier: float) -> float:
+        """Return a rounded scalar score.
+
+        Args:
+            value: Input numeric value.
+            multiplier: Positive scaling multiplier.
+
+        Returns:
+            Rounded score.
+
+        Raises:
+            ValueError: If multiplier is not positive.
+        """
+        if multiplier <= 0:
+            raise ValueError("Multiplier must be greater than zero")
+
+        return round(value * multiplier, 4)
+
+    @classmethod
+    def enrich_many(cls, records: Sequence[Record], multiplier: float) -> list[Record]:
+        """Apply scalar math over a sequence of records."""
+        return [
+            Record(
+                identifier=record.identifier,
+                name=record.name,
+                value=record.value,
+                score=cls.score(record.value, multiplier),
+            )
+            for record in records
+        ]
 
 
-class BatchRole:
-    """Bounded batch / async helpers (not unbounded loops)."""
+class VectorMath:
+    """Vectorized math using NumPy arrays."""
 
     @staticmethod
-    async def gather_limited[T](
-        coros: Sequence[Awaitable[T]],
-        *,
-        limit: int | None = None,
-    ) -> list[T]:
-        import asyncio
+    def enrich_many(records: Sequence[Record], multiplier: float) -> list[Record]:
+        """Compute scores with vectorized array operations.
 
-        cap = limit if limit is not None else CoworkRole.parallel_cap()
-        sem = asyncio.Semaphore(max(cap, 1))
-        results: list[T] = []
+        Args:
+            records: Input records.
+            multiplier: Positive scaling multiplier.
 
-        async def _one(aw: Awaitable[T]) -> None:
-            async with sem:
-                results.append(await aw)
+        Returns:
+            Enriched records with computed scores.
+        """
+        if multiplier <= 0:
+            raise ValueError("Multiplier must be greater than zero")
 
-        async with asyncio.TaskGroup() as tg:
-            for aw in coros:
-                tg.create_task(_one(aw))
-        return results
+        values = np.array([record.value for record in records], dtype=float)
+        scores = np.round(values * multiplier, decimals=4)
 
-
-LoopRole = BatchRole
-
-
-def type_is_mapping(value: object) -> bool:
-    return isinstance(value, dict)
-
-
-def hint_tag(*tags: str) -> HintRole:
-    return HintRole(name="tag", tags=tags)
+        return [
+            Record(
+                identifier=record.identifier,
+                name=record.name,
+                value=record.value,
+                score=float(score),
+            )
+            for record, score in zip(records, scores, strict=True)
+        ]
 
 
-@wrappers.timed
-def vect_l2(a: Vec, b: Vec) -> float:
-    if len(a) != len(b):
-        raise ValueError("vector length mismatch")
-    return sum((x - y) ** 2 for x, y in zip(a, b, strict=True)) ** 0.5
+# ============================================================================
+# PARSER TYPES
+# ============================================================================
+
+class CsvParser:
+    """CSV parser by header names."""
+
+    @timed
+    def parse(self, path: Path) -> Iterator[dict[str, Any]]:
+        """Yield CSV rows as dictionaries."""
+        with path.open("r", encoding="utf-8", newline="") as file:
+            reader = csv.DictReader(file)
+            if reader.fieldnames is None:
+                raise ValueError("CSV must contain a header row")
+            for row in reader:
+                yield dict(row)
 
 
-def math_safe_div(num: float, den: float, default: float = 0.0) -> float:
-    if den == 0.0:
-        return default
-    return num / den
+class JsonParser:
+    """JSON parser for a root list of objects."""
+
+    @timed
+    def parse(self, path: Path) -> Iterator[dict[str, Any]]:
+        """Yield JSON objects from a root list."""
+        with path.open("r", encoding="utf-8") as file:
+            payload = json.load(file)
+
+        if not isinstance(payload, list):
+            raise ValueError("JSON root must be a list")
+
+        for index, item in enumerate(payload, start=1):
+            if not isinstance(item, dict):
+                raise ValueError(f"JSON item {index} must be an object")
+            yield item
 
 
-def db_uri(path: str, *, read_only: bool = False) -> str:
-    mode = "mode=ro" if read_only else "mode=rwc"
-    return f"file:{path}?{mode}"
+class ParserFactory:
+    """Factory that selects the parser type for an input file."""
+
+    @staticmethod
+    def create(input_format: str, path: Path) -> RecordParser:
+        """Return a parser based on explicit format or file suffix."""
+        resolved = path.suffix.lower().lstrip(".") if input_format == "auto" else input_format.lower()
+
+        if resolved == "csv":
+            return CsvParser()
+        if resolved == "json":
+            return JsonParser()
+
+        raise ValueError("Unsupported format. Use csv, json, or auto.")
 
 
-def batch_chunked[T](items: Sequence[T], size: int) -> list[Sequence[T]]:
-    if size < 1:
-        raise ValueError("size must be >= 1")
-    return [items[i : i + size] for i in range(0, len(items), size)]
+# ============================================================================
+# DATABASE TYPE
+# ============================================================================
+
+class SqliteRepository:
+    """SQLite repository with parameterized writes."""
+
+    def __init__(self, database_path: Path) -> None:
+        self.database_path = database_path
+
+    def _connect(self) -> sqlite3.Connection:
+        """Open a SQLite connection."""
+        connection = sqlite3.connect(self.database_path)
+        connection.row_factory = sqlite3.Row
+        return connection
+
+    @timed
+    def initialize(self) -> None:
+        """Create the records table if it does not exist."""
+        statement = """
+        CREATE TABLE IF NOT EXISTS records (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            value REAL NOT NULL,
+            score REAL NOT NULL,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+        with self._connect() as connection:
+            connection.execute(statement)
+
+    @timed
+    def upsert_many(self, records: Sequence[Record]) -> int:
+        """Insert or update multiple records.
+
+        Args:
+            records: Validated and enriched records.
+
+        Returns:
+            Number of processed rows.
+        """
+        if not records:
+            return 0
+
+        statement = """
+        INSERT INTO records (id, name, value, score)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+            name = excluded.name,
+            value = excluded.value,
+            score = excluded.score,
+            updated_at = CURRENT_TIMESTAMP
+        """
+
+        with self._connect() as connection:
+            connection.executemany(statement, [record.to_row() for record in records])
+
+        return len(records)
 
 
-def loop_chunked[T](items: Sequence[T], size: int) -> list[Sequence[T]]:
-    return batch_chunked(items, size)
+# ============================================================================
+# FUNCTION TYPES
+# ============================================================================
+
+def batched(items: Iterable[T], batch_size: int) -> Iterator[list[T]]:
+    """Yield items in fixed-size batches.
+
+    Args:
+        items: Source iterable.
+        batch_size: Maximum items per batch.
+
+    Yields:
+        Lists of at most batch_size items.
+    """
+    if batch_size < 1:
+        raise ValueError("batch_size must be at least one")
+
+    batch: list[T] = []
+    for item in items:
+        batch.append(item)
+        if len(batch) >= batch_size:
+            yield batch
+            batch = []
+
+    if batch:
+        yield batch
 
 
-def cowork_gil_enabled() -> bool:
+def positive_int(value: str) -> int:
+    """Parse a positive integer for argparse."""
+    result = int(value)
+    if result < 1:
+        raise argparse.ArgumentTypeError("must be >= 1")
+    return result
+
+
+def positive_float(value: str) -> float:
+    """Parse a positive float for argparse."""
+    result = float(value)
+    if result <= 0:
+        raise argparse.ArgumentTypeError("must be > 0")
+    return result
+
+
+def configure_logging(verbose: bool) -> None:
+    """Configure stdlib logging."""
+    logging.basicConfig(
+        level=logging.DEBUG if verbose else logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """Create the CLI parser."""
+    parser = argparse.ArgumentParser(
+        description="Typed CSV/JSON processing template using regular classes.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument("--input", required=True, type=Path, help="Path to CSV or JSON input file.")
+    parser.add_argument("--database", type=Path, default=Path("app.db"), help="SQLite database destination.")
+    parser.add_argument("--format", choices=("auto", "csv", "json"), default=DEFAULTS["format"], help="Input format.")
+    parser.add_argument("--batch-size", type=positive_int, default=DEFAULTS["batch_size"], help="Rows per batch.")
+    parser.add_argument("--multiplier", type=positive_float, default=DEFAULTS["multiplier"], help="Positive score multiplier.")
+    parser.add_argument("--dry-run", action="store_true", help="Process input without writing to the database.")
+    parser.add_argument("--verbose", action="store_true", help="Enable DEBUG-level logging.")
+    return parser
+
+
+def parse_config(argv: Sequence[str] | None = None) -> AppConfig:
+    """Parse command-line arguments into AppConfig."""
+    args = build_parser().parse_args(argv)
+
+    if not args.input.is_file():
+        raise FileNotFoundError(f"Input file does not exist: {args.input}")
+
+    return AppConfig(
+        input_path=args.input,
+        database_path=args.database,
+        input_format=args.format,
+        batch_size=args.batch_size,
+        multiplier=args.multiplier,
+        dry_run=args.dry_run,
+        verbose=args.verbose,
+    )
+
+
+# ============================================================================
+# APPLICATION TYPE
+# ============================================================================
+
+class Application:
+    """Coordinate parsing, validation, math, loops, and persistence."""
+
+    def __init__(
+        self,
+        config: AppConfig,
+        parser: RecordParser,
+        repository: RecordRepository,
+    ) -> None:
+        self.config = config
+        self.parser = parser
+        self.repository = repository
+
+    @timed
+    def run(self) -> RunResult:
+        """Run the full processing pipeline."""
+        started = time.perf_counter()
+
+        if not self.config.dry_run:
+            self.repository.initialize()
+
+        total_rows = 0
+        valid_rows = 0
+        invalid_rows = 0
+        saved_rows = 0
+
+        for batch_number, raw_batch in enumerate(
+            batched(self.parser.parse(self.config.input_path), self.config.batch_size),
+            start=1,
+        ):
+            total_rows += len(raw_batch)
+            normalized: list[Record] = []
+
+            for row_number, raw in enumerate(raw_batch, start=1):
+                try:
+                    normalized.append(RecordValidator.normalize(raw))
+                except ValueError as error:
+                    invalid_rows += 1
+                    LOGGER.warning(
+                        "Rejected batch=%s row=%s error=%s",
+                        batch_number,
+                        row_number,
+                        error,
+                    )
+
+            valid_rows += len(normalized)
+            if not normalized:
+                continue
+
+            enriched = VectorMath.enrich_many(normalized, self.config.multiplier)
+
+            if self.config.dry_run:
+                LOGGER.info(
+                    "Dry run batch=%s accepted=%s",
+                    batch_number,
+                    len(enriched),
+                )
+                continue
+
+            saved_rows += self.repository.upsert_many(enriched)
+            LOGGER.info(
+                "Processed batch=%s received=%s accepted=%s saved=%s",
+                batch_number,
+                len(raw_batch),
+                len(enriched),
+                len(enriched),
+            )
+
+        elapsed_seconds = round(time.perf_counter() - started, 4)
+        return RunResult(
+            total_rows=total_rows,
+            valid_rows=valid_rows,
+            invalid_rows=invalid_rows,
+            saved_rows=saved_rows,
+            elapsed_seconds=elapsed_seconds,
+        )
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Application entry point."""
     try:
-        from swarm_sdk.runtime.concurrency import gil_enabled as sdk_gil
+        config = parse_config(argv)
+        configure_logging(config.verbose)
 
-        return sdk_gil()
-    except ImportError:
-        return CoworkRole.gil_enabled()
+        parser = ParserFactory.create(config.input_format, config.input_path)
+        repository = SqliteRepository(config.database_path)
+        app = Application(config=config, parser=parser, repository=repository)
 
+        print(json.dumps(app.run().to_dict(), indent=2))
+        return 0
 
-def cowork_parallel_cap() -> int:
-    try:
-        from swarm_sdk.runtime.concurrency import parallel_cap as sdk_cap
-
-        return sdk_cap()
-    except ImportError:
-        return CoworkRole.parallel_cap()
-
-
-__all__ = [
-    "wrappers",
-    "TypeRole",
-    "HintRole",
-    "VectRole",
-    "MathRole",
-    "DbRole",
-    "BatchRole",
-    "LoopRole",
-    "CoworkRole",
-    "type_is_mapping",
-    "hint_tag",
-    "vect_l2",
-    "math_safe_div",
-    "db_uri",
-    "batch_chunked",
-    "loop_chunked",
-    "cowork_gil_enabled",
-    "cowork_parallel_cap",
-]
-
-
-def main() -> int:
-    """Smoke + Optimizer-style cap check (profile hot paths with ``SWARM_PROFILE=1``)."""
-    v = VectRole(dim=3)
-    assert MathRole.clamp(v.dot([1, 0, 0], [1, 0, 0]), 0.0, 1.0) == 1.0
-    assert loop_chunked([1, 2, 3, 4], 2) == [[1, 2], [3, 4]]
-    cap = cowork_parallel_cap()
-    assert cap in (8, 32)
-    from swarm_sdk.runtime.concurrency import parallel_cap as sdk_cap
-
-    assert cap == sdk_cap()
-    return 0
+    except (FileNotFoundError, ValueError, sqlite3.Error) as error:
+        LOGGER.error("%s", error)
+        return 1
 
 
 if __name__ == "__main__":
@@ -550,6 +814,7 @@ from __future__ import annotations
 | -------- | -------- |
 | **lite** | New small module (types + cowork cap only) |
 | **full** | Needs vect/math/db/batch roles |
+| **3.15 app** | Standalone typed CLI (CSV/JSON → SQLite); UNTOUCHABLE block above |
 
 Do **not** import template files from runtime package code — copy and trim.
 

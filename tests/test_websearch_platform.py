@@ -733,6 +733,20 @@ def test_google_search_without_any_key_makes_no_request(monkeypatch: pytest.Monk
     assert ws.search_google_search("q", _gemini_spec("GK2")) == []
 
 
+def test_google_search_defaults_to_gemini_35(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(ws, "env_keys", lambda _spec: ["key"])
+    seen: list[str] = []
+
+    def fake(method: str, url: str, **_kwargs: Any) -> Any:
+        seen.append(url)
+        return GROUNDED
+
+    monkeypatch.setattr(ws, "request_json", fake)
+    spec = SearcherSpec("google_search", "websearcher", engine="")
+    assert ws.search_google_search("q", spec)
+    assert seen[0].endswith("/models/gemini-3.5-flash:generateContent")
+
+
 def test_legacy_google_ground_id_still_dispatches() -> None:
     """The pre-rename id stays wired to the same searcher, so old configs keep working."""
     searchers = ws.builtin_searchers()

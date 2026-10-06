@@ -35,6 +35,7 @@ class PlanState(TypedDict):
 
     outputs: dict[str, StepOutput]
     usage: UsageTotals
+    goal: str
 
 
 def _dep_outputs(step: PlanStep, state: PlanState) -> dict[str, str]:
@@ -83,6 +84,7 @@ async def _run_wave(
                 step.id,
                 step.description,
                 _dep_outputs(step, state),
+                goal=state.get("goal", ""),
                 files=step.files,
                 task=step.task,
             )
@@ -152,6 +154,7 @@ async def run_plan(
     factory: WorkerFactory,
     *,
     max_concurrency: int = 8,
+    goal: str = "",
 ) -> PlanResult:
     """Execute the plan through LangGraph and collect outputs + usage totals.
 
@@ -160,6 +163,7 @@ async def run_plan(
         factory: Builds a worker per step attempt.
         max_concurrency: Cap on in-flight steps inside a wave (from
             ``parallelism.max_concurrency`` when the caller has file config).
+        goal: Original user goal passed into each delegated worker.
 
     Returns:
         The plan result: per-step outputs keyed by step id, and aggregated
@@ -169,7 +173,7 @@ async def run_plan(
     graph = build_graph(plan, factory, max_concurrency=max_concurrency)
     compiled = graph.compile()
     started = time.perf_counter()
-    final = await compiled.ainvoke({"outputs": {}, "usage": UsageTotals()})
+    final = await compiled.ainvoke({"outputs": {}, "usage": UsageTotals(), "goal": goal})
     result = PlanResult(outputs=final["outputs"], usage=final["usage"])
     result.usage.wall_s = time.perf_counter() - started
     return result

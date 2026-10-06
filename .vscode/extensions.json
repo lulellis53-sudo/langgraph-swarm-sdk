@@ -7,6 +7,9 @@
     "ms-toolsai.vscode-jupyter-slideshow",
     "google.colab",
     "openai.chatgpt",
+    "sourcegraph.cody-ai",
+    "anysphere.cursorpyright",
+    "anysphere.remote-containers",
     "charliermarsh.ruff",
     "astral-sh.ty",
     "meta.pyrefly",
@@ -19,7 +22,7 @@
     "ms-azuretools.vscode-containers"
   ],
   "unwantedRecommendations": [
-    "anysphere.cursorpyright",
+    "ms-python.vscode-pylance",
     "ms-python.black-formatter",
     "ms-python.flake8",
     "ms-python.pylint",

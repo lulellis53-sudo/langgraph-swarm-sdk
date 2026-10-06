@@ -222,7 +222,8 @@ class TestWaveBarrierGraphExecution:
 
         def mock_factory(step: PlanStep):
             worker = MagicMock()
-            async def mock_run(step_id, desc, inputs, files=(), task=""):
+            async def mock_run(step_id, desc, inputs, *, goal="", files=(), task=""):
+                assert goal == ""
                 return StepOutput(
                     step_id=step_id,
                     agent=step.agent,
@@ -245,3 +246,19 @@ class TestWaveBarrierGraphExecution:
         assert result.usage.prompt_tokens == 200
         assert result.usage.completion_tokens == 100
         assert result.usage.wall_s > 0
+
+    @pytest.mark.asyncio
+    async def test_run_plan_passes_original_goal_to_workers(self) -> None:
+        """Every delegated step receives the original goal as context."""
+        plan = Plan(
+            steps=[PlanStep(id="S1", title="step", description="do it", agent="Coder")]
+        )
+        worker = MagicMock()
+
+        async def mock_run(step_id, description, inputs, *, goal="", files=(), task=""):
+            assert goal == "Ship the feature safely"
+            return StepOutput(step_id=step_id, agent="Coder", content="done")
+
+        worker.run = mock_run
+        result = await run_plan(plan, lambda _: worker, goal="Ship the feature safely")
+        assert result.outputs["S1"].content == "done"

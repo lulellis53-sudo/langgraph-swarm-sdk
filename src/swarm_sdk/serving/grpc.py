@@ -170,6 +170,7 @@ class SwarmServicer(swarm_pb2_grpc.SwarmServiceServicer):
                 plan,
                 make_factory(manifests),
                 max_concurrency=self.sdk.file_config.parallelism.max_concurrency,
+                goal=request.goal,
             )
         )
         return _to_result_msg(plan_id, result)

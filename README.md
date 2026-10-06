@@ -96,6 +96,18 @@ uv run swarm-grpc
 
 `POST /v1/runs` with `{"text": "...", "thread_id": "t1"}`. `GET /v1/health`. gRPC `SwarmService.Run` and `SwarmService.Recall` call the same core.
 
+### Command groups (low-swarm)
+
+The groups are `agentic` (alias `run`), `spawn`, `swarm` and `parallel`; `vault`, `ingest` and `doctor` are unchanged.
+
+| Command | What it does |
+|---|---|
+| `low-swarm agentic TASK` (alias `run`) | Autonomous code synthesis state machine |
+| `low-swarm spawn GOAL [--json] [--agents-dir DIR]` | Decompose a goal into a wave-ordered plan |
+| `low-swarm swarm TEXT [--thread-id ID]` | Run a message through the handoff swarm |
+| `low-swarm parallel (--plan FILE \| --goal TEXT) [--max-concurrency N] [--json]` | Execute a plan in dependency waves with bounded parallelism |
+| `low-swarm vault`, `ingest`, `doctor` | Keychain, RAG ingest, host diagnostics (unchanged) |
+
 ### LangGraph Server
 
 [`langgraph.json`](langgraph.json) deploys both engines as server graphs (factories in [`src/swarm_sdk/serving/graphs.py`](src/swarm_sdk/serving/graphs.py)):

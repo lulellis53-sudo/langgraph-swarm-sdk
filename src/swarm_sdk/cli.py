@@ -467,7 +467,11 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=False)
 
     # Subcommand: run
-    p_run = subparsers.add_parser("run", help="Run autonomous code synthesis or refactoring task")
+    p_run = subparsers.add_parser(
+        "run",
+        aliases=["agentic"],
+        help="Run autonomous code synthesis or refactoring task (alias: agentic)",
+    )
     p_run.add_argument("task", help="Description of synthesis task to execute")
     p_run.add_argument(
         "--files",
@@ -530,6 +534,9 @@ def build_parser() -> argparse.ArgumentParser:
     # Subcommand: doctor
     subparsers.add_parser("doctor", help="Inspect host invariants, SIMD, and CLI tooling")
 
+    from swarm_sdk.commands import register_all
+
+    parser.set_defaults(_group_handlers=register_all(subparsers))
     return parser
 
 
@@ -554,7 +561,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.print_help()
         return 2
 
-    if cmd == "run":
+    group_handler = args._group_handlers.get(cmd)
+    if group_handler is not None:
+        return group_handler(args, console)
+
+    if cmd in {"run", "agentic"}:
         return handle_run(args, console)
     elif cmd == "vault":
         if not getattr(args, "vault_command", None):

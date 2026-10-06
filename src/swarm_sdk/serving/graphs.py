@@ -98,7 +98,9 @@ def plan_graph(
             load_all_agent_manifests(), cache=cache, model_override=model_override
         )
         max_concurrency = load_swarm_config().parallelism.max_concurrency
-        result: PlanResult = await run_plan(plan, factory, max_concurrency=max_concurrency)
+        result: PlanResult = await run_plan(
+            plan, factory, max_concurrency=max_concurrency, goal=state["goal"]
+        )
         return {
             "goal": state["goal"],
             "plan": plan,

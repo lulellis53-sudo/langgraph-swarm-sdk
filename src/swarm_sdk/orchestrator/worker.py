@@ -87,6 +87,7 @@ class WorkerAgent:
         description: str,
         dep_outputs: dict[str, str],
         *,
+        goal: str = "",
         files: list[str] | None = None,
         task: str = "",
     ) -> str:
@@ -95,6 +96,7 @@ class WorkerAgent:
         Args:
             description: The step instruction (from the plan).
             dep_outputs: Outputs of the steps this step declared in ``inputs``.
+            goal: Original user goal shared with every delegated step.
             files: Exclusive write-paths claimed by this step (Coder partition).
             task: Optional ``agent.yaml`` task id.
 
@@ -102,7 +104,10 @@ class WorkerAgent:
             The packed user prompt, truncated so ``system + user`` fits the
             manifest's ``max_prompt`` budget.
         """
-        parts = [description.strip()]
+        parts: list[str] = []
+        if goal.strip():
+            parts.append(f"Original goal:\n{goal.strip()}")
+        parts.append(f"Step:\n{description.strip()}")
         if task:
             parts.append(f"task: {task}")
         if files:
@@ -163,6 +168,7 @@ class WorkerAgent:
         description: str,
         dep_outputs: dict[str, str],
         *,
+        goal: str = "",
         files: list[str] | None = None,
         task: str = "",
     ) -> StepOutput:
@@ -176,6 +182,7 @@ class WorkerAgent:
             step_id: Id of the plan step being executed.
             description: Step instruction used as the user prompt body.
             dep_outputs: Declared inputs (dependency outputs) to inject.
+            goal: Original user goal that motivated the plan.
             files: Exclusive write-paths claimed by this step.
             task: Optional ``agent.yaml`` task id.
 
@@ -185,7 +192,7 @@ class WorkerAgent:
             tokenizer.
         """
         system = self._system_prompt()
-        user = self._user_prompt(description, dep_outputs, files=files, task=task)
+        user = self._user_prompt(description, dep_outputs, goal=goal, files=files, task=task)
         # Cache identity is the full (agent, system, user) triple: same role,
         # same question → same answer is a safe assumption at threshold 0.97.
         cache_key = f"{self.name}\n{system}\n{user}"

@@ -12,6 +12,9 @@ ms-toolsai.vscode-jupyter-cell-tags
 ms-toolsai.vscode-jupyter-slideshow
 google.colab
 openai.chatgpt
+sourcegraph.cody-ai
+anysphere.cursorpyright
+anysphere.remote-containers
 charliermarsh.ruff
 astral-sh.ty
 meta.pyrefly

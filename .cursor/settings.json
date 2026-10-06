@@ -14,5 +14,12 @@
     "**/.venv": true,
     "**/benchmark/results": true,
     "**/.remember": true
-  }
+  },
+  "cody.codebase": "https://github.com/lulellis53-sudo/langgraph-swarm-sdk.git",
+  "cody.suggestions.mode": "autocomplete",
+  "cody.autocomplete.disableInsideComments": true,
+  "cody.autocomplete.formatOnAccept": false,
+  "cody.chat.defaultLocation": "sticky",
+  "cody.chat.agenticContext": true,
+  "cody.commandCodeLenses": false
 }

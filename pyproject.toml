@@ -199,6 +199,22 @@ exclude = [
   "src/swarm_sdk/compute/opencl_math.py",
 ]
 
+# IDE language server: meta.pyrefly (Cursor / VS Code). CLI typecheck remains `ty`.
+[tool.pyrefly]
+python-version = "3.14"
+python-platform = "darwin"
+python-interpreter-path = ".venv/bin/python"
+project-includes = ["src", "WebSearch", "tests", "Agents"]
+search-path = ["src", "WebSearch", "."]
+project-excludes = [
+  "**/.[!/.]*",
+  "src/swarm_sdk/pb/**",
+  "src/swarm_sdk/memory/faiss_store.py",
+  "src/swarm_sdk/memory/qdrant_store.py",
+  "src/swarm_sdk/compute/opencl_math.py",
+]
+ignore-errors-in-generated-code = true
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["Agents/benchmark", "tests"]

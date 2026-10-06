@@ -1,5 +1,6 @@
 {
   "recommendations": [
+    "sourcegraph.cody-ai",
     "charliermarsh.ruff",
     "ms-python.python",
     "ms-python.debugpy",
