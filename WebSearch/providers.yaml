@@ -65,7 +65,7 @@ searchers:
     api_key_env: GEMINI_API_KEY
     # GEMINI_API_KEY, else GOOGLE_API_KEY, else GEMINI_API_KEY_2. Rotate on 401/403/429.
     api_key_env_fallbacks: [GOOGLE_API_KEY, GEMINI_API_KEY_2]
-    engine: gemini-3.8-flash
+    engine: gemini-3.5-flash
     base_url: https://generativelanguage.googleapis.com/v1beta
     # Gemini 3 bills each executed search query. Paid tier: 5,000 free Gemini 3.x
     # search requests per month (shared), then $14 / 1,000. Not on the free token tier.
@@ -142,29 +142,32 @@ llm:
 
 # Playwright browses. Dedupe judges pages. Memory stores the brief. Decision
 # picks the Playwright model. A run uses the first ready name in each list.
-# The second Gemini, Kimi, Groq, Cohere, and Mistral keys are on the dedupe
-# list so those two roles do not share a model.
+# Playwright uses a different model from Gemini 3.5 Flash, which is the first
+# ready semantic dedupe/synthesis model after deterministic normalization.
 autonomous:
   playwright:
-    - google:gemini-3.8-flash
+    - openrouter:z-ai/glm-5.3-flash
     - moonshot:kimi-k2.7-code
     - zai:glm-5.2
     - minimax:minimax-2.7-high-speed
     - groq:openai/gpt-oss-120b
     - cohere:command-a
-    - openrouter:z-ai/glm-5.3-flash
     - mistral:mistral-large-latest
     - atlascloud:dots-studio/dots-3-note-prev-free
     - poolside:poolside/laguna-s-2.1
   dedupe:
+    - google:gemini-3.5-flash
     - cohere:command-r7b
     - groq:openai/gpt-oss-20b
-    - google:gemini-3.8-flash-b
     - moonshot:kimi-k2.7-code-b
     - xiaomi:mimo-v2.5-pro
     - mistral:ministral-3-8b-latest
     - sambanova:Meta-Llama-3.3-70B-Instruct
     - fireworks:accounts/fireworks/models/kimi-k2.7
+  summarize:
+    - google:gemini-3.5-flash
+    - cohere:command-r7b
+    - groq:openai/gpt-oss-20b
   memory:
     - mem0
   decision:

@@ -116,31 +116,36 @@ class PrefilterPolicy:
     require_title: bool = True
 
 
-#: First Keychain-ready name drives Playwright. A slotted dataclass does not
-#: keep this tuple as a class attribute, so parsers read the constant.
+#: First Keychain-ready non-Gemini name drives Playwright. A slotted dataclass
+#: does not keep this tuple as a class attribute, so parsers read the constant.
 DEFAULT_AUTONOMOUS_PLAYWRIGHT: tuple[str, ...] = (
-    "google:gemini-3.8-flash",
+    "openrouter:z-ai/glm-5.3-flash",
     "moonshot:kimi-k2.7-code",
     "zai:glm-5.2",
     "minimax:minimax-2.7-high-speed",
     "groq:openai/gpt-oss-120b",
     "cohere:command-a",
-    "openrouter:z-ai/glm-5.3-flash",
     "mistral:mistral-large-latest",
     "atlascloud:dots-studio/dots-3-note-prev-free",
     "poolside:poolside/laguna-s-2.1",
 )
-#: First ready name that is not the Playwright model judges near-duplicates.
-#: Second keys (-b, Groq 20b, Cohere command-r7b, Ministral) stay on this side.
+#: Gemini 3.5 Flash is preferred for semantic dedupe after deterministic
+#: normalization; remaining names are fallbacks if its key is unavailable.
 DEFAULT_AUTONOMOUS_DEDUPE: tuple[str, ...] = (
+    "google:gemini-3.5-flash",
     "cohere:command-r7b",
     "groq:openai/gpt-oss-20b",
-    "google:gemini-3.8-flash-b",
     "moonshot:kimi-k2.7-code-b",
     "xiaomi:mimo-v2.5-pro",
     "mistral:ministral-3-8b-latest",
     "sambanova:Meta-Llama-3.3-70B-Instruct",
     "fireworks:accounts/fireworks/models/kimi-k2.7",
+)
+#: Final answer synthesis over the normalized, deduplicated pages.
+DEFAULT_AUTONOMOUS_SUMMARIZE: tuple[str, ...] = (
+    "google:gemini-3.5-flash",
+    "cohere:command-r7b",
+    "groq:openai/gpt-oss-20b",
 )
 #: Memory provider. Mem0 stores and returns a brief for the same query.
 DEFAULT_AUTONOMOUS_MEMORY: tuple[str, ...] = ("mem0",)
@@ -164,6 +169,7 @@ class ProvidersConfig:
     autonomous_playwright: tuple[str, ...] = DEFAULT_AUTONOMOUS_PLAYWRIGHT
     #: A different model judges near-duplicates after blake2b. First ready name wins.
     autonomous_dedupe: tuple[str, ...] = DEFAULT_AUTONOMOUS_DEDUPE
+    autonomous_summarize: tuple[str, ...] = DEFAULT_AUTONOMOUS_SUMMARIZE
     #: Memory provider names. The first ready name is Mem0.
     autonomous_memory: tuple[str, ...] = DEFAULT_AUTONOMOUS_MEMORY
     #: Decision maker names. The first ready name is Jev.
@@ -418,6 +424,9 @@ def _parse_providers(target: Path) -> ProvidersConfig:
         ),
         autonomous_dedupe=_parse_model_list(
             raw.get("autonomous"), "dedupe", DEFAULT_AUTONOMOUS_DEDUPE
+        ),
+        autonomous_summarize=_parse_model_list(
+            raw.get("autonomous"), "summarize", DEFAULT_AUTONOMOUS_SUMMARIZE
         ),
         autonomous_memory=_parse_model_list(
             raw.get("autonomous"), "memory", DEFAULT_AUTONOMOUS_MEMORY
@@ -1107,7 +1116,11 @@ def search_parallel(query: str, spec: SearcherSpec) -> list[SearchHit]:
     data = _httpx_json(
         "POST",
         "https://api.parallel.ai/v1/search",
-        headers={"Accept": "application/json", "Content-Type": "application/json", "x-api-key": token},
+        headers={
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "x-api-key": token,
+        },
         json_body=body,
     )
     rows = dig(data, "results")
@@ -1118,7 +1131,9 @@ def search_parallel(query: str, spec: SearcherSpec) -> list[SearchHit]:
         if not isinstance(row, dict):
             continue
         excerpts = row.get("excerpts")
-        snippet = " ".join(str(item) for item in excerpts if item) if isinstance(excerpts, list) else ""
+        snippet = (
+            " ".join(str(item) for item in excerpts if item) if isinstance(excerpts, list) else ""
+        )
         normalized.append(
             {
                 "title": str(row.get("title") or ""),
@@ -1838,6 +1853,7 @@ __all__ = [
     "DEFAULT_AUTONOMOUS_DEDUPE",
     "DEFAULT_AUTONOMOUS_MEMORY",
     "DEFAULT_AUTONOMOUS_PLAYWRIGHT",
+    "DEFAULT_AUTONOMOUS_SUMMARIZE",
     "LlmSpec",
     "ExtractorName",
     "NullSink",

@@ -161,6 +161,7 @@ def _autonomous_report(
         "autonomous": {
             "playwright_model": result.playwright_model,
             "dedupe_model": result.dedupe_model,
+            "summarize_model": result.summarize_model,
             "answer": result.answer,
             "pages": result.pages,
             "kept": result.kept,
@@ -281,9 +282,7 @@ def run(
             for p in pages
             if p.html
         ]
-        handlers = {
-            "semantic": semantic_handler(str(args.prompt), db_path=db_path or ":memory:")
-        }
+        handlers = {"semantic": semantic_handler(str(args.prompt), db_path=db_path or ":memory:")}
         if db_path:
             handlers["sql"] = sql_handler(db_path)
         clean, results = route(docs, targets, handlers)
@@ -301,6 +300,7 @@ def _render(report: dict[str, Any], hits_text: str) -> str:
             auto["answer"] or f"(no answer: {browse['stopped']})",
             f"playwright: {auto['playwright_model']}",
             f"dedupe: {auto['dedupe_model'] or 'blake2b'}",
+            f"summarize: {auto['summarize_model'] or 'browser answer'}",
         ]
         if auto.get("decision_maker"):
             lines.append(f"decision: {auto['decision_maker']}")

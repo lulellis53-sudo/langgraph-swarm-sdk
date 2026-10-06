@@ -69,6 +69,26 @@ in the environment or Keychain; the provider sends it using Parallel's required
 or `advanced`). With `dork: translate`, `site:`, `-site:`, and `after:` are mapped
 to Parallel's `advanced_settings.source_policy` fields. `before:` is not mapped
 because the Search API source policy currently documents only `after_date`.
+The shipped registry runs Parallel and Gemini's Google Search grounding alongside
+the other configured providers; results are fused and deduplicated. Gemini Search
+uses `gemini-3.5-flash`. The final `--route semantic` step embeds normalized,
+deduplicated pages, ranks them against the query, and returns extractive summaries.
+In `--autonomous`, Playwright uses the first ready non-Gemini model. Pages are
+normalized deterministically, Gemini 3.5 Flash is preferred for duplicate judging,
+and then it synthesizes the final answer from kept normalized excerpts with source
+URLs. If final synthesis fails, the Playwright answer is retained. The separate
+`/Agents` summarize action continues to use local vector ranking and extractive
+summaries.
+
+Run the complete search → normalize/dedupe → semantic summary workflow with:
+
+```bash
+websearch --prompt "your research question" --route semantic
+```
+
+The `google_search` provider and `parallel` provider fan out concurrently with
+other configured searchers. Set `GEMINI_API_KEY` and `PARALLEL_API_KEY` to enable
+both; missing keys leave those providers inactive.
 
 ## Document agents
 
@@ -109,7 +129,7 @@ This file lives in the **`WebSearch/`** Python package. Sibling paths are
 | `crawlers.order` | Crawler failover order. Supported: `httpx`, `httpx2`, `requests`, `aiohttp`, `curl_cffi` (Chrome TLS fingerprint), `scrapy`, `playwright`, `crawlee`. `httpx2`/`requests`/`aiohttp` are off by default: they are plain HTTP clients and only add latency on dead URLs |
 | `dork_presets` | Named dork options for `--preset`; `after_days`/`before_days` are relative to today |
 | `llm` | `model` (`provider:name`, `WEBSEARCH_LLM_MODEL` overrides), `max_steps`, `max_pages`, `max_chars` |
-| `autonomous` | `playwright` and `dedupe` lists of `provider:name`. A run uses the first name in each list whose registry key is in the environment or the macOS Keychain, and it will not give both roles to the same model. `WEBSEARCH_LLM_MODEL` does not change these lists |
+| `autonomous` | `playwright`, `dedupe`, and `summarize` lists of `provider:name`. A run uses the first ready model per role; Playwright is excluded from finalization roles. `WEBSEARCH_LLM_MODEL` does not change these lists |
 
 ## Google dorks
 
@@ -129,12 +149,14 @@ private ranges and link-local addresses are refused), and is told to treat page 
 check is on the URL the model picks and again on the URL the browser lands on, so a redirect onto a private address is refused.
 
 `websearch --autonomous` uses that browser with the first ready name in `autonomous.playwright`
-(Gemini, Kimi, Z.ai, MiniMax, Groq 120B, Cohere Command A, OpenRouter, then Mistral Large).
+(OpenRouter, Kimi, Z.ai, MiniMax, Groq 120B, Cohere Command A, then Mistral Large).
 Opened HTML is extracted and exact copies are removed with blake2b. If two or more pages remain,
-the first ready name in `autonomous.dedupe` (Cohere Command R7B, Groq 20B, the second Gemini and
-Kimi keys, MiMo token plan, Ministral, SambaNova, then Fireworks) sees excerpts as data and
-returns `{"keep": ["url", ...]}`. That name is never the Playwright model. A reply that is not
-that JSON leaves the blake2b list in place. `autonomous.decision` is Jev: it chooses among
+the first ready name in `autonomous.dedupe` (Gemini 3.5 Flash, Cohere Command R7B, Groq 20B,
+Kimi, MiMo token plan, Ministral, SambaNova, then Fireworks) sees excerpts as data and
+returns `{"keep": ["url", ...]}`. The first ready name in `autonomous.summarize` then produces a
+cited synthesis from those kept, normalized excerpts; an empty or failed synthesis falls back to
+the Playwright answer. Neither finalization role uses the Playwright model. A dedupe reply that is
+not valid JSON leaves the deterministic list in place. `autonomous.decision` is Jev: it chooses among
 the ready Playwright names (the local classifier when `JEV_ENDPOINT` is unset). `autonomous.memory`
 is Mem0: a brief for the same query from the last day is returned as-is, and a new answer is stored.
 `websearch --doctor` prints each roster name as ready or not-ready and the selected names. It does

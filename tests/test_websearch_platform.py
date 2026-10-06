@@ -122,6 +122,10 @@ def test_shipped_providers_file_has_translate_mode_and_presets() -> None:
     cfg = load_providers(ws.providers_yaml_path())
     modes = {s.id: s.dork for s in cfg.searchers}
     assert modes["tavily"] == modes["exa"] == "translate"
+    searchers = {s.id: s for s in cfg.searchers}
+    assert searchers["parallel"].api_key_env == "PARALLEL_API_KEY"
+    assert searchers["google_search"].engine == "gemini-3.5-flash"
+    assert "parallel" in ws.builtin_searchers()
     assert {"last_week", "papers", "github"} <= set(cfg.dork_presets)
     assert "curl_cffi" in cfg.crawl.crawler_order
 
@@ -174,7 +178,9 @@ def test_parallel_search_maps_dorks_auth_and_excerpts(monkeypatch: pytest.Monkey
     seen: dict[str, Any] = {}
 
     def fake(method: str, url: str, **kwargs: Any) -> Any:
-        seen.update(method=method, url=url, headers=kwargs.get("headers"), body=kwargs.get("json_body"))
+        seen.update(
+            method=method, url=url, headers=kwargs.get("headers"), body=kwargs.get("json_body")
+        )
         return {
             "results": [
                 {

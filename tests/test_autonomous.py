@@ -25,6 +25,7 @@ from WebSearch.frontend.websearchers import (
     DEFAULT_AUTONOMOUS_DEDUPE,
     DEFAULT_AUTONOMOUS_MEMORY,
     DEFAULT_AUTONOMOUS_PLAYWRIGHT,
+    DEFAULT_AUTONOMOUS_SUMMARIZE,
     load_providers,
 )
 
@@ -126,9 +127,38 @@ def test_providers_yaml_parses_the_two_rosters() -> None:
     cfg = load_providers()
     assert cfg.autonomous_playwright == DEFAULT_AUTONOMOUS_PLAYWRIGHT
     assert cfg.autonomous_dedupe == DEFAULT_AUTONOMOUS_DEDUPE
+    assert cfg.autonomous_summarize == DEFAULT_AUTONOMOUS_SUMMARIZE
     assert cfg.autonomous_memory == DEFAULT_AUTONOMOUS_MEMORY == ("mem0",)
     assert cfg.autonomous_decision == DEFAULT_AUTONOMOUS_DECISION == ("jev",)
     assert set(cfg.autonomous_playwright).isdisjoint(cfg.autonomous_dedupe)
+
+
+def test_autonomous_rosters_use_gemini_for_final_dedupe_and_other_playwright_model() -> None:
+    cfg = load_providers()
+    assert cfg.autonomous_playwright[0] == "openrouter:z-ai/glm-5.3-flash"
+    assert cfg.autonomous_dedupe[0] == "google:gemini-3.5-flash"
+    assert cfg.autonomous_summarize[0] == "google:gemini-3.5-flash"
+    assert set(cfg.autonomous_playwright).isdisjoint(cfg.autonomous_dedupe)
+
+
+def test_final_summary_uses_normalized_kept_pages_and_cites_sources() -> None:
+    pages = {
+        URL_A: _html("A reliable source says LightGBM won."),
+        URL_B: _html("A second source confirms the benchmark."),
+    }
+    finalizer = ScriptedModel(script=Script([answer(f"LightGBM won. Source: {URL_A} {URL_B}")]))
+    result = run_autonomous(
+        "Who won?",
+        playwright_model=_browser([URL_A, URL_B], "Initial browser answer."),
+        summarize_model=finalizer,
+        fetch=lambda url: pages[url],
+        resolver=_resolver,
+        ready=lambda _name: False,
+    )
+    assert result.answer == f"LightGBM won. Source: {URL_A} {URL_B}"
+    assert result.summarize_model == "injected"
+    assert "normalized source excerpts" in finalizer.script.seen[0]
+    assert URL_A in finalizer.script.seen[0] and URL_B in finalizer.script.seen[0]
 
 
 def test_missing_block_keeps_defaults_and_a_bad_list_raises(tmp_path: Path) -> None:

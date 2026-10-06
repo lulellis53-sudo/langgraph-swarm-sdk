@@ -90,10 +90,16 @@ def _autonomous(cfg: ProvidersConfig) -> dict[str, Any]:
     return {
         "playwright": playwright,
         "dedupe": roster(cfg.autonomous_dedupe),
+        "summarize": roster(cfg.autonomous_summarize),
         "memory": roster(cfg.autonomous_memory),
         "decision": roster(cfg.autonomous_decision),
         "selected_playwright": selected_playwright,
         "selected_dedupe": selected_dedupe,
+        "selected_summarize": select_ready(
+            cfg.autonomous_summarize,
+            ready=ready,
+            skip=frozenset({selected_playwright}) if selected_playwright else frozenset(),
+        ),
         "selected_memory": select_ready(cfg.autonomous_memory, ready=ready),
         "selected_decision": select_ready(cfg.autonomous_decision, ready=ready),
     }
