@@ -15,6 +15,7 @@
 
 ## INDEX
 
+- [Implementation Status Audit (2026-10-05)](#implementation-status-audit-2026-10-05)
 - [Workflow: ASCII Multipath Multiagent Toolchain Architecture](#workflow-ascii-multipath-multiagent-toolchain-architecture)
 - [Part I: Dynamic Graph Orchestration, Handoffs & Formal Safety (Items 1–5)](#part-i-dynamic-graph-orchestration-handoffs--formal-safety-items-15)
   - [1. Edgeless Dynamic Handoffs via LangGraph Command Primitives](#1-edgeless-dynamic-handoffs-via-langgraph-command-primitives)
@@ -56,6 +57,53 @@
 - [Runtime Hardware Benchmarks & Performance Deltas (Intel i7-9750H)](#runtime-hardware-benchmarks--performance-deltas-intel-i7-9750h)
 - [Edge Cases, Pitfalls & Failure Modes](#edge-cases-pitfalls--failure-modes)
 - [Primary Citations & Authoritative Evidence Ledger](#primary-citations--authoritative-evidence-ledger)
+
+---
+
+## Implementation Status Audit (2026-10-05)
+
+Method: for each item, a keyword search of `src/` (`rg -l -i <terms> src`) plus reading the code behind the items marked **changed** or **stale**. **Evidence found** means a matching file exists; it is *not* a review of whether the item is complete or correct. **No evidence** means the search found nothing. Test baseline when this audit ran: 9 test files failed to import in the working tree (missing `pandas`, `agent_tools` and similar), so the full gate was not green before this change.
+
+**Changed in this audit**
+
+| Item | Change |
+| :--- | :--- |
+| 9. Darwin sandbox | New `src/swarm_sdk/core/darwin_sandbox.py` builds a Seatbelt profile (no network, no process spawn, writes only in one directory, no reads under `$HOME` except the Python install). `verify_math_solution` runs LLM-written scripts under it by default (`sandbox=False` opts out). Tests: `tests/test_darwin_sandbox.py`. The profile is defense in depth, not a container: reads outside `$HOME` stay allowed. |
+
+**Stale statements in this document**
+
+| Item | What the text says | What the code shows |
+| :--- | :--- | :--- |
+| 2. Cycle prevention | "lacks causal reachability analysis"; only `recursion_limit` | `core/handoff_guard.py` already stops self-handoffs and cycles (`HandoffTrail`, `advance_handoff`). It is wired only in `orchestrator/low_swarm.py`; `core/swarm.py` (the `langgraph_swarm` graph) relies on `recursion_limit=50`. |
+| 14. GPU transport | cites `src/swarm_sdk/gpu/opencl.py` | That path does not exist. |
+
+**Evidence found in `src/` (presence only)**
+
+| Item | Where |
+| :--- | :--- |
+| 4. MiniMalloc | `core/minimalloc.py`, `core/compression.py` |
+| 5. Context pruning | `core/swarm.py` (`ClearToolUsesEdit` context editing); no `ContextBrief` |
+| 8. AST audit | `core/lifeguard_ast.py` (used by `orchestrator/low_swarm.py`) |
+| 10. Keychain vault | `vault.py`, `orchestrator/spawn.py`, `orchestrator/worker.py` |
+| 12. Ring buffer | `memory/opencl_store.py` |
+| 13. PyArrow | `math/stats.py`, `math/calcs.py`, `math/verify.py` |
+| 15. Zstandard | `core/compression.py` |
+| 17. System-1 router | `core/jev_router.py`, `core/system_one.py` |
+| 18. KV cache | `gpu/vram.py` |
+| 19. SIMD / cosine | `retrieval/embeddings.py`, `memory/faiss_store.py` |
+| 20. Token budget | `prompting/`, `orchestrator/worker.py` |
+| 21. Free-threading | `execution/executor.py`, `orchestrator/graph.py` |
+| 22. mimalloc | `core/allocator.py` |
+| 23. Lazy imports | `core/lifeguard_ast.py`, `orchestrator/low_swarm.py` |
+| 24. JIT | `core/compression.py` (numba) |
+| 25. RSS guard | `core/allocator.py`, `orchestrator/low_swarm.py` |
+| 26. OpenTelemetry | `observability/tracing.py` |
+| 27. Checkpointing | `core/checkpoint.py` |
+| 29. Consensus | `core/jev_router.py` |
+
+**No evidence in `src/`** (the roadmap's gap looks real): 1 (`Command` handoffs), 3 (speculative execution), 6 (Wasm sandbox), 7 (MCP adapters), 11 (Arrow shared-memory IPC), 16 (prefix-stable prompts), 28 (LangSmith), 30 (LLM-as-judge harness).
+
+The performance figures quoted in the items below were not re-measured in this audit.
 
 ---
 

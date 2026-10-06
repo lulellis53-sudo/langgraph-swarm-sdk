@@ -159,6 +159,11 @@ agents:
     contract: Agents/Databaser/AGENTS.md
     manifest: Agents/Databaser/agent.yaml
 
+  - name: CCoder
+    role: c_cpp_implementation
+    contract: Agents/CCoder/AGENTS.md
+    manifest: Agents/CCoder/agent.yaml
+
 # Task board — replace with tasks for the active project.
 # Each task must have: id, title, assigned agent(s), depends_on, and status.
 # Coder tasks that share a wave also need disjoint files (and usually task).

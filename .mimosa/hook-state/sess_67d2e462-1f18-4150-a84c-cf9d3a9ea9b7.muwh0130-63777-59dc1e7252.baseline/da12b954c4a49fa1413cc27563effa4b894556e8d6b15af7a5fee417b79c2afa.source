@@ -1,0 +1,13 @@
+---
+description: YAML config — swarm.yaml, model registry, agent manifests, coordination
+globs: "**/*.{yaml,yml}"
+alwaysApply: false
+---
+
+# Config YAML
+
+- Prefer `Main/config/swarm.yaml` and `Main/config/model_registry.yaml` (symlinks to packaged copies under `src/swarm_sdk/agents/config/`).
+- Env overrides: `SWARM_*` — document new vars in README or agent docs.
+- Validate personas: `uv run python -m swarm_sdk.agents.validate`.
+- Name env vars in YAML (`api_key_env`); never embed secret values.
+- Prefer editing existing keys over parallel config trees.

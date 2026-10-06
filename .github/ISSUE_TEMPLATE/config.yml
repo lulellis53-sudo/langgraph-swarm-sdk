@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security report
+    url: https://github.com/lulellis53-sudo/langgraph-swarm-sdk/security/advisories/new
+    about: Vulnerabilities and leaked credentials — not public issues. See SECURITY.md.

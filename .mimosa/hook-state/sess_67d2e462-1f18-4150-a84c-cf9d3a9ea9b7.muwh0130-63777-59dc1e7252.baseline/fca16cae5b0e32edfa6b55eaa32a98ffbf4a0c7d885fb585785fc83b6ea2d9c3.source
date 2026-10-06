@@ -1,0 +1,29 @@
+{
+  "enabledMcpjsonServers": [
+    "tavily",
+    "context7",
+    "context",
+    "apify",
+    "bright-data",
+    "appwrite-api",
+    "appwrite-docs"
+  ],
+  "skillOverrides": {
+    "compilator": "name-only",
+    "anthropic-skills:docs": "name-only",
+    "anthropic-skills:docx": "name-only",
+    "anthropic-skills:google-workspace": "name-only",
+    "anthropic-skills:internal-comms": "name-only",
+    "anthropic-skills:office-documents": "name-only",
+    "anthropic-skills:pdf": "name-only",
+    "anthropic-skills:pptx": "name-only",
+    "anthropic-skills:visual-artifacts": "name-only",
+    "anthropic-skills:web-artifacts-builder": "name-only",
+    "anthropic-skills:writing-comms": "name-only",
+    "anthropic-skills:canvas-design": "name-only",
+    "anthropic-skills:brand-guidelines": "name-only",
+    "anthropic-skills:artifact-styling": "name-only",
+    "anthropic-skills:algorithmic-art": "name-only",
+    "anthropic-skills:ai-tooling": "name-only"
+  }
+}

@@ -43,7 +43,8 @@ tasks:
 
   - id: solve_math
     description: >-
-      Delegate end-to-end math solving (derivation, LaTeX result, verification script) to MathWorker.
+      Delegate end-to-end math solving (derivation, LaTeX result, verification
+      script) to MathWorker.
     outputs:
       - solution
       - verification

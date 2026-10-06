@@ -1,0 +1,19 @@
+[package]
+name = "websearch-rs"
+version = "0.1.0"
+edition = "2024"
+description = "Fast SearXNG client CLI for the WebSearch stack (dork operators, JSON or text output)"
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "4.6", features = ["derive", "env"] }
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "json", "query", "rustls"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true

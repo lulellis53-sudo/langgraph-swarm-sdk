@@ -1,5 +1,5 @@
 name: parallel_fanout
-sdk_entry: swarm_sdk.execution.fanout.fan_out
+sdk_entry: swarm_sdk.execution.fan_out
 metrics: [tokens, mode]
 models: predefined
 pass:

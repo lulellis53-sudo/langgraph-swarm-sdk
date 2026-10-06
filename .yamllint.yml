@@ -1,28 +1,40 @@
 # yamllint configuration for this repository.
-# Validates .github/workflows/*.yml and other YAML files.
-# Run: yamllint .
-
+# Run: uv run yamllint -c .yamllint.yml .
 extends: default
+
+yaml-files:
+  - "*.yaml"
+  - "*.yml"
+  - ".yamllint.yml"
 
 rules:
   line-length:
-    max: 120
+    max: 100
     level: warning
+    allow-non-breakable-inline-mappings: true
 
   indentation:
-    spaces: consistent
+    spaces: 2
     indent-sequences: consistent
 
   truthy:
-    # Allow GitHub Actions' `on:` key
+    # Allow GitHub Actions' `on:` key and compose `public_instance: false`
     check-keys: false
 
   comments:
     min-spaces-from-content: 1
+    # Inline values like "instance #2" are not YAML comments
+    ignore-shebangs: true
 
   document-start:
     present: false
 
+  empty-lines:
+    max: 2
+    max-start: 0
+    max-end: 1
+
 ignore: |
   .venv/
   node_modules/
+  Agents/benchmark/results/

@@ -111,7 +111,9 @@ providers:
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 20
-    evidence: user (MINIMAX_API_KEY, not OAuth; 2.7 high speed); model ID assumed - verify in Minimax console
+    evidence: >-
+      user (MINIMAX_API_KEY, not OAuth; 2.7 high speed); model ID assumed -
+      verify in Minimax console
 
   - name: openai:gpt-6-luna
     provider: codex
@@ -191,7 +193,7 @@ providers:
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 40
-    evidence: web (#2 OpenRouter by usage, best coding value)
+    evidence: "web (#2 OpenRouter by usage, best coding value)"
 
   - name: alibaba:qwen-3.8
     provider: alibaba
@@ -299,7 +301,7 @@ providers:
     effort: low
     think_levels: ["off", low, medium, high, xhigh]
     priority: 92
-    evidence: assumed (local Ollama instance #2)
+    evidence: "assumed (local Ollama instance #2)"
 
 services:
   - name: bright_data

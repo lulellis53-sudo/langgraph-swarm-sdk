@@ -88,6 +88,7 @@ dev = [
     "pytest-cov>=6.0",
     "types-PyYAML>=6.0.12",
     "types-requests>=2.32.0",
+    "yamllint>=1.37",
 ]
 # ## Observability (OTel traces for FastAPI / httpx)
 observability = [
@@ -167,10 +168,11 @@ forecast = [
     "prophet>=1.1.6",
     "pyarrow>=18.0",
     "scikit-learn>=1.6",
-    "sentence-transformers>=5.0",
+    "sentence-transformers>=5.0; sys_platform != 'darwin' or platform_machine != 'x86_64'",
+    "statsmodels>=0.15.0",
     "sympy>=1.13",
     "tokenizers>=0.22",
-    "transformers>=4.51",
+    "transformers>=4.51; sys_platform != 'darwin' or platform_machine != 'x86_64'",
 ]
 # ## Scraping / crawling stack (heavy: Twisted via scrapy; playwright needs `playwright install chromium`)
 scrape = [

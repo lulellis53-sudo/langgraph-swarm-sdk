@@ -1,0 +1,32 @@
+{
+  "mcpServers": {
+    "context7": {
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${CONTEXT7_API_KEY}"
+      }
+    },
+    "context": {
+      "command": "scripts/mcp-wrappers/context",
+      "args": []
+    },
+    "apify": {
+      "url": "https://mcp.apify.com",
+      "headers": {
+        "Authorization": "Bearer ${APIFY_TOKEN}"
+      }
+    },
+    "bright-data": {
+      "command": "scripts/mcp-wrappers/brightdata",
+      "args": []
+    },
+    "appwrite-api": {
+      "command": "scripts/mcp-wrappers/appwrite-api",
+      "args": []
+    },
+    "appwrite-docs": {
+      "command": "scripts/mcp-wrappers/appwrite-docs",
+      "args": []
+    }
+  }
+}

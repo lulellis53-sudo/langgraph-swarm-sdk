@@ -1,0 +1,98 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "python.languageServer": "None",
+  "python.analysis.typeCheckingMode": "off",
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports.ruff": "explicit",
+      "source.fixAll.ruff": "explicit"
+    },
+    "editor.defaultFoldingRangeProvider": "charliermarsh.ruff"
+  },
+  "ruff.enable": true,
+  "ruff.nativeServer": "on",
+  "ruff.configuration": "pyproject.toml",
+  "ruff.configurationPreference": "filesystemFirst",
+  "ruff.importStrategy": "fromEnvironment",
+  "ruff.interpreter": [
+    "${workspaceFolder}/.venv/bin/python"
+  ],
+  "ruff.organizeImports": true,
+  "ruff.fixAll": true,
+  "ty.importStrategy": "fromEnvironment",
+  "ty.interpreter": "${workspaceFolder}/.venv/bin/python",
+  "ty.diagnosticMode": "workspace",
+  "ty.experimental.useUv": "on",
+  "ty.disableLanguageServices": false,
+  "ty.showSyntaxErrors": true,
+  "ty.completions.autoImport": true,
+  "ty.completions.completeFunctionParentheses": true,
+  "ty.inlayHints.variableTypes": true,
+  "ty.inlayHints.callArgumentNames": true,
+  "editor.suggestOnTriggerCharacters": true,
+  "editor.quickSuggestions": {
+    "other": "on",
+    "comments": "off",
+    "strings": "on"
+  },
+  "editor.inlineSuggest.enabled": true,
+  "editor.parameterHints.enabled": true,
+  "editor.wordBasedSuggestions": "off",
+  "jupyter.askForKernelRestart": false,
+  "jupyter.kernels.excludePythonEnvironments": [],
+  "notebook.formatOnSave.enabled": true,
+  "colab.logging.level": "info",
+  "colab.uploading": true,
+  "colab.activityBarContentView": true,
+  "colab.activityBarResourceView": true,
+  "colab.serverMounting": false,
+  "colab.terminal": false,
+  "chatgpt.openOnStartup": false,
+  "chatgpt.followUpQueueMode": "queue",
+  "chatgpt.composerEnterBehavior": "cmdIfMultiline",
+  "chatgpt.reviewDelivery": "inline",
+  "chatgpt.commentCodeLensEnabled": true,
+  "notebook.codeActionsOnSave": {
+    "notebook.source.organizeImports": "explicit"
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml",
+    "editor.formatOnSave": true
+  },
+  "[toml]": {
+    "editor.defaultFormatter": "tamasfe.even-better-toml",
+    "editor.formatOnSave": true
+  },
+  "evenBetterToml.formatter.alignEntries": false,
+  "yaml.disableSchemaDetection": [],
+  "redhat.telemetry.enabled": false,
+  "files.exclude": {
+    "**/.venv": true,
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    "**/.ruff_cache": true,
+    "**/target": true,
+    "**/.hypothesis": true
+  },
+  "files.watcherExclude": {
+    "**/.venv/**": true,
+    "**/__pycache__/**": true,
+    "**/target/**": true,
+    "**/.git/objects/**": true
+  },
+  "workbench.editor.autoLockGroups": {
+    "jupyter-notebook": true
+  },
+  "python.testing.unittestArgs": [
+    "-v",
+    "-s",
+    "./Agents",
+    "-p",
+    "*test.py"
+  ],
+  "python.testing.pytestEnabled": false,
+  "python.testing.unittestEnabled": true
+}

@@ -1,0 +1,11 @@
+---
+description: Git and docs — commit only on request; update README when behavior changes
+alwaysApply: false
+---
+
+# Git & docs
+
+- Create commits **only** when the user asks; follow the repo commit style; no `--no-verify` / force-push to `main`.
+- Update [`README.md`](../../README.md) when behavior or install steps change.
+- Keep persona rules in `Agents/*/AGENTS.md`; Cursor operating rules in `.cursor/AGENTS.md` and `.cursor/rules/`.
+- Dependencies: `pyproject.toml` + `uv lock`; respect `[tool.uv]` constraints (e.g. cryptography wheel-only for Jupyter).
