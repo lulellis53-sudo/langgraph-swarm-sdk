@@ -60,7 +60,12 @@ class SemanticCache:
             )
             """
         )
-        for table in ("exact_cache", "semantic_cache"):
+        # SQLite cannot bind identifiers as parameters, so the interpolated
+        # table names are pinned to this whitelist (Mimosa: SQL injection).
+        known_tables = ("exact_cache", "semantic_cache")
+        for table in known_tables:
+            if table not in known_tables or ";" in table:
+                raise ValueError(f"unexpected table name: {table!r}")
             columns = {row[1] for row in self._conn.execute(f"PRAGMA table_info({table})")}
             if "inserted_at" not in columns:
                 self._conn.execute(f"ALTER TABLE {table} ADD COLUMN inserted_at REAL")

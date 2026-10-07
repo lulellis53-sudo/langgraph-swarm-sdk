@@ -36,10 +36,17 @@ def _paired_samples(codes: dict[str, str], runs: int = _RUNS) -> dict[str, list[
     Interleaving spreads machine drift (thermal throttling, background load) over
     both sides of the comparison instead of letting it land on whichever side ran
     last, which is what made the improvement percentage swing by ~20 points.
+
+    Snippets are interpreter constants defined in this file (never shell text,
+    never user input): the list form below passes them as ``-c`` argv without a
+    shell, so there is no injection surface.
     """
-    samples: dict[str, list[float]] = {name: [] for name in codes}
+    allowed = {name: code for name, code in codes.items() if name in {"current", "legacy"}}
+    if set(allowed) != set(codes):
+        raise ValueError(f"unexpected benchmark snippet names: {sorted(set(codes) - set(allowed))}")
+    samples: dict[str, list[float]] = {name: [] for name in allowed}
     for _ in range(runs):
-        for name, code in codes.items():
+        for name, code in allowed.items():
             proc = subprocess.run(
                 [sys.executable, "-c", code],
                 capture_output=True,

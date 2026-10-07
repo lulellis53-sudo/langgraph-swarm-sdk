@@ -141,11 +141,31 @@ PRODUCTS: tuple[Product, ...] = (
     Product("rtx-5070-ti", "NVIDIA GeForce RTX 5070 Ti", "gpu", ("RTX 5070 Ti",)),
     Product("rtx-5070", "NVIDIA GeForce RTX 5070", "gpu", ("RTX 5070",)),
     Product("rtx-5060", "NVIDIA GeForce RTX 5060", "gpu", ("RTX 5060",)),
+    Product("rtx-5060-ti", "NVIDIA GeForce RTX 5060 Ti", "gpu", ("RTX 5060 Ti",)),
     Product("rtx-5000-ada", "NVIDIA RTX 5000 Ada", "gpu", ("RTX 5000 Ada",)),
-    Product("ddr5-16gb", "DDR5 16GB", "memory", ("DDR5 16GB", "memoria DDR5 16GB")),
-    Product("ddr5-32gb", "DDR5 32GB", "memory", ("DDR5 32GB", "memoria DDR5 32GB")),
-    Product("ddr5-64gb", "DDR5 64GB", "memory", ("DDR5 64GB", "memoria DDR5 64GB")),
+    Product("ryzen-5-9600x", "AMD Ryzen 5 9600X", "cpu", ("Ryzen 5 9600X",)),
+    Product("ryzen-7-9700x", "AMD Ryzen 7 9700X", "cpu", ("Ryzen 7 9700X",)),
+    Product("ryzen-7-9800x", "AMD Ryzen 7 9800X", "cpu", ("Ryzen 7 9800X",)),
+    Product("ryzen-9-9900x", "AMD Ryzen 9 9900X", "cpu", ("Ryzen 9 9900X",)),
+    Product("ryzen-9-9950x", "AMD Ryzen 9 9950X", "cpu", ("Ryzen 9 9950X",)),
+    Product("ryzen-7-9800x3d", "AMD Ryzen 7 9800X3D", "cpu", ("Ryzen 7 9800X3D",)),
+    Product("ryzen-7-9850x3d", "AMD Ryzen 7 9850X3D", "cpu", ("Ryzen 7 9850X3D",)),
+    Product("ryzen-9-9950x3d", "AMD Ryzen 9 9950X3D", "cpu", ("Ryzen 9 9950X3D",)),
+    Product("ryzen-9-9950x3d2", "AMD Ryzen 9 9950X3D2", "cpu", ("Ryzen 9 9950X3D2",)),
+    Product("ddr5-1x8gb", "DDR5 1x8GB", "memory", ("DDR5 8GB", "memoria ddr5 8gb")),
+    Product("ddr5-2x8gb", "DDR5 2x8GB", "memory", ("DDR5 2x8GB", "kit ddr5 16gb")),
+    Product("ddr5-1x16gb", "DDR5 1x16GB", "memory", ("DDR5 16GB", "memoria ddr5 16gb")),
+    Product("ddr5-2x16gb", "DDR5 2x16GB", "memory", ("DDR5 2x16GB", "kit ddr5 32gb")),
+    Product("ddr5-1x32gb", "DDR5 1x32GB", "memory", ("DDR5 32GB", "memoria ddr5 32gb")),
+    Product("ddr5-2x32gb", "DDR5 2x32GB", "memory", ("DDR5 2x32GB", "kit ddr5 64gb")),
+    Product("ddr5-1x64gb", "DDR5 1x64GB", "memory", ("DDR5 64GB", "memoria ddr5 64gb")),
 )
+
+#: User-supplied low-floor ranges in BRL centavos: a floor at or below the
+#: range top counts as a good deal, at or below the bottom as exceptional.
+FLOOR_TARGETS: dict[str, tuple[int, int]] = {
+    "rtx-5090": (1_800_000, 1_900_000),  # R$18.000–R$19.000
+}
 SOURCES: tuple[Source, ...] = (
     Source("kabum", "kabum.com.br", "retailer"),
     Source("terabyte", "terabyteshop.com.br", "retailer"),
@@ -155,6 +175,7 @@ SOURCES: tuple[Source, ...] = (
     Source("mercadolivre", "mercadolivre.com.br", "marketplace"),
     Source("casasbahia", "casasbahia.com.br", "retailer"),
     Source("x", "x.com", "social"),
+    Source("telegram", "t.me", "social"),
     Source("olx", "olx.com.br", "marketplace"),
     Source("promobit", "promobit.com.br", "community"),
     Source("pelando", "pelando.com.br", "community"),
@@ -163,6 +184,24 @@ _PAYMENTS = frozenset({"pix", "card"})
 _CONDITIONS = frozenset({"new", "used"})
 _ORIGINS = frozenset({"observed", "synthetic"})
 _VERIFICATIONS = frozenset({"verified", "snippet"})
+
+
+def floor_status(sku: str, floor_cents: int) -> str:
+    """Classify an observed floor against ``FLOOR_TARGETS``.
+
+    Returns ``"exceptional"`` (at or below the range bottom), ``"low"`` (at or
+    below the range top), ``"above"`` (inside or above the range), or
+    ``"no_target"`` for SKUs without a user-supplied range.
+    """
+    target = FLOOR_TARGETS.get(sku)
+    if target is None:
+        return "no_target"
+    low, high = target
+    if floor_cents <= low:
+        return "exceptional"
+    if floor_cents <= high:
+        return "low"
+    return "above"
 
 
 def market_today(at: float | None = None) -> date:

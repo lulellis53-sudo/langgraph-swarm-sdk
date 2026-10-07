@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from unittest.mock import patch
+
 import pytest
 
 from swarm_sdk.orchestrator import LowSwarmEngine, SwarmState
-from swarm_sdk.core.rules import HostRuleEngine
-from swarm_sdk.core.jev_router import JevRouter
 
 
 class TestLowSwarmEngine:
@@ -134,14 +133,16 @@ class TestLowSwarmEngine:
     def test_custom_test_runner_pass_and_fail(self) -> None:
         """Custom test_runner validates synthesized code execution."""
         # Failing runner
-        failing_runner = lambda state: {"passed": False, "error": "Unit tests failed: 2 assertion errors"}
+        def failing_runner(state):
+            return {"passed": False, "error": "Unit tests failed: 2 assertion errors"}
         engine_fail = LowSwarmEngine(test_runner=failing_runner)
         res_fail = engine_fail.run("Test task", target_files=["module.py"])
         assert res_fail["status"] == "failed"
         assert "Unit tests failed" in str(res_fail["error"])
 
         # Passing runner
-        passing_runner = lambda state: {"passed": True, "tests_run": 5}
+        def passing_runner(state):
+            return {"passed": True, "tests_run": 5}
         engine_pass = LowSwarmEngine(test_runner=passing_runner)
         res_pass = engine_pass.run("Test task", target_files=["module.py"])
         assert res_pass["status"] == "success"
@@ -149,7 +150,8 @@ class TestLowSwarmEngine:
 
     def test_rag_pipeline_context_injection(self) -> None:
         """RAG pipeline injects context chunks during router execution."""
-        mock_rag = lambda task: ["Chunk A: architectural guideline", "Chunk B: invariant rule"]
+        def mock_rag(task):
+            return ["Chunk A: architectural guideline", "Chunk B: invariant rule"]
         engine = LowSwarmEngine(rag_pipeline=mock_rag)
         result = engine.run("Implement optimized vector loop", target_files=["vector.py"])
 

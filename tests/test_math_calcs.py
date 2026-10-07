@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from swarm_sdk.math.calcs import ArrowCalcs, SwarmCalcs, SympyCalcs
 from swarm_sdk.math.dispatch import classify_math_task
 from swarm_sdk.math.types import MathProblem

@@ -7,7 +7,6 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
-
 from WebSearch.backend.prefilter import prefilter_hits, unwrap_redirect
 from WebSearch.frontend import SearchHit, parallel_search, registry_search
 from WebSearch.frontend.hits import near_dedupe, normalize_hit

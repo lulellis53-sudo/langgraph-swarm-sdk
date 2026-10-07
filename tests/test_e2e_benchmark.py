@@ -12,11 +12,10 @@ from __future__ import annotations
 
 import ast
 import importlib
-import os
-from pathlib import Path
 import resource
 import sys
-from typing import Any
+from pathlib import Path
+
 import pytest
 
 from swarm_sdk import cli
@@ -24,7 +23,6 @@ from swarm_sdk.core.lifeguard_ast import MetaLifeguardAuditor
 from swarm_sdk.core.rules import HostInvariants, HostRuleEngine
 from swarm_sdk.orchestrator import LowSwarmEngine, SwarmState
 from swarm_sdk.retrieval.rag_ingest import RAGIngestionPipeline
-
 
 # ==============================================================================
 # Helper Utilities

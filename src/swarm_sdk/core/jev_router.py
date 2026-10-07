@@ -246,7 +246,9 @@ class JevRouter:
         if not self.endpoint or not self.api_key:
             return None
 
-        url = f"{self.endpoint.rstrip('/')}/{path.lstrip('/')}"
+        from swarm_sdk.netguard import validate_http_url
+
+        url = validate_http_url(f"{self.endpoint.rstrip('/')}/{path.lstrip('/')}")
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",

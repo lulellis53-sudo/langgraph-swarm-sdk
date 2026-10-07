@@ -33,7 +33,11 @@ from Prediction.br_hardware import (  # noqa: E402
 )
 
 DB_PATH = Path(__file__).resolve().parent / "offers.db"
-BACKENDS = ("ddglite", "exa")
+#: Live search mix (user-specified): Jina, Exa, Tavily are built-in HTTP
+#: searchers with Keychain-resolved keys; ddglite stays as the keyless
+#: fallback. "context" (non-context7) and "ddg_mcp" need backend functions
+#: before they can join (providers.yaml carries their inert specs).
+BACKENDS = ("tavily", "exa", "jina", "ddglite")
 #: Query alias for the x.com aggregator lane (legacy host still indexed).
 SITE_ALIAS = {"x": "x.com OR site:twitter.com"}
 #: OLX listings are second-hand goods; every other source sells new stock.
