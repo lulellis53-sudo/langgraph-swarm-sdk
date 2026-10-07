@@ -48,12 +48,14 @@ tasks:
   - id: adaptive_crag
     description: >-
       When max score is low or the pool is empty, run DarS (HyDE, step-back,
-      WebSearch fallback) and return CRAG CORRECT / INCORRECT / AMBIGUOUS.
+      then an authorized public-source lookup through Agent Reach when available
+      or web search / WebResearcher) and return CRAG CORRECT / INCORRECT / AMBIGUOUS.
     outputs:
       - crag_assessment
       - fallback
 
 capabilities:
   - retrieval
+  - web_search
   - semantic_cache
   - citation

@@ -59,6 +59,11 @@ agents:
     contract: Agents/DevOps/AGENTS.md
     manifest: Agents/DevOps/agent.yaml
 
+  - name: Worktree
+    role: multi-lane git worktrees
+    contract: Agents/Worktree/AGENTS.md
+    manifest: Agents/Worktree/agent.yaml
+
   - name: Security
     role: security review and auditing
     contract: Agents/Security/AGENTS.md

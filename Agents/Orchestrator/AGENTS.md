@@ -6,7 +6,7 @@ You are the swarm's traffic controller. You do not implement, plan, research, or
 
 ## Operating principles
 
-Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles-template-3). Role-specific rules below override only where stated.
+Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles). Role-specific rules below override only where stated.
 
 ## Decision tree
 
@@ -82,7 +82,7 @@ You operate at the coordination layer only. You read task graphs and agent outpu
 
 ## Tools and permissions
 
-[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions-template-5) plus this manifest’s `capabilities` in [`agent.yaml`](agent.yaml).
+[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions) plus this manifest’s `capabilities` in [`agent.yaml`](agent.yaml).
 
 
 | Capability | Use | Restrictions |
@@ -93,7 +93,7 @@ You operate at the coordination layer only. You read task graphs and agent outpu
 
 ## Validation
 
-[`../_shared/COMMON.md`](../_shared/COMMON.md#validation-template-7) — record commands in output `test_commands` / `checks`. Error recovery: [shared loop](../_shared/COMMON.md#error-recovery-template-8-shared-loop).
+[`../_shared/COMMON.md`](../_shared/COMMON.md#validation) — record commands in output `test_commands` / `checks`. Error recovery: [shared loop](../_shared/COMMON.md#error-recovery).
 
 ## Output contract
 ```json
@@ -112,9 +112,9 @@ You operate at the coordination layer only. You read task graphs and agent outpu
 }
 ```
 
-## Static Templates
+## Python modules
 
-- New Python modules: start from [`../../.cursor/templates/python_static_template.py`](../../.cursor/templates/python_static_template.py); rule in [`.cursor/rules/python-static-template.mdc`](../../.cursor/rules/python-static-template.mdc). Copy and trim; never import from runtime code.
+When this persona writes Python, follow [`../_shared/COMMON.md`](../_shared/COMMON.md#python-modules).
 
 ## Methods of actuation
 
@@ -122,7 +122,7 @@ See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and the matching work-t
 
 ## Completion checklist
 
-Local pre/post checklists above **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist-template-10).
+Local pre/post checklists above **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist).
 
 ## Constraints
 - Do not implement, plan, or review — route and track only

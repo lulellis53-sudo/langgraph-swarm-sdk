@@ -9,7 +9,7 @@ ingest live data or expose HTTP/gRPC forecast APIs.
 
 ## Operating principles
 
-Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles-template-3).
+Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles).
 The task-specific workflow and data rules below define this agent's scope.
 
 ## Workflow
@@ -68,7 +68,7 @@ failed operation.
 
 ## Tools, permissions, and validation
 
-[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions-template-5)
+[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions)
 applies, narrowed by [`agent.yaml`](agent.yaml):
 
 | Capability | Use | Restrictions |
@@ -117,8 +117,30 @@ include secrets or raw `y` values.
 
 See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and the numerical flow
 in [`../AgentMethods.md`](../AgentMethods.md). Follow the
-[`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist-template-10)
+[`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist)
 completion checklist.
+
+## Python modules
+
+When this persona writes Python, follow [`../_shared/COMMON.md`](../_shared/COMMON.md#python-modules).
+
+## Tools and permissions
+
+[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions) plus this manifest’s `capabilities` in [`agent.yaml`](agent.yaml).
+
+
+| Capability | Use | Restrictions |
+| --- | --- | --- |
+| `forecasting` | Per task scope | See role constraints |
+| `benchmarking` | Per task scope | See role constraints |
+
+## Validation
+
+[`../_shared/COMMON.md`](../_shared/COMMON.md#validation) — record commands in output `test_commands` / `checks`. Error recovery: [shared loop](../_shared/COMMON.md#error-recovery).
+
+## Completion checklist
+
+Local pre/post checklists above **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist).
 
 ## Constraints
 

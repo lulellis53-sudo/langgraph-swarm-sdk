@@ -1122,6 +1122,10 @@ Beginning in **LLVM 16** and refined across modern toolchains (**LLVM 18 through
 > * [Facebook Zstandard Specification](https://facebook.github.io/zstd/) ([github.com/facebook/zstd](https://github.com/facebook/zstd))
 > * [DWARF Debugging Information Format Standard](https://dwarfstd.org/) ([github.com/dwarfstd](https://github.com/dwarfstd))
 
+**Host check (2026-10-07).** `clang` 23.1.1 accepts `-gz=zstd` and `-gz=zlib`, but a 4000-function Mach-O object was 912408 bytes with `-g`, with `-gz=zstd`, and with `-gz=zlib`. On this Darwin target the flag does not shrink debug sections. The ELF `SHF_COMPRESSED` path above is not what this Mac produced. File compression and `libzstd` linking are the Meta CLI/library, documented in §3.11, and are separate from `-gz=`.
+
+**Same LLVM under rustc (2026-10-07).** `rustc` 1.99.0 on `x86_64-apple-darwin` reports LLVM 23.1.1. `rustc -C help` and `rustc -Z help` list no zstd switch. `-C link-arg=-Wl,--compress-debug-sections=zstd` fails here with `ld: unknown options: --compress-debug-sections=zstd`. `-C llvm-args=-compress-debug-sections=zstd` is rejected as an unknown LLVM argument. Darwin packaging uses the `zstd` CLI (§2.18), not this linker flag.
+
 ---
 
 #### 1. Toolchain Flag Matrix & Invocation Pipeline
@@ -2105,6 +2109,23 @@ In the modern Rust systems programming ecosystem, **Zstandard (ZSTD)** serves as
 
 > **Host benchmark note (2026-10-02):** the Rust/ZSTD performance figures later in this section are not measurements from this Mac and must not be presented as local results. Use the reproducible `zstd -b` procedure and measured sample in [Chapter 8.6](#86-zstandard-build-and-compression-benchmark-runbook). Cargo's `target/` is a separate ZFS dataset choice; ZFS has no Rust compiler flag for compression.
 
+**Host check (2026-10-07).** `rustc` 1.99.0, host `x86_64-apple-darwin`, LLVM 23.1.1. There is no `-C` or `-Z` zstd option. This link failed:
+
+```text
+rustc -C debuginfo=2 -C link-arg=-Wl,--compress-debug-sections=zstd
+ld: unknown options: --compress-debug-sections=zstd
+```
+
+Keep `--compress-debug-sections=zstd` on ELF linkers only. On this Mac, archive a dSYM with the installed CLI 1.5.7. Level 19 does not need `--ultra`. `--ultra` is levels 20–22 (`ZSTD_maxCLevel()` is 22 in `facebook/zstd` `lib/zstd.h` at `49cf51799ea`). The default level is 3.
+
+```bash
+dsymutil target/release/<binary> -o target/release/<binary>.dSYM
+tar -cf - -C target/release <binary>.dSYM | zstd -T0 -19 -o <binary>.dSYM.tar.zst
+zstd -t <binary>.dSYM.tar.zst
+```
+
+Link Rust code to the installed 1.5.7 library (`~/.local/bin/zstd`, Homebrew `/usr/local/opt/zstd`), not the 1.6.0 headers: `pkg-config --cflags --libs libzstd`.
+
 ---
 
 #### 1. Toolchain & Linker Integration: Compressing Rust DWARF Sections
@@ -2168,7 +2189,7 @@ export CARGO_HOME="/dev/cargo"
 | **`flate2` (gzip)** | Level 6 (Default) | 38.2 MB/s | 185.4 MB/s | 26.4 MB | 3.78x |
 | **`flate2` (gzip)** | Level 9 (Max) | 12.1 MB/s | 182.1 MB/s | 25.1 MB | 3.98x |
 | **`zstd` (Zstandard)** | **Level 3 (Default)** | **412.5 MB/s** | **1,020.0 MB/s** | **24.8 MB** | **4.03x** |
-| **`zstd` (Zstandard)** | **Level 19 (Ultra)** | 8.4 MB/s | **1,150.0 MB/s** | **18.9 MB** | **5.29x** |
+| **`zstd` (Zstandard)** | **Level 19 (not ultra)** | 8.4 MB/s | **1,150.0 MB/s** | **18.9 MB** | **5.29x** |
 
 > [!IMPORTANT]
 > **Performance Synthesis**: At default levels, **`zstd` compresses 10.7x faster than `flate2` (412.5 MB/s vs 38.2 MB/s)** while producing a **smaller** output payload (24.8 MB vs 26.4 MB). On decompression, `zstd` achieves **1,020 MB/s—over 5.4x faster** than gzip.
@@ -2830,6 +2851,8 @@ gcc-16 -O2 -I"$(brew --prefix gcc)/include" -L"$(brew --prefix gcc)/lib/gcc/curr
 ---
 
 ### 3.11 Zstandard Builds, Link Flags & Benchmarking
+
+Repository pin, checked 2026-10-07: depth-1 clone of <https://github.com/facebook/zstd> at `49cf51799ea` (2026-10-05). `lib/zstd.h` there is 1.6.0. The reference build is `make` / `make install` / `make check`; the README says CMake and Meson can drift. Default level is `ZSTD_CLEVEL_DEFAULT` (3). Levels run from 1 to `ZSTD_maxCLevel()` (22); levels 20–22 are `--ultra` and need more memory. The simple API is `ZSTD_compress` / `ZSTD_decompress`, with `ZSTD_compressBound` and `ZSTD_isError`. `ZSTD_STATIC_LINKING_ONLY` is unstable and static-link only. This host's CLI and Homebrew `libzstd` are 1.5.7 (`~/.local/bin/zstd`, `/usr/local/opt/zstd`); do not mix those binaries with the 1.6.0 headers. `pkg-config --cflags --libs libzstd` is the link line.
 
 GCC builds of `libzstd` use the upstream Makefile or CMake project; the same CPU-specificity rule as other native libraries applies. `-march=native` produces a host-only binary (this Mac is AVX2/FMA, no AVX-512); do not publish that artifact as a portable package. Zstandard has runtime-selected x86 optimizations, so measure the default build against a native-tuned build before forcing ISA flags globally.
 

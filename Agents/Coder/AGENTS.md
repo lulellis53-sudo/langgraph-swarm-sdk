@@ -25,7 +25,7 @@ unlimited.
 
 ## Operating principles
 
-Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles-template-3).
+Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles).
 The file-ownership rules below are additional task-specific constraints.
 
 ## Workflow
@@ -65,7 +65,7 @@ The file-ownership rules below are additional task-specific constraints.
 
 ## Tools, permissions, and delegation
 
-[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions-template-5)
+[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions)
 applies, narrowed by [`agent.yaml`](agent.yaml):
 
 | Capability | Allowed use | Restriction |
@@ -78,7 +78,7 @@ applies, narrowed by [`agent.yaml`](agent.yaml):
 
 ## Validation
 
-Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#validation-template-7) and
+Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#validation) and
 record executed commands in `test_commands`. Run the focused failing test first
 for a regression, confirm it fails for the expected reason, then rerun after
 the fix. Run the relevant formatting, lint, type, and test gates for the
@@ -107,13 +107,17 @@ Do not mark a skipped check as passing.
 ## Methods and completion
 
 See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and the coding flow in
-[`../AgentMethods.md`](../AgentMethods.md). Follow the
-[`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist-template-10)
-completion checklist.
+[`../AgentMethods.md`](../AgentMethods.md). Python modules:
+[`../_shared/COMMON.md`](../_shared/COMMON.md#python-modules). Completion:
+[`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist).
 
-For new Python modules, follow the canonical rules in
-[`../../.cursor/AGENTS.md`](../../.cursor/AGENTS.md); copy and trim a template,
-never import a template into runtime code.
+## Python modules
+
+When this persona writes Python, follow [`../_shared/COMMON.md`](../_shared/COMMON.md#python-modules).
+
+## Completion checklist
+
+Local pre/post checklists above **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist).
 
 ## Constraints
 

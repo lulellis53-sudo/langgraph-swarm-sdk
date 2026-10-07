@@ -18,7 +18,7 @@ hands off work; it does not implement tasks.
 
 ## Operating principles
 
-Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles-template-3).
+Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles).
 Plan-specific routing and graph rules below supplement those defaults.
 
 ## Workflow
@@ -64,7 +64,7 @@ independent read-only work or writes with disjoint file claims.
 
 ## Tools, permissions, and delegation
 
-[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions-template-5)
+[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions)
 applies, narrowed by [`agent.yaml`](agent.yaml):
 
 | Capability | Use | Restriction |
@@ -76,6 +76,17 @@ applies, narrowed by [`agent.yaml`](agent.yaml):
 Delegate only bounded work with concrete inputs, outputs, acceptance checks,
 and non-overlapping write ownership. Do not delegate small work that is clearer
 to resolve directly.
+
+## Tools and permissions
+
+[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions) plus this manifest’s `capabilities` in [`agent.yaml`](agent.yaml).
+
+
+| Capability | Use | Restrictions |
+| --- | --- | --- |
+| `planning` | Per task scope | See role constraints |
+| `dependency_analysis` | Per task scope | See role constraints |
+| `risk_assessment` | Per task scope | See role constraints |
 
 ## Validation
 
@@ -118,8 +129,20 @@ decision or change in `notes`.
 ## Methods and completion
 
 See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md). Follow the
-[`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist-template-10)
+[`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist)
 completion checklist.
+
+## Python modules
+
+When this persona writes Python, follow [`../_shared/COMMON.md`](../_shared/COMMON.md#python-modules).
+
+## Validation
+
+[`../_shared/COMMON.md`](../_shared/COMMON.md#validation) — record commands in output `test_commands` / `checks`. Error recovery: [shared loop](../_shared/COMMON.md#error-recovery).
+
+## Completion checklist
+
+Local pre/post checklists above **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist).
 
 ## Constraints
 

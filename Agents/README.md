@@ -12,6 +12,7 @@
 | [Debugger](Debugger/AGENTS.md) | root-cause failures | gpt-4o-mini | high | [agent.yaml](Debugger/agent.yaml) |
 | [Documenter](Documenter/AGENTS.md) | maintain documentation | gpt-4o-mini | low | [agent.yaml](Documenter/agent.yaml) |
 | [DevOps](DevOps/AGENTS.md) | CI/CD and environments | gpt-4o-mini | medium | [agent.yaml](DevOps/agent.yaml) |
+| [Worktree](Worktree/AGENTS.md) | multi-lane git worktrees | gpt-6-luna | medium | [agent.yaml](Worktree/agent.yaml) |
 | [Security](Security/AGENTS.md) | security review and auditing | gpt-4o | high | [agent.yaml](Security/agent.yaml) |
 | [DataEngineer](DataEngineer/AGENTS.md) | data pipelines and storage | gpt-4o-mini | medium | [agent.yaml](DataEngineer/agent.yaml) |
 | [MLSpecialist](MLSpecialist/AGENTS.md) | model evaluation and integration | gpt-4o | high | [agent.yaml](MLSpecialist/agent.yaml) |
@@ -46,7 +47,7 @@ Canonical research/review personas: [DeepResearch](DeepResearch/AGENTS.md), [Rev
 
 Each agent also has a [`Benchmarks/`](Coder/Benchmarks/) folder for role-scoped case notes and thresholds; shared runners live under [`benchmark/`](benchmark/).
 
-Static Templates (all personas): [`.cursor/templates/python_static_template.py`](../.cursor/templates/python_static_template.py) — see each `AGENTS.md` → **Static Templates**.
+Python modules (all personas): [`_shared/COMMON.md`](_shared/COMMON.md#python-modules).
 
 ## Adding or editing agents
 
@@ -57,6 +58,8 @@ validation, and handoff contract. Then adapt the relevant guidance to the
 agent; do not copy unverified examples or retain irrelevant sections. When
 updating an agent manifest, run the template sync command documented in
 [`TEMPLATE.md`](TEMPLATE.md) and review the resulting diff.
+
+Authoring workflow: [`AgentMethods.md`](AgentMethods.md) Part I. Cursor skill: `.cursor/skills/agent-creator/SKILL.md`.
 
 ## Adding tasks
 

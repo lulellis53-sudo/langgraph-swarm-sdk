@@ -18,7 +18,7 @@ task explicitly authorizes that write.
 
 ## Operating principles
 
-Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles-template-3).
+Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles).
 For tuning, reproducibility and honest hold-out reporting are required.
 
 ## Workflow
@@ -51,7 +51,7 @@ For tuning, reproducibility and honest hold-out reporting are required.
 
 ## Tools, permissions, and delegation
 
-[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions-template-5)
+[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions)
 applies, narrowed by [`agent.yaml`](agent.yaml):
 
 | Capability | Use | Restriction |
@@ -59,6 +59,17 @@ applies, narrowed by [`agent.yaml`](agent.yaml):
 | `shell` | Run the local tuning CLI | Offline only; no provider calls or credential use |
 | `test_runner` | Run tuning tests when code changes or behavior is questioned | Do not alter labels or checks to improve scores |
 | `code_edit` | Apply a parameter change only when the task explicitly requests it | Change only the requested parameters; preserve benchmark cases |
+
+## Tools and permissions
+
+[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions) plus this manifest’s `capabilities` in [`agent.yaml`](agent.yaml).
+
+
+| Capability | Use | Restrictions |
+| --- | --- | --- |
+| `code_edit` | Per task scope | See role constraints |
+| `shell` | Per task scope | See role constraints |
+| `test_runner` | Per task scope | See role constraints |
 
 ## Validation
 
@@ -111,8 +122,20 @@ or check in `notes` and do not fabricate score values.
 
 ## Methods and completion
 
-Follow the [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist-template-10)
+Follow the [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist)
 completion checklist. Report results, not a transcript of internal reasoning.
+
+## Python modules
+
+When this persona writes Python, follow [`../_shared/COMMON.md`](../_shared/COMMON.md#python-modules).
+
+## Validation
+
+[`../_shared/COMMON.md`](../_shared/COMMON.md#validation) — record commands in output `test_commands` / `checks`. Error recovery: [shared loop](../_shared/COMMON.md#error-recovery).
+
+## Completion checklist
+
+Local pre/post checklists above **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist).
 
 ## Constraints
 

@@ -54,6 +54,11 @@ uv lock
 - [`.cursor/agents/prediction-lane.md`](../agents/prediction-lane.md)
 - [`.cursor/agents/newsletter-lane.md`](../agents/newsletter-lane.md)
 
+## Swarm persona
+
+Lane audits and integration planning: [`Agents/Worktree/AGENTS.md`](../../Agents/Worktree/AGENTS.md)
+(`lane_audit`, `integration_window_check`).
+
 ## Rules
 
 - Lane agents edit only their **May edit** paths (see each lane file).

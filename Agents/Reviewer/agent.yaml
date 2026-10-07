@@ -42,6 +42,7 @@ tasks:
       - verdict
 
 capabilities:
+  - web_search
   - ast
   - diff_reading
   - static_analysis

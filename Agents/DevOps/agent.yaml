@@ -28,6 +28,7 @@ tasks:
       - verification_command
 
 capabilities:
+  - web_search
   - github_actions
   - docker
   - shell

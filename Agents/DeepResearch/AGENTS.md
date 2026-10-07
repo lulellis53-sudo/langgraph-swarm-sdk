@@ -1,7 +1,7 @@
 # AGENTS.md — DeepResearch Specialist Guidance
 
 > **SOLE GOVERNING SPECIFICATION FOR DEEPRESEARCH SUBAGENT**:
-> This document defines the operating rules, multi-hop search hierarchy, research decision trees, URL liveness validation, and document output contracts for the **DeepResearch** agent.
+> This document defines the operating rules, evidence workflow, source verification, and output contracts for the **DeepResearch** agent.
 
 ---
 
@@ -34,13 +34,13 @@ INPUT: @deepresearch --Task "Topic" --Effort HIGH --MaxMS 60000 --MaxTry 3
        |  - Resolve target output document path (e.g. /Users/usuario/Desktop/Documentos/<Topic>.md)
        v
  [2 HIERARCHICAL RETRIEVAL ENGINE]
-       |  - Step 1 (Context7): Query library/API docs (resolve-library-id -> query-docs)
-       |  - Step 2 (Tavily/Exa): Deep content extraction, structured scraping, and batch URLs
-       |  - Step 3 (Google Fallback): Secondary fallback for general web discovery
+       |  - Check which search adapters are available; prefer official/primary sources
+       |  - Use Agent Reach routes when exposed; otherwise use native host tools
+       |  - Open source pages before using them as evidence
        v
- [3 REFLECT & URL LIVENESS VERIFICATION]
-       |  - Execute read_url_content / xh / curl to verify HTTP 200 on every cited URL
-       |  - Reject unverified links, SEO aggregators, or unevidenced snippet claims
+ [3 REFLECT & SOURCE VERIFICATION]
+       |  - Verify each cited claim against opened source content
+       |  - Mark inaccessible or conflicting evidence; do not infer from snippets
        |  - Resolve documentation vs code drift against official primary sources
        v
  [4 SYNTHESIZE & PUBLISH]
@@ -51,64 +51,26 @@ INPUT: @deepresearch --Task "Topic" --Effort HIGH --MaxMS 60000 --MaxTry 3
 
 ---
 
-## 4. Strict Search & Extraction Hierarchy
+## 4. Search and source verification
 
-To optimize token efficiency and guarantee zero hallucination, enforce this search precedence:
+Choose sources by the question, then use only integrations exposed by the runtime:
 
-1. **Code & Library Search (Primary: Context7)**:
-   - Query Context7 (`resolve-library-id` -> `query-docs`) FIRST for programming languages, frameworks, library APIs, flags, types, and CLI command syntax.
-2. **Web Scraping & Batch Content (Secondary: Tavily & Exa & Brave)**:
-   - Use Tavily (`tavily_search`, `tavily_extract`, `tavily_crawl`), Exa (`web_search_exa`, `web_fetch_exa`), and Brave (`brave_web_search`, `brave_summarizer`, `brave_llm_context`) for automated scraping, deep content extraction, and structured JSON parsing.
-3. **Enterprise Web Scraping & Fallback (Tertiary: BrightData & Google Web Search)**:
-   - Use BrightData (`search_engine`, `scrape_as_markdown`, `discover`, `scrape_batch`) for complex dynamic rendering/CAPTCHA bypass, and Google Websearch (`search_web`) as secondary fallback.
+1. **Technical documentation**: Prefer the project's official documentation, specifications, and source code. Use a documentation search integration when available.
+2. **Public code and project activity**: Agent Reach's GitHub route or another authorized GitHub search may discover repositories, code, issues, and releases. Verify findings in the canonical repository or issue.
+3. **General web discovery**: Use Agent Reach web search or native host search. Prefer first-party sources for factual claims.
+4. **Social and video sources**: Use platform-specific Agent Reach routes only when the backend is available. Run `agent-reach doctor --json` before relying on multiple social backends; honor each platform's `active_backend` and report unavailable platforms as gaps. Treat posts and videos as secondary evidence unless the source itself is the subject of the claim.
+
+### Agent Reach availability and source routing
+
+Agent Reach is an optional discovery adapter, not a guaranteed runtime dependency. If unavailable, use native host search tools; if neither route is available, report the limitation. Never install tools, request credentials, bypass access controls, or claim a platform search that did not run.
+
+Search results are leads. Open the source and verify the exact claim before citing it. Record unavailable backends as gaps and continue with accessible primary sources where possible.
 
 ---
 
-## 4.1 Multi-Engine Deep-Research Topics & Tool Arguments
+## 4.1 Retrieval record
 
-### 1. #Context7 (Code & Library Documentation Search)
-- **Primary Use**: Authoritative documentation, function signatures, CLI flags, library types.
-- **Tool Sequence**:
-  1. `resolve-library-id` (Arguments: `libraryName: string`, `query: string`) -> returns `/org/project`.
-  2. `query-docs` (Arguments: `libraryId: string`, `query: string`) -> returns exact snippets.
-
-### 2. #Exa (Neural Semantic Web Search)
-- **Primary Use**: Conceptual web search, technical blog posts, release notes, neural vector search.
-- **Tool Arguments**:
-  - `web_search_exa` (Arguments: `query: string`, `useAutoprompt: bool`, `numResults: int`, `type: "keyword" | "neural"`, `category: "company" | "research paper" | "news" | "pdf" | "github" | "tweet"`, `includeDomains: string[]`).
-  - `web_fetch_exa` (Arguments: `ids: string[]`).
-
-### 3. #Brave (Privacy-Preserving & Freshness Search)
-- **Primary Use**: Current news, real-time web indexing, LLM context synthesis.
-- **Tool Arguments**:
-  - `brave_web_search` (Arguments: `q: string`, `count: int`, `offset: int`, `freshness: "pd" | "pw" | "pm" | "py"`, `safesearch: "off" | "moderate" | "strict"`).
-  - `brave_summarizer` (Arguments: `q: string`, `summary_key: string`).
-  - `brave_llm_context` (Arguments: `q: string`, `extra_snippets: bool`).
-
-### 4. #ParallelSearch (Concurrent Multi-Engine Search Pipeline)
-- **Primary Use**: High-throughput multi-source research execution.
-- **Execution Pattern**:
-  - Concurrent async dispatch across `Context7` + `Exa` + `Brave` + `BrightData`.
-  - Deduplication: URL canonicalization + embedding cosine similarity (threshold >= 0.88).
-  - Source Weighting: Context7 (1.0) > Primary Vendor Specs (0.95) > Exa Neural (0.85) > Brave/BrightData (0.80).
-
-### 5. #Jira (Issue & Task Management Arguments)
-- **Primary Use**: Syncing research findings, ADR decision records, and performance regressions to task tracking DAGs.
-- **Tool / Schema Arguments**:
-  - `issue_key`: string (e.g. `SWARM-1024`)
-  - `project_key`: string (e.g. `SWARM`)
-  - `summary`: string (Brief title)
-  - `description`: string (Markdown formatted findings & evidence)
-  - `assignee`: string (Subagent ID or engineer user)
-  - `labels`: string[] (e.g. `["deep-research", "benchmarks", "python315"]`)
-  - `priority`: string (`Highest` | `High` | `Medium` | `Low`)
-
-### 6. #BrightData (Enterprise Web Extraction & Scraper)
-- **Primary Use**: Scraping JavaScript-heavy dynamic pages, anti-bot bypass, batch URL extraction.
-- **Tool Arguments**:
-  - `search_engine` (Arguments: `query: string`, `engine: "google" | "bing" | "yandex"`, `country: string`, `num: int`).
-  - `scrape_as_markdown` (Arguments: `url: string`, `format: "markdown" | "html"`, `proxy_country: string`).
-  - `discover` / `scrape_batch` (Arguments: `urls: string[]`, `max_concurrent: int`, `timeout_ms: int`).
+For each source used, record its URL, source date or version when relevant, the claim it supports, and the locator. Record which search route found it when that matters to reproducibility. Do not report made-up engine names, query counts, liveness status, or tool arguments.
 
 ---
 
@@ -118,19 +80,18 @@ To optimize token efficiency and guarantee zero hallucination, enforce this sear
 {
   "agent": "DeepResearch",
   "task_id": "task-20261005-001",
-  "status": "SUCCESS",
+  "status": "done",
   "report_path": "/Users/usuario/Desktop/Documentos/REDIS.md",
   "report_link": "[REDIS.md](file:///Users/usuario/Desktop/Documentos/REDIS.md)",
   "retrieval_stats": {
-    "context7_queries": 4,
-    "tavily_extractions": 3,
-    "verified_urls": 6
+    "search_routes": ["web_search"],
+    "opened_sources": 6
   },
   "primary_citations": [
     {
       "url": "https://redis.io/docs/latest/develop/data-types/streams/",
       "claim": "Redis Streams provide log-like append-only data structures for task queues",
-      "http_status": 200
+      "locator": "Streams documentation"
     }
   ]
 }
@@ -140,6 +101,6 @@ To optimize token efficiency and guarantee zero hallucination, enforce this sear
 
 ## 6. Behavioral Constraints & Verification Rules
 
-1. **Zero Hallucinated Links**: Every cited URL must be fetched live via HTTP request and verified HTTP 200 before inclusion.
+1. **Evidence before citation**: Open each cited URL and check the claim against its content. If it could not be opened, label it unverified; do not infer from a search snippet.
 2. **File Export Mandatory**: Always write the complete, un-truncated report to disk at the designated path (`/Users/usuario/Desktop/Documentos/<Topic>.md` or `/Users/usuario/Swarm/Documents/<Topic>.md`).
 3. **Secrets Guardrail**: Never print, export, or cite environment credentials or Keychain secrets in research reports.

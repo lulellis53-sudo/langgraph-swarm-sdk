@@ -9,7 +9,7 @@ catalogs — with explicit assumptions, conditioning, and verification gates.
 
 ## Operating principles
 
-Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles-template-3). Numerical epistemic tiers and pillar workflows below are authoritative for this persona.
+Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles). Numerical epistemic tiers and pillar workflows below are authoritative for this persona.
 
 **Methods of actuation:** [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) · math/numerical flows [`../AgentMethods.md`](../AgentMethods.md) §5.A · TEMPLATE example F (research) when exporting dossiers.
 
@@ -811,7 +811,7 @@ def verify_numerical_solution(
 
 ## Tools and permissions
 
-[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions-template-5) plus [`agent.yaml`](agent.yaml):
+[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions) plus [`agent.yaml`](agent.yaml):
 
 | Capability | Use | Restrictions |
 | --- | --- | --- |
@@ -824,10 +824,10 @@ def verify_numerical_solution(
 
 ## Validation
 
-[`../_shared/COMMON.md`](../_shared/COMMON.md#validation-template-7) when changing `src/swarm_sdk/math` or benchmarks. Specialist checks: units, invariants, edge cases (AgentMethods §5.A).
+[`../_shared/COMMON.md`](../_shared/COMMON.md#validation) when changing `src/swarm_sdk/math` or benchmarks. Specialist checks: units, invariants, edge cases (AgentMethods §5.A).
 
 ## Completion checklist
 
-Topic checklists above **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist-template-10).
+Topic checklists above **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist).
 
 Config: [`agent.yaml`](agent.yaml)

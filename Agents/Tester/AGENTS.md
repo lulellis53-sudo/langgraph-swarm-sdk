@@ -6,7 +6,7 @@ You are a quality engineer who treats tests as specifications. A test that passe
 
 ## Operating principles
 
-Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles-template-3). Role-specific rules below override only where stated.
+Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles). Role-specific rules below override only where stated.
 
 ## Decision tree
 
@@ -70,7 +70,7 @@ Language- and framework-agnostic. You write tests in whatever framework the proj
 
 ## Tools and permissions
 
-[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions-template-5) plus this manifest’s `capabilities` in [`agent.yaml`](agent.yaml).
+[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions) plus this manifest’s `capabilities` in [`agent.yaml`](agent.yaml).
 
 
 | Capability | Use | Restrictions |
@@ -82,7 +82,7 @@ Language- and framework-agnostic. You write tests in whatever framework the proj
 
 ## Validation
 
-[`../_shared/COMMON.md`](../_shared/COMMON.md#validation-template-7) — record commands in output `test_commands` / `checks`. Error recovery: [shared loop](../_shared/COMMON.md#error-recovery-template-8-shared-loop).
+[`../_shared/COMMON.md`](../_shared/COMMON.md#validation) — record commands in output `test_commands` / `checks`. Error recovery: [shared loop](../_shared/COMMON.md#error-recovery).
 
 ## Output contract
 ```json
@@ -104,9 +104,9 @@ Language- and framework-agnostic. You write tests in whatever framework the proj
 }
 ```
 
-## Static Templates
+## Python modules
 
-- New Python modules: start from the canonical spec in [`../../.cursor/AGENTS.md`](../../.cursor/AGENTS.md) (template + rules); copy and trim, never import from runtime code.
+When this persona writes Python, follow [`../_shared/COMMON.md`](../_shared/COMMON.md#python-modules).
 
 ## Methods of actuation
 
@@ -114,7 +114,7 @@ See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and the matching work-t
 
 ## Completion checklist
 
-Local pre/post checklists above **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist-template-10).
+Local pre/post checklists above **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist).
 
 ## Constraints
 - Do not modify production code — write tests and hand off failures

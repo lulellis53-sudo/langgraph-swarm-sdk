@@ -7,7 +7,7 @@ You build offline newsletter digests from structured source snippets: merge topi
 
 ## Operating principles
 
-Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles-template-3). Role-specific rules below override only where stated.
+Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles). Role-specific rules below override only where stated.
 
 ## Decision tree
 
@@ -58,7 +58,7 @@ synthesis: ReAct = validate snippet → merge → check counts → handoff.
 
 ## Tools and permissions
 
-[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions-template-5) plus this manifest’s `capabilities` in [`agent.yaml`](agent.yaml).
+[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions) plus this manifest’s `capabilities` in [`agent.yaml`](agent.yaml).
 
 
 | Capability | Use | Restrictions |
@@ -67,7 +67,7 @@ synthesis: ReAct = validate snippet → merge → check counts → handoff.
 
 ## Validation
 
-[`../_shared/COMMON.md`](../_shared/COMMON.md#validation-template-7) — record commands in output `test_commands` / `checks`. Error recovery: [shared loop](../_shared/COMMON.md#error-recovery-template-8-shared-loop).
+[`../_shared/COMMON.md`](../_shared/COMMON.md#validation) — record commands in output `test_commands` / `checks`. Error recovery: [shared loop](../_shared/COMMON.md#error-recovery).
 
 ## Output contract
 
@@ -84,7 +84,11 @@ synthesis: ReAct = validate snippet → merge → check counts → handoff.
 
 ## Completion checklist
 
-Local pre/post checklists above **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist-template-10).
+Local pre/post checklists above **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist).
+
+## Python modules
+
+When this persona writes Python, follow [`../_shared/COMMON.md`](../_shared/COMMON.md#python-modules).
 
 ## Constraints
 

@@ -39,6 +39,7 @@ tasks:
       - residual_debt
 
 capabilities:
+  - web_search
   - code_edit
   - shell
   - diff

@@ -18,7 +18,7 @@ fix once the cause is in the finding), and **not** Coder-for-new-features
 
 ## Operating principles
 
-Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles-template-3).
+Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles).
 Role-specific rules below override only where stated.
 
 ## Multipath workflow
@@ -156,7 +156,6 @@ minors. Same smallest-diff rule.
 - Never “fix” a test by changing the assertion to match a bug.
 - Never add network calls that exfiltrate the repo.
 - One failed attempt → analyse → one deliberate fix. No edit–lint loops.
-- New Python modules: copy lite/full template (see [Python Static Template](#topic-python-static-template)).
   Do not import templates at runtime.
 
 ## Pre-task checklist
@@ -182,7 +181,7 @@ minors. Same smallest-diff rule.
 
 ## Tools and permissions
 
-[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions-template-5)
+[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions)
 plus [`agent.yaml`](agent.yaml) `capabilities`.
 
 | Capability | Use | Restrictions |
@@ -198,9 +197,9 @@ plus [`agent.yaml`](agent.yaml) `capabilities`.
 
 ## Validation
 
-[`../_shared/COMMON.md`](../_shared/COMMON.md#validation-template-7). WebSearch
+[`../_shared/COMMON.md`](../_shared/COMMON.md#validation). WebSearch
 package: `uv run pytest tests/test_websearch.py tests/test_hardening.py` (or
-the files you touched) before widening. Error recovery: [shared loop](../_shared/COMMON.md#error-recovery-template-8-shared-loop).
+the files you touched) before widening. Error recovery: [shared loop](../_shared/COMMON.md#error-recovery).
 
 ### Subtopic: Docstring, type hints, lint, type validation
 
@@ -242,69 +241,15 @@ change is shared.
 
 WebSearch package tests (narrowest):
 `uv run pytest tests/test_websearch.py tests/test_hardening.py` (or the files
-you touched). Error recovery: [shared loop](../_shared/COMMON.md#error-recovery-template-8-shared-loop).
+you touched). Error recovery: [shared loop](../_shared/COMMON.md#error-recovery).
 
-## Topic: Python Static Template
+## Python modules
 
-Canonical files (do **not** paste them into this contract; CI treats the `.py`
-as source of truth):
-
-- Lite (small module): [`.cursor/templates/python_static_template_lite.py`](../../.cursor/templates/python_static_template_lite.py)
-- Full: [`.cursor/templates/python_static_template.py`](../../.cursor/templates/python_static_template.py)
-- Rule: [`.cursor/rules/python-static-template.mdc`](../../.cursor/rules/python-static-template.mdc)
-- Ops: [`.cursor/AGENTS.md`](../../.cursor/AGENTS.md) · root [`AGENTS.md`](../../AGENTS.md#topic-python-static-template)
-
-### Subtopic: When CodeFixer copies a scaffold
-
-| Scaffold | Use when |
-| -------- | -------- |
-| **lite** | New small module (types + cowork cap only) |
-| **full** | Needs vect / math / db / batch roles |
-
-Copy and trim. Delete unused role sections. **Never** `import` the template
-from runtime package code.
-
-### Subtopic: Mandatory first import
-
-Module docstring, then immediately:
-
-```python
-from __future__ import annotations
-```
-
-### Subtopic: Agent contract (template)
-
-- Read callers, tests, and config before editing.
-- One failed attempt → analyse → one deliberate fix.
-- `@wrappers.retry_transient` only on `TimeoutError` / `OSError` / `ConnectionError`.
-- `@wrappers.timed` only when `SWARM_PROFILE` is set; not on hot paths by default.
-- Parallel waves: disjoint `files`; cap via `cowork_parallel_cap()` /
-  `swarm_sdk.execution.concurrency.parallel_cap`.
-- No import-time side effects (PEP 810). Heavy deps inside functions;
-  `TYPE_CHECKING` for types-only imports.
-
-### Subtopic: Roles at a glance (full template)
-
-| Role | Class | Functions | Concern |
-| ---- | ----- | --------- | ------- |
-| type | `TypeRole` | `type_*` | Protocols, narrowers |
-| hint | `HintRole` | `hint_*` | Annotations / metadata |
-| vect | `VectRole` | `vect_*` | Vectors / embeddings |
-| math | `MathRole` | `math_*` | Scalar / reductions (no I/O) |
-| db | `DbRole` | `db_*` | Store façade |
-| batch | `BatchRole` | `batch_*`, `loop_*` | Bounded batch/async (`LoopRole` = alias) |
-| cowork | `CoworkRole` | `cowork_*` | PEP 703 caps |
-
-### Subtopic: Smoke check
-
-```bash
-uv run python .cursor/templates/python_static_template.py
-uv run python .cursor/templates/python_static_template_lite.py
-```
+When this persona writes Python, follow [`../_shared/COMMON.md`](../_shared/COMMON.md#python-modules).
 
 ## Method of actuation (pick **one**)
 
-Catalog: [`../TEMPLATE.md`](../TEMPLATE.md) **Execution Patterns → Workflow Selection Table**
+Catalog: [`../AgentMethods.md`](../AgentMethods.md) **Execution Patterns → Workflow Selection Table**
 (11 methods). Do **not** stack DARS + ReAct + Reflection + SWE in one run.
 
 | # | Method | Use for CodeFixer when |
@@ -351,7 +296,11 @@ Python changed. Missing those keys is a contract failure.
 
 ## Completion checklist
 
-Local pre/post lists **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist-template-10).
+Local pre/post lists **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist).
+
+## Python modules
+
+When this persona writes Python, follow [`../_shared/COMMON.md`](../_shared/COMMON.md#python-modules).
 
 ## Constraints
 

@@ -10,7 +10,7 @@ You are the pipeline's storage stage: write normalized documents into SQLite exa
 
 ## Operating principles
 
-Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles-template-3). Role-specific rules below override only where stated.
+Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles). Role-specific rules below override only where stated.
 
 ## Multipath workflow
 
@@ -46,7 +46,7 @@ Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles-templa
 
 ## Completion checklist
 
-Local pre/post checklists above **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist-template-10).
+Local pre/post checklists above **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist).
 
 ## Safety
 
@@ -72,7 +72,7 @@ batch INSERT OR IGNORE → reconcile counts → commit once.
 
 ## Tools and permissions
 
-[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions-template-5) plus this manifest’s `capabilities` in [`agent.yaml`](agent.yaml).
+[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions) plus this manifest’s `capabilities` in [`agent.yaml`](agent.yaml).
 
 
 | Capability | Use | Restrictions |
@@ -82,7 +82,7 @@ batch INSERT OR IGNORE → reconcile counts → commit once.
 
 ## Validation
 
-[`../_shared/COMMON.md`](../_shared/COMMON.md#validation-template-7) — record commands in output `test_commands` / `checks`. Error recovery: [shared loop](../_shared/COMMON.md#error-recovery-template-8-shared-loop).
+[`../_shared/COMMON.md`](../_shared/COMMON.md#validation) — record commands in output `test_commands` / `checks`. Error recovery: [shared loop](../_shared/COMMON.md#error-recovery).
 
 ## Output contract
 

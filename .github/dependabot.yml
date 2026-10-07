@@ -1,27 +1,64 @@
 version: 2
 updates:
-  # Keep GitHub Actions workflows up to date
+  # Workflow actions: SHA-pinned in workflows, Dependabot bumps SHA and version comment together.
   - package-ecosystem: "github-actions"
-    directory: "/"
+    directories:
+      - "/"
+      - "/.github/actions/setup-python"
     schedule:
       interval: "weekly"
+      day: "monday"
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 10
+    labels: ["dependencies", "github-actions"]
     commit-message:
-      prefix: "chore"
+      prefix: "ci"
       include: "scope"
     groups:
       actions:
-        patterns:
-          - "*"
+        patterns: ["*"]
 
-  # Keep Python dependencies up to date (uv manages the lockfile)
-  - package-ecosystem: "pip"
+  # Python: uv.lock is the source of truth, so use the uv ecosystem (not pip).
+  - package-ecosystem: "uv"
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+    open-pull-requests-limit: 10
+    labels: ["dependencies", "python"]
     commit-message:
       prefix: "chore"
       include: "scope"
     groups:
-      python-deps:
-        patterns:
-          - "*"
+      python-minor-patch:
+        update-types: ["minor", "patch"]
+      python-major:
+        update-types: ["major"]
+
+  - package-ecosystem: "docker"
+    directory: "/docker"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    cooldown:
+      default-days: 7
+    labels: ["dependencies", "docker"]
+    commit-message:
+      prefix: "build"
+      include: "scope"
+
+  - package-ecosystem: "devcontainers"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    cooldown:
+      default-days: 7
+    labels: ["dependencies", "devcontainer"]
+    commit-message:
+      prefix: "chore"
+      include: "scope"

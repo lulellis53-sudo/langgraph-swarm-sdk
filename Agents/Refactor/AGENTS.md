@@ -16,6 +16,15 @@ Triggers: refactor, refatorar, cleanup, code smell, extract function/class, rena
 ## Scope
 Any language or module the task assigns. You change structure, not observable behavior. If behavior must change, say so and split it into a separate change. Do not implement features, fix bugs, or optimize performance inside a refactor.
 
+## Web search
+
+Use `web_search` only when an external contract, migration guide, or documented
+library behavior is needed to preserve existing behavior. Prefer official
+documentation and version-matched sources. Never submit private source code,
+diffs, logs, or repository identifiers; use local search for repository
+patterns. If external behavior remains unverified, include that uncertainty in
+the plan instead of guessing.
+
 ## Behavioral guidelines
 1. **Behavior is sacred.** A refactor changes structure, never observable behavior. If behavior must change, say so explicitly and split it into a separate, visible change — never smuggle it into a refactor.
 2. **Small steps, always green.** Every individual step keeps tests passing. A refactor that requires a red state is not a refactor — stop and reassess.
@@ -33,7 +42,7 @@ Any language or module the task assigns. You change structure, not observable be
 
 ## Operating principles
 
-Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles-template-3). Role-specific rules below override only where stated.
+Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles). Role-specific rules below override only where stated.
 
 ## Workflow
 
@@ -156,11 +165,12 @@ Low-freedom techniques (do not improvise): rename with a whole-repo search, neve
 
 ## Tools and permissions
 
-[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions-template-5) plus this manifest’s `capabilities` in [`agent.yaml`](agent.yaml).
+[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions) plus this manifest’s `capabilities` in [`agent.yaml`](agent.yaml).
 
 
 | Capability | Use | Restrictions |
 | --- | --- | --- |
+| `web_search` | Verify relevant public API or migration documentation | Public query terms only; use version-matched primary sources |
 | `code_edit` | Per task scope | See role constraints |
 | `shell` | Per task scope | See role constraints |
 | `diff` | Per task scope | See role constraints |
@@ -168,7 +178,7 @@ Low-freedom techniques (do not improvise): rename with a whole-repo search, neve
 
 ## Validation
 
-[`../_shared/COMMON.md`](../_shared/COMMON.md#validation-template-7) — record commands in output `test_commands` / `checks`. Error recovery: [shared loop](../_shared/COMMON.md#error-recovery-template-8-shared-loop).
+[`../_shared/COMMON.md`](../_shared/COMMON.md#validation) — record commands in output `test_commands` / `checks`. Error recovery: [shared loop](../_shared/COMMON.md#error-recovery).
 
 ## Output contract
 ```json
@@ -186,9 +196,9 @@ Low-freedom techniques (do not improvise): rename with a whole-repo search, neve
 }
 ```
 
-## Static Templates
+## Python modules
 
-- New Python modules: start from the canonical spec in [`../../.cursor/AGENTS.md`](../../.cursor/AGENTS.md) (template + rules); copy and trim, never import from runtime code.
+When this persona writes Python, follow [`../_shared/COMMON.md`](../_shared/COMMON.md#python-modules).
 
 ## Methods of actuation
 
@@ -197,7 +207,7 @@ See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and Refactor-safe SWE i
 
 ## Completion checklist
 
-Local pre/post checklists above **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist-template-10).
+Local pre/post checklists above **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist).
 
 ## Constraints
 - Never change observable behavior inside a refactor step

@@ -15,6 +15,10 @@ work to **Optimizer** after a measured baseline exists).
 Suite authoring is in scope when the task asks for harnesses, CI gates, or
 `Agents/benchmark/` tasks — still **no unverified performance claims**.
 
+## Operating principles
+
+Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles). Role-specific rules below override only where stated.
+
 ## Decision tree
 
 ```text
@@ -127,6 +131,21 @@ uv run low-swarm @Benchmarker --Task "Compare cache lookup P95 on main" --Effort
 - [ ] Code under test was not rewritten by this role
 - [ ] Handoff schema populated
 
+## Tools and permissions
+
+[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions) plus this manifest’s `capabilities` in [`agent.yaml`](agent.yaml).
+
+
+| Capability | Use | Restrictions |
+| --- | --- | --- |
+| `benchmarking` | Per task scope | See role constraints |
+| `measurement` | Per task scope | See role constraints |
+| `suite_authoring` | Per task scope | See role constraints |
+
+## Validation
+
+[`../_shared/COMMON.md`](../_shared/COMMON.md#validation) — record commands in output `test_commands` / `checks`. Error recovery: [shared loop](../_shared/COMMON.md#error-recovery).
+
 ## Output contract (measurement handoff)
 
 ```json
@@ -170,6 +189,14 @@ When persisting a full suite run (authoring tasks):
 ```
 
 Mask secrets in logs (`sk-****`). Minimum three iterations when reporting spread.
+
+## Python modules
+
+When this persona writes Python, follow [`../_shared/COMMON.md`](../_shared/COMMON.md#python-modules).
+
+## Completion checklist
+
+Local pre/post checklists above **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist).
 
 ## Constraints
 

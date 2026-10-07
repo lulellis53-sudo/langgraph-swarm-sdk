@@ -1,4 +1,6 @@
+# ruff: noqa: E501
 #!/usr/bin/env python3
+# ruff: noqa: E501
 """Inject TEMPLATE-aligned sections into Agents/*/AGENTS.md (idempotent).
 
 Does not inject the TEMPLATE map blockquote — persona leads each contract.
@@ -15,32 +17,54 @@ SKIP_DIRS = {"antigravity-imported", "benchmark", "tests", "_shared"}
 OPERATING = """\
 ## Operating principles
 
-Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles-template-3). Role-specific rules below override only where stated.
+Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles). Role-specific rules below override only where stated.
 
 """
 
 VALIDATION = """\
 ## Validation
 
-[`../_shared/COMMON.md`](../_shared/COMMON.md#validation-template-7) — record commands in output `test_commands` / `checks`. Error recovery: [shared loop](../_shared/COMMON.md#error-recovery-template-8-shared-loop).
+[`../_shared/COMMON.md`](../_shared/COMMON.md#validation) — record commands in output `test_commands` / `checks`. Error recovery: [shared loop](../_shared/COMMON.md#error-recovery).
 
 """
 
 TOOLS = """\
 ## Tools and permissions
 
-[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions-template-5) plus this manifest’s `capabilities` in [`agent.yaml`](agent.yaml).
+[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions) plus this manifest’s `capabilities` in [`agent.yaml`](agent.yaml).
 
 """
 
 COMPLETION = """\
 ## Completion checklist
 
-Local pre/post checklists above **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist-template-10).
+Local pre/post checklists above **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist).
 
 """
 
+PYTHON_MODULES = """\
+## Python modules
 
+When this persona writes Python, follow [`../_shared/COMMON.md`](../_shared/COMMON.md#python-modules).
+
+"""
+
+STATIC_SECTION = re.compile(
+    r"\n## Static Templates\n\n(?:- .*\n)+\n?",
+    re.MULTILINE,
+)
+PYTHON_TOPIC_H2 = re.compile(
+    r"\n## Topic: Python Static Template\n\n.*?(?=\n## |\Z)",
+    re.DOTALL,
+)
+PYTHON_TOPIC = re.compile(
+    r"\n---\n\n## Topic: Python Static Template\n\n.*?(?=\n## |\Z)",
+    re.DOTALL,
+)
+CURSOR_BOILERPLATE = re.compile(
+    r"\n(?:For new Python modules[^\n]*\n|[-*] New Python modules:[^\n]*\n|[-*] .*\.cursor/[^\n]*\n)",
+    re.MULTILINE,
+)
 def capabilities_table(yaml_path: Path) -> str:
     if not yaml_path.is_file():
         return ""
@@ -89,11 +113,22 @@ def inject_operating_after_persona(content: str) -> str:
     return content
 
 
+def normalize_python_sections(content: str) -> str:
+    content = STATIC_SECTION.sub("\n" + PYTHON_MODULES, content)
+    content = PYTHON_TOPIC_H2.sub("\n" + PYTHON_MODULES, content)
+    content = PYTHON_TOPIC.sub("\n", content)
+    content = CURSOR_BOILERPLATE.sub("\n", content)
+    if "## Python modules" not in content and "## Constraints" in content:
+        content = content.replace("## Constraints", PYTHON_MODULES + "## Constraints", 1)
+    return content
+
+
 def inject(path: Path) -> bool:
     content = path.read_text(encoding="utf-8")
     original = content
     agent_dir = path.parent
 
+    content = normalize_python_sections(content)
     content = inject_operating_after_persona(content)
 
     yaml_path = agent_dir / "agent.yaml"
@@ -114,7 +149,7 @@ def inject(path: Path) -> bool:
     if "## Completion checklist" not in content or "(TEMPLATE §10)" in content:
         content = content.replace("## Completion checklist (TEMPLATE §10)", "## Completion checklist", 1)
     if "## Completion checklist\n\nLocal" not in content and "## Completion checklist" not in content:
-        for anchor in ("## Constraints", "## Static Templates", "## Safety"):
+        for anchor in ("## Constraints", "## Python modules", "## Safety"):
             if anchor in content:
                 content = content.replace(anchor, COMPLETION + anchor, 1)
                 break

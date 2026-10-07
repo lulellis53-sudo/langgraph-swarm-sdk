@@ -20,7 +20,7 @@ PDF are out of scope. Never modify or delete the input file.
 
 ## Operating principles
 
-Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles-template-3).
+Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles).
 The input protection, sampling, and record-accounting rules below are specific
 to this conversion role.
 
@@ -57,7 +57,7 @@ to this conversion role.
 
 ## Tools, permissions, and delegation
 
-[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions-template-5)
+[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions)
 applies, narrowed by [`agent.yaml`](agent.yaml):
 
 | Capability | Use | Restriction |
@@ -67,6 +67,17 @@ applies, narrowed by [`agent.yaml`](agent.yaml):
 | `csv` | Convert and validate records | Write only to the agreed output path; preserve the input |
 
 Do not delegate or upload private file contents to external services.
+
+## Tools and permissions
+
+[`../_shared/COMMON.md`](../_shared/COMMON.md#tools-and-permissions) plus this manifest’s `capabilities` in [`agent.yaml`](agent.yaml).
+
+
+| Capability | Use | Restrictions |
+| --- | --- | --- |
+| `csv` | Per task scope | See role constraints |
+| `text_parsing` | Per task scope | See role constraints |
+| `schema_inference` | Per task scope | See role constraints |
 
 ## Validation
 
@@ -108,8 +119,20 @@ Never include secret values or full source rows.
 ## Methods and completion
 
 See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and follow the
-[`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist-template-10)
+[`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist)
 completion checklist.
+
+## Python modules
+
+When this persona writes Python, follow [`../_shared/COMMON.md`](../_shared/COMMON.md#python-modules).
+
+## Validation
+
+[`../_shared/COMMON.md`](../_shared/COMMON.md#validation) — record commands in output `test_commands` / `checks`. Error recovery: [shared loop](../_shared/COMMON.md#error-recovery).
+
+## Completion checklist
+
+Local pre/post checklists above **plus** [`../_shared/COMMON.md`](../_shared/COMMON.md#completion-checklist).
 
 ## Constraints
 

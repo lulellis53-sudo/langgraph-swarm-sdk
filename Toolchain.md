@@ -641,7 +641,7 @@ Use the build system and object format of the target project before selecting fl
 | mimalloc | Link the Rust `mimalloc` crate and set it as the executable's single global allocator. | Alacritty built with `mimalloc 0.1.52`; its version command and macOS code signature check passed. This establishes build correctness, not a performance gain. |
 | `mini-alloc` | Do not use as a terminal's global allocator. | Its [documentation](https://docs.rs/crate/mini-alloc/latest) says `dealloc` does nothing, so a long-running terminal would leak allocations. Rust also permits only one global allocator per executable. |
 | LLVM BOLT | Use only where its binary rewriter supports the output format and a representative profile is available. | The macOS executable is Mach-O, while [BOLT's supported primary format is ELF](https://discourse.llvm.org/t/rfc-bolt-a-framework-for-binary-analysis-transformation-and-optimization/56722). No BOLT optimization was applied. |
-| Zstd | Compress a finished app archive for transfer or storage. | `zstd -t` checked the Alacritty archive. Compression does not optimize the running executable. |
+| Zstd | Compress a finished archive, or link `libzstd` when the program calls the C API. | CLI and Homebrew `libzstd` on this host are 1.5.7. Packaging does not optimize the executable. See the Zstandard subsection below. |
 | Ninja | Drive a Meson or CMake Ninja build tree. | Alacritty uses Cargo; Ghostty uses Zig. The executable's build does not become faster by naming Ninja when no Ninja build tree exists. |
 
 ### Reproduce the verified Alacritty variant
@@ -670,6 +670,36 @@ Package and check the app separately:
 tar -cf - -C target/release/osx Alacritty.app | zstd -T0 -19 -o /tmp/Alacritty.app.tar.zst
 zstd -t /tmp/Alacritty.app.tar.zst
 ```
+
+### Zstandard (Meta `facebook/zstd`)
+
+Checked 2026-10-07 against a depth-1 clone of <https://github.com/facebook/zstd> at `49cf51799ea` (2026-10-05). `lib/zstd.h` in that tree is version 1.6.0. The host install is older and is the one to link:
+
+| Artifact | Path | Version |
+| :--- | :--- | :--- |
+| CLI | `~/.local/bin/zstd` | 1.5.7 (`zstd -V`) |
+| pkg-config library | `/usr/local/opt/zstd` | 1.5.7 |
+| Extra dylib | `~/.local/lib/libzstd.1.5.7.dylib` | 1.5.7 |
+
+The reference project is a C library and a CLI for lossless compression (RFC 8878), dual-licensed BSD or GPLv2. `make` is the reference build (`make`, `make install`, `make check`). CMake and Meson are present; the README says they can drift from `make`.
+
+`zstd -H` on the installed 1.5.7 CLI matches the 1.6.0 header:
+
+- Default level is 3 (`ZSTD_CLEVEL_DEFAULT`).
+- Levels 1–19 are normal. `--ultra` enables 20–22 and uses more memory. `ZSTD_maxCLevel()` is 22. The archive command above uses 19, the strongest level that does not need `--ultra`.
+- `-T0` is one thread per core. `zstd -t` checks a frame without decompressing it to disk.
+- `--train` builds a dictionary for a family of small records. Compress and decompress with `-D dictionary`.
+- Simple API: `ZSTD_compress` and `ZSTD_decompress`. Allocate the destination with `ZSTD_compressBound` and test the return with `ZSTD_isError`. Context and streaming APIs are separate. `ZSTD_STATIC_LINKING_ONLY` is unstable and static-link only.
+
+Link with `pkg-config --cflags --libs libzstd`. Do not compile the 1.6.0 headers against the 1.5.7 dylib.
+
+#### LLVM ZSTD compression
+
+`-gz=zstd` is a Clang/LLVM debug-section flag, not a link to libzstd. Clang 23.1.1 on this Mac accepts it, and a 4000-function Mach-O object was 912408 bytes with `-g`, `-gz=zstd`, and `-gz=zlib`. The flag is not compressing Darwin debug info here.
+
+#### Rust ZSTD compression
+
+`rustc` 1.99.0 on `x86_64-apple-darwin` reports LLVM 23.1.1. `rustc -C help` and `rustc -Z help` list no zstd option. `-C link-arg=-Wl,--compress-debug-sections=zstd` failed with `ld: unknown options: --compress-debug-sections=zstd`. `-C llvm-args=-compress-debug-sections=zstd` is an unknown LLVM argument. Keep that linker flag on ELF. On this Mac, archive a dSYM with the 1.5.7 CLI (`zstd -T0 -19`, then `zstd -t`) and link crates with `pkg-config --cflags --libs libzstd`.
 
 For Ghostty, use its [Zig build instructions](https://ghostty.org/docs/install/build); the macOS app additionally requires full Xcode, its SDKs, and the Metal toolchain. These Cargo and Clang flags do not convert Ghostty's Zig build to LLVM 23 or enable BOLT on Mach-O.
 

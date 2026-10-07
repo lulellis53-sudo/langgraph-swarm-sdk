@@ -1,10 +1,25 @@
-# Shared swarm specialist defaults (TEMPLATE §3 · §5 · §7 · §10)
+# Shared swarm specialist defaults
 
-Use with [`../TEMPLATE.md`](../TEMPLATE.md) and [`../AgentMethods.md`](../AgentMethods.md).
-Each persona’s `AGENTS.md` maps TEMPLATE sections to local headings; this file holds
-**lean** shared text so it is not duplicated in every contract.
+Persona authoring: [`../TEMPLATE.md`](../TEMPLATE.md). Method depth:
+[`../AgentMethods.md`](../AgentMethods.md). Each `Agents/<Name>/AGENTS.md` maps
+TEMPLATE sections to local headings; this file holds **lean** shared text so it
+is not duplicated in every contract.
 
-## Operating principles (TEMPLATE §3)
+## Python modules
+
+When a persona creates or substantially edits Python under the repo:
+
+1. Module docstring, then `from __future__ import annotations`.
+2. Prefer the **lite** scaffold for small modules; use the **full** scaffold when
+   the module needs batch, DB, or vector roles.
+3. Use `@wrappers.retry_transient` only for transient I/O errors; `@wrappers.timed`
+   only when profiling is enabled.
+4. Public payloads: Pydantic v2 (`BaseModel`, `Field`, `ConfigDict`,
+   `model_validate` / `model_dump`), not untyped `dict` or v1 `class Config`.
+5. Copy and trim scaffolds from the repo’s canonical Python static template
+   (see root `AGENTS.md`); **do not** import template files from runtime code.
+
+## Operating principles
 
 1. **Understand before changing** — read implementation, callers, tests, and config.
 2. **Stay in scope** — smallest complete change; no unrelated edits.
@@ -14,7 +29,7 @@ Each persona’s `AGENTS.md` maps TEMPLATE sections to local headings; this file
 6. **Protect secrets** — never log or commit credentials; env var **names** only in YAML.
 7. **Report honestly** — distinguish unrun checks from passing checks; `blocked` is valid.
 
-## Tools and permissions (TEMPLATE §5)
+## Tools and permissions
 
 Defaults for **LangGraph Swarm SDK** repo work:
 
@@ -28,7 +43,7 @@ Defaults for **LangGraph Swarm SDK** repo work:
 Each agent’s **`agent.yaml` → `capabilities`** narrows this list. If a capability is not
 listed, do not assume it.
 
-## Validation (TEMPLATE §7)
+## Validation
 
 When the task changes **`src/`**, **`Agents/benchmark/`**, or **`Main/`**:
 
@@ -48,7 +63,7 @@ Rules:
 - Put commands actually run into `test_commands` or output `checks`.
 - One focused fix per failed check, then rerun **that** check (see error recovery below).
 
-## Error recovery (TEMPLATE §8 shared loop)
+## Error recovery
 
 ```text
               +-------------------------+
@@ -69,7 +84,7 @@ Rules:
 Do not retry infrastructure, permissions, or ambiguous requirements without new input.
 Review/research **findings** are outcomes, not checks to retry away.
 
-## Completion checklist (TEMPLATE §10)
+## Completion checklist
 
 - [ ] Acceptance criteria met or `blocked` / `needs_input` with evidence
 - [ ] Unrelated user or pre-existing changes preserved
