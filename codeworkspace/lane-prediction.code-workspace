@@ -1,0 +1,32 @@
+{
+  "folders": [
+    { "name": "Prediction", "path": "../../Swarm-Prediction/Prediction" },
+    { "name": "Forecast Engine", "path": "../../Swarm-Prediction/Prediction" },
+    { "name": "SDK (ref)", "path": ".." },
+    { "name": "WebSearch (sync)", "path": "../WebSearch" }
+  ],
+  "settings": {
+    "python.defaultInterpreterPath": "${workspaceFolder:Prediction}/.venv/bin/python",
+    "python.testing.cwd": "${workspaceFolder:Prediction}",
+    "python.envFile": "${workspaceFolder:Prediction}/.env",
+    "ruff.interpreter": ["${workspaceFolder:Prediction}/.venv/bin/python"],
+    "ty.interpreter": "${workspaceFolder:Prediction}/.venv/bin/python",
+    "[python]": {
+      "editor.defaultFormatter": "charliermarsh.ruff",
+      "editor.formatOnSave": true
+    },
+    "python.testing.pytestEnabled": true,
+    "python.testing.pytestArgs": ["Prediction", "-q"]
+  },
+  "extensions": {
+    "recommendations": [
+      "charliermarsh.ruff",
+      "ms-python.python",
+      "ms-python.debugpy",
+      "ms-python.vscode-pylance",
+      "eamodio.gitlens",
+      "GitHub.copilot",
+      "ms-vscode.makefile-tools"
+    ]
+  }
+}

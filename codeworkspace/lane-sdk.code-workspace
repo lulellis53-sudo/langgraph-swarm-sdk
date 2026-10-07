@@ -1,0 +1,30 @@
+{
+  "folders": [
+    { "name": "SDK (src/swarm_sdk)", "path": ".." },
+    { "name": "Tests", "path": "../tests" },
+    { "name": "Main Config", "path": "../Main" }
+  ],
+  "settings": {
+    "python.defaultInterpreterPath": "${workspaceFolder:SDK (src/swarm_sdk)}/.venv/bin/python",
+    "python.testing.cwd": "${workspaceFolder:SDK (src/swarm_sdk)}",
+    "python.envFile": "${workspaceFolder:SDK (src/swarm_sdk)}/.env",
+    "ruff.interpreter": ["${workspaceFolder:SDK (src/swarm_sdk)}/.venv/bin/python"],
+    "ty.interpreter": "${workspaceFolder:SDK (src/swarm_sdk)}/.venv/bin/python",
+    "[python]": {
+      "editor.defaultFormatter": "charliermarsh.ruff",
+      "editor.formatOnSave": true
+    },
+    "python.testing.pytestEnabled": true,
+    "python.testing.pytestArgs": ["tests", "-q"]
+  },
+  "extensions": {
+    "recommendations": [
+      "charliermarsh.ruff",
+      "ms-python.python",
+      "ms-python.debugpy",
+      "ms-python.vscode-pylance",
+      "eamodio.gitlens",
+      "GitHub.copilot"
+    ]
+  }
+}

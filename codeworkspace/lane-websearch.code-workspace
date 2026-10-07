@@ -1,0 +1,31 @@
+{
+  "folders": [
+    { "name": "WebSearch", "path": "../WebSearch" },
+    { "name": "Search Backend", "path": "../WebSearch/backend" },
+    { "name": "SDK (ref)", "path": ".." }
+  ],
+  "settings": {
+    "python.defaultInterpreterPath": "${workspaceFolder:WebSearch}/.venv/bin/python",
+    "python.testing.cwd": "${workspaceFolder:WebSearch}",
+    "python.envFile": "${workspaceFolder:WebSearch}/.env",
+    "ruff.interpreter": ["${workspaceFolder:WebSearch}/.venv/bin/python"],
+    "ty.interpreter": "${workspaceFolder:WebSearch}/.venv/bin/python",
+    "[python]": {
+      "editor.defaultFormatter": "charliermarsh.ruff",
+      "editor.formatOnSave": true
+    },
+    "python.testing.pytestEnabled": true,
+    "python.testing.pytestArgs": ["WebSearch", "-q"]
+  },
+  "extensions": {
+    "recommendations": [
+      "charliermarsh.ruff",
+      "ms-python.python",
+      "ms-python.debugpy",
+      "ms-python.vscode-pylance",
+      "eamodio.gitlens",
+      "GitHub.copilot",
+      "ms-vscode.makefile-tools"
+    ]
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "folders": [
+    { "name": "Agents", "path": "../Agents" },
+    { "name": "Benchmark", "path": "../Agents/benchmark" },
+    { "name": "SDK (ref)", "path": ".." }
+  ],
+  "settings": {
+    "python.defaultInterpreterPath": "${workspaceFolder:Agents}/.venv/bin/python",
+    "python.testing.cwd": "${workspaceFolder:Agents}",
+    "python.envFile": "${workspaceFolder:Agents}/.env",
+    "ruff.interpreter": ["${workspaceFolder:Agents}/.venv/bin/python"],
+    "ty.interpreter": "${workspaceFolder:Agents}/.venv/bin/python",
+    "[python]": {
+      "editor.defaultFormatter": "charliermarsh.ruff",
+      "editor.formatOnSave": true
+    },
+    "python.testing.pytestEnabled": true,
+    "python.testing.pytestArgs": ["Agents/benchmark", "-q"]
+  },
+  "extensions": {
+    "recommendations": [
+      "charliermarsh.ruff",
+      "ms-python.python",
+      "ms-python.debugpy",
+      "ms-python.vscode-pylance",
+      "eamodio.gitlens",
+      "GitHub.copilot"
+    ]
+  }
+}

@@ -1,0 +1,83 @@
+name: CI Lane Agents
+
+on:
+  push:
+    branches: [lane/agents]
+  pull_request:
+    branches: [lane/agents]
+  merge_group:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-lane-agents-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_PYTHON: "3.14"
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint (ruff) - Agents
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python
+      - name: Ruff check
+        run: uv run ruff check Agents
+
+  schema:
+    name: Agent manifests - Agents
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python
+      - name: Validate agent.yaml and coordination.yaml
+        run: uv run python -m swarm_sdk.agents.validate
+
+  test:
+    name: Tests (pytest) - Agents
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python
+        with:
+          extras: dev redis
+      - name: Run agent benchmark tests
+        run: uv run pytest Agents/benchmark -q
+        env:
+          REDIS_URL: redis://localhost:6379/0
+
+  ci-ok:
+    name: Lane Agents CI OK
+    if: always()
+    needs: [lint, schema, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail unless every job succeeded
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | python3 -c 'import json,sys; r={k:v["result"] for k,v in json.load(sys.stdin).items()}; print(r); sys.exit(any(v!="success" for v in r.values()))'

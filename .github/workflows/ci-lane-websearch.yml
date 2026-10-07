@@ -1,0 +1,74 @@
+name: CI Lane WebSearch
+
+on:
+  push:
+    branches: [lane/websearch]
+  pull_request:
+    branches: [lane/websearch]
+  merge_group:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-lane-websearch-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_PYTHON: "3.14"
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint (ruff) - WebSearch
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python
+      - name: Ruff check
+        run: uv run ruff check WebSearch
+
+  test:
+    name: Tests (pytest) - WebSearch
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python
+      - name: Run WebSearch tests
+        run: uv run pytest WebSearch -q --tb=short
+
+  docker:
+    name: Docker build - WebSearch
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: docker/websearch.Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  ci-ok:
+    name: Lane WebSearch CI OK
+    if: always()
+    needs: [lint, test, docker]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail unless every job succeeded
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | python3 -c 'import json,sys; r={k:v["result"] for k,v in json.load(sys.stdin).items()}; print(r); sys.exit(any(v!="success" for v in r.values()))'

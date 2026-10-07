@@ -1,0 +1,85 @@
+name: CI Lane SDK
+
+on:
+  push:
+    branches: [lane/sdk]
+  pull_request:
+    branches: [lane/sdk]
+  merge_group:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-lane-sdk-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_PYTHON: "3.14"
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint (ruff) - SDK
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python
+      - name: Ruff check
+        run: uv run ruff check src tests
+
+  typecheck:
+    name: Type check (ty) - SDK
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python
+      - name: ty check
+        run: uv run ty check src tests
+
+  test:
+    name: Tests (pytest) - SDK
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SWARM_REQUIRE_SQLITE_EXT: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python
+      - name: Run SDK tests only
+        run: uv run pytest tests -q
+
+  build:
+    name: Build wheel - SDK
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python
+        with:
+          sync: "false"
+      - name: Build distributions
+        run: uv build
+
+  ci-ok:
+    name: Lane SDK CI OK
+    if: always()
+    needs: [lint, typecheck, test, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail unless every job succeeded
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | python3 -c 'import json,sys; r={k:v["result"] for k,v in json.load(sys.stdin).items()}; print(r); sys.exit(any(v!="success" for v in r.values()))'

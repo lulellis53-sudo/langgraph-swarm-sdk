@@ -1,0 +1,73 @@
+name: CI Lane Prediction
+
+on:
+  push:
+    branches: [lane/prediction]
+  pull_request:
+    branches: [lane/prediction]
+  merge_group:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-lane-prediction-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_PYTHON: "3.14"
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint (ruff) - Prediction
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python
+      - name: Ruff check
+        run: uv run ruff check Prediction
+
+  test:
+    name: Tests (pytest) - Prediction
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python
+        with:
+          extras: dev forecast
+      - name: Run prediction engine tests
+        run: uv run pytest Prediction -q --tb=short
+
+  benchmark:
+    name: Benchmark - Prediction
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python
+        with:
+          extras: dev forecast
+      - name: Run forecast benchmarks
+        run: uv run pytest Prediction --tb=short -k benchmark || true
+
+  ci-ok:
+    name: Lane Prediction CI OK
+    if: always()
+    needs: [lint, test, benchmark]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail unless every job succeeded
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | python3 -c 'import json,sys; r={k:v["result"] for k,v in json.load(sys.stdin).items()}; print(r); sys.exit(any(v!="success" for v in r.values()))'
