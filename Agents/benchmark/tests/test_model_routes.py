@@ -9,7 +9,6 @@ from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import BaseMessage
 from langchain_core.outputs import ChatResult
-
 from swarm_sdk import vault
 from swarm_sdk.models import chat
 

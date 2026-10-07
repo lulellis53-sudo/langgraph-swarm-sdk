@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 from hypothesis import given, settings
 from hypothesis.extra.numpy import arrays
-
 from swarm_sdk import math as sm
 from swarm_sdk.gpu import (
     batch_cosine,

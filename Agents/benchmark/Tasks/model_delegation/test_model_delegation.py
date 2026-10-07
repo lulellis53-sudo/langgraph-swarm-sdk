@@ -12,7 +12,6 @@ from typing import cast
 
 import pytest
 import yaml
-
 from swarm_sdk.models.selection import (
     FallbackChain,
     ModelRoute,

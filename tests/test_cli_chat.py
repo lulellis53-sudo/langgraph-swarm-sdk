@@ -12,12 +12,12 @@ import pytest
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
 from WebSearch.browser_agent import browse
-from WebSearch.frontend import websearchers as ws
 from WebSearch.frontend.websearchers import SearcherSpec
 
 from swarm_sdk.models import cli_chat
 from swarm_sdk.models.chat import load_chat_model
 from swarm_sdk.models.cli_chat import CliChatModel, CliError, load_cli_model, parse_reply
+from WebSearch.frontend import websearchers as ws
 
 # ---------------------------------------------------------------- reply parsing
 

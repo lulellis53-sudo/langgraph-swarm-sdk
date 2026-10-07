@@ -14,9 +14,9 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from swarm_sdk.agents.manifest import AgentManifestLoader
 from swarm_sdk.agents.validate import AgentValidator
+from swarm_sdk.execution import gil_enabled, parallel_cap
 
 ROOT = Path(__file__).resolve().parents[3]
 AGENTS_DIR = ROOT / "Agents"
@@ -300,7 +300,6 @@ def _module_level_imports(body: list[ast.stmt]) -> Iterator[ast.Import | ast.Imp
 
 def test_concurrency_namespace_uses_static_methods() -> None:
     """``swarm_sdk.execution`` is the single source of the GIL/parallel policy."""
-    from swarm_sdk.execution import concurrency
 
     assert callable(gil_enabled)
     assert parallel_cap() in (8, 32)

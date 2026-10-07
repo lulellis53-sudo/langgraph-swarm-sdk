@@ -5,6 +5,7 @@ from __future__ import annotations
 from threading import Barrier
 
 import pytest
+from swarm_sdk import vault
 from WebSearch import run_pipeline
 from WebSearch.backend import extract_and_normalize, normalize_text
 from WebSearch.frontend import (
@@ -23,8 +24,6 @@ from WebSearch.midend import crawl_then_scrape
 
 # WebSearch.repeater / .langchain_tools are sys.modules aliases that ty cannot follow.
 from WebSearch.repeater import repeater  # ty: ignore[unresolved-import]
-
-from swarm_sdk import vault
 
 
 def test_load_providers_yaml() -> None:

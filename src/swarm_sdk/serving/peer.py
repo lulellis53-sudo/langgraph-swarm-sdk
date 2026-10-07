@@ -3,21 +3,12 @@
 from __future__ import annotations
 
 from typing import Any
-from urllib.parse import urlparse
 
 import aiohttp
 import httpx2
 import requests
 
 from swarm_sdk.netguard import validate_http_url
-
-
-def validate_http_url(url: str) -> str:
-    """Return ``url`` if it is an absolute http(s) URL; raise ValueError otherwise."""
-    parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https") or not parsed.hostname:
-        raise ValueError(f"refusing non-http(s) URL: {url!r}")
-    return url
 
 
 def post_json(

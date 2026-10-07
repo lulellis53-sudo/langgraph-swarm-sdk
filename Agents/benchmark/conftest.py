@@ -3,8 +3,6 @@
 from pathlib import Path
 
 import pytest
-
-from benchmark.tests.fakes import Script, ScriptedModel, answer
 from swarm_sdk import vault
 from swarm_sdk.config.loader import SwarmFileConfig, load_swarm_config
 from swarm_sdk.config.settings import Settings
@@ -12,6 +10,8 @@ from swarm_sdk.core.jev_router import JevRouter
 from swarm_sdk.core.swarm import SwarmSDK
 from swarm_sdk.retrieval.embeddings import HashEmbedder
 from swarm_sdk.retrieval.rerank import IdentityReranker
+
+from benchmark.tests.fakes import Script, ScriptedModel, answer
 
 
 @pytest.fixture

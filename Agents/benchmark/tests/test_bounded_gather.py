@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from swarm_sdk.models.selection import bounded_gather
 
 

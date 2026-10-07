@@ -7,7 +7,6 @@ from typing import cast
 
 import hypothesis.strategies as st
 from hypothesis import assume, given, settings
-
 from swarm_sdk.observability.usage import UsageLog, estimate_cost_usd
 from swarm_sdk.prompting import budget
 from swarm_sdk.prompting.budget import TokenBudget, count_text

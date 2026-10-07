@@ -2,7 +2,6 @@ import socket
 
 import httpx2
 import pytest
-
 from swarm_sdk.serving.peer import async_post_json, post_json
 
 

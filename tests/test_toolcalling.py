@@ -8,7 +8,6 @@ from __future__ import annotations
 import json
 
 import pytest
-
 from WebSearch.frontend.websearchers import ProvidersConfig, SearcherSpec, SearchHit
 from WebSearch.toolcalling import ToolError, bind_tools, dispatch_tool_call, tool_manifests
 

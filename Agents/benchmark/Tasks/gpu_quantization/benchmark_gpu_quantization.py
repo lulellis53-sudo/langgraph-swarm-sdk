@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
-
 from swarm_sdk.gpu import opencl_available, opencl_status, set_enabled
 from swarm_sdk.memory.opencl_store import OpenClVecStore
 

@@ -10,13 +10,13 @@ import hypothesis.strategies as st
 import pytest
 from hypothesis import assume, given, settings
 from pydantic import ValidationError
-
-from benchmark.tests.fakes import Script, ScriptedModel, answer
 from swarm_sdk.agents.manifest import AgentManifest
 from swarm_sdk.orchestrator import Plan, PlanStep, make_factory, run_plan, spawn
 from swarm_sdk.orchestrator.graph import build_graph
 from swarm_sdk.orchestrator.plan import normalize_claimed_file
 from swarm_sdk.orchestrator.worker import WorkerAgent, role_contract
+
+from benchmark.tests.fakes import Script, ScriptedModel, answer
 
 
 @pytest.fixture(autouse=True)

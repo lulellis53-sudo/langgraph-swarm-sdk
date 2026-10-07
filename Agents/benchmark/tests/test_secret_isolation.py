@@ -7,7 +7,6 @@ import subprocess
 from pathlib import Path
 
 import pytest
-
 from swarm_sdk import vault
 from swarm_sdk.redact import REDACTED, SECRET_RE, redact_secrets
 

@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import date
 
 import pytest
-
 import swarm_sdk.prediction as wp
 from swarm_sdk.prediction import (
     EtsForecaster,

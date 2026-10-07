@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from swarm_sdk.math.verify import verify_math_solution
 
 

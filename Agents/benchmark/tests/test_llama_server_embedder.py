@@ -9,7 +9,6 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import numpy as np
 import pytest
-
 from swarm_sdk.config import Settings
 from swarm_sdk.core.swarm import default_embedder
 from swarm_sdk.gpu.vram import fits_vram, kv_cache_mib, vram_total_mib

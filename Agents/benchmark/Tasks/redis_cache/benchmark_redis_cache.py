@@ -30,7 +30,6 @@ from benchmark.protocol import (
     paired_deltas,
     summarize,
 )
-
 from swarm_sdk.retrieval.cache import SemanticCache
 from swarm_sdk.retrieval.embeddings import Embedder
 from swarm_sdk.retrieval.redis_exact import RedisExactCache

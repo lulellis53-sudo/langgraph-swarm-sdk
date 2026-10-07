@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from swarm_sdk.agents.manifest import agents_root, load_all_agent_manifests
 from swarm_sdk.agents.validate import validate_coordination
 from swarm_sdk.config.loader import _BUNDLED_SWARM_CONFIG, load_swarm_config

@@ -12,7 +12,6 @@ from pathlib import Path
 import pytest
 import yaml
 from langchain_core.language_models.chat_models import BaseChatModel
-
 from swarm_sdk.models import chat
 
 _REGISTRY = Path("src/swarm_sdk/agents/config/model_registry.yaml")

@@ -8,14 +8,14 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
-from benchmark.tests.fakes import Script, ScriptedModel, answer, structured
 from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import SwarmSDK
 from swarm_sdk.memory.opencl_store import OpenClVecStore
 from swarm_sdk.retrieval.embeddings import HashEmbedder
 from swarm_sdk.retrieval.rerank import IdentityReranker
 from swarm_sdk.server.graphs import plan_graph, swarm_graph
+
+from benchmark.tests.fakes import Script, ScriptedModel, answer, structured
 
 
 def _sdk(tmp_path: Path, model: ScriptedModel) -> SwarmSDK:
@@ -123,9 +123,8 @@ def test_client_payload_extraction(monkeypatch: pytest.MonkeyPatch) -> None:
     import asyncio
 
     import langgraph_sdk
-    from langchain_core.messages import AIMessage
-
     import swarm_sdk.serving.client as client_module
+    from langchain_core.messages import AIMessage
 
     class _FakeRuns:
         """Fake LangGraph runs API returning a canned final state."""

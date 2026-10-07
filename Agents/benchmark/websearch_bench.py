@@ -27,6 +27,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from swarm_sdk.prompting.budget import count_text
 from WebSearch import (
     FetchFn,
     ProvidersConfig,
@@ -38,8 +39,6 @@ from WebSearch import (
 )
 from WebSearch.backend import dedupe_docs, extract_and_normalize
 from WebSearch.frontend import dedupe_hits
-
-from swarm_sdk.prompting.budget import count_text
 
 RESULTS_DIR = Path(__file__).parent / "results" / "websearch_tools"
 

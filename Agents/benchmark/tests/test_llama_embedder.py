@@ -7,7 +7,6 @@ from unittest.mock import patch
 
 import numpy as np
 import pytest
-
 from swarm_sdk.retrieval.embeddings import LlamaCppEmbedder
 
 

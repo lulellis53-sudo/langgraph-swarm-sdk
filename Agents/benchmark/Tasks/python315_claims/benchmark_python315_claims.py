@@ -27,7 +27,6 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-
 from swarm_sdk.core.compression import ZstdStateCompressor
 from swarm_sdk.core.minimalloc import Buffer, MiniMalloc
 

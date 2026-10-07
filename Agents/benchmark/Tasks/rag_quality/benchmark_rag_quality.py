@@ -18,7 +18,6 @@ from typing import Any
 
 from benchmark.Tasks.rag_quality.embedders import BagOfWordsEmbedder
 from benchmark.Tasks.rag_quality.metrics import mrr, recall_at_k
-
 from swarm_sdk.memory.sqlite_vec import SqliteVecStore
 from swarm_sdk.retrieval.embeddings import Embedder
 from swarm_sdk.retrieval.gate import GateConfig

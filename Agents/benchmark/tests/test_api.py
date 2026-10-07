@@ -6,13 +6,13 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage
-
-from benchmark.tests.fakes import Script, ScriptedModel, answer
 from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import SwarmSDK
 from swarm_sdk.retrieval.embeddings import HashEmbedder
 from swarm_sdk.retrieval.rerank import IdentityReranker
 from swarm_sdk.serving.http import create_app
+
+from benchmark.tests.fakes import Script, ScriptedModel, answer
 
 
 def sqlite_extension_loading_available() -> bool:

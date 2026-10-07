@@ -9,14 +9,14 @@ from langchain.agents.middleware import ContextEditingMiddleware, SummarizationM
 from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.messages import BaseMessage
 from langchain_core.outputs import ChatResult
-
-from benchmark.tests.fakes import Script, ScriptedModel, answer, handoff
 from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import SwarmSDK
 from swarm_sdk.memory.opencl_store import OpenClVecStore
 from swarm_sdk.models.chat import message_text
 from swarm_sdk.retrieval.embeddings import HashEmbedder
 from swarm_sdk.retrieval.rerank import IdentityReranker
+
+from benchmark.tests.fakes import Script, ScriptedModel, answer, handoff
 
 
 class RecordingModel(ScriptedModel):

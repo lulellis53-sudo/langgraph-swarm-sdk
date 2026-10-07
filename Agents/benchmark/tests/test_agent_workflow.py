@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from benchmark.tests.fakes import Script, ScriptedModel, answer
 from swarm_sdk.agents.handoff import handoff_errors
 from swarm_sdk.agents.manifest import AgentManifest, load_all_agent_manifests
 from swarm_sdk.agents.syntax_tree import outline_source
@@ -13,6 +12,8 @@ from swarm_sdk.core.swarm import SwarmSDK
 from swarm_sdk.orchestrator.worker import WorkerAgent
 from swarm_sdk.retrieval.cache import SemanticCache
 from swarm_sdk.retrieval.embeddings import HashEmbedder
+
+from benchmark.tests.fakes import Script, ScriptedModel, answer
 
 _SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",

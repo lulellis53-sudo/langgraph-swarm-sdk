@@ -22,7 +22,6 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 from pydantic import ConfigDict
-
 from swarm_sdk.agents.manifest import AgentManifest, load_all_agent_manifests
 from swarm_sdk.orchestrator import Plan, PlanStep, make_factory, run_plan
 

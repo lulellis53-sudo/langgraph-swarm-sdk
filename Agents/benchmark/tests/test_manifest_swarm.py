@@ -7,8 +7,6 @@ from typing import Any, cast
 
 import pytest
 import yaml
-
-from benchmark.tests.fakes import Script, ScriptedModel, answer
 from swarm_sdk.agents.manifest import (
     AgentManifest,
     langgraph_manifests,
@@ -19,6 +17,8 @@ from swarm_sdk.core.swarm import SwarmSDK, manifest_node_prompt
 from swarm_sdk.memory.opencl_store import OpenClVecStore
 from swarm_sdk.retrieval.embeddings import HashEmbedder
 from swarm_sdk.retrieval.rerank import IdentityReranker
+
+from benchmark.tests.fakes import Script, ScriptedModel, answer
 
 
 def _sdk(tmp_path: Path, model: ScriptedModel) -> SwarmSDK:

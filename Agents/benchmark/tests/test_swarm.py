@@ -12,6 +12,14 @@ import pytest
 from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.outputs import ChatResult
+from swarm_sdk.config.settings import Settings
+from swarm_sdk.core.swarm import SwarmSDK
+from swarm_sdk.memory.opencl_store import OpenClVecStore
+from swarm_sdk.models.chat import complete_with_usage, message_tokens, usage_tokens
+from swarm_sdk.models.selection import FallbackChain, ModelRoute, ModelSelectConfig
+from swarm_sdk.retrieval.cache import SemanticCache
+from swarm_sdk.retrieval.embeddings import HashEmbedder, unit
+from swarm_sdk.retrieval.rerank import IdentityReranker
 
 from benchmark.tests.fakes import (
     ROUTER_OUTPUTS,
@@ -22,14 +30,6 @@ from benchmark.tests.fakes import (
     sdk_with_router,
     structured,
 )
-from swarm_sdk.config.settings import Settings
-from swarm_sdk.core.swarm import SwarmSDK
-from swarm_sdk.memory.opencl_store import OpenClVecStore
-from swarm_sdk.models.chat import complete_with_usage, message_tokens, usage_tokens
-from swarm_sdk.models.selection import FallbackChain, ModelRoute, ModelSelectConfig
-from swarm_sdk.retrieval.cache import SemanticCache
-from swarm_sdk.retrieval.embeddings import HashEmbedder, unit
-from swarm_sdk.retrieval.rerank import IdentityReranker
 
 
 class SemanticBucketEmbedder:

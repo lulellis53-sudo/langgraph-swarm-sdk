@@ -40,7 +40,6 @@ from benchmark.Tasks.agent_suite.instruments import (
     rusage_snapshot,
 )
 from benchmark.tests.fakes import Script, ScriptedModel, answer
-
 from swarm_sdk.agents.manifest import AgentManifest, load_all_agent_manifests
 from swarm_sdk.models.selection import bounded_gather
 from swarm_sdk.orchestrator.worker import WorkerAgent

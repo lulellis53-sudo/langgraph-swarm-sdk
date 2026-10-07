@@ -11,7 +11,6 @@ import hypothesis.strategies as st
 import numpy as np
 import pytest
 from hypothesis import given, settings
-
 from swarm_sdk.memory.base import MemoryHit, MemoryStore
 from swarm_sdk.memory.opencl_store import OpenClVecStore, Quantize
 from swarm_sdk.retrieval.embeddings import HashEmbedder, dedupe_texts, unit

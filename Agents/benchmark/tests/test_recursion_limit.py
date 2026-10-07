@@ -5,13 +5,13 @@ from typing import Any, cast
 
 from fastapi.testclient import TestClient
 from langgraph.errors import GraphRecursionError
-
-from benchmark.tests.fakes import Script, ScriptedModel, answer
 from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import SwarmSDK
 from swarm_sdk.retrieval.embeddings import HashEmbedder
 from swarm_sdk.retrieval.rerank import IdentityReranker
 from swarm_sdk.serving.http import create_app
+
+from benchmark.tests.fakes import Script, ScriptedModel, answer
 
 
 class _LoopingSDK:

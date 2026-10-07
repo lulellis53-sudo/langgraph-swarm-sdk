@@ -8,8 +8,9 @@ import sqlite3
 from pathlib import Path
 
 import pytest
-from Prediction import mcp_server as srv
 from Prediction.br_hardware import connect, import_observation, rebuild_alerts, rebuild_floors
+
+from Prediction import mcp_server as srv
 
 
 @pytest.fixture()

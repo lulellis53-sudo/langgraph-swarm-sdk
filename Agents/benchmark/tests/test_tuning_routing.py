@@ -6,7 +6,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from swarm_sdk.agents.prompt_index import AgentPromptIndex
 from swarm_sdk.tuning.routing import (
     RoutingCase,

@@ -256,7 +256,6 @@ def _scripted(cases: list[BenchmarkCase]) -> Invoker:
 
 def _live(names: list[str]) -> Invoker:
     from dotenv import load_dotenv
-
     from swarm_sdk.models.chat import load_chat_model, message_text
     from swarm_sdk.vault import load_into_env
 
@@ -361,7 +360,6 @@ def main(argv: list[str] | None = None) -> int:
     report: dict[str, Any]
     if args.auto:
         from dotenv import load_dotenv
-
         from swarm_sdk.vault import get_with_source
 
         load_dotenv(_ROOT / ".env")

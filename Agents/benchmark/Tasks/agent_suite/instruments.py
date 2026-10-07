@@ -19,7 +19,6 @@ from langchain_core.callbacks import BaseCallbackHandler, UsageMetadataCallbackH
 from langchain_core.language_models.chat_models import Callbacks
 from langchain_core.messages import BaseMessage
 from langchain_core.outputs import ChatResult, LLMResult
-
 from swarm_sdk.prompting.budget import count_text
 
 

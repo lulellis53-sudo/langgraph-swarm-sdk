@@ -6,7 +6,6 @@ import asyncio
 from unittest.mock import MagicMock
 
 import pytest
-
 from swarm_sdk.core.jev_router import JevRouter
 from swarm_sdk.orchestrator import Plan, PlanStep, run_plan
 from swarm_sdk.orchestrator.plan import StepOutput

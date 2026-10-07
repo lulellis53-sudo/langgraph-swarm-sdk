@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from swarm_sdk.tuning import ChoiceParam, FloatParam, IntParam, tune
 
 SPACE = [FloatParam("x", -5.0, 5.0), IntParam("n", 1, 8), ChoiceParam("mode", ("a", "b", "c"))]

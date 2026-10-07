@@ -17,7 +17,6 @@ from benchmark.Tasks.agent_suite.suite import (
     measure,
 )
 from hypothesis import given, settings
-
 from swarm_sdk.agents.manifest import AgentManifest, load_all_agent_manifests
 
 _HYP = settings(max_examples=40, deadline=None)

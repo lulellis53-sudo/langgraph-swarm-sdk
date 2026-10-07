@@ -3,7 +3,6 @@
 from typing import Any, cast
 
 from fastapi.testclient import TestClient
-
 from swarm_sdk.serving.http import create_app
 
 
