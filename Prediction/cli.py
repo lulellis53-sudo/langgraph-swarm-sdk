@@ -15,6 +15,7 @@ from pathlib import Path
 
 import pandas as pd
 from Prediction.engine import ForecastConfig, ForecastEngine, ForecastError
+from Prediction.web_evidence import WebEvidenceError, web_forecast
 
 
 def _load_csv(path: Path) -> pd.DataFrame:
@@ -62,6 +63,44 @@ def _cmd_predict(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_webpredict(args: argparse.Namespace) -> int:
+    result = web_forecast(
+        args.query,
+        horizon=args.horizon,
+        limit=args.limit,
+        allow_negative=args.allow_negative,
+    )
+    if args.json:
+        payload = {
+            "query": result.query,
+            "points": [
+                {"date": p.date.isoformat(), "value": p.value, "url": p.url} for p in result.points
+            ],
+            "predictions": [
+                {
+                    "date": t.date.isoformat(),
+                    "value": t.value,
+                    "low": t.low,
+                    "high": t.high,
+                }
+                for t in result.predictions
+            ],
+        }
+        print(json.dumps(payload, indent=2))
+    else:
+        rows = pd.DataFrame(
+            {
+                "ds": [t.date for t in result.predictions],
+                "value": [t.value for t in result.predictions],
+                "low": [t.low for t in result.predictions],
+                "high": [t.high for t in result.predictions],
+            }
+        )
+        print(f"evidence points: {len(result.points)}")
+        print(rows.to_string(index=False))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--freq", default="D", help="pandas frequency alias (default D)")
@@ -88,10 +127,20 @@ def main(argv: list[str] | None = None) -> int:
     predict.add_argument("-o", "--output", help="optional CSV path for forecasts")
     predict.set_defaults(func=_cmd_predict)
 
+    webpredict = sub.add_parser(
+        "webpredict", help="search the web and forecast from dated evidence"
+    )
+    webpredict.add_argument("query", help="web search query")
+    webpredict.add_argument("--horizon", type=int, default=7)
+    webpredict.add_argument("--limit", type=int, default=10, help="max hits to mine")
+    webpredict.add_argument("--allow-negative", action="store_true", dest="allow_negative")
+    webpredict.add_argument("--json", action="store_true")
+    webpredict.set_defaults(func=_cmd_webpredict)
+
     args = parser.parse_args(argv)
     try:
         return int(args.func(args))
-    except ForecastError as exc:
+    except (ForecastError, WebEvidenceError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 
