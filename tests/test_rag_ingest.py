@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from typing import Any
+
 import numpy as np
 import pytest
 
@@ -92,7 +91,10 @@ Swarm is a lightweight multi-agent orchestration framework.
     assert chunk.source_file == "intro.md"
     assert chunk.header_context == "Swarm Framework"
     assert chunk.content == "Swarm is a lightweight multi-agent orchestration framework."
-    assert chunk.full_text == "Swarm Framework\nSwarm is a lightweight multi-agent orchestration framework."
+    assert (
+        chunk.full_text
+        == "Swarm Framework\nSwarm is a lightweight multi-agent orchestration framework."
+    )
     assert chunk.metadata["headers"] == ["Swarm Framework"]
 
 
@@ -371,4 +373,3 @@ def test_retrieval_module_re_exports() -> None:
     assert "DocumentChunk" in ret.__all__
     assert "RetrievalResult" in ret.__all__
     assert "RAGIngestionPipeline" in ret.__all__
-

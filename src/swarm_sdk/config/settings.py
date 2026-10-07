@@ -112,6 +112,9 @@ class Settings(BaseSettings):
     jev_routing: bool = False
     jev_endpoint: str | None = None
     jev_timeout_s: float = Field(default=0.030, ge=0.001)
+    # Per-step Jev routing in the plan engine (SWARM_JEV_PLAN_ROUTING): a local Noul safety
+    # check and Score tier hint before every plan step. Off keeps plan runs unchanged.
+    jev_plan_routing: bool = False
 
 
 def load_merged_settings(

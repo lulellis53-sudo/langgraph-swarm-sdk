@@ -13,6 +13,7 @@ from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import SwarmSDK
 from swarm_sdk.execution import install_uvloop
 from swarm_sdk.orchestrator import make_factory, run_plan, spawn
+from swarm_sdk.orchestrator.jev_gate import jev_for
 from swarm_sdk.orchestrator.plan import Plan, PlanResult
 from swarm_sdk.orchestrator.spawn import _validate_plan
 from swarm_sdk.pb import swarm_pb2, swarm_pb2_grpc
@@ -169,6 +170,7 @@ class SwarmServicer(swarm_pb2_grpc.SwarmServiceServicer):
                 plan,
                 make_factory(manifests),
                 max_concurrency=self.sdk.file_config.parallelism.max_concurrency,
+                jev=jev_for(self.sdk.settings),
             )
         )
         return _to_result_msg(plan_id, result)

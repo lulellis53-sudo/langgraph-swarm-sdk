@@ -124,6 +124,8 @@ With `SWARM_SERVER_URL` set, `SwarmSDK.run` delegates to the server via the `lan
 2. `run_plan(plan, factory)` — a LangGraph `StateGraph` executes the plan in dependency waves; steps in the same wave run concurrently via `bounded_gather` (capped by `parallelism.max_concurrency`; uvloop; the runtime thread pool widens automatically on free-threaded Python 3.14). Sibling Coder steps must claim disjoint `files`.
 3. Each step is a `WorkerAgent` bound to its `Agents/{Name}/agent.yaml` manifest: model, `think_level`, `effort`, and `token_budget` are pre-selected per agent; the system prompt is the role contract from that agent's `AGENTS.md`; the step prompt carries `task`, claimed `files`, and only its declared `inputs` (dependency outputs), never the whole transcript.
 
+Optional per-step Jev routing: with `SWARM_JEV_PLAN_ROUTING=1`, each step first gets a local Jev safety check (Noul) and a model-tier hint (Score) recorded as `jev_decision` on its `StepOutput`. A step Noul rejects does not run, and neither do steps that depend on it. The tier is advisory and does not change the model. Off by default; step text never leaves the machine (local router only). Design: `docs/superpowers/specs/2026-10-06-jev-plan-routing-design.md`.
+
 Token savings: shared role-contract prompt cached per process, exact + semantic step cache (`SemanticCache`), hard `max_prompt` packing, and per-step usage totals (`prompt_tokens`, `completion_tokens`, `llm_calls`, `cached_calls`) reported in `PlanResult.usage`.
 
 gRPC: `SwarmService.SpawnPlan` (goal → plan handle), `RunPlan` (handle → per-step outputs + usage), `PlanStatus` (poll for long plans). Manifests set `api_key_env` to the provider variable named by their model route, such as `OPENAI_API_KEY`; secret values stay in the Keychain.
@@ -215,3 +217,8 @@ Keep the normal project `.venv` unless you intentionally want to recreate it.
 GPU benchmark commands and measured runs are documented in
 [`Agents/benchmark/README.md`](Agents/benchmark/README.md); they use the current
 project environment.
+
+## Contributing
+
+[CONTRIBUTING.md](CONTRIBUTING.md) covers setup, the quality gate, and PR scope.
+Security reports: [SECURITY.md](SECURITY.md). Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).

@@ -44,19 +44,19 @@ class TestLowSwarmCLI:
         assert "Jev" in out or "Model Tier" in out
         assert "Lifeguard" in out or "Approved" in out or "APPROVED" in out
 
-    def test_cli_run_with_files_profile_verbose(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_cli_run_with_files_profile_verbose(self, capsys: pytest.CaptureFixture[str]) -> None:
         """low-swarm run supports --files, --profile, and --verbose flags."""
-        exit_code = cli.main([
-            "run",
-            "Build numeric helper functions",
-            "--files",
-            "helper.py",
-            "math.py",
-            "--profile",
-            "--verbose",
-        ])
+        exit_code = cli.main(
+            [
+                "run",
+                "Build numeric helper functions",
+                "--files",
+                "helper.py",
+                "math.py",
+                "--profile",
+                "--verbose",
+            ]
+        )
         assert exit_code == 0
 
         captured = capsys.readouterr()

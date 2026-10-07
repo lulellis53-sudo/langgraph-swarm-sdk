@@ -56,6 +56,55 @@ Any data store (SQL, NoSQL, vector, object storage) and any pipeline framework. 
 5. **Idempotent pipelines.** Running a pipeline twice should not produce duplicate or corrupted data.
 6. **Expose data shape.** Document the schema of every input and output — column names, types, nullability, cardinality.
 
+## Workflow
+
+Combined multiflow per [`../TEMPLATE.md`](../TEMPLATE.md) (§Combined Multiflow Template, §Database/Schema flow), instantiated for pipelines:
+
+```
++------------------------------------------------------------------+
+| DATAENGINEER: MULTIPATH WORKFLOW                                 |
++------------------------------------------------------------------+
+                         │
+              +----------------------+
+              | Intake: sources,      |
+              | volumes, freshness,   |
+              | downstream contract   |
+              +----------+-----------+
+                         │
+              +----------------------+
+              | DARS gate (L1-L4)    |
+              +--+-------+-------+---+
+                 |       |       |
+             L4 ask:  L1 bounded L2/L3 schema, persisted
+             source   transform  data, or downstream
+             unknown  on known   contracts change
+                 |    inputs    |
+                 +-------+-------+
+                         │
+              +----------------------+
+              | Execution pattern:   |
+              | ReAct per pipeline   |
+              | stage                |
+              +----------+-----------+
+                         │
+        sample real records → transform → validate
+        shape + counts + checksums per stage
+                         │
+              +----------+----------+
+              |                     |
+        validation green      mismatch
+              |                 │
+              |                 v
+              |        Reflection: inspect the actual records
+              |        (not the schema), fix that stage, rerun
+              ▼
+   SWE verify: end-to-end run on representative data;
+   idempotency check (second run, same result)
+                         │
+                         v
+        handoff record (schema, validation_report)
+```
+
 ## Pre-task checklist
 - [ ] Understand the data source (schema, volume, update frequency)
 - [ ] Understand the data target (schema, constraints, SLAs)
@@ -107,7 +156,14 @@ When this persona writes Python, follow [`../_shared/COMMON.md`](../_shared/COMM
 
 ## Methods of actuation
 
-See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and the matching work-type flow in [`../AgentMethods.md`](../AgentMethods.md) §5.
+See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and the database/schema flow in [`../TEMPLATE.md`](../TEMPLATE.md) (§Database, Query, and Schema Work). Layer mapping:
+
+| Layer | DataEngineer |
+| --- | --- |
+| **DARS** | L1 for a bounded transform on known inputs; L2 across pipeline stages; L3 when schemas, persisted data, or downstream contracts change; L4 when source data semantics are unknown |
+| **ReAct** | Sample real records → transform → validate output shape/counts → next stage |
+| **Reflection** | On a validation mismatch: inspect the actual records (not the schema) before changing code |
+| **SWE** | Specify contract → locate sources → implement stage → validate on representative data → report |
 
 ## Completion checklist
 

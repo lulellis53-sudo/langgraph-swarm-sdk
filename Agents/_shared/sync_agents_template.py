@@ -140,9 +140,15 @@ def inject(path: Path) -> bool:
                 content = content.replace(anchor, VALIDATION + anchor, 1)
                 break
 
-    if "## Tools and permissions" not in content or "COMMON.md#tools-and-permissions" not in content:
+    if (
+        "## Tools and permissions" not in content
+        or "COMMON.md#tools-and-permissions" not in content
+    ):
         insert_at = "## Validation"
-        if insert_at in content and "## Tools and permissions\n\n[`../_shared/COMMON.md`]" not in content:
+        if (
+            insert_at in content
+            and "## Tools and permissions\n\n[`../_shared/COMMON.md`]" not in content
+        ):
             tools = TOOLS + (cap_block if cap_block else "")
             content = content.replace(insert_at, tools + insert_at, 1)
 

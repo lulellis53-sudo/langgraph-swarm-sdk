@@ -212,10 +212,14 @@ Open **Agent** mode, `@`-attach the review or files, then `/code-fixer`. Fixes *
 
 ## Topic: Python Static Template
 
-Runnable (full): [@.cursor/templates/python_static_template.py](.cursor/templates/python_static_template.py).  
-Default for small modules (lite): [@.cursor/templates/python_static_template_lite.py](.cursor/templates/python_static_template_lite.py).
+Canonical scaffolds (attach in Cursor with `@`):
 
-Rule: [`.cursor/rules/python-static-template.mdc`](.cursor/rules/python-static-template.mdc). Ops: [`.cursor/AGENTS.md`](.cursor/AGENTS.md). **Do not** paste the full template into this file — single source of truth is the `.py` files (CI enforces).
+| Scaffold | File |
+| -------- | ---- |
+| **Full** | [@.cursor/templates/python_static_template.py](.cursor/templates/python_static_template.py) |
+| **Lite** | [@.cursor/templates/python_static_template_lite.py](.cursor/templates/python_static_template_lite.py) |
+
+Rule: [`.cursor/rules/python-static-template.mdc`](.cursor/rules/python-static-template.mdc) (applies to `**/*.py`). Ops: [`.cursor/AGENTS.md` → Static Templates](.cursor/AGENTS.md#static-templates). **Do not** paste the full template into this file — single source of truth is the `.py` files (CI enforces).
 
 ### Subtopic: Mandatory first import
 
@@ -230,7 +234,7 @@ from __future__ import annotations
 - Read callers, tests, and config before editing.
 - One failed attempt → analyse → one deliberate fix (no blind retries).
 - Profile before optimizing; use `SWARM_PROFILE=1` only for `@wrappers.timed` on non-hot paths.
-- Parallel swarm steps: disjoint `files` per sibling; cap via `cowork_parallel_cap()` / `swarm_sdk.execution.concurrency.parallel_cap`.
+- Parallel swarm steps: disjoint `files` per sibling; cap via `cowork_parallel_cap()` / `swarm_sdk.execution.parallel_cap`.
 - Delete unused role sections when copying; no import-time side effects.
 
 ### Subtopic: When to use
@@ -242,6 +246,28 @@ from __future__ import annotations
 
 Do **not** import template files from runtime package code — copy and trim.
 
+### Subtopic: Required shape
+
+1. Module docstring, then `from __future__ import annotations`.
+2. Imports — stdlib OK at top; heavy third-party deps inside functions (PEP 810–ready; see [PEP 810](https://peps.python.org/pep-0810/)).
+3. **`wrappers`** — `retry_transient` (transient I/O only), `timed` (when `SWARM_PROFILE`), `logged`.
+4. Role classes in order: `TypeRole` → `HintRole` → `VectRole` → `MathRole` → `DbRole` → `BatchRole` → `CoworkRole` (`LoopRole` = `BatchRole`).
+5. Role functions: `type_*`, `hint_*`, `vect_*`, `math_*`, `db_*`, `batch_*` / `loop_*`, `cowork_*` (runtime caps: `swarm_sdk.execution`).
+6. Explicit `__all__`; smoke only under `if __name__ == "__main__":`.
+
+### Subtopic: Scaffold outline
+
+```text
+[docstring]
+from __future__ import annotations
+→ imports / TYPE_CHECKING
+→ wrappers (retry_transient, timed, logged)
+→ TypeRole … CoworkRole
+→ type_* … cowork_*  (delete unused roles)
+→ __all__
+→ main()  # optional smoke
+```
+
 ### Subtopic: Roles at a glance (full template)
 
 | Role | Class | Functions | Concern |
@@ -252,7 +278,7 @@ Do **not** import template files from runtime package code — copy and trim.
 | math | `MathRole` | `math_*` | Scalar / reductions (no I/O) |
 | db | `DbRole` | `db_*` | Store / connection façade |
 | batch | `BatchRole` | `batch_*`, `loop_*` | Bounded batch/async (`LoopRole` = alias) |
-| cowork | `CoworkRole` | `cowork_*` | PEP 703 caps; runtime: `swarm_sdk.execution.concurrency` |
+| cowork | `CoworkRole` | `cowork_*` | PEP 703 caps; runtime: `swarm_sdk.execution` |
 
 ### Subtopic: Wrappers
 

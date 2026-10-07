@@ -29,9 +29,7 @@ def test_pipeline_fetches_dedupes_and_stores(tmp_path: Path) -> None:
         return PAGES[url].encode("utf-8")
 
     db = tmp_path / "docs.db"
-    report = run_cowork_pipeline(
-        ORDER, fetch=fake_fetch, db_path=db, max_concurrency=3
-    )
+    report = run_cowork_pipeline(ORDER, fetch=fake_fetch, db_path=db, max_concurrency=3)
 
     assert sorted(calls) == ORDER  # one fetch step per URL
     assert report["fetched"] == 3

@@ -30,6 +30,7 @@ from swarm_sdk.agents.manifest import load_all_agent_manifests
 from swarm_sdk.config.loader import load_swarm_config
 from swarm_sdk.config.settings import load_merged_settings
 from swarm_sdk.orchestrator.graph import run_plan
+from swarm_sdk.orchestrator.jev_gate import jev_for
 from swarm_sdk.orchestrator.plan import Plan, PlanResult
 from swarm_sdk.orchestrator.spawn import make_factory, spawn
 
@@ -127,7 +128,10 @@ def plan_graph(
             load_all_agent_manifests(), cache=worker_cache, model_override=model_override
         )
         max_concurrency = load_swarm_config().parallelism.max_concurrency
-        result: PlanResult = await run_plan(plan, factory, max_concurrency=max_concurrency)
+        settings, _ = load_merged_settings()
+        result: PlanResult = await run_plan(
+            plan, factory, max_concurrency=max_concurrency, jev=jev_for(settings)
+        )
         return {
             "goal": state["goal"],
             "plan": plan,

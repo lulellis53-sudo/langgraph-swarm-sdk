@@ -2,9 +2,12 @@
 
 The script runs in a separate ``python -I`` process with a scrubbed environment, a
 temporary working directory and a wall-clock timeout, so a runaway or crashing script
-cannot hang or take down the agent and cannot read its secrets. This is isolation of
-failure and environment, **not** a security sandbox: the script is ordinary Python and
-must still come from a trusted or reviewed source.
+cannot hang or take down the agent. On macOS the child also runs under a Seatbelt
+profile (:mod:`swarm_sdk.core.darwin_sandbox`) that blocks network access, spawning
+processes, writes outside the temporary directory and reads under the home directory
+beyond the Python install. That is defense in depth, **not** a container: reads outside
+the home directory stay possible, and on other platforms the script is ordinary Python
+that must still come from a trusted or reviewed source.
 """
 
 from __future__ import annotations
@@ -13,7 +16,9 @@ import json
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 
+from swarm_sdk.core.darwin_sandbox import wrap_command
 from swarm_sdk.math.types import VerificationResult
 
 DEFAULT_TIMEOUT_S = 10.0
@@ -68,6 +73,7 @@ def verify_math_solution(
     *,
     tolerance: float = DEFAULT_TOLERANCE,
     timeout_s: float = DEFAULT_TIMEOUT_S,
+    sandbox: bool = True,
 ) -> VerificationResult:
     """Run ``script`` and check that its ``res`` matches ``expected``.
 
@@ -81,6 +87,8 @@ def verify_math_solution(
         script: Python source that computes ``res``.
         tolerance: Absolute tolerance for numeric comparison.
         timeout_s: Wall-clock limit before the child process is killed.
+        sandbox: Confine the child with a Seatbelt profile where macOS provides one
+            (see the module docstring); ``False`` runs it unconfined.
 
     Returns:
         A result whose ``verified`` is False, with ``detail`` explaining why, on a
@@ -90,9 +98,12 @@ def verify_math_solution(
     del claim  # not needed to verify; callers keep it alongside the result
     request = json.dumps({"script": script, "expected": expected, "tolerance": tolerance})
     with tempfile.TemporaryDirectory(prefix="swarm-verify-") as workdir:
+        argv = [sys.executable, "-I", "-c", _RUNNER, _MARKER]
+        if sandbox:
+            argv = wrap_command(argv, Path(workdir))
         try:
             proc = subprocess.run(
-                [sys.executable, "-I", "-c", _RUNNER, _MARKER],
+                argv,
                 input=request,
                 capture_output=True,
                 text=True,

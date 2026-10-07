@@ -9,6 +9,8 @@ requires-python = ">=3.14.5"
 dependencies = [
     # ## Swarm / LangGraph
     "langchain>=1.0",
+    "langchain-core>=1.6",
+    "jsonschema>=4.26",
     "langgraph>=1.0",
     "langgraph-swarm>=0.1",
     "langchain-anthropic>=0.3",
@@ -74,8 +76,6 @@ constraint-dependencies = ["cryptography==48.0.1"]
 
 [project.optional-dependencies]
 langchain = [
-    "langchain-core>=1.6",
-    "jsonschema>=4.26",
     "tree-sitter>=0.25.2,<0.26",
     "tree-sitter-python>=0.25",
 ]
@@ -87,7 +87,10 @@ dev = [
     "ruff>=0.12",
     "taplo>=0.9",
     "ty>=0.0.1a0",
-
+    "pytest-cov>=6.0",
+    "types-PyYAML>=6.0.12",
+    "types-requests>=2.32.0",
+    "yamllint>=1.37",
 ]
 # ## Observability (OTel traces for FastAPI / httpx)
 observability = [
@@ -97,7 +100,10 @@ observability = [
     "opentelemetry-instrumentation-fastapi>=0.52b0",
     "opentelemetry-instrumentation-httpx>=0.52b0",
     "prometheus-client>=0.20",
+    "opentelemetry-instrumentation-langchain>=0.52b0",
 ]
+compress = ["zstandard>=0.23"]
+arrow = ["pyarrow>=18.0"]
 # ## FAISS vector index (CPU wheels everywhere; GPU = CUDA only)
 faiss = ["faiss-cpu>=1.11"]
 faiss-gpu = [
@@ -126,6 +132,7 @@ ml = [
     "transformers>=4.51",
     "sentence-transformers>=6.1",
     "onnxruntime>=1.20; sys_platform != 'darwin' or platform_machine != 'x86_64'",
+    "pyarrow>=18.0",
 ]
 qdrant = ["qdrant-client>=1.14"]
 # ## Mem0 Platform memory (MemoryClient; API key in MEM0_API_KEY)
@@ -163,20 +170,21 @@ forecast = [
     "prophet>=1.1.6",
     "pyarrow>=18.0",
     "scikit-learn>=1.6",
-    "sentence-transformers>=5.0",
+    "sentence-transformers>=5.0; sys_platform != 'darwin' or platform_machine != 'x86_64'",
+    "statsmodels>=0.15.0",
     "sympy>=1.13",
     "tokenizers>=0.22",
-    "transformers>=4.51",
+    "transformers>=4.51; sys_platform != 'darwin' or platform_machine != 'x86_64'",
 ]
 # ## Scraping / crawling stack (heavy: Twisted via scrapy; playwright needs `playwright install chromium`)
 scrape = [
-    "playwright",
-    "crawlee",
-    "scrapy",
-    "curl-cffi",
-    "parsel",
-    "cssselect",
-    "extruct",
+    "playwright>=1.49",
+    "crawlee>=0.6",
+    "scrapy>=2.12",
+    "curl-cffi>=0.7",
+    "parsel>=1.9",
+    "cssselect>=1.2",
+    "extruct>=0.16",
 ]
 
 [project.scripts]
@@ -191,7 +199,7 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
-    "langgraph-cli>=0.1.54",
+    "langgraph-cli>=0.4",
 ]
 
 [tool.hatch.build.targets.wheel]

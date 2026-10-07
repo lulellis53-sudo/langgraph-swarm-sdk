@@ -6,6 +6,7 @@ route gets sentinel values, so the tests prove how a key reaches a provider, not
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -28,6 +29,14 @@ class _Dummy(BaseChatModel):
 
     def _generate(self, messages, stop=None, run_manager=None, **kwargs):  # noqa: ANN001, ANN202
         raise NotImplementedError
+
+
+@pytest.fixture(autouse=True)
+def _fresh_model_cache() -> Iterator[None]:
+    """Build every model from scratch: a cache hit would skip the recorded init call."""
+    chat.load_chat_model_cache_clear()
+    yield
+    chat.load_chat_model_cache_clear()
 
 
 @pytest.fixture

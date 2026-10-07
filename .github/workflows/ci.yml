@@ -35,12 +35,27 @@ jobs:
           from pathlib import Path
           import yaml
 
-          roots = (Path(".github"), Path("Main/config"), Path("Agents"))
-          files = [path for root in roots for pattern in ("*.yml", "*.yaml") for path in root.rglob(pattern)]
-          for path in sorted(set(files)):
+          roots = (
+              Path(".github"),
+              Path("Main/config"),
+              Path("Agents"),
+              Path("docker"),
+              Path("src/swarm_sdk/agents/config"),
+          )
+          files: list[Path] = []
+          for root in roots:
+              files.extend(root.rglob("*.yml"))
+              files.extend(root.rglob("*.yaml"))
+          for extra in (Path("providers.yaml"), Path(".yamllint.yml")):
+              if extra.is_file():
+                  files.append(extra)
+          unique = sorted({p.resolve() for p in files})
+          for path in unique:
               yaml.safe_load(path.read_text(encoding="utf-8"))
-          print(f"Validated {len(set(files))} YAML files")
+          print(f"Validated {len(unique)} YAML files")
           PY
+      - name: yamllint
+        run: uv run yamllint -c .yamllint.yml .
 
   tomlcheck:
     name: TOML format (taplo)

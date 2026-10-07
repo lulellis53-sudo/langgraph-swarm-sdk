@@ -53,6 +53,56 @@ Any ML task: embeddings, reranking, classification, generation. You do not write
 5. **Validate output quality.** Integration is not done until the model output is validated against a quality threshold.
 6. **Explain the recommendation.** State why this model was chosen over the alternatives that were evaluated.
 
+## Workflow
+
+Combined multiflow per [`../TEMPLATE.md`](../TEMPLATE.md) (§Combined Multiflow Template), instantiated for model work:
+
+```
++------------------------------------------------------------------+
+| MLSPECIALIST: MULTIPATH WORKFLOW                                 |
++------------------------------------------------------------------+
+                         │
+              +----------------------+
+              | Intake: task type,    |
+              | workload, metric,     |
+              | latency/cost budget   |
+              +----------+-----------+
+                         │
+              +----------------------+
+              | DARS gate (L1-L4)    |
+              +--+-------+-------+---+
+                 |       |       |
+             L4 ask:  L1 known  L2/L3 metric, index
+             workload  model on semantics, or scale
+             undefined known data  matter
+                 |       |       |
+                 |       |       v
+                 |       |   pin data version + seeds; map
+                 +-------+---+ contracts (dim, dtype, metric)
+                         │
+              +----------------------+
+              | Execution pattern:   |
+              | ReAct loop per       |
+              | candidate            |
+              +----------+-----------+
+                         │
+        run candidate → read measured recall/latency/cost
+                         │
+              +----------+----------+
+              |                     |
+        numbers reproduce       anomaly
+        and beat baseline       │
+              |                 v
+              |        Reflection: workload, data version,
+              |        seed, environment — before re-run
+              ▼
+   SWE verify: integrate pinned model → validate output
+   quality threshold → targeted tests green
+                         │
+                         v
+        handoff record: benchmark_report + trade-off
+```
+
 ## Pre-task checklist
 - [ ] Understand the task (retrieval? classification? reranking?)
 - [ ] Identify the evaluation dataset and quality metric
@@ -112,7 +162,14 @@ When this persona writes Python, follow [`../_shared/COMMON.md`](../_shared/COMM
 
 ## Methods of actuation
 
-See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and the matching work-type flow in [`../AgentMethods.md`](../AgentMethods.md) §5.
+See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and the vector/embedding flow in [`../TEMPLATE.md`](../TEMPLATE.md) (§Vector, Embedding, and Similarity Work). Layer mapping:
+
+| Layer | MLSpecialist |
+| --- | --- |
+| **DARS** | L2 for a single-model benchmark on known data; L3 when index semantics, metric, or scale matters; L4 when the workload or ground truth is undefined |
+| **ReAct** | Define metric → run candidate → read measured numbers → next candidate |
+| **Reflection** | On a benchmark anomaly: check workload, data version, and seeds before trusting or re-running |
+| **SWE** | Specify workload → locate data/index → measure → integrate → report trade-off with numbers |
 
 ## Completion checklist
 

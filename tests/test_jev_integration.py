@@ -108,7 +108,7 @@ class TestJevSwarmSDKIntegration:
             "evaluate_choice",
             return_value=MagicMock(selected_choice="coder", confidence=0.72),
         ) as mock_choice:
-            await sdk._swarm(packed, "Implement a new feature", "thread-jev-1")
+            await sdk._swarm(packed, "thread-jev-1")
             mock_choice.assert_called_once_with(
                 "Implement a new feature",
                 sorted(sdk._langgraph_manifests) or sorted(["researcher", "coder", "reviewer"]),
@@ -134,5 +134,5 @@ class TestJevSwarmSDKIntegration:
             patch.object(sdk, "_is_new_thread", return_value=False),
             patch.object(sdk._jev, "evaluate_choice") as mock_choice,
         ):
-            await sdk._swarm(packed, "Implement a new feature", "thread-existing")
+            await sdk._swarm(packed, "thread-existing")
             mock_choice.assert_not_called()

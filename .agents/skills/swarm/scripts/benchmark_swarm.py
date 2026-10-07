@@ -11,12 +11,9 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import sys
 import time
 import tracemalloc
-from typing import Any, Dict, List, Optional
-
+from typing import Any
 
 # Optional imports for telemetry and property testing
 HYPOTHESIS_AVAILABLE = False
@@ -25,14 +22,17 @@ OPENTELEMETRY_AVAILABLE = False
 
 try:
     import hypothesis
-    from hypothesis import given, strategies as st
+    from hypothesis import given
+    from hypothesis import strategies as st
+
     HYPOTHESIS_AVAILABLE = True
 except ImportError:
     HYPOTHESIS_AVAILABLE = False
 
 try:
     import prometheus_client
-    from prometheus_client import CollectorRegistry, Counter, Histogram, Gauge
+    from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
+
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False
@@ -41,18 +41,19 @@ try:
     import opentelemetry
     from opentelemetry import trace
     from opentelemetry.trace import Status, StatusCode
+
     OPENTELEMETRY_AVAILABLE = True
 except ImportError:
     OPENTELEMETRY_AVAILABLE = False
 
 
-def init_telemetry_registry() -> Dict[str, Any]:
+def init_telemetry_registry() -> dict[str, Any]:
     """Initializes Prometheus metrics collectors and OpenTelemetry tracer if available.
 
     Returns:
         Dict[str, Any]: Dictionary of active telemetry collectors.
     """
-    telemetry: Dict[str, Any] = {
+    telemetry: dict[str, Any] = {
         "prometheus_active": PROMETHEUS_AVAILABLE,
         "opentelemetry_active": OPENTELEMETRY_AVAILABLE,
         "hypothesis_active": HYPOTHESIS_AVAILABLE,
@@ -84,7 +85,7 @@ def init_telemetry_registry() -> Dict[str, Any]:
     return telemetry
 
 
-def run_benchmark_suite(suite_name: str, iterations: int) -> Dict[str, Any]:
+def run_benchmark_suite(suite_name: str, iterations: int) -> dict[str, Any]:
     """Runs a specified benchmark suite for N iterations with memory and telemetry tracking.
 
     Args:
@@ -96,10 +97,12 @@ def run_benchmark_suite(suite_name: str, iterations: int) -> Dict[str, Any]:
     """
     telemetry = init_telemetry_registry()
     tracemalloc.start()
-    
-    results: List[float] = []
+
+    results: list[float] = []
     print(f"Running Benchmark Suite '{suite_name}' ({iterations} iterations)...")
-    print(f"  Telemetry Stack -> Prometheus: {PROMETHEUS_AVAILABLE} | OpenTelemetry: {OPENTELEMETRY_AVAILABLE} | Hypothesis: {HYPOTHESIS_AVAILABLE}")
+    print(
+        f"  Telemetry Stack -> Prometheus: {PROMETHEUS_AVAILABLE} | OpenTelemetry: {OPENTELEMETRY_AVAILABLE} | Hypothesis: {HYPOTHESIS_AVAILABLE}"
+    )
 
     otel_tracer = telemetry.get("otel_tracer")
     span = None

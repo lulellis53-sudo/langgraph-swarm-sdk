@@ -189,6 +189,25 @@ def _assert_wave_files(wave: list[PlanStep]) -> None:
         raise ValueError(f"parallel Coder steps must declare disjoint files; unscoped: {missing}")
 
 
+class JevDecision(BaseModel):
+    """What the Jev router decided about one plan step before it ran.
+
+    Attributes:
+        safe: ``False`` when the Noul safety check rejected the step.
+        reason: The router's tag for the verdict (never the step text).
+        score: Complexity score in ``[0, 1]``.
+        tier: Suggested model tier (``flash_lite``, ``flash`` or ``pro``). Advisory:
+            it is recorded but does not change the model that runs.
+        latency_ms: Time spent in the router for this step.
+    """
+
+    safe: bool
+    reason: str
+    score: float
+    tier: str
+    latency_ms: float
+
+
 class StepOutput(BaseModel):
     """Result of executing one plan step.
 
@@ -207,6 +226,8 @@ class StepOutput(BaseModel):
             its schema; dependents then do not receive this content.
         handoff_errors: Schema errors for a blocked JSON handoff. Empty when
             the reply is prose or a valid object.
+        jev_decision: The Jev router's verdict for this step, or ``None`` when
+            per-step Jev routing is off or the router failed.
     """
 
     step_id: str
@@ -218,6 +239,7 @@ class StepOutput(BaseModel):
     wall_s: float = 0.0
     status: str = "ok"
     handoff_errors: list[str] = Field(default_factory=list)
+    jev_decision: JevDecision | None = None
 
 
 class UsageTotals(BaseModel):

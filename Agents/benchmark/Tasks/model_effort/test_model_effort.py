@@ -54,8 +54,7 @@ def test_aggregate_groups_by_type_model_and_effort() -> None:
     assert len(rows) == 6
     assert len(groups) == 4
     low_class = next(
-        item for item in groups
-        if item["task_type"] == "classification" and item["effort"] == "low"
+        item for item in groups if item["task_type"] == "classification" and item["effort"] == "low"
     )
     assert low_class["mean_score"] == 0.5
     assert low_class["total_tokens"] == 12
@@ -71,7 +70,9 @@ def test_missing_usage_is_marked_unreported() -> None:
 
 def test_predefined_cases_cover_task_types_and_registry_efforts() -> None:
     assert {case.task_type for case in load_cases()} == {
-        "classification", "extraction", "arithmetic"
+        "classification",
+        "extraction",
+        "arithmetic",
     }
     routes = load_routes()
     assert routes
@@ -96,7 +97,8 @@ def test_codex_cli_agent_uses_profile_and_usage(monkeypatch: pytest.MonkeyPatch)
         assert kwargs["input"] == "Reply 42"
         Path(command[command.index("-o") + 1]).write_text("42", encoding="utf-8")
         return subprocess.CompletedProcess(
-            command, 0,
+            command,
+            0,
             '{"type":"turn.completed","usage":{"input_tokens":7,"output_tokens":2}}\n',
             "",
         )
@@ -113,15 +115,31 @@ def test_codex_route_cannot_use_api_provider_mode() -> None:
 
 def test_auto_selects_low_effort_credential_route_before_codex() -> None:
     entries = [
-        {"name": "anthropic:large", "provider": "anthropic", "effort": "medium",
-         "priority": 5, "api_key_env": "ANTHROPIC_API_KEY"},
-        {"name": "openai:small", "provider": "openai", "effort": "low",
-         "priority": 70, "api_key_env": "OPENAI_API_KEY"},
-        {"name": "openai:codex", "provider": "codex", "effort": "medium",
-         "priority": 20, "api_key_env": "CODEX_OAUTH_TOKEN"},
+        {
+            "name": "anthropic:large",
+            "provider": "anthropic",
+            "effort": "medium",
+            "priority": 5,
+            "api_key_env": "ANTHROPIC_API_KEY",
+        },
+        {
+            "name": "openai:small",
+            "provider": "openai",
+            "effort": "low",
+            "priority": 70,
+            "api_key_env": "OPENAI_API_KEY",
+        },
+        {
+            "name": "openai:codex",
+            "provider": "codex",
+            "effort": "medium",
+            "priority": 20,
+            "api_key_env": "CODEX_OAUTH_TOKEN",
+        },
     ]
     route = benchmark.select_auto_route(
-        entries, credential_available=lambda name: name == "OPENAI_API_KEY",
+        entries,
+        credential_available=lambda name: name == "OPENAI_API_KEY",
         codex_profile="Comand",
     )
     assert (route.model, route.effort, route.mode) == ("openai:small", "low", "live")
@@ -129,10 +147,20 @@ def test_auto_selects_low_effort_credential_route_before_codex() -> None:
 
 def test_auto_falls_back_to_codex_without_api_key() -> None:
     entries = [
-        {"name": "openai:small", "provider": "openai", "effort": "low",
-         "priority": 70, "api_key_env": "OPENAI_API_KEY"},
-        {"name": "openai:codex", "provider": "codex", "effort": "medium",
-         "priority": 20, "api_key_env": "CODEX_OAUTH_TOKEN"},
+        {
+            "name": "openai:small",
+            "provider": "openai",
+            "effort": "low",
+            "priority": 70,
+            "api_key_env": "OPENAI_API_KEY",
+        },
+        {
+            "name": "openai:codex",
+            "provider": "codex",
+            "effort": "medium",
+            "priority": 20,
+            "api_key_env": "CODEX_OAUTH_TOKEN",
+        },
     ]
     route = benchmark.select_auto_route(
         entries, credential_available=lambda _: False, codex_profile="Comand"
@@ -142,8 +170,15 @@ def test_auto_falls_back_to_codex_without_api_key() -> None:
 
 def test_auto_accepts_native_mistral_route() -> None:
     route = benchmark.select_auto_route(
-        [{"name": "mistral:ministral-3-8b-latest", "provider": "mistral-2",
-          "effort": "low", "priority": 2, "api_key_env": "MISTRAL_API_KEY"}],
+        [
+            {
+                "name": "mistral:ministral-3-8b-latest",
+                "provider": "mistral-2",
+                "effort": "low",
+                "priority": 2,
+                "api_key_env": "MISTRAL_API_KEY",
+            }
+        ],
         credential_available=lambda name: name == "MISTRAL_API_KEY",
         codex_profile=None,
     )
@@ -161,12 +196,9 @@ def test_auto_accepts_native_mistral_route() -> None:
         ("cohere:command-r7b", "cohere-2", "COHERE_API_KEY_2"),
     ],
 )
-def test_auto_accepts_requested_provider(
-    model: str, provider: str, key: str
-) -> None:
+def test_auto_accepts_requested_provider(model: str, provider: str, key: str) -> None:
     route = benchmark.select_auto_route(
-        [{"name": model, "provider": provider, "effort": "low",
-          "priority": 1, "api_key_env": key}],
+        [{"name": model, "provider": provider, "effort": "low", "priority": 1, "api_key_env": key}],
         credential_available=lambda name: name == key,
         codex_profile=None,
     )
@@ -201,12 +233,15 @@ def test_auto_covers_types_then_stops_before_projected_budget() -> None:
         BenchmarkCase("e2", "extraction", "e2", "ok"),
     ]
     report = benchmark.run_autonomous(
-        cases, ("openai:codex", "medium"),
+        cases,
+        ("openai:codex", "medium"),
         lambda *_: ModelReply("ok", 12, 2, "codex"),
         max_total_tokens=50,
     )
     assert {row["task_type"] for row in report["cases"]} == {
-        "arithmetic", "classification", "extraction"
+        "arithmetic",
+        "classification",
+        "extraction",
     }
     assert len(report["cases"]) == 3
     assert report["complete"] is False
@@ -224,10 +259,19 @@ def test_auto_cli_runs_eligible_agent_and_reports_completion(
     monkeypatch.setattr(
         benchmark, "_codex", lambda _: lambda *_args: ModelReply("42", 4, 1, "codex")
     )
-    assert benchmark.main([
-        "--auto", "--model", "openai:gpt-6-luna",
-        "--max-total-tokens", "50", "--json",
-    ]) == 0
+    assert (
+        benchmark.main(
+            [
+                "--auto",
+                "--model",
+                "openai:gpt-6-luna",
+                "--max-total-tokens",
+                "50",
+                "--json",
+            ]
+        )
+        == 0
+    )
     report = json.loads(capsys.readouterr().out)
     assert report["mode"] == "auto"
     assert report["selected_model"] == "openai:gpt-6-luna"
@@ -242,7 +286,9 @@ def test_auto_provider_error_returns_redacted_partial_report() -> None:
 
     report = benchmark.run_autonomous(
         [BenchmarkCase("a", "arithmetic", "prompt", "42")],
-        ("openai:small", "low"), failing_invoke, max_total_tokens=50,
+        ("openai:small", "low"),
+        failing_invoke,
+        max_total_tokens=50,
     )
     assert report["complete"] is False
     assert report["stopped_reason"] == "agent_error"

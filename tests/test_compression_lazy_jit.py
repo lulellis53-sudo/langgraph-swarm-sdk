@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import pytest
 
 from swarm_sdk.core.compression import (
@@ -63,7 +62,11 @@ class TestZstdZeroCopyCompressor:
 
     def test_text_compression_ratio(self) -> None:
         compressor = ZstdStateCompressor(level=3)
-        assert compressor.backend_name in ("python314_native_zstd", "python_zstandard", "zlib_fallback")
+        assert compressor.backend_name in (
+            "python314_native_zstd",
+            "python_zstandard",
+            "zlib_fallback",
+        )
 
         sample_prompt = "You are an autonomous LangGraph Swarm agent. Execute task cleanly. " * 30
         compressed = compressor.compress_text(sample_prompt)

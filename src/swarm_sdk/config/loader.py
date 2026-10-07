@@ -309,11 +309,7 @@ def settings_from_file(file_cfg: SwarmFileConfig, env: Settings | None = None) -
     }
     if file_cfg.model_select.routes:
         strong = next(
-            (
-                r.name
-                for r in file_cfg.model_select.routes
-                if r.name.startswith("anthropic:claude")
-            ),
+            (r.name for r in file_cfg.model_select.routes if r.name.startswith("anthropic:claude")),
             None,
         )
         if strong is None:

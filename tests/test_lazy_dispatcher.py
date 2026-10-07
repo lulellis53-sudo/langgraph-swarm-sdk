@@ -16,9 +16,7 @@ class TestLazyLoading:
 
     def test_instantiation_does_not_import_pyopencl(self) -> None:
         """Merely instantiating the dispatcher must NOT import pyopencl into sys.modules."""
-        mods_to_remove = [
-            m for m in sys.modules if m == "pyopencl" or m.startswith("pyopencl.")
-        ]
+        mods_to_remove = [m for m in sys.modules if m == "pyopencl" or m.startswith("pyopencl.")]
         saved_mods = {mod: sys.modules.pop(mod) for mod in mods_to_remove}
         try:
             dispatcher = VectorComputeDispatcher(batch_threshold=1000)
@@ -29,9 +27,7 @@ class TestLazyLoading:
 
     def test_single_vector_dot_does_not_load_pyopencl(self) -> None:
         """Single vector dot product uses CPU and does not load pyopencl."""
-        mods_to_remove = [
-            m for m in sys.modules if m == "pyopencl" or m.startswith("pyopencl.")
-        ]
+        mods_to_remove = [m for m in sys.modules if m == "pyopencl" or m.startswith("pyopencl.")]
         saved_mods = {mod: sys.modules.pop(mod) for mod in mods_to_remove}
         try:
             dispatcher = VectorComputeDispatcher(batch_threshold=1000)
@@ -46,9 +42,7 @@ class TestLazyLoading:
 
     def test_small_batch_dot_does_not_load_pyopencl(self) -> None:
         """Batch size < threshold uses CPU and does not load pyopencl."""
-        mods_to_remove = [
-            m for m in sys.modules if m == "pyopencl" or m.startswith("pyopencl.")
-        ]
+        mods_to_remove = [m for m in sys.modules if m == "pyopencl" or m.startswith("pyopencl.")]
         saved_mods = {mod: sys.modules.pop(mod) for mod in mods_to_remove}
         try:
             dispatcher = VectorComputeDispatcher(batch_threshold=1000)

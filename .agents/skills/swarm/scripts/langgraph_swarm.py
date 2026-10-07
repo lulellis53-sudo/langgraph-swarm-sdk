@@ -20,6 +20,8 @@ import os
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -517,6 +519,8 @@ class SwarmOrchestrator:
             "max_ms": max_ms,
             "max_try": max_try,
             "latency_ms": elapsed_ms,
+            "execution": execution,
+            "reply": execution.get("reply"),
             "rag_context_count": len(rag_snippets),
             "retrieved_snippets": rag_snippets,
             "similar_past_count": len(similar_past),
@@ -563,6 +567,28 @@ def main() -> None:
 
     workspace = Path.cwd()
     orchestrator = SwarmOrchestrator(workspace)
+
+    roster = list_registered_agents(orchestrator.agents_root)
+    if target_agent:
+        token = target_agent.lstrip("@").strip()
+        if not resolve_agent_name(token, orchestrator.agents_root) and token.upper() not in {
+            label.upper() for label in orchestrator.providers
+        }:
+            print(
+                json.dumps(
+                    {
+                        "status": "BLOCKED",
+                        "unknown_agent": target_agent,
+                        "registered_agents": roster,
+                        "hint": (
+                            "Use an Agents/ folder name (case-insensitive, "
+                            "'-' and '_' ignored), or a provider label."
+                        ),
+                    },
+                    indent=2,
+                )
+            )
+            raise SystemExit(2)
 
     if args.status or not args.prompt:
         print(

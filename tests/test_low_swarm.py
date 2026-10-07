@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from unittest.mock import patch
+
 import pytest
 
 from swarm_sdk.orchestrator import LowSwarmEngine, SwarmState
-from swarm_sdk.core.rules import HostRuleEngine
-from swarm_sdk.core.jev_router import JevRouter
 
 
 class TestLowSwarmEngine:
@@ -46,26 +45,19 @@ class TestLowSwarmEngine:
 
     def test_lifeguard_resynthesis_loop_fixes_code(self) -> None:
         """Lifeguard resynthesis loop: coder initially outputs top-level os.system -> lifeguard rejects -> loops back -> coder fixes -> passes."""
+
         def iterative_synthesizer(state: SwarmState) -> dict[str, str]:
             iteration = state.get("iteration", 0)
             if iteration == 0:
                 # Top-level prohibited call os.system
                 return {
                     "worker.py": (
-                        "import os\n"
-                        "os.system('echo unsafe')\n"
-                        "def do_work():\n"
-                        "    return 42\n"
+                        "import os\nos.system('echo unsafe')\ndef do_work():\n    return 42\n"
                     )
                 }
             else:
                 # Clean, compliant code
-                return {
-                    "worker.py": (
-                        "def do_work():\n"
-                        "    return 42\n"
-                    )
-                }
+                return {"worker.py": ("def do_work():\n    return 42\n")}
 
         engine = LowSwarmEngine(custom_synthesizer=iterative_synthesizer)
         result = engine.run(
@@ -81,13 +73,9 @@ class TestLowSwarmEngine:
 
     def test_circuit_breaker_halts_at_max_iterations(self) -> None:
         """Circuit breaker: coder continuously outputs bad code -> halts at iteration 3."""
+
         def bad_synthesizer(state: SwarmState) -> dict[str, str]:
-            return {
-                "exploit.py": (
-                    "import os\n"
-                    "os.system('cat /etc/shadow')\n"
-                )
-            }
+            return {"exploit.py": ("import os\nos.system('cat /etc/shadow')\n")}
 
         engine = LowSwarmEngine(custom_synthesizer=bad_synthesizer)
         result = engine.run(
@@ -134,7 +122,10 @@ class TestLowSwarmEngine:
     def test_custom_test_runner_pass_and_fail(self) -> None:
         """Custom test_runner validates synthesized code execution."""
         # Failing runner
-        failing_runner = lambda state: {"passed": False, "error": "Unit tests failed: 2 assertion errors"}
+        failing_runner = lambda state: {
+            "passed": False,
+            "error": "Unit tests failed: 2 assertion errors",
+        }
         engine_fail = LowSwarmEngine(test_runner=failing_runner)
         res_fail = engine_fail.run("Test task", target_files=["module.py"])
         assert res_fail["status"] == "failed"
@@ -160,6 +151,7 @@ class TestLowSwarmEngine:
     def test_orchestrator_init_exports(self) -> None:
         """Verify LowSwarmEngine and SwarmState are properly re-exported in orchestrator __init__."""
         import swarm_sdk.orchestrator as orch
+
         assert hasattr(orch, "LowSwarmEngine")
         assert hasattr(orch, "SwarmState")
         assert "LowSwarmEngine" in orch.__all__
@@ -170,7 +162,9 @@ class TestLowSwarmEngine:
         engine = LowSwarmEngine()
 
         # Pro tier: multi-file architecture concurrency
-        pro_res = engine.run("Implement multi-file architecture with concurrent thread pool and mutex")
+        pro_res = engine.run(
+            "Implement multi-file architecture with concurrent thread pool and mutex"
+        )
         assert pro_res["jev_decision"]["model_tier"] == "pro"
         assert pro_res["jev_decision"]["complexity_bucket"] == "high"
 
@@ -181,7 +175,9 @@ class TestLowSwarmEngine:
 
     def test_custom_synthesizer_single_string_return(self) -> None:
         """Custom synthesizer returning a single code string is mapped to first target file."""
-        engine = LowSwarmEngine(custom_synthesizer=lambda task, files: "def greet(): return 'hello'")
+        engine = LowSwarmEngine(
+            custom_synthesizer=lambda task, files: "def greet(): return 'hello'"
+        )
         res = engine.run("Greet user", target_files=["greeter.py"])
         assert res["status"] == "success"
         assert "greeter.py" in res["synthesized_code"]
@@ -189,6 +185,7 @@ class TestLowSwarmEngine:
 
     def test_custom_test_runner_exception_handling(self) -> None:
         """Custom test_runner raising an unexpected exception sets status to failed."""
+
         def exploding_runner(state):
             raise RuntimeError("Unexpected runner crash")
 

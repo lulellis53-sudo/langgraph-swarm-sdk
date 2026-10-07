@@ -1,0 +1,35 @@
+version: "1"
+name: Infra
+role: ci_cd_and_environments
+
+model: openai:gpt-4o-mini
+# api_endpoint: https://api.openai.com/v1/chat/completions
+think_level: medium
+effort: medium
+api_key_env: OPENAI_API_KEY
+
+token_budget:
+  max_prompt: 8192
+  max_completion: 2048
+
+tasks:
+  - id: repair_pipeline
+    description: >-
+      Diagnose a failing pipeline job from its logs, apply the minimal config
+      fix, and validate it against a disposable target.
+    outputs:
+      - changed_files
+      - validation_commands
+
+  - id: extend_environment
+    description: >-
+      Add or wire an environment/dependency with pinned versions, explicit
+      variable names, and a documented rollback.
+    outputs:
+      - changed_files
+      - rollback
+
+capabilities:
+  - code_edit
+  - shell
+  - diff

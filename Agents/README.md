@@ -61,6 +61,16 @@ updating an agent manifest, run the template sync command documented in
 
 Authoring workflow: [`AgentMethods.md`](AgentMethods.md) Part I. Cursor skill: `.cursor/skills/agent-creator/SKILL.md`.
 
+## Adding or editing agents
+
+Before creating an agent or editing an existing persona, read and analyze
+[`TEMPLATE.md`](TEMPLATE.md). Use it to decide which sections apply, follow its
+lean-profile guidance, and verify the persona's role, permissions, workflow,
+validation, and handoff contract. Then adapt the relevant guidance to the
+agent; do not copy unverified examples or retain irrelevant sections. When
+updating an agent manifest, run the template sync command documented in
+[`TEMPLATE.md`](TEMPLATE.md) and review the resulting diff.
+
 ## Adding tasks
 
 Edit `coordination.yaml` → `tasks:`. Copy the example structure from the comments. Each task needs an `id`, `title`, `assigned` registered agent(s), `depends_on` list, and `status`; `task` optionally selects a task ID from that agent's manifest. Coder tasks that should share a wave also need disjoint `files` (and usually `task: implement_in_files`). A production file and the tests that cover it stay on the same Coder task.

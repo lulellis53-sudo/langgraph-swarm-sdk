@@ -302,18 +302,18 @@ def test_concurrency_namespace_uses_static_methods() -> None:
     """``swarm_sdk.execution`` is the single source of the GIL/parallel policy."""
     from swarm_sdk.execution import concurrency
 
-    assert callable(concurrency.gil_enabled)
-    assert concurrency.parallel_cap() in (8, 32)
+    assert callable(gil_enabled)
+    assert parallel_cap() in (8, 32)
 
 
-def test_gil_probe_only_in_concurrency_module() -> None:
+def test_gil_probe_only_in_execution_module() -> None:
     """``sys._is_gil_enabled`` is a private API; confine it to one audited module."""
     offenders = [
         _rel(p)
         for p in SOURCE_FILES
-        if "_is_gil_enabled" in p.read_text(encoding="utf-8") and p.name != "concurrency.py"
+        if "_is_gil_enabled" in p.read_text(encoding="utf-8") and p.name != "__init__.py"
     ]
-    assert not offenders, f"GIL probe outside concurrency.py: {offenders}"
+    assert not offenders, f"GIL probe outside execution/__init__.py: {offenders}"
 
 
 # --------------------------------------------------------------------------------------

@@ -6,7 +6,6 @@ from pathlib import Path
 
 import httpx
 import pytest
-
 from WebSearch.frontend import websearchers
 from WebSearch.frontend.websearchers import SearchHit, load_providers, parallel_search
 from WebSearch.midend import default_fetch

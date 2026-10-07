@@ -70,6 +70,55 @@ change releases, or otherwise mutate a remote project.
 5. **Secrets stay in vaults.** Secrets go in the CI secret store, not in workflow files, environment variables in logs, or committed config.
 6. **Rollback is the default.** Every environment change has a documented rollback procedure before it is applied.
 
+## Workflow
+
+Combined multiflow per [`../TEMPLATE.md`](../TEMPLATE.md) (§Combined Multiflow Template, §API/Environment Interaction), instantiated for pipelines:
+
+```
++------------------------------------------------------------------+
+| DEVOPS: MULTIPATH WORKFLOW                                       |
++------------------------------------------------------------------+
+                         │
+              +----------------------+
+              | Intake: failing job / |
+              | env change, targets,  |
+              | approval boundaries   |
+              +----------+-----------+
+                         │
+              +----------------------+
+              | DARS gate (L1-L4)    |
+              +--+-------+-------+---+
+                 |       |       |
+             L4 ask   L1 single  L3 deploy targets,
+             (prod    pipeline    secrets, shared
+             action)  leg         runners
+                 |       |       |
+                 +-------+-------+
+                         │
+              +----------------------+
+              | Execution pattern:   |
+              | API/environment      |
+              | ReAct (read → act →  |
+              | observe state)       |
+              +----------+-----------+
+                         │
+        read full log to the error → one minimal config change
+                         │
+              +----------+----------+
+              |                     |
+        failing leg green      still red
+              |                    │
+              |                    v
+              |        Reflection: reclassify (config vs
+              |        environment vs flake), one fix, rerun
+              ▼
+   SWE verify: disposable validation green → rollback noted
+                         │
+                         v
+   STOP: production apply awaits human approval;
+   handoff record (diff, validation, rollback)
+```
+
 ## Pre-task checklist
 - [ ] Read the full build/deploy log to the actual error
 - [ ] Identify whether the failure is environment, config, or code
@@ -118,7 +167,14 @@ When this persona writes Python, follow [`../_shared/COMMON.md`](../_shared/COMM
 
 ## Methods of actuation
 
-See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and the matching work-type flow in [`../AgentMethods.md`](../AgentMethods.md) §5.
+See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and the API/environment-interaction acting mode in [`../TEMPLATE.md`](../TEMPLATE.md) (§5, with human-in-the-loop checkpoints). Layer mapping:
+
+| Layer | DevOps |
+| --- | --- |
+| **DARS** | L2 for a single pipeline repair; L3 for anything touching deploy targets, secrets, or shared runners; L4 asks before any production action |
+| **ReAct** | Read run logs → one config change → rerun the failing leg → observe |
+| **Reflection** | On a still-red job: reclassify the failure (config vs environment vs flake) before the next change |
+| **SWE** | Diagnose → minimal config change → validate on disposable target → rollback noted → await approval for production |
 
 ## Completion checklist
 

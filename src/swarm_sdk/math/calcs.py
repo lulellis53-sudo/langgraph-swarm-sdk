@@ -125,7 +125,7 @@ class ArrowCalcs:
 
     @classmethod
     def column_stats(cls, data: Sequence[float | int] | Any) -> dict[str, float]:
-        """Calculates moments (mean, stddev, sum, min, max, variance) on columnar data."""
+        """Calculates moments and median on columnar data."""
         if not data:
             return {
                 "count": 0.0,
@@ -135,6 +135,7 @@ class ArrowCalcs:
                 "min": 0.0,
                 "max": 0.0,
                 "variance": 0.0,
+                "median": 0.0,
             }
 
         mods = cls._pa_modules()

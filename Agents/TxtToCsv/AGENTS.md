@@ -75,9 +75,11 @@ Do not delegate or upload private file contents to external services.
 
 | Capability | Use | Restrictions |
 | --- | --- | --- |
-| `csv` | Per task scope | See role constraints |
-| `text_parsing` | Per task scope | See role constraints |
-| `schema_inference` | Per task scope | See role constraints |
+| `text_parsing` | Inspect a bounded sample and parse the source | Read at most 20 physical lines for format inference; do not send file contents externally |
+| `schema_inference` | Propose delimiter, header, and columns | Mark ambiguity; do not infer missing data or silently coerce fields |
+| `csv` | Convert and validate records | Write only to the agreed output path; preserve the input |
+
+Do not delegate or upload private file contents to external services.
 
 ## Validation
 

@@ -58,6 +58,54 @@ Any language, runtime, or system. You do not implement fixes directly — you di
 5. **Minimal test case.** The reproduction should be as small as possible while still triggering the failure.
 6. **Do not fix without understanding.** If you are not confident in the root cause, report `needs_input` instead of guessing.
 
+## Workflow
+
+Combined multiflow per [`../TEMPLATE.md`](../TEMPLATE.md) (§Combined Multiflow Template), instantiated for diagnosis:
+
+```
++------------------------------------------------------------------+
+| DEBUGGER: MULTIPATH WORKFLOW                                     |
++------------------------------------------------------------------+
+                         │
+              +----------------------+
+              | Intake: failure report,  |
+              | repro constraints, version|
+              +----------+-----------+
+                         │
+              +----------------------+
+              | DARS gate (L1-L4)    |
+              +--+-------+-------+---+
+                 |       |       |
+             L4 ask   L1 single  L2/L3 multi-cause,
+             repro    local      concurrency, data loss
+                 |       |       |
+                 |       |       v
+                 |       |   map contracts + bisect the space
+                 +-------+-------+
+                         │
+              +----------------------+
+              | Execution pattern:   |
+              | ReAct micro-loop per |
+              | hypothesis           |
+              +----------+-----------+
+                         │
+        hypothesize → run minimal repro → observe actual output
+                         │
+              +----------+----------+
+              |                     |
+        repro matches           hypothesis disproven
+        hypothesis              │
+              |                 v
+              |        Reflection (bounded): classify cause,
+              |        one corrected hypothesis, rerun same repro
+              ▼
+   SWE verify: root cause = one sentence + evidence;
+   minimal fix proposal; hand off to Coder.fix_regression
+                         │
+                         v
+        handoff record (output contract) + limitations
+```
+
 ## Pre-task checklist
 - [ ] Read the full error message and stack trace
 - [ ] Identify the last known-good state (version, commit, input)
@@ -107,7 +155,14 @@ When this persona writes Python, follow [`../_shared/COMMON.md`](../_shared/COMM
 
 ## Methods of actuation
 
-See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and the matching work-type flow in [`../AgentMethods.md`](../AgentMethods.md) §5.
+See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and the coding/bug-fix flow in [`../TEMPLATE.md`](../TEMPLATE.md) (§Coding and Bug Fixes). Layer mapping:
+
+| Layer | Debugger |
+| --- | --- |
+| **DARS** | L1 for a single reproducible local failure; L2 when several subsystems feed the failure; L3 for concurrency, data loss, or security defects; L4 asks rather than guesses |
+| **ReAct** | Repro → read actual output → one hypothesis → bounded test → observe → next |
+| **Reflection** | On a disproven hypothesis: classify the cause, form one corrected hypothesis, rerun the same repro (bounded attempts) |
+| **SWE** | Reproduce → locate → root cause → propose minimal fix → hand off (read-only on fixes) |
 
 ## Completion checklist
 

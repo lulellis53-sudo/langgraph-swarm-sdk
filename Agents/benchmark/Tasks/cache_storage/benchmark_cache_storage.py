@@ -76,8 +76,7 @@ def _worker(engine: str, rows: int, rounds: int, iterations: int, directory: str
     payload = bytes(range(128))
     exact_rows = [(f"key-{i}", f"response-{i}", "default", i) for i in range(rows)]
     semantic_rows = [
-        (i + 1, f"query-{i}", payload, f"response-{i}", "default", i, i)
-        for i in range(rows)
+        (i + 1, f"query-{i}", payload, f"response-{i}", "default", i, i) for i in range(rows)
     ]
     if engine == "sqlite":
         connection.executemany("INSERT INTO exact_cache VALUES (?, ?, ?, ?)", exact_rows)

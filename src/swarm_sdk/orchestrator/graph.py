@@ -16,7 +16,14 @@ from typing import TypedDict
 
 from langgraph.graph import END, StateGraph
 
+from swarm_sdk.core.jev_router import JevRouter
 from swarm_sdk.models.selection import bounded_gather
+from swarm_sdk.orchestrator.jev_gate import (
+    blocked_output,
+    dependency_block,
+    is_jev_blocked,
+    try_assess_step,
+)
 
 from .plan import Plan, PlanResult, PlanStep, StepOutput, UsageTotals
 from .worker import WorkerAgent
@@ -65,6 +72,7 @@ async def _run_wave(
     state: PlanState,
     *,
     max_concurrency: int,
+    jev: JevRouter | None = None,
 ) -> None:
     """Execute all steps of one wave concurrently and fold results into state.
 
@@ -74,6 +82,7 @@ async def _run_wave(
         state: Plan state mutated in place; ``outputs`` gains one entry per
             step and ``usage`` accumulates call/token totals.
         max_concurrency: Cap on in-flight steps (``parallelism.max_concurrency``).
+        jev: Router for per-step Jev routing, or ``None`` to run every step as before.
     """
 
     def one_factory(step: PlanStep) -> Callable[[], Awaitable[StepOutput]]:
@@ -81,14 +90,26 @@ async def _run_wave(
 
         async def run_step() -> StepOutput:
             """Execute one plan step with its declared dependency inputs."""
+            decision = None
+            if jev is not None:
+                # A step behind a Jev-blocked step must not run either.
+                blocker = dependency_block(step, state["outputs"])
+                if blocker is not None:
+                    return blocked_output(step, blocker)
+                decision = try_assess_step(step, jev)
+                if decision is not None and not decision.safe:
+                    return blocked_output(step, decision)
             worker = factory(step)
-            return await worker.run(
+            out = await worker.run(
                 step.id,
                 step.description,
                 _dep_outputs(step, state),
                 files=step.files,
                 task=step.task,
             )
+            if decision is not None:
+                out = out.model_copy(update={"jev_decision": decision})
+            return out
 
         return run_step
 
@@ -98,6 +119,8 @@ async def _run_wave(
     )
     for out in results:
         state["outputs"][out.step_id] = out
+        if is_jev_blocked(out):
+            continue  # never reached a model: no call and no tokens to count
         if out.cached:
             state["usage"].cached_calls += 1
         else:
@@ -111,6 +134,7 @@ def build_graph(
     factory: WorkerFactory,
     *,
     max_concurrency: int = 8,
+    jev: JevRouter | None = None,
 ) -> StateGraph:
     """Compile the plan's wave structure into a LangGraph ``StateGraph``.
 
@@ -123,6 +147,7 @@ def build_graph(
         plan: The validated plan to execute.
         factory: Worker factory used by every wave node.
         max_concurrency: Cap on in-flight steps inside a wave.
+        jev: Router for per-step Jev routing; ``None`` (default) leaves runs unchanged.
 
     Returns:
         The uncompiled ``StateGraph`` (callers may add checkpointers before
@@ -137,7 +162,7 @@ def build_graph(
         async def node(state: PlanState, _steps: list[PlanStep] = steps) -> PlanState:
             """Run one wave's steps concurrently and fold outputs into state."""
             # Default-arg binding: captures this wave's steps, not the loop variable.
-            await _run_wave(_steps, factory, state, max_concurrency=max_concurrency)
+            await _run_wave(_steps, factory, state, max_concurrency=max_concurrency, jev=jev)
             return state
 
         graph.add_node(f"wave_{index}", node)
@@ -156,6 +181,7 @@ async def run_plan(
     factory: WorkerFactory,
     *,
     max_concurrency: int = 8,
+    jev: JevRouter | None = None,
 ) -> PlanResult:
     """Execute the plan through LangGraph and collect outputs + usage totals.
 
@@ -164,13 +190,15 @@ async def run_plan(
         factory: Builds a worker per step attempt.
         max_concurrency: Cap on in-flight steps inside a wave (from
             ``parallelism.max_concurrency`` when the caller has file config).
+        jev: Router for per-step Jev routing (see :func:`swarm_sdk.orchestrator.jev_gate.jev_for`);
+            ``None`` (default) runs every step without Jev.
 
     Returns:
         The plan result: per-step outputs keyed by step id, and aggregated
         usage (prompt/completion tokens, LLM vs cached calls, wall time).
     """
     plan.assert_file_partition()
-    graph = build_graph(plan, factory, max_concurrency=max_concurrency)
+    graph = build_graph(plan, factory, max_concurrency=max_concurrency, jev=jev)
     compiled = graph.compile()
     started = time.perf_counter()
     final = await compiled.ainvoke({"outputs": {}, "usage": UsageTotals()})

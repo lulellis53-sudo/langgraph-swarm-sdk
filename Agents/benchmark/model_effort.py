@@ -48,8 +48,18 @@ class AutoRoute:
 
 
 _AUTO_DIRECT_PROVIDERS = frozenset(
-    {"openai", "anthropic", "google", "groq", "cohere", "mistral", "xai",
-     "openrouter", "sambanova", "fireworks"}
+    {
+        "openai",
+        "anthropic",
+        "google",
+        "groq",
+        "cohere",
+        "mistral",
+        "xai",
+        "openrouter",
+        "sambanova",
+        "fireworks",
+    }
 )
 
 
@@ -63,8 +73,10 @@ def select_auto_route(
     effort_order = {"low": 0, "medium": 1, "high": 2}
     ordered = sorted(
         entries,
-        key=lambda item: (effort_order.get(item.get("effort", "medium"), 3),
-                          item.get("priority", 100)),
+        key=lambda item: (
+            effort_order.get(item.get("effort", "medium"), 3),
+            item.get("priority", 100),
+        ),
     )
     for entry in ordered:
         model = entry.get("name", "")
@@ -188,9 +200,7 @@ def run_case(
         "score": score,
         "input_tokens": reply.input_tokens if has_usage else None,
         "output_tokens": reply.output_tokens if has_usage else None,
-        "total_tokens": (
-            reply.input_tokens + reply.output_tokens if has_usage else None
-        ),
+        "total_tokens": (reply.input_tokens + reply.output_tokens if has_usage else None),
         "token_source": reply.token_source if has_usage else "unreported",
         "wall_ms": wall_ms,
         "model_ms": model_ms,
@@ -201,11 +211,7 @@ def run_case(
 def run_suite(
     cases: Iterable[BenchmarkCase], routes: Iterable[tuple[str, str]], invoke: Invoker
 ) -> list[dict[str, Any]]:
-    return [
-        run_case(case, model, effort, invoke)
-        for model, effort in routes
-        for case in cases
-    ]
+    return [run_case(case, model, effort, invoke) for model, effort in routes for case in cases]
 
 
 def aggregate(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -229,12 +235,8 @@ def aggregate(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
                 "average_overhead_ms": round(
                     sum(item["overhead_ms"] for item in items) / len(items), 3
                 ),
-                "average_model_ms": round(
-                    sum(item["model_ms"] for item in items) / len(items), 3
-                ),
-                "average_wall_ms": round(
-                    sum(item["wall_ms"] for item in items) / len(items), 3
-                ),
+                "average_model_ms": round(sum(item["model_ms"] for item in items) / len(items), 3),
+                "average_wall_ms": round(sum(item["wall_ms"] for item in items) / len(items), 3),
             }
         )
     return result
@@ -261,9 +263,7 @@ def _live(names: list[str]) -> Invoker:
     load_dotenv(_ROOT / ".env")
     registry = yaml.safe_load(_REGISTRY.read_text(encoding="utf-8"))
     entries = {item["name"]: item for item in registry["providers"]}
-    credential_names = {
-        value for name in names if (value := entries[name].get("api_key_env"))
-    }
+    credential_names = {value for name in names if (value := entries[name].get("api_key_env"))}
     missing = load_into_env(sorted(credential_names))
     if missing:
         raise ValueError(f"missing credential/config names: {', '.join(missing)}")
@@ -291,10 +291,23 @@ def _codex(profile: str) -> Invoker:
             answer_file = Path(working) / "answer.txt"
             proc = subprocess.run(
                 [
-                    "codex", "exec", "-p", profile, "-m", model.split(":", 1)[1],
-                    "-c", f"model_reasoning_effort={effort}", "-s", "read-only",
-                    "-C", working, "--skip-git-repo-check", "--ephemeral", "--json",
-                    "-o", str(answer_file),
+                    "codex",
+                    "exec",
+                    "-p",
+                    profile,
+                    "-m",
+                    model.split(":", 1)[1],
+                    "-c",
+                    f"model_reasoning_effort={effort}",
+                    "-s",
+                    "read-only",
+                    "-C",
+                    working,
+                    "--skip-git-repo-check",
+                    "--ephemeral",
+                    "--json",
+                    "-o",
+                    str(answer_file),
                 ],
                 input=prompt,
                 capture_output=True,
@@ -355,13 +368,12 @@ def main(argv: list[str] | None = None) -> int:
         profile_dir = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
         task_config = yaml.safe_load(_TASK.read_text(encoding="utf-8"))
         profile = args.codex_profile or task_config.get("auto", {}).get("codex_profile")
-        profile_exists = bool(
-            profile and (profile_dir / f"{profile}.config.toml").is_file()
-        )
+        profile_exists = bool(profile and (profile_dir / f"{profile}.config.toml").is_file())
         if args.codex_profile and not profile_exists:
             parser.error(f"Codex profile {profile} is not installed")
         eligible = [
-            entry for entry in registry["providers"]
+            entry
+            for entry in registry["providers"]
             if not args.model or entry["name"] in args.model
         ]
         available: dict[str, bool] = {}
@@ -372,16 +384,25 @@ def main(argv: list[str] | None = None) -> int:
             return available[name]
 
         selected = select_auto_route(
-            eligible, credential_available=credential_available,
+            eligible,
+            credential_available=credential_available,
             codex_profile=profile if profile_exists else None,
         )
         invoke = _codex(profile) if selected.mode == "codex" else _live([selected.model])
         report = run_autonomous(
-            cases, (selected.model, selected.effort), invoke,
+            cases,
+            (selected.model, selected.effort),
+            invoke,
             max_total_tokens=args.max_total_tokens,
         )
-        report.update({"mode": "auto", "selected_model": selected.model,
-                       "selected_effort": selected.effort, "agent_mode": selected.mode})
+        report.update(
+            {
+                "mode": "auto",
+                "selected_model": selected.model,
+                "selected_effort": selected.effort,
+                "agent_mode": selected.mode,
+            }
+        )
     elif args.codex_profile:
         if any(name not in codex_names for name, _ in routes):
             parser.error("--codex-profile accepts only registry routes with provider: codex")

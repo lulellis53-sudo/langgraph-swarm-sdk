@@ -19,9 +19,7 @@ def _synthetic_frame(*, n: int = 120, series: tuple[str, ...] = ("a", "b")) -> p
     parts: list[pd.DataFrame] = []
     for i, uid in enumerate(series):
         weekly = np.sin(2 * np.pi * np.arange(n) / 7)
-        parts.append(
-            pd.DataFrame({"unique_id": uid, "ds": ds, "y": 10 * (i + 1) + 3 * weekly})
-        )
+        parts.append(pd.DataFrame({"unique_id": uid, "ds": ds, "y": 10 * (i + 1) + 3 * weekly}))
     return pd.concat(parts, ignore_index=True)
 
 

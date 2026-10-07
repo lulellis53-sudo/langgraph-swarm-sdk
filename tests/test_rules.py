@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+
 import pytest
 
 from swarm_sdk.core.rules import HostInvariants, HostRuleEngine
@@ -90,10 +91,7 @@ def test_parse_invariants_from_mock_rules_file(tmp_path: Path):
 
 def test_parse_invariants_rejects_avx512_enablement(tmp_path: Path):
     mock_rules = tmp_path / "AGENTS.md"
-    mock_rules.write_text(
-        "# AGENTS.md\n"
-        "Enabled SIMD: AVX-512 supported.\n"
-    )
+    mock_rules.write_text("# AGENTS.md\nEnabled SIMD: AVX-512 supported.\n")
     engine = HostRuleEngine()
     with pytest.raises(ValueError, match="AVX-512"):
         engine.parse_invariants(mock_rules)
@@ -235,4 +233,3 @@ def test_nested_subshell_and_wrapper_validation():
     assert safe is False
     assert "grep" in reason
     assert "rg" in reason
-

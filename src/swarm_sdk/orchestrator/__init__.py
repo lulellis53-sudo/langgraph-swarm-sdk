@@ -5,6 +5,7 @@ from __future__ import annotations
 from swarm_sdk.orchestrator.graph import build_graph, run_plan
 from swarm_sdk.orchestrator.low_swarm import LowSwarmEngine, SwarmState
 from swarm_sdk.orchestrator.plan import (
+    JevDecision,
     Plan,
     PlanResult,
     PlanStep,
@@ -21,6 +22,7 @@ from swarm_sdk.orchestrator.task_command import (
 from swarm_sdk.orchestrator.worker import WorkerAgent, role_contract
 
 __all__ = [
+    "JevDecision",
     "LowSwarmEngine",
     "Plan",
     "PlanResult",
