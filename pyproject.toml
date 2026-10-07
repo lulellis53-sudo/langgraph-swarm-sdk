@@ -112,8 +112,9 @@ faiss-gpu = ["faiss-gpu>=1.11; sys_platform == 'linux' and platform_machine == '
 # ## FastEmbed + ONNX runtime (MiniLM-L6-v2 INT8; explicit when not in core deps)
 embed = [
     "fastembed>=0.7",
-    "onnxruntime>=1.20",
-    "onnxruntime-openvino>=1.20; sys_platform == 'linux' or sys_platform == 'darwin'",
+    "onnxruntime>=1.20; sys_platform != 'darwin' or platform_machine != 'x86_64'",
+    # OpenVINO wheels lag new CPython ABIs; keep optional on Linux <3.14 only.
+    "onnxruntime-openvino>=1.20; sys_platform == 'linux' and python_version < '3.14'",
 ]
 # ## ONNX Runtime GPU / CoreML execution providers (not Intel Mac x86_64)
 embed-gpu = ["onnxruntime-gpu>=1.20; sys_platform == 'linux' and platform_machine == 'x86_64'"]
