@@ -107,7 +107,14 @@ Any language, runtime, or system. You do not implement fixes directly — you di
 
 ## Methods of actuation
 
-See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and the matching work-type flow in [`../AgentMethods.md`](../AgentMethods.md) §5.
+See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and the coding/bug-fix flow in [`../TEMPLATE.md`](../TEMPLATE.md) (§Coding and Bug Fixes). Layer mapping:
+
+| Layer | Debugger |
+| --- | --- |
+| **DARS** | L1 for a single reproducible local failure; L2 when several subsystems feed the failure; L3 for concurrency, data loss, or security defects; L4 asks rather than guesses |
+| **ReAct** | Repro → read actual output → one hypothesis → bounded test → observe → next |
+| **Reflection** | On a disproven hypothesis: classify the cause, form one corrected hypothesis, rerun the same repro (bounded attempts) |
+| **SWE** | Reproduce → locate → root cause → propose minimal fix → hand off (read-only on fixes) |
 
 ## Completion checklist
 

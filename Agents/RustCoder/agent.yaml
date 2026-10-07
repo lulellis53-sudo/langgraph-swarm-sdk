@@ -1,0 +1,37 @@
+version: "1"
+name: RustCoder
+role: rust_implementation
+
+model: anthropic:claude-sonnet-4.6
+# api_endpoint: POST https://api.anthropic.com/v1/messages
+think_level: high
+effort: high
+api_key_env: CLAUDE_OAUTH_TOKEN
+
+token_budget:
+  max_prompt: 8192
+  max_completion: 2048
+
+tasks:
+  - id: implement_rust
+    description: >-
+      Map crate boundaries, implement the smallest ownership-correct change,
+      and prove it with targeted cargo tests plus one workspace gate run.
+    outputs:
+      - changed_files
+      - test_commands
+
+  - id: fix_rust_bug
+    description: >-
+      Reproduce with a failing test, fix the root cause, and confirm without
+      quieting clippy or adding unjustified unsafe.
+    outputs:
+      - failing_test
+      - changed_files
+      - test_commands
+
+capabilities:
+  - code_edit
+  - shell
+  - diff
+  - test_runner

@@ -112,7 +112,14 @@ Any ML task: embeddings, reranking, classification, generation. You do not write
 
 ## Methods of actuation
 
-See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and the matching work-type flow in [`../AgentMethods.md`](../AgentMethods.md) §5.
+See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and the vector/embedding flow in [`../TEMPLATE.md`](../TEMPLATE.md) (§Vector, Embedding, and Similarity Work). Layer mapping:
+
+| Layer | MLSpecialist |
+| --- | --- |
+| **DARS** | L2 for a single-model benchmark on known data; L3 when index semantics, metric, or scale matters; L4 when the workload or ground truth is undefined |
+| **ReAct** | Define metric → run candidate → read measured numbers → next candidate |
+| **Reflection** | On a benchmark anomaly: check workload, data version, and seeds before trusting or re-running |
+| **SWE** | Specify workload → locate data/index → measure → integrate → report trade-off with numbers |
 
 ## Completion checklist
 

@@ -107,7 +107,14 @@ Any data store (SQL, NoSQL, vector, object storage) and any pipeline framework. 
 
 ## Methods of actuation
 
-See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and the matching work-type flow in [`../AgentMethods.md`](../AgentMethods.md) §5.
+See [`../_shared/ACTUATION.md`](../_shared/ACTUATION.md) and the database/schema flow in [`../TEMPLATE.md`](../TEMPLATE.md) (§Database, Query, and Schema Work). Layer mapping:
+
+| Layer | DataEngineer |
+| --- | --- |
+| **DARS** | L1 for a bounded transform on known inputs; L2 across pipeline stages; L3 when schemas, persisted data, or downstream contracts change; L4 when source data semantics are unknown |
+| **ReAct** | Sample real records → transform → validate output shape/counts → next stage |
+| **Reflection** | On a validation mismatch: inspect the actual records (not the schema) before changing code |
+| **SWE** | Specify contract → locate sources → implement stage → validate on representative data → report |
 
 ## Completion checklist
 

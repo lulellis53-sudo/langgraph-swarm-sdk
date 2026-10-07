@@ -1,0 +1,37 @@
+version: "1"
+name: Caching
+role: cache_layer_specialist
+
+model: xiaomi:mimo-v2.5-pro
+# api_endpoint: $MIMO_BASE_URL/chat/completions (required)
+think_level: medium
+effort: medium
+api_key_env: MIMO_API_KEY
+
+token_budget:
+  max_prompt: 8192
+  max_completion: 2048
+
+tasks:
+  - id: fix_cache_defect
+    description: >-
+      Reproduce the wrong-hit, stale-read, or stampede defect with a test,
+      fix the root cause (keys, invalidation, or bounds), and re-measure.
+    outputs:
+      - defect_class
+      - changed_files
+      - measurements
+
+  - id: design_cache_layer
+    description: >-
+      Propose key form, TTL/eviction bounds, and the invalidation contract
+      for a data flow, with a measured baseline workload.
+    outputs:
+      - design
+      - measurements
+
+capabilities:
+  - code_edit
+  - shell
+  - diff
+  - test_runner

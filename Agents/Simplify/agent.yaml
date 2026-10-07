@@ -1,0 +1,29 @@
+version: "1"
+name: Simplify
+role: complexity_reduction
+
+model: minimax:minimax-2.7-high-speed
+# api_endpoint: https://api.minimax.io/v1/chat/completions
+think_level: medium
+effort: medium
+api_key_env: MINIMAX_API_KEY
+
+token_budget:
+  max_prompt: 8192
+  max_completion: 2048
+
+tasks:
+  - id: simplify_scope
+    description: >-
+      Pin behavior with tests, apply one behavior-preserving simplification
+      pass to the assigned scope, and report a before/after measure.
+    outputs:
+      - changed_files
+      - test_commands
+      - complexity_before_after
+
+capabilities:
+  - code_edit
+  - diff
+  - test_runner
+  - static_analysis
