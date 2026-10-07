@@ -18,6 +18,48 @@ permissions:
   contents: read
 
 jobs:
+  branches:
+    name: Branch authorization (allowed branches only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check authorized branches only
+        run: |
+          git fetch origin --prune
+          # Get all remote branches except those on main
+          REMOTE_BRANCHES=$(git branch -r | grep -oE 'origin/[a-zA-Z0-9_/-]+' | sed 's|origin/||' | sort -u)
+
+          # Allowed branch patterns
+          ALLOWED='main|integration/.*|lane/sdk|lane/agents|lane/websearch|lane/prediction'
+
+          DENIED=""
+          while IFS= read -r branch; do
+            if ! echo "$branch" | grep -Eq "^($ALLOWED)$"; then
+              DENIED="$DENIED$branch
+"
+            fi
+          done <<< "$REMOTE_BRANCHES"
+
+          if [ -n "$DENIED" ]; then
+            echo "❌ CI REJECTED: unauthorized branches found:"
+            echo "$DENIED"
+            echo ""
+            echo "Allowed branches are:"
+            echo "  - main"
+            echo "  - integration/*"
+            echo "  - lane/sdk"
+            echo "  - lane/agents"
+            echo "  - lane/websearch"
+            echo "  - lane/prediction"
+            echo ""
+            echo "To create a temporary branch, ask the user for explicit permission first."
+            exit 1
+          else
+            echo "✓ All branches are authorized."
+          fi
   lint:
     name: Lint (ruff)
     runs-on: ubuntu-latest
@@ -215,7 +257,7 @@ jobs:
   ci-ok:
     name: CI OK
     if: always()
-    needs: [lint, tomlcheck, typecheck, agents-schema, test, benchmark, build, workflows, docker]
+    needs: [branches, lint, tomlcheck, typecheck, agents-schema, test, benchmark, build, workflows, docker]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

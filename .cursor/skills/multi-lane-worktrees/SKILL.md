@@ -67,8 +67,18 @@ uv lock
 Lane audits and integration planning: [`Agents/Worktree/AGENTS.md`](../../Agents/Worktree/AGENTS.md)
 (`lane_audit`, `integration_window_check`).
 
+## Branch authorization
+
+- **Do not create branches.** Only these branches may exist:
+  - `main` (stable)
+  - `integration/myworkspace-2026-10` (pre-release)
+  - `lane/sdk`, `lane/agents`, `lane/websearch`, `lane/prediction` (parallel work)
+- Creating any other branch triggers CI failure. CI checks for unauthorized branches on every push.
+- Temporary feature branches (`feat/*`, `feature/*`, `fix/*`) must be explicitly authorized by the user. Ask first.
+
 ## Rules
 
 - Lane agents edit only their **May edit** paths (see each lane file).
 - Only one lane changes root `uv.lock` per integration window.
-- Merge order: lane branches → `main` (or `integration/all-branches` then `main`).
+- Merge order: lane branches → `main` (or `integration/myworkspace-2026-10` then `main`).
+- **Never commit to a lane or protected branch unless the user asks.** Work only on temporary feature branches.

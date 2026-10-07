@@ -197,8 +197,27 @@ Open **Agent** mode, `@`-attach the review or files, then `/code-fixer`. Fixes *
 
 ### Subtopic: Commits
 
-- **Commits:** only when the user asks; do not force-push `main`.
-- **Branches / worktrees:** use only the three fixed agent lanes plus `integration/all-branches` at repo root. See [`.cursor/skills/multi-lane-worktrees/SKILL.md`](.cursor/skills/multi-lane-worktrees/SKILL.md).
+- **Commits:** only when the user asks; do not force-push `main` or any protected branch.
+- **Commits must be on feature branches only.** Never commit to `main`, `integration/myworkspace-2026-10`, or `lane/*` without explicit user approval.
+
+### Subtopic: Branch creation (authorization required)
+
+**Only the following branches may exist:**
+
+| Branch type | Purpose | Create? |
+| --- | --- | --- |
+| `main` | Stable release | No (exists; never create) |
+| `integration/myworkspace-2026-10` | Merge all lanes, pre-release testing | No (exists; never create) |
+| `lane/sdk` | SDK + tests + `pyproject.toml` | No (exists; never create) |
+| `lane/agents` | `Agents/` specialist work | No (exists; never create) |
+| `lane/websearch` | `WebSearch/` search pipeline | No (exists; never create) |
+| `lane/prediction` | `Prediction/` forecast engine | No (exists; never create) |
+| `feat/*`, `feature/*`, `fix/*` | Temporary feature work (user-requested only) | Ask first, then only for the user's stated task |
+| Any other branch | Unauthorized | **CI will reject** |
+
+**Hard rule:** Do not create branches. Ever. Ask the user first. If the user names a branch in their request, that is explicit authorization and you create it only for that named task, on that exact branch.
+
+**Check before committing:** `git symbolic-ref --short HEAD` must return `feat/...`, `feature/...`, or `fix/...`. If it returns `main`, `integration/...`, or `lane/...`, stop and ask before proceeding.
 
 ### Subtopic: Documentation
 
