@@ -14,6 +14,8 @@
     "python.envFile": "${workspaceFolder:SDK (integration)}/.env",
     "ruff.interpreter": ["${workspaceFolder:SDK (integration)}/.venv/bin/python"],
     "ty.interpreter": "${workspaceFolder:SDK (integration)}/.venv/bin/python",
+    "ty.diagnosticMode": "workspace",
+    "ty.experimental.useUv": "on",
     "jupyter.notebookFileRoot": "${workspaceFolder:SDK (integration)}",
     "jupyter.allowUnauthorizedRemoteConnection": false,
     "colab.logging.level": "info",

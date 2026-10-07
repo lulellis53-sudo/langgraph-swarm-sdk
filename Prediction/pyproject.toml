@@ -9,8 +9,6 @@ requires-python = ">=3.14.8"
 dependencies = [
     # ## Swarm / LangGraph
     "langchain>=1.0",
-    "langchain-core>=1.6",
-    "jsonschema>=4.26",
     "langgraph>=1.0",
     "langgraph-swarm>=0.1",
     "langchain-anthropic>=0.3",
@@ -19,7 +17,6 @@ dependencies = [
     "langchain-groq>=0.2",
     "langchain-mistralai>=0.2",
     "langchain-openai>=0.3",
-    # ## Schema (Pydantic v2). Reviewer task pydantic_schema_check; Coder applies BaseModel.
     "pydantic>=2.11",
     "pydantic-settings>=2.10",
     "pydantic-ai>=0.0.1",
@@ -27,8 +24,6 @@ dependencies = [
     "pyyaml>=6.0",
     "orjson>=3.10",
     "protobuf>=6.31",
-    "regex>=2026.9.29",
-    "tomlkit>=0.15",
     # ## HTTP API (swarm-api entrypoint)
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
@@ -66,8 +61,8 @@ dependencies = [
     "trafilatura>=2.0",
     "beautifulsoup4>=4.12",
     "mcp>=2,<3",
-    "pyarrow>=18.0",
 ]
+langchain = ["langchain-core>=1.6"]
 
 [tool.uv]
 python-preference = "managed"
@@ -76,10 +71,6 @@ no-build-package = ["cryptography"]
 constraint-dependencies = ["cryptography==48.0.1"]
 
 [project.optional-dependencies]
-langchain = [
-    "tree-sitter>=0.25.2,<0.26",
-    "tree-sitter-python>=0.25",
-]
 # ## Testing & property tests
 dev = [
     "hypothesis>=6.135",
@@ -88,10 +79,7 @@ dev = [
     "ruff>=0.12",
     "taplo>=0.9",
     "ty>=0.0.1a0",
-    "pytest-cov>=6.0",
-    "types-PyYAML>=6.0.12",
-    "types-requests>=2.32.0",
-    "yamllint>=1.37",
+
 ]
 # ## Observability (OTel traces for FastAPI / httpx)
 observability = [
@@ -101,11 +89,8 @@ observability = [
     "opentelemetry-instrumentation-fastapi>=0.52b0",
     "opentelemetry-instrumentation-httpx>=0.52b0",
     "prometheus-client>=0.20",
-    "opentelemetry-instrumentation-langchain>=0.52b0",
     "prometheus-fastapi-instrumentator>=7.0",
 ]
-compress = ["zstandard>=0.23"]
-arrow = ["pyarrow>=18.0"]
 # ## FAISS vector index (CPU wheels everywhere; GPU = CUDA only)
 faiss = ["faiss-cpu>=1.11"]
 faiss-gpu = ["faiss-gpu>=1.11; sys_platform == 'linux' and platform_machine == 'x86_64'"]
@@ -126,63 +111,18 @@ ml = [
     "sympy>=1.13",
     "scikit-learn>=1.6",
     "transformers>=4.51",
-    "sentence-transformers>=6.1",
-    "onnxruntime>=1.20; sys_platform != 'darwin' or platform_machine != 'x86_64'",
-    "pyarrow>=18.0",
+    "onnxruntime>=1.20",
+    "onnxruntime-openvino>=1.20; sys_platform == 'linux' or sys_platform == 'darwin'",
 ]
 qdrant = ["qdrant-client>=1.14"]
 # ## Mem0 Platform memory (MemoryClient; API key in MEM0_API_KEY)
 mem0 = ["mem0ai>=1.0"]
-redis = ["redis>=5.2"]
-tune = ["optuna>=4"]
-jupyter = [
-    "cryptography==48.0.1",
-    "ipykernel>=6",
-    "jupyter-ai>=2",
-    "notebook>=7",
-    "pip>=25",
-]
-websearch = [
-    "selectolax>=0.3",
-    "trafilatura>=2.0",
-    "beautifulsoup4>=4.12",
-    "mcp>=2,<3",
-    "google-genai>=2.28",
-    "primp>=2.0",
-]
-# ## Serialization stack (orjson/protobuf also in core: imported at runtime)
-serialization = [
-    "msgspec>=0.22",
-    "orjson>=3.10",
-    "protobuf>=6.31",
-]
-forecast = [
-    "fastembed>=0.7; sys_platform != 'darwin' or platform_machine != 'x86_64'",
-    "lightgbm>=4.7.0",
-    "mlforecast>=1.1.0",
-    "onnxruntime>=1.20; sys_platform != 'darwin' or platform_machine != 'x86_64'",
-    "pandas>=2.2",
-    "polars>=1.30",
-    "prophet>=1.1.6",
-    "pyarrow>=18.0",
-    "scikit-learn>=1.6",
-    "sentence-transformers>=5.0; sys_platform != 'darwin' or platform_machine != 'x86_64'",
-    "statsmodels>=0.15.0",
-    "sympy>=1.13",
-    "tokenizers>=0.22",
-    "transformers>=4.51; sys_platform != 'darwin' or platform_machine != 'x86_64'",
-]
+jupyter = ["cryptography==48.0.1", "ipykernel>=6", "jupyter-ai>=2", "notebook>=7", "pip>=25"]
+websearch = ["selectolax>=0.3", "trafilatura>=2.0", "beautifulsoup4>=4.12", "mcp>=2,<3"]
+forecast = ["lightgbm>=4.7.0", "mlforecast>=1.1.0"]
 forecast-lancedb = ["lancedb>=0.20"]
 # ## Scraping / crawling stack (heavy: Twisted via scrapy; playwright needs `playwright install chromium`)
-scrape = [
-    "playwright>=1.49",
-    "crawlee>=0.6",
-    "scrapy>=2.12",
-    "curl-cffi>=0.7",
-    "parsel>=1.9",
-    "cssselect>=1.2",
-    "extruct>=0.16",
-]
+scrape = ["playwright", "crawlee", "scrapy", "curl-cffi", "parsel", "cssselect", "extruct"]
 viz = ["matplotlib>=1.5"]
 scraping = ["crawlee>=1.10.3", "curl-cffi>=0.16.3", "playwright>=1.63.0", "scrapy>=2.19.0"]
 
@@ -197,9 +137,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
-dev = [
-    "langgraph-cli>=0.4",
-]
+dev = ["langgraph-cli[inmem]>=0.1.54"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/swarm_sdk"]
@@ -210,16 +148,7 @@ packages = ["src/swarm_sdk"]
 [tool.ruff]
 line-length = 100
 target-version = "py314"
-src = [
-    "src",
-    "Agents/tests",
-    "Agents/benchmark",
-    "Agents/math/algorithms",
-    "WebSearch",
-    "Prediction",
-    "Main",
-    "tests",
-]
+src = ["src", "Agents/tests", "Agents/benchmark", "WebSearch", "Prediction", "Main"]
 extend-exclude = ["src/swarm_sdk/pb"]
 
 [tool.ruff.lint]
@@ -245,4 +174,4 @@ exclude = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["Agents/benchmark", "tests"]
-pythonpath = [".", "Agents", "Agents/math"]
+pythonpath = [".", "Agents"]

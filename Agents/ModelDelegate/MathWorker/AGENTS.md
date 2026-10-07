@@ -78,6 +78,34 @@ Solve mode adds:
 - Never report `verified: true` without running the script. A timeout, error, missing
   `res` or NaN is `verified: false` with the cause in `detail`.
 
+## Workflow
+1. Resolve `mode` and `task_id`; report missing problem details or an unsupported task as `blocked` instead of guessing.
+2. For `dispatch`, classify the workload and choose a permitted backend using the decision rules.
+3. For `solve`, state the mathematical formulation and derivation, then produce a result and reproducible verification script.
+4. For `verify`, run the supplied claim through symbolic or numeric verification using the requested tolerance.
+5. Return the matching output contract and report any execution or verification failure explicitly.
+
+## Tasks
+
+| Task id | Work | Required result |
+| --- | --- | --- |
+| `delegate_math` | Choose GPU, CPU BLAS, or a registry route | `selected_route`, `gpu_enabled`, `backend` |
+| `solve_math` | Formulate and solve the mathematical problem | `solution`, `verification` |
+| `verify_math` | Check a supplied claim computationally | `verification` with method and error bound |
+
+## Guidance
+- Keep dispatch and solving distinct: dispatch returns a route; solve/verify must include evidence from execution.
+- Use CPU for empty shapes and for workloads below the documented GPU threshold; preserve a CPU fallback.
+- Match precision to the requested tolerance and input scale; expose assumptions, units, and error bounds.
+- Never claim a proof or numeric result is verified unless the corresponding check ran successfully.
+- If a required backend or symbolic package is unavailable, report that limitation rather than fabricating a result.
+
+## Checklist
+- [ ] Mode, task, inputs, shape, and tolerance are understood.
+- [ ] Backend choice follows the workload and availability rules.
+- [ ] Solve/verify output includes a runnable check and reports its actual result.
+- [ ] JSON fields match the selected mode; failures and assumptions are explicit.
+
 ## Constraints
 - Do not start a GPU build; reference `references/Molten.md` for build instructions.
 - Give the result in valid LaTeX alongside the Python verification snippet.

@@ -40,6 +40,30 @@ Embedding dispatch only. Does not perform training or model downloads.
 3. If GPU is unavailable or `text_count` is below the GPU warmup threshold, use Cohere registry route.
 4. If no route is usable, return `status: blocked`.
 
+## Workflow
+1. Confirm the operation, text count, dimensions, and whether GPU is required.
+2. Check the requested GPU backend and runtime availability without starting a build or downloading a model.
+3. Apply the decision rules and select the usable GPU backend or registry route.
+4. Return the route, backend, and GPU status; if neither path is usable, report `blocked` with the reason.
+
+## Tasks
+
+| Task id | Work | Required result |
+| --- | --- | --- |
+| `delegate_embedding` | Choose a GPU or provider route for embedding/vector work | `selected_route`, `gpu_enabled`, `backend` |
+
+## Guidance
+- Prefer local GPU only when its configured backend is available and suitable for the workload; otherwise use the registry provider.
+- Treat input text as sensitive. Do not forward raw text to a provider without explicit orchestration instruction.
+- Do not train models, download weights, or initiate a GPU build as part of dispatch.
+- Name the actual backend selected; do not report GPU acceleration when the CPU/provider path ran.
+
+## Checklist
+- [ ] Task size and GPU preference are known.
+- [ ] Backend availability is checked before selecting GPU.
+- [ ] Selected route and backend are valid and `gpu_enabled` matches the choice.
+- [ ] Any blocked outcome includes a concise reason and no raw input text.
+
 ## Constraints
 - Do not start a GPU build; reference `references/Molten.md` for build instructions.
 - Never send raw text to a provider unless the orchestrator explicitly requests it.

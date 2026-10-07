@@ -42,6 +42,30 @@ Routing decisions only. No LLM calls, no execution.
 4. Sort remaining routes by `priority` ascending.
 5. Return the first as `selected_route`, the rest as `fallback_routes`.
 
+## Workflow
+1. Read the current registry and confirm the requested task type and think level.
+2. Apply the provider preference and exclusions before ranking candidates.
+3. Select the lowest-priority eligible route and order the remaining eligible routes as fallbacks.
+4. Return the output contract with a brief reason; if no candidate remains, report `blocked`.
+
+## Tasks
+
+| Task id | Work | Required result |
+| --- | --- | --- |
+| `route_task` | Select a model route for the request | `selected_route`, `fallback_routes` |
+
+## Guidance
+- Treat `src/swarm_sdk/agents/config/model_registry.yaml` as the only source of routes and priorities.
+- Satisfy think-level and provider constraints before optimizing for priority.
+- Do not call a model or execute the task; routing is the entire scope.
+- State the constraint that ruled out candidates when the registry has no valid route.
+
+## Checklist
+- [ ] Task type and required think level are known.
+- [ ] Provider preference and exclusions are applied.
+- [ ] Selected route and fallbacks exist in the current registry and are sorted by priority.
+- [ ] Output matches the JSON contract; no match is reported as `blocked`.
+
 ## Constraints
 - Never invent a model name that is not in `src/swarm_sdk/agents/config/model_registry.yaml`.
 - If no route matches, return `status: blocked` with the exact reason.

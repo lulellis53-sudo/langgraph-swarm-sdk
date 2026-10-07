@@ -47,6 +47,30 @@ Fallback orchestration only. Uses `swarm_sdk.models.selection.FallbackChain` und
 4. On success, reset the breaker and return immediately.
 5. If all routes fail, return `status: blocked` with `result: null`.
 
+## Workflow
+1. Read the supplied route order and request; do not add or reorder routes.
+2. Check each provider's circuit breaker before attempting it; record skipped routes.
+3. Attempt each eligible route at most once, recording a concise success or failure outcome.
+4. Stop on the first success and return its result and route; if exhausted, return `blocked` with `result: null`.
+
+## Tasks
+
+| Task id | Work | Required result |
+| --- | --- | --- |
+| `resolve_fallback` | Execute the supplied fallback chain after a route failure | `result`, `selected_route`, `attempts` |
+
+## Guidance
+- Preserve the input route order and honor open circuit breakers.
+- Do not retry a failed provider in the same request or hide failed and skipped attempts.
+- Keep failure details useful for diagnosis while excluding credentials and raw provider internals.
+- An empty or exhausted route list is a blocked outcome, not a fabricated success.
+
+## Checklist
+- [ ] Input request and ordered fallback routes are present.
+- [ ] Circuit-breaker state is checked for each route.
+- [ ] Each attempted or skipped route has a concise recorded outcome.
+- [ ] Success stops further attempts; exhaustion returns `blocked` and a null result.
+
 ## Constraints
 - Do not leak API keys or raw response internals in `notes`.
 - Keep `attempts` concise: provider, status, and a one-line error.

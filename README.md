@@ -4,7 +4,7 @@ Parallel multi-LLM swarm on [LangGraph Swarm](https://github.com/langchain-ai/la
 
 ## Requirements
 
-- Python `>=3.14.7` (`uv python install 3.14.5`)
+- Python `3.14.8` (`uv python install 3.14.8`)
 - [uv](https://docs.astral.sh/uv/)
 
 ```bash
