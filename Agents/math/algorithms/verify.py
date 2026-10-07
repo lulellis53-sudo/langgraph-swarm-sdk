@@ -1,5 +1,7 @@
 """Residual, backward-error, and condition check for a linear solution."""
 
+from __future__ import annotations
+
 import numpy as np
 
 from algorithms.errors import AlgorithmInputError

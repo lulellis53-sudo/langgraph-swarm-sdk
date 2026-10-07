@@ -1,5 +1,7 @@
 """Pillar 3: damped Newton roots and the BM25 symbolic invariant."""
 
+from __future__ import annotations
+
 from collections.abc import Callable
 
 import numpy as np
@@ -7,7 +9,12 @@ import sympy as sp
 
 from algorithms.errors import AlgorithmError, AlgorithmInputError
 
-__all__ = ["damped_newton_root", "stormer_verlet_integrate", "verify_bm25_asymptotics"]
+__all__ = [
+    "bisection_root",
+    "damped_newton_root",
+    "stormer_verlet_integrate",
+    "verify_bm25_asymptotics",
+]
 
 
 def damped_newton_root(
@@ -128,3 +135,55 @@ def stormer_verlet_integrate(
         trajectory_q[step] = current_q
         trajectory_p[step] = current_p
     return trajectory_q, trajectory_p
+
+
+def bisection_root(
+    function: Callable[[float], float],
+    lower: float,
+    upper: float,
+    tol: float = 1e-12,
+    max_iter: int = 200,
+) -> float:
+    """Find one root of a continuous scalar function on a sign-change bracket.
+
+    Bisection halves the bracket unconditionally, so it always converges for a
+    continuous ``function`` with ``f(lower) * f(upper) < 0`` — the robust fallback
+    when Newton fails to converge, at a linear rate of one bit per iteration.
+
+    Args:
+        function: Continuous scalar function.
+        lower: Bracket end with one sign.
+        upper: Bracket end with the opposite sign.
+        tol: Stop when the bracket is narrower than this.
+        max_iter: Iteration cap.
+
+    Returns:
+        A point within ``tol`` of a root.
+
+    Raises:
+        AlgorithmInputError: The bracket does not straddle a root or arguments are invalid.
+        AlgorithmError: The iteration cap is hit before the bracket closes.
+    """
+    if tol <= 0.0 or max_iter < 1:
+        raise AlgorithmInputError("tol must be positive and max_iter at least 1")
+    left, right = float(lower), float(upper)
+    if not left < right:
+        raise AlgorithmInputError("lower must be strictly less than upper")
+    value_left = float(function(left))
+    value_right = float(function(right))
+    if value_left == 0.0:
+        return left
+    if value_right == 0.0:
+        return right
+    if value_left * value_right > 0.0:
+        raise AlgorithmInputError("bracket does not straddle a root")
+    for _ in range(max_iter):
+        middle = 0.5 * (left + right)
+        value_middle = float(function(middle))
+        if value_middle == 0.0 or (right - left) * 0.5 < tol:
+            return middle
+        if value_left * value_middle < 0.0:
+            right, value_right = middle, value_middle
+        else:
+            left, value_left = middle, value_middle
+    raise AlgorithmError("bisection did not close the bracket within max_iter")

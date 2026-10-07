@@ -1,5 +1,7 @@
 """Pillar 1: metric geometry, scalar quantization, HNSW, and product quantization."""
 
+from __future__ import annotations
+
 import heapq
 
 import numpy as np
@@ -13,11 +15,13 @@ __all__ = [
     "hnsw_greedy_search",
     "mips_lift",
     "sq8_encode_decode",
+    "topk_inner_product",
     "train_ivf_pq_codebooks",
 ]
 
 
 def _vector(name: str, value: np.ndarray) -> np.ndarray:
+    """Validate one finite non-empty float64 vector and return it flattened."""
     array = np.asarray(value, dtype=np.float64).reshape(-1)
     if array.size == 0:
         raise AlgorithmInputError(f"{name} is empty")
@@ -202,3 +206,38 @@ def train_ivf_pq_codebooks(
                     centroids[centroid] = block[members].mean(axis=0)
         codebooks[subspace] = centroids
     return codebooks
+
+
+def topk_inner_product(
+    matrix: np.ndarray, query: np.ndarray, top_k: int
+) -> list[tuple[float, int]]:
+    """Return the ``top_k`` highest inner products of a query against matrix rows.
+
+    This is the exact brute-force baseline that approximate indexes such as HNSW
+    and IVF-PQ are measured against. Selection uses ``argpartition`` so only the
+    top block is fully ordered.
+
+    Args:
+        matrix: Row-stored vectors of shape ``(n, d)``.
+        query: Query vector of shape ``(d,)``.
+        top_k: Number of results. Between 1 and ``n``.
+
+    Returns:
+        ``(score, row)`` pairs sorted by descending score.
+
+    Raises:
+        AlgorithmInputError: Shapes mismatch or ``top_k`` is outside ``1..n``.
+    """
+    rows = np.asarray(matrix, dtype=np.float64)
+    needle = np.asarray(query, dtype=np.float64).reshape(-1)
+    if rows.ndim != 2 or rows.shape[0] == 0 or rows.shape[1] != needle.size:
+        raise AlgorithmInputError("top-k matrix must be (n, d) matching the query length")
+    if top_k < 1 or top_k > rows.shape[0]:
+        raise AlgorithmInputError("top_k must be between 1 and the row count")
+    scores = rows @ needle
+    if top_k < rows.shape[0]:
+        candidate_rows = np.argpartition(-scores, top_k - 1)[:top_k]
+    else:
+        candidate_rows = np.arange(rows.shape[0])
+    ordered = candidate_rows[np.argsort(-scores[candidate_rows], kind="stable")]
+    return [(float(scores[row]), int(row)) for row in ordered]

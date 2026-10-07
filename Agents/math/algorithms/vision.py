@@ -1,5 +1,7 @@
 """Pillar 4: pinhole projection, DLT homography, the 8-point algorithm, and Sobel."""
 
+from __future__ import annotations
+
 import numpy as np
 
 from algorithms.errors import AlgorithmInputError
@@ -11,6 +13,7 @@ __all__ = [
     "pinhole_project",
     "sobel_gradients_2d",
     "solve_pnp_dlt",
+    "triangulate_point_dlt",
 ]
 
 
@@ -102,6 +105,7 @@ def compute_homography_dlt(src_pts: np.ndarray, dst_pts: np.ndarray) -> np.ndarr
 
 
 def _normalize_points(points: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Isotropically normalize points to zero mean and unit mean distance."""
     mean = np.mean(points, axis=0)
     distances = np.linalg.norm(points - mean, axis=1)
     mean_distance = float(np.mean(distances))
@@ -215,6 +219,11 @@ def solve_pnp_dlt(
         design[2 * index + 1, 8:12] = -v_coord * world_row
     right_nullspace = np.linalg.svd(design)[-1][-1]
     projection = right_nullspace.reshape((3, 4))
+    # Cheirality: the scene lies in front of the camera, so fix the nullspace sign
+    # such that the third row projects world points to positive depth.
+    depths = projection[2] @ homogeneous_world.T
+    if float(np.median(depths)) < 0.0:
+        projection = -projection
     try:
         motion = np.linalg.inv(matrix) @ projection
     except np.linalg.LinAlgError as err:
@@ -287,3 +296,53 @@ def lucas_kanade_optical_flow(
             tensor = np.array([[ixx, ixy], [ixy, iyy]])
             flow[row, col] = np.linalg.solve(tensor, -np.array([itx, ity]))
     return flow
+
+
+def triangulate_point_dlt(
+    projection1: np.ndarray,
+    projection2: np.ndarray,
+    point1: np.ndarray,
+    point2: np.ndarray,
+) -> np.ndarray:
+    """Triangulate one 3-D point from two camera projections by linear DLT.
+
+    Solves ``x1 ~ P1 X`` and ``x2 ~ P2 X`` simultaneously; the 4-vector SVD
+    nullspace gives the homogeneous point. Valid for calibrated or uncalibrated
+    cameras as long as both projections are known and the point is not at
+    infinity for either camera.
+
+    Args:
+        projection1: First camera matrix of shape ``(3, 4)``.
+        projection2: Second camera matrix of shape ``(3, 4)``.
+        point1: Image point ``(u, v)`` in camera one.
+        point2: Image point ``(u, v)`` in camera two.
+
+    Returns:
+        Inhomogeneous world point of shape ``(3,)``.
+
+    Raises:
+        AlgorithmInputError: Shapes mismatch or a degenerate (near-zero) homogeneous weight.
+    """
+    camera1 = np.asarray(projection1, dtype=np.float64)
+    camera2 = np.asarray(projection2, dtype=np.float64)
+    first = np.asarray(point1, dtype=np.float64).reshape(-1)
+    second = np.asarray(point2, dtype=np.float64).reshape(-1)
+    if camera1.shape != (3, 4) or camera2.shape != (3, 4):
+        raise AlgorithmInputError("triangulation needs two 3x4 camera matrices")
+    if first.size != 2 or second.size != 2:
+        raise AlgorithmInputError("image points must be (u, v) pairs")
+    u1, v1 = first
+    u2, v2 = second
+    design = np.vstack(
+        [
+            u1 * camera1[2] - camera1[0],
+            v1 * camera1[2] - camera1[1],
+            u2 * camera2[2] - camera2[0],
+            v2 * camera2[2] - camera2[1],
+        ]
+    )
+    homogeneous = np.linalg.svd(design)[-1][-1]
+    weight = homogeneous[3]
+    if abs(float(weight)) < 1e-12:
+        raise AlgorithmInputError("triangulated point is at infinity (zero homogeneous weight)")
+    return homogeneous[:3] / weight

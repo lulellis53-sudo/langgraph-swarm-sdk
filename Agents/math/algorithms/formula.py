@@ -1,5 +1,7 @@
 """Pillar 7: cancellation shields, block inversion, quadrature, and compensated sums."""
 
+from __future__ import annotations
+
 import numpy as np
 
 from algorithms.errors import AlgorithmInputError
@@ -15,6 +17,8 @@ __all__ = [
     "one_minus_cos",
     "reciprocal_gap",
     "schur_complement_inverse",
+    "sigmoid_stable",
+    "softmax_stable",
     "sqrt_diff_stable",
     "stable_quadratic_roots",
     "woodbury_inverse",
@@ -212,3 +216,58 @@ def cramer_rao_bound(fisher_information: float | np.ndarray) -> float | np.ndarr
     if np.any(np.linalg.eigvalsh((information + information.T) / 2.0) <= 0.0):
         raise AlgorithmInputError("Fisher information matrix must be positive definite")
     return inverse
+
+
+def softmax_stable(values: np.ndarray) -> np.ndarray:
+    """Return the softmax with the log-sum-exp shift shielding overflow.
+
+    Subtracting ``max(values)`` before exponentiating keeps ``exp`` arguments at
+    or below zero, so arbitrarily large logits cannot overflow; the result is
+    mathematically identical to the naive form.
+
+    Args:
+        values: Logits of shape ``(n,)``. All entries must be finite.
+
+    Returns:
+        Probabilities of shape ``(n,)`` summing to 1.
+
+    Raises:
+        AlgorithmInputError: The input is empty or carries NaN or infinity.
+    """
+    logits = np.asarray(values, dtype=np.float64).reshape(-1)
+    if logits.size == 0:
+        raise AlgorithmInputError("softmax input is empty")
+    if not np.all(np.isfinite(logits)):
+        raise AlgorithmInputError("softmax input must be finite")
+    shifted = logits - float(np.max(logits))
+    weights = np.exp(shifted)
+    return weights / float(np.sum(weights))
+
+
+def sigmoid_stable(value: float | np.ndarray) -> float | np.ndarray:
+    """Return the logistic sigmoid evaluated without overflow at extreme inputs.
+
+    Uses the two-branch identity ``1 / (1 + exp(-x))`` for ``x >= 0`` and
+    ``exp(x) / (1 + exp(x))`` for ``x < 0``, so ``exp`` only ever sees
+    non-positive arguments.
+
+    Args:
+        value: Scalar or array of finite logits.
+
+    Returns:
+        Sigmoid with the same shape; a float for scalar input.
+
+    Raises:
+        AlgorithmInputError: Any input entry is not finite.
+    """
+    logits = np.asarray(value, dtype=np.float64)
+    if not np.all(np.isfinite(logits)):
+        raise AlgorithmInputError("sigmoid input must be finite")
+    output = np.empty_like(logits)
+    positive = logits >= 0.0
+    output[positive] = 1.0 / (1.0 + np.exp(-logits[positive]))
+    exponentiated = np.exp(logits[~positive])
+    output[~positive] = exponentiated / (1.0 + exponentiated)
+    if np.isscalar(value) or logits.ndim == 0:
+        return float(output)
+    return output

@@ -1,5 +1,7 @@
 """Symbolic number-theoretic and algebraic helpers backed by sympy."""
 
+from __future__ import annotations
+
 import re
 
 import sympy

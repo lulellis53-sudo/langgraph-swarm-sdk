@@ -1,11 +1,14 @@
 """Pillar 2: tiled matmul, Strassen, radix-2 FFT, and the roofline bound."""
 
+from __future__ import annotations
+
 import numpy as np
 
 from algorithms.errors import AlgorithmInputError
 
 __all__ = [
     "attainable_performance",
+    "cache_aware_tile_size",
     "cooley_tukey_fft",
     "strassen_matmul",
     "tiled_matmul",
@@ -32,6 +35,29 @@ def attainable_performance(
     attainable = min(peak_flops, intensity * bandwidth_bytes_per_second)
     bound = "compute" if intensity >= knee else "memory"
     return intensity, attainable, bound
+
+
+def cache_aware_tile_size(cache_bytes: int, element_bytes: int = 8) -> int:
+    """Return the square tile side that keeps three tile working sets in cache.
+
+    The ``tiled_matmul`` inner block touches one A tile, one B tile, and the C
+    sub-block, so ``3 * B^2 * element_bytes <= cache_bytes``. The result is the
+    largest such ``B``, floored to at least 1, ready to pass as ``block_size``.
+
+    Args:
+        cache_bytes: Usable fast-memory budget (L1/L2) in bytes. Positive.
+        element_bytes: Bytes per matrix element. Positive.
+
+    Returns:
+        Tile side in elements.
+
+    Raises:
+        AlgorithmInputError: Either byte budget is not positive.
+    """
+    if cache_bytes < 1 or element_bytes < 1:
+        raise AlgorithmInputError("cache_bytes and element_bytes must be positive")
+    side = int((cache_bytes / (3 * element_bytes)) ** 0.5)
+    return max(side, 1)
 
 
 def tiled_matmul(left: np.ndarray, right: np.ndarray, block_size: int = 64) -> np.ndarray:
@@ -83,6 +109,7 @@ def cooley_tukey_fft(values: np.ndarray) -> np.ndarray:
 
 
 def _fft(signal: np.ndarray) -> np.ndarray:
+    """Run the recursive radix-2 butterfly on a power-of-two complex signal."""
     length = int(signal.shape[0])
     if length <= 1:
         return signal
@@ -122,6 +149,7 @@ def strassen_matmul(left: np.ndarray, right: np.ndarray, *, leaf: int = 32) -> n
 
 
 def _next_power_of_two(value: int) -> int:
+    """Return the smallest power of two that is at least ``value``."""
     power = 1
     while power < value:
         power *= 2
@@ -129,6 +157,7 @@ def _next_power_of_two(value: int) -> int:
 
 
 def _strassen(left: np.ndarray, right: np.ndarray, leaf: int) -> np.ndarray:
+    """Multiply square power-of-two matrices recursively with seven block products."""
     width = int(left.shape[0])
     if width <= leaf:
         return left @ right

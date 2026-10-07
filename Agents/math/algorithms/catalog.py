@@ -1,5 +1,7 @@
 """Registry of the math-agent algorithms."""
 
+from __future__ import annotations
+
 from collections.abc import Mapping
 from types import MappingProxyType
 
@@ -29,11 +31,13 @@ from algorithms.columnar import (
 )
 from algorithms.compute import (
     attainable_performance,
+    cache_aware_tile_size,
     cooley_tukey_fft,
     strassen_matmul,
     tiled_matmul,
 )
 from algorithms.equations import (
+    bisection_root,
     damped_newton_root,
     stormer_verlet_integrate,
     verify_bm25_asymptotics,
@@ -50,6 +54,8 @@ from algorithms.formula import (
     one_minus_cos,
     reciprocal_gap,
     schur_complement_inverse,
+    sigmoid_stable,
+    softmax_stable,
     sqrt_diff_stable,
     stable_quadratic_roots,
     woodbury_inverse,
@@ -57,7 +63,9 @@ from algorithms.formula import (
 from algorithms.matrix import (
     cholesky_factorization,
     condition_number_2,
+    conjugate_gradient,
     householder_qr,
+    power_iteration,
     spmv_csr,
     truncated_svd,
 )
@@ -98,6 +106,7 @@ from algorithms.vector import (
     hnsw_greedy_search,
     mips_lift,
     sq8_encode_decode,
+    topk_inner_product,
     train_ivf_pq_codebooks,
 )
 from algorithms.verify import verify_numerical_solution
@@ -108,6 +117,7 @@ from algorithms.vision import (
     pinhole_project,
     sobel_gradients_2d,
     solve_pnp_dlt,
+    triangulate_point_dlt,
 )
 
 __all__ = ["by_pillar", "call", "catalog", "get", "search"]
@@ -123,6 +133,7 @@ def _algorithm(
     precision: Precision,
     source: str = "",
 ) -> Algorithm:
+    """Build one catalog record from a callable."""
     if not callable(function):
         raise AlgorithmError("catalog entry is not callable")
     return Algorithm(
@@ -147,6 +158,7 @@ def _from_the_algorithms(
     precision: Precision,
     path: str,
 ) -> Algorithm:
+    """Build a catalog record whose source points at TheAlgorithms upstream file."""
     return _algorithm(
         function,
         pillar=pillar,
@@ -539,6 +551,7 @@ def _the_algorithms() -> tuple[Algorithm, ...]:
 
 
 def _build() -> tuple[Algorithm, ...]:
+    """Assemble the full catalog and reject duplicate ids."""
     entries = (
         _algorithm(
             euclidean_distance,
@@ -581,6 +594,14 @@ def _build() -> tuple[Algorithm, ...]:
             precision=Precision.HALF,
         ),
         _algorithm(
+            topk_inner_product,
+            pillar=Pillar.VECTORDB,
+            summary="Exact brute-force top-k inner-product baseline via argpartition.",
+            time="O(nd + n log k)",
+            space="O(n)",
+            precision=Precision.DOUBLE,
+        ),
+        _algorithm(
             hnsw_greedy_search,
             pillar=Pillar.VECTORDB,
             summary="Greedy beam search on one HNSW layer.",
@@ -603,6 +624,14 @@ def _build() -> tuple[Algorithm, ...]:
             time="O(1)",
             space="O(1)",
             precision=Precision.DOUBLE,
+        ),
+        _algorithm(
+            cache_aware_tile_size,
+            pillar=Pillar.PERFORMANCE,
+            summary="Largest square matmul tile whose three working sets fit the cache.",
+            time="O(1)",
+            space="O(1)",
+            precision=Precision.EXACT,
         ),
         _algorithm(
             tiled_matmul,
@@ -634,6 +663,14 @@ def _build() -> tuple[Algorithm, ...]:
             summary="Levenberg-Marquardt damped Newton root.",
             time="O(iterations * n^3)",
             space="O(n^2)",
+            precision=Precision.DOUBLE,
+        ),
+        _algorithm(
+            bisection_root,
+            pillar=Pillar.EQUATION,
+            summary="Bracketed scalar root by unconditional bisection.",
+            time="O(log((b - a) / tol))",
+            space="O(1)",
             precision=Precision.DOUBLE,
         ),
         _algorithm(
@@ -693,6 +730,14 @@ def _build() -> tuple[Algorithm, ...]:
             precision=Precision.DOUBLE,
         ),
         _algorithm(
+            triangulate_point_dlt,
+            pillar=Pillar.VISION,
+            summary="Two-view 3-D point triangulation by the linear DLT nullspace.",
+            time="O(1)",
+            space="O(1)",
+            precision=Precision.DOUBLE,
+        ),
+        _algorithm(
             lucas_kanade_optical_flow,
             pillar=Pillar.VISION,
             summary="Dense single-scale Lucas-Kanade optical flow with aperture gating.",
@@ -738,6 +783,22 @@ def _build() -> tuple[Algorithm, ...]:
             summary="Optimal rank-k approximation with Eckart-Young error bounds.",
             time="O(min(mn^2, m^2 n))",
             space="O(min(m, n))",
+            precision=Precision.DOUBLE,
+        ),
+        _algorithm(
+            conjugate_gradient,
+            pillar=Pillar.MATRIX,
+            summary="Conjugate gradient solve of symmetric positive definite systems.",
+            time="O(iterations * nnz)",
+            space="O(n)",
+            precision=Precision.DOUBLE,
+        ),
+        _algorithm(
+            power_iteration,
+            pillar=Pillar.MATRIX,
+            summary="Dominant eigenpair by power iteration with a Rayleigh quotient.",
+            time="O(iterations * n^2)",
+            space="O(n)",
             precision=Precision.DOUBLE,
         ),
         _algorithm(
@@ -890,6 +951,22 @@ def _build() -> tuple[Algorithm, ...]:
             summary="Cramer-Rao lower bound as the Fisher information inverse.",
             time="O(k^3)",
             space="O(k^2)",
+            precision=Precision.DOUBLE,
+        ),
+        _algorithm(
+            softmax_stable,
+            pillar=Pillar.FORMULA,
+            summary="Overflow-shielded softmax via the log-sum-exp max shift.",
+            time="O(n)",
+            space="O(n)",
+            precision=Precision.DOUBLE,
+        ),
+        _algorithm(
+            sigmoid_stable,
+            pillar=Pillar.FORMULA,
+            summary="Two-branch logistic sigmoid that never overflows.",
+            time="O(n)",
+            space="O(n)",
             precision=Precision.DOUBLE,
         ),
     ) + _the_algorithms()

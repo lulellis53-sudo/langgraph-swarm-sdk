@@ -1,5 +1,7 @@
 """Errors raised by the math algorithm database."""
 
+from __future__ import annotations
+
 __all__ = [
     "AlgorithmDependencyError",
     "AlgorithmError",

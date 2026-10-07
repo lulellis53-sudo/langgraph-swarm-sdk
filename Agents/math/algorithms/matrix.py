@@ -1,13 +1,21 @@
 """Pillar 5: Householder QR, Cholesky, CSR SpMV, and the 2-norm condition number."""
 
+from __future__ import annotations
+
 import numpy as np
 
-from algorithms.errors import AlgorithmInputError, NotPositiveDefiniteError
+from algorithms.errors import (
+    AlgorithmError,
+    AlgorithmInputError,
+    NotPositiveDefiniteError,
+)
 
 __all__ = [
     "cholesky_factorization",
     "condition_number_2",
+    "conjugate_gradient",
     "householder_qr",
+    "power_iteration",
     "spmv_csr",
     "truncated_svd",
 ]
@@ -142,3 +150,105 @@ def truncated_svd(matrix: np.ndarray, rank: int) -> dict[str, object]:
         "spectral_error": spectral,
         "frobenius_error": frobenius,
     }
+
+
+def conjugate_gradient(
+    matrix: np.ndarray,
+    rhs: np.ndarray,
+    tol: float = 1e-10,
+    max_iter: int | None = None,
+) -> np.ndarray:
+    """Solve a symmetric positive definite system with the conjugate gradient method.
+
+    The Krylov iteration needs only matrix-vector products, so it suits large
+    sparse systems where a direct factorization is too expensive. Convergence in
+    at most ``n`` steps is exact arithmetic; rounding restarts the residual and
+    the iteration cap plus the relative-residual gate bound the run.
+
+    Args:
+        matrix: SPD matrix of shape ``(n, n)``.
+        rhs: Right-hand side of shape ``(n,)``.
+        tol: Stop when ``||b - A x|| <= tol * ||b||``.
+        max_iter: Iteration cap. Defaults to ``n``.
+
+    Returns:
+        The approximate solution of shape ``(n,)``.
+
+    Raises:
+        AlgorithmInputError: Shapes mismatch or non-positive tolerance.
+        AlgorithmError: The residual gate is not met within ``max_iter``.
+    """
+    values = np.asarray(matrix, dtype=np.float64)
+    target = np.asarray(rhs, dtype=np.float64).reshape(-1)
+    if values.ndim != 2 or values.shape[0] != values.shape[1]:
+        raise AlgorithmInputError("conjugate gradient needs a square matrix")
+    if values.shape[0] != target.size:
+        raise AlgorithmInputError("matrix and right-hand side shapes do not match")
+    if tol <= 0.0:
+        raise AlgorithmInputError("tol must be positive")
+    size = values.shape[0]
+    cap = size if max_iter is None else max_iter
+    if cap < 1:
+        raise AlgorithmInputError("max_iter must be at least 1")
+    solution = np.zeros(size, dtype=np.float64)
+    residual = target - values @ solution
+    direction = residual.copy()
+    energy = float(residual @ residual)
+    rhs_norm = float(np.linalg.norm(target))
+    gate = tol * (rhs_norm if rhs_norm > 0.0 else 1.0)
+    if energy**0.5 <= gate:
+        return solution
+    for _ in range(cap):
+        step = float(direction @ (values @ direction))
+        if step <= 0.0:
+            raise AlgorithmError("matrix is not positive definite: curvature is non-positive")
+        alpha = energy / step
+        solution = solution + alpha * direction
+        residual = residual - alpha * (values @ direction)
+        energy_new = float(residual @ residual)
+        if energy_new**0.5 <= gate:
+            return solution
+        direction = residual + (energy_new / energy) * direction
+        energy = energy_new
+    raise AlgorithmError("conjugate gradient did not reach the residual gate in max_iter")
+
+
+def power_iteration(
+    matrix: np.ndarray,
+    tol: float = 1e-12,
+    max_iter: int = 1000,
+) -> tuple[float, np.ndarray]:
+    """Return the dominant eigenpair of a matrix by power iteration.
+
+    Converges when a single real eigenvalue has strictly largest magnitude; the
+    estimate is the Rayleigh quotient ``v^T A v`` of the normalized iterate.
+
+    Args:
+        matrix: Square matrix of shape ``(n, n)``.
+        tol: Stop when ``||A v - lambda v|| <= tol * |lambda|``.
+        max_iter: Iteration cap.
+
+    Returns:
+        ``(eigenvalue, eigenvector)`` with a unit-norm eigenvector.
+
+    Raises:
+        AlgorithmInputError: Shapes mismatch or non-positive bounds.
+        AlgorithmError: The eigenpair does not settle within ``max_iter``.
+    """
+    values = np.asarray(matrix, dtype=np.float64)
+    if values.ndim != 2 or values.shape[0] != values.shape[1] or values.shape[0] == 0:
+        raise AlgorithmInputError("power iteration needs a non-empty square matrix")
+    if tol <= 0.0 or max_iter < 1:
+        raise AlgorithmInputError("tol must be positive and max_iter at least 1")
+    vector = np.ones(values.shape[0], dtype=np.float64)
+    vector /= np.linalg.norm(vector)
+    for _ in range(max_iter):
+        product = values @ vector
+        norm = float(np.linalg.norm(product))
+        if not np.isfinite(norm) or norm == 0.0:
+            raise AlgorithmError("power iteration diverged or reached an invariant zero vector")
+        vector = product / norm
+        eigenvalue = float(vector @ (values @ vector))
+        if float(np.linalg.norm(values @ vector - eigenvalue * vector)) <= tol * abs(eigenvalue):
+            return eigenvalue, vector
+    raise AlgorithmError("power iteration did not settle within max_iter")

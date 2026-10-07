@@ -4,6 +4,8 @@ PyArrow is imported inside the functions that need it. ``welford_stats`` is the
 NumPy form of the same merge.
 """
 
+from __future__ import annotations
+
 import heapq
 from pathlib import Path
 
@@ -21,6 +23,7 @@ __all__ = [
 
 
 def _pyarrow() -> object:
+    """Import and return pyarrow, raising the dependency error when absent."""
     try:
         import pyarrow as pa
     except ImportError as err:
@@ -36,6 +39,7 @@ def _merge(
     mean_b: float,
     second_b: float,
 ) -> tuple[int, float, float]:
+    """Merge two Welford batches into a combined count, mean, and second moment."""
     if count_b == 0:
         return count, mean, second
     if count == 0:

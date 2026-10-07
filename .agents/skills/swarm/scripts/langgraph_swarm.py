@@ -60,8 +60,14 @@ def find_agents_root(workspace: Path) -> Path:
         FileNotFoundError: When no ``Agents/SKILLS.md`` exists under ``workspace``.
     """
     candidates = [workspace / "Agents", workspace.parent / "Agents"]
+    anchors = ("SKILLS.md", "coordination.yaml")
     for root in candidates:
-        if (root / "SKILLS.md").is_file():
+        if any((root / anchor).is_file() for anchor in anchors):
+            return root.resolve()
+    for root in candidates:
+        if root.is_dir() and any(
+            (child / "AGENTS.md").is_file() for child in root.iterdir() if child.is_dir()
+        ):
             return root.resolve()
     raise FileNotFoundError(f"Agents/ not found under {workspace}")
 
@@ -189,6 +195,184 @@ def resolve_llm_providers() -> dict[str, dict[str, Any]]:
     }
 
     return providers
+
+
+#: Per-call completion budget by declared effort level (route label, not every
+#: API exposes a reasoning-effort parameter, so this bounds output tokens).
+_EFFORT_TOKEN_BUDGET = {"LOW": 512, "MEDIUM": 1024, "HIGH": 2048}
+
+_OPENAI_COMPATIBLE_PROVIDERS = {
+    "OPENAI": ("https://api.openai.com/v1", "gpt-4o-mini"),
+    "DEEPSEEK": ("https://api.deepseek.com/v1", "deepseek-chat"),
+    "GROQ": ("https://api.groq.com/openai/v1", "llama-3.3-70b-versatile"),
+    "OPENROUTER": ("https://openrouter.ai/api/v1", "openai/gpt-4o-mini"),
+}
+
+
+def _provider_model(provider: str, default: str) -> str:
+    """Return the model for one provider, overridable by ``SWARM_SKILL_MODEL_<PROVIDER>``."""
+    return os.environ.get(f"SWARM_SKILL_MODEL_{provider}", default)
+
+
+def _post_json(
+    url: str,
+    headers: dict[str, str],
+    body: dict[str, Any],
+    timeout_s: float,
+) -> dict[str, Any]:
+    """POST one JSON chat request and decode the JSON response.
+
+    Raises:
+        TimeoutError: The provider did not answer within ``timeout_s``.
+        urllib.error.URLError: Transport failure (type-only; the message may carry hosts).
+    """
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(body).encode("utf-8"),
+        headers=headers,
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=timeout_s) as response:
+        return json.loads(response.read().decode("utf-8"))  # noqa: S310 - fixed https/localhost URLs
+
+
+def _call_openai_compatible(
+    provider: str,
+    api_key: str,
+    system_prompt: str,
+    user_prompt: str,
+    *,
+    effort: str,
+    max_ms: int,
+) -> dict[str, Any]:
+    """Run one chat completion against an OpenAI-compatible endpoint.
+
+    Raises:
+        TimeoutError: The call exceeded the millisecond budget.
+        urllib.error.URLError: Transport failure.
+        (KeyError, IndexError): The provider returned an unexpected payload shape.
+    """
+    endpoint, default_model = _OPENAI_COMPATIBLE_PROVIDERS[provider]
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    body = {
+        "model": _provider_model(provider, default_model),
+        "max_tokens": _EFFORT_TOKEN_BUDGET[effort],
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+    }
+    reply = _post_json(f"{endpoint}/chat/completions", headers, body, max(max_ms / 1000.0, 1.0))
+    return {
+        "model": str(reply.get("model", body["model"])),
+        "reply": reply["choices"][0]["message"]["content"],
+        "usage": reply.get("usage", {}),
+    }
+
+
+def _call_anthropic(
+    api_key: str,
+    system_prompt: str,
+    user_prompt: str,
+    *,
+    effort: str,
+    max_ms: int,
+) -> dict[str, Any]:
+    """Run one completion against the Anthropic messages API.
+
+    Raises:
+        TimeoutError: The call exceeded the millisecond budget.
+        urllib.error.URLError: Transport failure.
+        (KeyError, IndexError): Unexpected payload shape.
+    """
+    body = {
+        "model": _provider_model("ANTHROPIC", "claude-sonnet-4-5"),
+        "max_tokens": _EFFORT_TOKEN_BUDGET[effort],
+        "system": system_prompt,
+        "messages": [{"role": "user", "content": user_prompt}],
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "x-api-key": api_key,
+        "anthropic-version": "2023-06-01",
+    }
+    reply = _post_json(
+        "https://api.anthropic.com/v1/messages", headers, body, max(max_ms / 1000.0, 1.0)
+    )
+    return {
+        "model": str(reply.get("model", body["model"])),
+        "reply": reply["content"][0]["text"],
+        "usage": reply.get("usage", {}),
+    }
+
+
+def execute_task_via_provider(
+    provider: str,
+    system_prompt: str,
+    user_prompt: str,
+    *,
+    effort: str = "MEDIUM",
+    max_ms: int = 60000,
+    ollama_host: str = "http://localhost:11434",
+) -> dict[str, Any]:
+    """Run one real task completion against a READY provider.
+
+    The persona contract goes in as the system prompt and the task as the user
+    prompt; the ``--ms`` budget becomes the socket timeout and the effort level
+    bounds output tokens. Secrets stay in env vars and never appear in errors.
+
+    Args:
+        provider: Label from :func:`resolve_llm_providers` (READY only).
+        system_prompt: Persona contract text.
+        user_prompt: Task text.
+        effort: ``LOW`` / ``MEDIUM`` / ``HIGH`` output budget.
+        max_ms: Wall-clock budget in milliseconds (socket timeout).
+        ollama_host: Local endpoint for the OLLAMA provider.
+
+    Returns:
+        Dict with ``provider``, ``model``, ``reply``, ``usage``, and ``latency_ms``.
+
+    Raises:
+        ValueError: The provider has no execution adapter.
+        TimeoutError: The call exceeded the millisecond budget.
+        urllib.error.URLError: Transport failure (credential-free type in the CLI).
+    """
+    started = time.perf_counter()
+    api_key = os.environ.get(f"{provider}_API_KEY", "")
+    if provider in _OPENAI_COMPATIBLE_PROVIDERS:
+        result = _call_openai_compatible(
+            provider, api_key, system_prompt, user_prompt, effort=effort, max_ms=max_ms
+        )
+    elif provider == "ANTHROPIC" and api_key:
+        result = _call_anthropic(
+            api_key, system_prompt, user_prompt, effort=effort, max_ms=max_ms
+        )
+    elif provider == "OLLAMA":
+        endpoint = ollama_host.rstrip("/")
+        headers = {"Content-Type": "application/json"}
+        body = {
+            "model": _provider_model("OLLAMA", "llama3.2"),
+            "max_tokens": _EFFORT_TOKEN_BUDGET[effort],
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        }
+        reply = _post_json(
+            f"{endpoint}/v1/chat/completions", headers, body, max(max_ms / 1000.0, 1.0)
+        )
+        result = {
+            "model": str(reply.get("model", body["model"])),
+            "reply": reply["choices"][0]["message"]["content"],
+            "usage": reply.get("usage", {}),
+        }
+    else:
+        raise ValueError(f"no execution adapter for provider {provider}")
+    result["provider"] = provider
+    result["latency_ms"] = round((time.perf_counter() - started) * 1000, 2)
+    return result
 
 
 class FastEmbedder:
@@ -500,6 +684,49 @@ class SwarmOrchestrator:
 
         # Placeholder for LangGraph ``app.invoke``; records context only.
         time.sleep(0.04)
+
+        execution: dict[str, Any] = {
+            "execution": "simulated",
+            "reason": "no ready provider with an execution adapter",
+        }
+        if agent_name:
+            ready = [
+                label
+                for label in (
+                    "OPENAI",
+                    "ANTHROPIC",
+                    "DEEPSEEK",
+                    "GROQ",
+                    "OPENROUTER",
+                    "OLLAMA",
+                )
+                if self.providers.get(label, {}).get("status") == "READY"
+            ]
+            if ready:
+                contract = contract_excerpt or f"You are the {agent_name} swarm agent."
+                try:
+                    outcome = execute_task_via_provider(
+                        ready[0],
+                        contract,
+                        prompt,
+                        effort=effort.upper(),
+                        max_ms=max_ms,
+                    )
+                except (
+                    TimeoutError,
+                    urllib.error.URLError,
+                    ValueError,
+                    KeyError,
+                    IndexError,
+                ) as err:
+                    execution = {
+                        "execution": "simulated",
+                        "provider": ready[0],
+                        "reason": f"{type(err).__name__} from provider call",
+                    }
+                else:
+                    execution = {"execution": "real", **outcome}
+
         elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
 
         agent_handle = f"@{agent_name}" if agent_name else (target_provider or f"@{role}")
@@ -559,7 +786,7 @@ def main() -> None:
         default="MEDIUM",
         choices=["LOW", "MEDIUM", "HIGH", "low", "medium", "high"],
     )
-    parser.add_argument("--MaxMS", "--max-ms", dest="max_ms", type=int, default=60000)
+    parser.add_argument("--MaxMS", "--max-ms", "--ms", dest="max_ms", type=int, default=60000)
     parser.add_argument("--MaxTry", "--max-try", dest="max_try", type=int, default=3)
     parser.add_argument("--index-rag", action="store_true", help="Rebuild workspace RAG index")
     parser.add_argument("--status", action="store_true", help="Provider, memory, and agent roster")
