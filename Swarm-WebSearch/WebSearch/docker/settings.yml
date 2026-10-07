@@ -1,0 +1,56 @@
+general:
+  debug: false
+  instance_name: "WebSearch SearXNG"
+  contact_url: false
+  enable_metrics: false
+
+default_doi_resolver: "doi.org"
+
+search:
+  safe_search: 0
+  autocomplete: "duckduckgo"
+  default_lang: "auto"
+  doi_resolvers:
+    doi.org: "https://doi.org/"
+  formats:
+    - html
+    - json
+
+server:
+  port: 8080
+  bind_address: "0.0.0.0"
+  secret_key: "change-me-in-production"
+  limiter: false
+  public_instance: false
+
+redis:
+  url: false
+
+ui:
+  static_path: "/usr/local/searxng/searx/static"
+  templates_path: "/usr/local/searxng/searx/templates"
+  default_theme: simple
+  query_in_title: false
+
+outgoing:
+  request_timeout: 10.0
+  max_request_timeout: 15.0
+  pool_connections: 100
+  pool_maxsize: 20
+  enable_http2: true
+
+engines:
+  - name: duckduckgo
+    engine: duckduckgo
+    shortcut: ddg
+    disabled: false
+  - name: bing
+    engine: bing
+    shortcut: bi
+    disabled: false
+
+enabled_plugins:
+  - 'Hash plugin'
+  - 'Self Informations'
+  - 'Tracker URL remover'
+  - 'Ahmia blacklist'

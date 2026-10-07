@@ -1,0 +1,206 @@
+# WebSearch provider registry. Env var *names* only — never secret values.
+# HTTP searchers fail closed (empty hits) when the key/URL is missing.
+version: 1
+
+searchers:
+  - id: context7
+    kind: docs
+    enabled: true
+    description: Library and API docs (Context7 MCP).
+  - id: brave
+    kind: websearcher
+    enabled: true
+    api_key_env: BRAVE_API_KEY
+    description: Brave Search API (web).
+  - id: ddg
+    kind: websearcher
+    enabled: false
+    description: DuckDuckGo text search (no API key).
+  - id: ddglite
+    kind: websearcher
+    enabled: true
+    description: DuckDuckGo Lite plain-HTML search (no API key, no package).
+  - id: tavily
+    kind: websearcher
+    enabled: true
+    dork: translate  # site:/-site:/after:/before: become API fields; terms stay as text
+    api_key_env: TAVILY_API_KEY
+    description: Tavily Search API.
+  - id: parallel
+    kind: websearcher
+    enabled: false
+    dork: translate  # site:/-site:/after: become Parallel source-policy filters
+    api_key_env: PARALLEL_API_KEY
+    engine: fast
+    description: Parallel Search API (AI-optimized web search).
+  - id: jina
+    kind: websearcher
+    enabled: true
+    api_key_env: JINA_API_KEY
+    base_url: https://s.jina.ai
+    description: >-
+      Jina Search (s.jina.ai). Bearer JINA_API_KEY. Reader and embeddings stay
+      on api.jina.ai.
+  - id: apify
+    kind: websearcher
+    enabled: false
+    api_key_env: APIFY_API_KEY
+    base_url: https://api.apify.com/v2
+    description: Apify API (fails without token / actor config).
+  - id: openrouter_web
+    kind: websearcher
+    enabled: false
+    dork: translate  # site:/-site: become the plugin's include_domains / exclude_domains
+    api_key_env: OPENROUTER_API_KEY
+    engine: qwen/qwen3.8-27b:free  # model that runs the search; any OpenRouter slug works
+    description: OpenRouter web-search plugin (cited pages as hits; usage in tokens).
+  - id: exa
+    kind: websearcher
+    enabled: true
+    dork: translate
+    api_key_env: EXA_API_KEY
+    description: Exa Search API.
+  - id: bright_data
+    kind: websearcher
+    enabled: false
+    engine: google
+    api_key_env: BRIGHTDATA_MCP_TOKEN
+    description: Live SERP via Bright Data MCP search_engine.
+  - id: searxng_ddg
+    kind: websearcher
+    enabled: true
+    engine: duckduckgo
+    base_url_env: SEARXNG_URL
+    description: Self-hosted SearXNG JSON (DuckDuckGo engine).
+  - id: searxng_bing
+    kind: websearcher
+    enabled: true
+    engine: bing
+    base_url_env: SEARXNG_URL
+    description: Self-hosted SearXNG JSON (Bing engine).
+  - id: google_search
+    kind: websearcher
+    enabled: true
+    api_key_env: GEMINI_API_KEY
+    # GEMINI_API_KEY, else GOOGLE_API_KEY, else GEMINI_API_KEY_2. Rotate on 401/403/429.
+    api_key_env_fallbacks: [GOOGLE_API_KEY, GEMINI_API_KEY_2]
+    engine: gemini-3.5-flash
+    base_url: https://generativelanguage.googleapis.com/v1beta
+    # Gemini 3 bills each executed search query. Paid tier: 5,000 free Gemini 3.x
+    # search requests per month (shared), then $14 / 1,000. Not on the free token tier.
+    # Search runs as the native ``google_search`` tool call (the old ``google_search_retrieval``
+    # grounding tool is retired); cited sources come back in ``groundingMetadata``.
+    description: Gemini with the Google Search tool call (cited sources + token usage).
+  - id: ddg_mcp
+    kind: websearcher
+    enabled: false
+    base_url_env: DDG_MCP_URL
+    description: Self-hosted DuckDuckGo MCP search server (needs a backend function; see search_bright_data for the MCP-client pattern).
+  - id: context
+    kind: websearcher
+    enabled: false
+    api_key_env: CONTEXT_API_KEY
+    base_url_env: CONTEXT_BASE_URL
+    description: Context search (NOT context7; needs a backend function + the service's API endpoint before enabling).
+  - id: kimisearch
+    kind: websearcher
+    enabled: false
+    api_key_env: MOONSHOT_API_KEY
+    base_url_env: MOONSHOT_BASE_URL
+    engine: kimi-k3
+    description: Moonshot Kimi Web Search Basic API (standalone /v1/tools/search).
+
+extractors:
+  order:
+    - selectolax
+    - selectolax_regex
+    - regex
+    - trafilatura
+    - bs4
+
+# Crawlers are tried in this order until one returns bytes. Supported but left out of the default
+# order on purpose: httpx2, requests, aiohttp. They are plain HTTP clients like httpx, so on a
+# dead URL they would only add latency; add them here to use one as a fallback for httpx.
+# curl_cffi sends a Chrome TLS fingerprint, which helps with sites that reject Python clients.
+crawlers:
+  order:
+    - httpx
+    - httpx2
+    - curl_cffi
+    - scrapy
+    - playwright
+    - crawlee
+
+crawl:
+  timeout_s: 20
+  max_bytes: 1048576
+  max_urls: 8
+  schemes:
+    - http
+    - https
+
+prefilter:
+  schemes:
+    - http
+    - https
+  blocked_domains: []
+  min_snippet_chars: 0
+  require_title: true
+
+# `websearch --preset NAME`: keyword arguments of frontend.dorks.dork(); after_days/before_days
+# are relative to today. Explicit CLI flags override a preset.
+dork_presets:
+  last_week:
+    after_days: 7
+  papers:
+    filetype: pdf
+    intext: abstract
+  github:
+    site: github.com
+  news_today:
+    after_days: 1
+
+# Chat model for `websearch --browse`. `claude-cli:default` runs `claude -p`
+# on your Claude login; `codex-cli:default` runs `codex exec` on Codex OAuth
+# (`codex-cli:profile:NAME` = `codex -p NAME`); `grok-cli:grok-4.6` runs
+# `grok` on Grok OAuth (`grok login --oauth`). No API key or balance required.
+# Any provider:name from the model registry also works.
+# WEBSEARCH_LLM_MODEL overrides `model`. The agent opens pages with Playwright.
+llm:
+  model: "openrouter:z-ai/glm-5.3-flash"
+  max_steps: 12
+  max_pages: 4
+  max_chars: 6000
+
+# Playwright browses. Dedupe judges pages. Memory stores the brief. Decision
+# picks the Playwright model. A run uses the first ready name in each list.
+# Playwright uses a different model from Gemini 3.5 Flash, which is the first
+# ready semantic dedupe/synthesis model after deterministic normalization.
+autonomous:
+  playwright:
+    - openrouter:z-ai/glm-5.3-flash
+    - moonshot:kimi-k2.7-code
+    - zai:glm-5.2
+    - minimax:minimax-2.7-high-speed
+    - groq:openai/gpt-oss-120b
+    - cohere:command-a
+    - mistral:mistral-large-latest
+    - atlascloud:dots-studio/dots-3-note-prev-free
+    - poolside:poolside/laguna-s-2.1
+  dedupe:
+    - google:gemini-3.5-flash
+    - cohere:command-r7b
+    - groq:openai/gpt-oss-20b
+    - moonshot:kimi-k2.7-code-b
+    - xiaomi:mimo-v2.5-pro
+    - mistral:ministral-3-8b-latest
+    - sambanova:Meta-Llama-3.3-70B-Instruct
+    - fireworks:accounts/fireworks/models/kimi-k2.7
+  summarize:
+    - google:gemini-3.5-flash
+    - cohere:command-r7b
+    - groq:openai/gpt-oss-20b
+  memory:
+    - mem0
+  decision:
+    - jev
