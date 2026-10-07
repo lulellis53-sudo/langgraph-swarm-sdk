@@ -20,6 +20,7 @@ from swarm_sdk.agents.manifest import (
 )
 from swarm_sdk.config.loader import SwarmFileConfig, load_swarm_config
 from swarm_sdk.config.settings import Settings, load_merged_settings
+from swarm_sdk.core.jev_router import JevRouter
 from swarm_sdk.execution import fan_out, offload
 from swarm_sdk.gpu import set_enabled as set_opencl_enabled
 from swarm_sdk.memory.base import MemoryHit, MemoryStore

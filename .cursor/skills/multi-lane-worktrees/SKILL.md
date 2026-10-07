@@ -10,11 +10,17 @@ description: >-
 
 | Worktree path | Branch | Lane |
 |---------------|--------|------|
-| `WebSearch/` (under repo root) | `feature/websearch` | Search/scrape pipeline |
-| `../Swarm-Prediction` | `feat/prediction-engine` | `Prediction/` + forecast tests |
-| `../Newsletter` | `feat/newsletter` | `Newsletter/` MVP |
-| `../BotDeal` | `feat/botdeal` | `Prediction/BotDeal/` + PromoDeals pipeline (sync from prediction engine) |
-| Repo root `Swarm/` | `integration/all-branches` (integration merges; then `main`) | SDK + coordination |
+| `~/Myworkspace/Swarm/` | `integration/myworkspace-2026-10` → `main` | SDK integration + coordination |
+| `~/Myworkspace/Swarm-Prediction/` | `lane/prediction` (based on `lane/websearch`) | `Prediction/` + forecast engine, synced from websearch |
+| `~/Myworkspace/Swarm/WebSearch/` | `lane/websearch` | `WebSearch/` search/scrape pipeline |
+| `~/Myworkspace/BotDeal/` | `feat/botdeal` | `Prediction/BotDeal/` + PromoDeals (no separate lane yet) |
+| `~/Myworkspace/Newsletter/` | `feat/newsletter` | `Newsletter/` MVP (no separate lane yet) |
+
+**Primary lanes:**
+- `lane/sdk` — `src/swarm_sdk/`, `tests/`, `pyproject.toml`
+- `lane/agents` — `Agents/`
+- `lane/websearch` — `WebSearch/`
+- `lane/prediction` — `Prediction/`, follows `lane/websearch` |
 
 ## Setup (once)
 
