@@ -22,6 +22,16 @@ description: >-
 - `lane/websearch` — `WebSearch/`
 - `lane/prediction` — `Prediction/`, follows `lane/websearch` |
 
+## WebSearch is a tool for Agents and Prediction
+
+`lane/websearch` (workspace folder `WebSearch-Branch/`) is the only place that edits `WebSearch/`.
+`lane/agents` and `lane/prediction` call it as a tool (`WebSearch.agent_tools`, `WebSearch.toolcalling`)
+and never edit it. After each `lane/websearch` change, from the consumer's worktree:
+
+```bash
+git merge --no-ff lane/websearch   # in the lane/agents and lane/prediction worktrees
+```
+
 ## Setup (once)
 
 From repo root, keep **one branch per worktree** (Git refuses the same branch in two trees unless `--force`).
