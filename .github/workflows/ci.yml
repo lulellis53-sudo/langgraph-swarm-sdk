@@ -23,43 +23,26 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
       - name: Check authorized branches only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
         run: |
-          git fetch origin --prune
-          # Get all remote branches except those on main
-          REMOTE_BRANCHES=$(git branch -r | grep -oE 'origin/[a-zA-Z0-9_/-]+' | sed 's|origin/||' | sort -u)
+          # Remote branch names straight from the API; no checkout needed.
+          branches=$(gh api "repos/${REPO}/branches" --paginate --jq '.[].name')
 
-          # Allowed branch patterns
-          ALLOWED='main|integration/.*|lane/sdk|lane/agents|lane/websearch|lane/prediction'
+          allowed='main|integration/.+|lane/(sdk|agents|websearch|prediction)'
+          allowed="${allowed}|(feat|feature|fix|keep)/.+|dependabot/.+"
 
-          DENIED=""
-          while IFS= read -r branch; do
-            if ! echo "$branch" | grep -Eq "^($ALLOWED)$"; then
-              DENIED="$DENIED$branch
-"
-            fi
-          done <<< "$REMOTE_BRANCHES"
-
-          if [ -n "$DENIED" ]; then
-            echo "❌ CI REJECTED: unauthorized branches found:"
-            echo "$DENIED"
-            echo ""
-            echo "Allowed branches are:"
-            echo "  - main"
-            echo "  - integration/*"
-            echo "  - lane/sdk"
-            echo "  - lane/agents"
-            echo "  - lane/websearch"
-            echo "  - lane/prediction"
-            echo ""
-            echo "To create a temporary branch, ask the user for explicit permission first."
+          denied=$(echo "$branches" | grep -Ev "^(${allowed})$" || true)
+          if [ -n "$denied" ]; then
+            echo "Unauthorized branches found:"
+            echo "$denied"
+            echo "Allowed: main, integration/*, lane/{sdk,agents,websearch,prediction},"
+            echo "         feat|feature|fix|keep/* (ask the user first), dependabot/*."
             exit 1
-          else
-            echo "✓ All branches are authorized."
           fi
+          echo "All branches are authorized."
   lint:
     name: Lint (ruff)
     runs-on: ubuntu-latest
