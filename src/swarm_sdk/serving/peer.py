@@ -9,6 +9,8 @@ import aiohttp
 import httpx2
 import requests
 
+from swarm_sdk.netguard import validate_http_url
+
 
 def validate_http_url(url: str) -> str:
     """Return ``url`` if it is an absolute http(s) URL; raise ValueError otherwise."""
@@ -28,7 +30,7 @@ def post_json(
     """POST JSON synchronously and return the decoded object body.
 
     Args:
-        url: Absolute peer URL.
+        url: Absolute peer URL (validated: http/https, non-private host).
         payload: JSON-serializable request body.
         client: ``"httpx2"`` (default, HTTP/2) or ``"requests"``.
         transport: Optional httpx2 transport (tests / custom stacks).
@@ -39,6 +41,7 @@ def post_json(
     Raises:
         ValueError: If ``url`` is not an absolute http(s) URL.
         TypeError: If the response body is not a JSON object.
+        ValueError: If ``url`` fails the SSRF guard.
         requests.HTTPError | httpx2.HTTPError: On non-success status.
     """
     validate_http_url(url)

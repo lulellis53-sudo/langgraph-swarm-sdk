@@ -1,0 +1,53 @@
+# Source registry. Every URL/query is a candidate until `technews sources check` passes.
+# Set `enabled: false` for dead entries; do not delete them.
+sources:
+  # --- Big Tech (30). Feed where one is expected, otherwise site: web-search fallback.
+  - {name: Apple, category: bigtech, kind: search, query: "site:apple.com/newsroom"}
+  - {name: Microsoft, category: bigtech, kind: feed, url: "https://blogs.microsoft.com/feed/"}
+  - {name: Google, category: bigtech, kind: feed, url: "https://blog.google/rss/"}
+  - {name: Amazon, category: bigtech, kind: feed, url: "https://aws.amazon.com/blogs/aws/feed/"}
+  - {name: Meta, category: bigtech, kind: feed, url: "https://engineering.fb.com/feed/"}
+  - {name: Nvidia, category: bigtech, kind: feed, url: "https://blogs.nvidia.com/feed/"}
+  - {name: Tesla, category: bigtech, kind: search, query: "site:tesla.com/blog"}
+  - {name: Netflix, category: bigtech, kind: feed, url: "https://netflixtechblog.com/feed"}
+  - {name: Oracle, category: bigtech, kind: search, query: "site:oracle.com/news"}
+  - {name: IBM, category: bigtech, kind: search, query: "site:newsroom.ibm.com"}
+  - {name: Intel, category: bigtech, kind: search, query: "site:intel.com newsroom"}
+  - {name: AMD, category: bigtech, kind: search, query: "site:amd.com newsroom"}
+  - {name: Qualcomm, category: bigtech, kind: search, query: "site:qualcomm.com/news"}
+  - {name: Broadcom, category: bigtech, kind: search, query: "site:broadcom.com/company/news"}
+  - {name: Cisco, category: bigtech, kind: search, query: "site:newsroom.cisco.com"}
+  - {name: Salesforce, category: bigtech, kind: search, query: "site:salesforce.com/news"}
+  - {name: Adobe, category: bigtech, kind: search, query: "site:blog.adobe.com"}
+  - {name: SAP, category: bigtech, kind: search, query: "site:news.sap.com"}
+  - {name: Samsung, category: bigtech, kind: search, query: "site:news.samsung.com"}
+  - {name: Sony, category: bigtech, kind: search, query: "site:sony.com/en/SonyInfo/News"}
+  - {name: TSMC, category: bigtech, kind: search, query: "site:pr.tsmc.com"}
+  - {name: ASML, category: bigtech, kind: search, query: "site:asml.com/en/news"}
+  - {name: OpenAI, category: bigtech, kind: feed, url: "https://openai.com/news/rss.xml"}
+  - {name: Anthropic, category: bigtech, kind: search, query: "site:anthropic.com/news"}
+  - {name: Cloudflare, category: bigtech, kind: feed, url: "https://blog.cloudflare.com/rss/"}
+  - {name: Stripe, category: bigtech, kind: search, query: "site:stripe.com/blog"}
+  - {name: GitHub, category: bigtech, kind: feed, url: "https://github.blog/feed/"}
+  - {name: GitLab, category: bigtech, kind: search, query: "site:about.gitlab.com/blog"}
+  - {name: Mozilla, category: bigtech, kind: feed, url: "https://blog.mozilla.org/feed/"}
+  - {name: Red Hat, category: bigtech, kind: search, query: "site:redhat.com/en/blog"}
+  # --- Git repos: releases Atom feeds (watchlist; edit freely)
+  - {name: "git:python/cpython", category: git, kind: feed, url: "https://github.com/python/cpython/releases.atom"}
+  - {name: "git:rust-lang/rust", category: git, kind: feed, url: "https://github.com/rust-lang/rust/releases.atom"}
+  - {name: "git:llvm/llvm-project", category: git, kind: feed, url: "https://github.com/llvm/llvm-project/releases.atom"}
+  - {name: "git:torvalds/linux", category: git, kind: feed, url: "https://github.com/torvalds/linux/tags.atom"}
+  - {name: "git:ggml-org/llama.cpp", category: git, kind: feed, url: "https://github.com/ggml-org/llama.cpp/releases.atom"}
+  - {name: "git:astral-sh/uv", category: git, kind: feed, url: "https://github.com/astral-sh/uv/releases.atom"}
+  # --- Hardware news
+  - {name: Tom's Hardware, category: hardware, kind: feed, url: "https://www.tomshardware.com/feeds/all"}
+  - {name: ServeTheHome, category: hardware, kind: feed, url: "https://www.servethehome.com/feed/"}
+  - {name: Phoronix, category: hardware, kind: feed, url: "https://www.phoronix.com/rss.php"}
+  # --- Code news
+  - {name: Hacker News, category: code, kind: hn, limit: 20}
+  - {name: LWN, category: code, kind: feed, url: "https://lwn.net/headlines/rss"}
+  - {name: Rust Blog, category: code, kind: feed, url: "https://blog.rust-lang.org/feed.xml"}
+  # --- AI news
+  - {name: Hugging Face Blog, category: ai, kind: feed, url: "https://huggingface.co/blog/feed.xml"}
+  - {name: arXiv cs.AI, category: ai, kind: feed, url: "https://export.arxiv.org/rss/cs.AI"}
+  - {name: Google DeepMind, category: ai, kind: feed, url: "https://deepmind.google/blog/rss.xml"}

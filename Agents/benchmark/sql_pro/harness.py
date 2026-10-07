@@ -79,7 +79,18 @@ def seed_default(conn: sqlite3.Connection, *, customers: int = 100, orders_per: 
 
 
 def explain_plan(conn: sqlite3.Connection, query: str) -> str:
-    rows = conn.execute(f"EXPLAIN QUERY PLAN {query}").fetchall()
+    """Return SQLite's EXPLAIN QUERY PLAN for one read-only SELECT.
+
+    Only single-statement SELECTs are explained: the query must be one
+    statement, must not contain statement separators or comments, and must
+    not start with a non-SELECT keyword, so harness callers cannot execute
+    or plan writes through this helper.
+    """
+    cleaned = " ".join(query.split())
+    first_word = cleaned.split(" ", 1)[0].strip("([").lower() if cleaned else ""
+    if first_word != "select" or ";" in query or "--" in query or "/*" in query:
+        raise ValueError("explain_plan accepts a single SELECT statement only")
+    rows = conn.execute(f"EXPLAIN QUERY PLAN {cleaned}").fetchall()
     return "\n".join(" | ".join(str(cell) for cell in row) for row in rows)
 
 

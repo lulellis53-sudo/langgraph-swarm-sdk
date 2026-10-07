@@ -41,7 +41,7 @@ MARKER = sys.argv[1]
 req = json.loads(sys.stdin.read())
 out = {"ok": False, "detail": ""}
 try:
-    ns = {"sp": sp, "np": np, "math": math, "pa": pa, "pc": pc}
+    ns = {"sp": sp, "np": np, "math": math, "pa": pa, "pc": pc, "__builtins__": {}}
     with contextlib.redirect_stdout(io.StringIO()):
         exec(compile(req["script"], "<verify>", "exec"), ns)
     if "res" not in ns:
