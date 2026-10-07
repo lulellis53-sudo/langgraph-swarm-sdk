@@ -1,0 +1,2 @@
+# Codex IDE / CLI defaults for this repo (openai.chatgpt).
+file_opener = "cursor"

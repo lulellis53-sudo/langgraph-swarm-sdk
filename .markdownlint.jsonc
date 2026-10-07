@@ -1,0 +1,8 @@
+{
+  // Project markdownlint (DavidAnson). AGENTS.md and specialist docs use long lines and HTML-free tables.
+  "default": true,
+  "MD013": false,
+  "MD024": { "siblings_only": true },
+  "MD033": false,
+  "MD041": false
+}
