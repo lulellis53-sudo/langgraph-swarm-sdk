@@ -57,10 +57,6 @@ docs/superpowers/*
 !docs/superpowers/specs/
 !docs/superpowers/plans/
 
-# --- Nested git worktree (branch worktree/websearch); no trailing slash so ----
-# --- the symlink itself is ignored, not just a materialized directory. --------
-/WebSearch
-
 # --- Jupyter scratch ----------------------------------------------------------
 notebooks/.ipynb_checkpoints/
 

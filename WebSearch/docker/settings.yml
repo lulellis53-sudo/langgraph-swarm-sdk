@@ -4,10 +4,14 @@ general:
   contact_url: false
   enable_metrics: false
 
+default_doi_resolver: "doi.org"
+
 search:
   safe_search: 0
   autocomplete: "duckduckgo"
   default_lang: "auto"
+  doi_resolvers:
+    doi.org: "https://doi.org/"
   formats:
     - html
     - json

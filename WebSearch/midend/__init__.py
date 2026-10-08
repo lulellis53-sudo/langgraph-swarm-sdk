@@ -28,6 +28,7 @@ from WebSearch.frontend.websearchers import (
     shared_executor,
     shared_http_client,
 )
+from WebSearch.midend.politeness import Politeness, polite_fetch
 from WebSearch.repeater import normalize_url, repeater
 
 if TYPE_CHECKING:
@@ -635,6 +636,8 @@ def crawl_then_scrape(
     fetch: FetchFn | None = None,
     config: ProvidersConfig | None = None,
     max_workers: int = _MAX_WORKERS,
+    respect_robots: bool = True,
+    politeness: Politeness | None = None,
 ) -> list[ScrapedPage]:
     """Deduplicate hit URLs, then crawl and scrape them concurrently.
 
@@ -646,6 +649,9 @@ def crawl_then_scrape(
         fetch (FetchFn | None): Override GET. Default tries crawlers in yaml order.
         config (ProvidersConfig | None): Crawl limits and crawler order.
         max_workers (int): Thread cap; values below 1 are clamped to 1.
+        respect_robots (bool): Honor ``robots.txt`` before fetching.
+        politeness (Politeness | None): Custom politeness layer; default uses
+            ``respect_robots`` and the global limits.
 
     Returns:
         list[ScrapedPage]: One page per unique URL, at most ``crawl.max_urls``.
@@ -662,6 +668,11 @@ def crawl_then_scrape(
         def getter(url: str) -> tuple[bytes, CrawlerName | None]:
             return ordered_fetch(url, crawl=crawl, public_only=True)
 
+    layer = politeness if politeness is not None else Politeness(respect_robots=respect_robots)
+
+    def polite_getter(url: str) -> tuple[bytes, CrawlerName | None]:
+        return polite_fetch(url, getter, politeness=layer)
+
     seen: set[str] = set()
     urls: list[str] = []
     for hit in hits:
@@ -676,7 +687,7 @@ def crawl_then_scrape(
 
     def capped(url: str) -> tuple[bytes, CrawlerName | None]:
         with semaphore:
-            return getter(url)
+            return polite_getter(url)
 
     pool = shared_executor()
     return list(pool.map(lambda u: _scrape_one(u, fetch=capped, crawl=crawl), urls))

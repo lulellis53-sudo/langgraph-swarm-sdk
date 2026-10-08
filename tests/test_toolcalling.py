@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 
 import pytest
+
 from WebSearch.frontend.websearchers import ProvidersConfig, SearcherSpec, SearchHit
 from WebSearch.toolcalling import ToolError, bind_tools, dispatch_tool_call, tool_manifests
 
@@ -121,3 +122,66 @@ def test_bind_tools_roundtrip() -> None:
 def test_loopback_blocked_inside_dispatch() -> None:
     blocked = dispatch_tool_call("web_open_page", {"url": "http://localhost/x"})
     assert "loopback" in blocked["error"]
+
+
+# --- Swarm SDK integration ------------------------------------------------------
+
+
+def test_swarm_tool_manifests_match_toolcalling() -> None:
+    from WebSearch.swarm_tools import swarm_tool_manifests
+
+    swarm_manifests = swarm_tool_manifests(format="openai")
+    direct_manifests = tool_manifests(format="openai")
+    assert swarm_manifests == direct_manifests
+    names = {m["function"]["name"] for m in swarm_manifests}
+    assert names == {"web_search", "web_open_page", "web_dedupe"}
+
+
+def test_swarm_dispatch_matches_toolcalling() -> None:
+    from WebSearch.swarm_tools import swarm_dispatch
+
+    result = swarm_dispatch("web_search", {"query": "test", "limit": 2}, backends=_backends())
+    assert "hits" in result
+    assert result["hits"][0]["searcher"] == "fake"
+
+
+def test_websearch_swarm_tools_returns_langchain_tools() -> None:
+    pytest.importorskip("langchain_core")
+    from WebSearch.swarm_tools import websearch_swarm_tools
+
+    tools = websearch_swarm_tools(backends=_backends())
+    names = {t.name for t in tools}
+    assert "web_search" in names
+    assert "web_open_page" in names
+    assert "web_dedupe" in names
+    # web_search_brief is the fourth tool
+    assert "web_search_brief" in names
+
+
+def test_swarm_tools_web_search_executes() -> None:
+    pytest.importorskip("langchain_core")
+    from WebSearch.swarm_tools import websearch_swarm_tools
+
+    tools = websearch_swarm_tools(backends=_backends())
+    search_tool = next(t for t in tools if t.name == "web_search")
+    result = search_tool.invoke({"query": "swarm agents", "limit": 2})
+    assert isinstance(result, list)
+    assert result[0]["searcher"] == "fake"
+
+
+def test_swarm_tools_web_open_page_uses_fetch() -> None:
+    pytest.importorskip("langchain_core")
+    from WebSearch.swarm_tools import websearch_swarm_tools
+
+    tools = websearch_swarm_tools(fetch=lambda url: PAGE)
+    open_tool = next(t for t in tools if t.name == "web_open_page")
+    result = open_tool.invoke({"url": "https://example.com/deep"})
+    assert "real analysis" in result["text"]
+
+
+def test_swarm_package_exports_swarm_tools() -> None:
+    from WebSearch import swarm_dispatch, swarm_tool_manifests, websearch_swarm_tools
+
+    assert callable(websearch_swarm_tools)
+    assert callable(swarm_tool_manifests)
+    assert callable(swarm_dispatch)

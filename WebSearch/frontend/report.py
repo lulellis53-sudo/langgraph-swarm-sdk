@@ -170,7 +170,7 @@ def search_report(
         reports.append(report)
         batches.append(kept)
     kept_total = sum(len(batch) for batch in batches)
-    unique = dedupe_hits(_rrf_fuse(batches))
+    unique = dedupe_hits(_rrf_fuse(batches), query)
     normalized = [normalize_hit(h) for h in unique]
     final = near_dedupe(normalized, max_distance=near_distance)
     near = len(normalized) - len(final)

@@ -40,14 +40,12 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "render_brief": ("WebSearch.agent_tools", "render_brief"),
     "search_brief": ("WebSearch.agent_tools", "search_brief"),
     "search_hits": ("WebSearch.agent_tools", "search_hits"),
-    "search": ("WebSearch.agent_tools", "search"),
-    "asearch": ("WebSearch.agent_tools", "asearch"),
-    "as_tool": ("WebSearch.agent_tools", "as_tool"),
-    "SearchResult": ("WebSearch.agent_tools", "SearchResult"),
-    "SearcherStatus": ("WebSearch.agent_tools", "SearcherStatus"),
     "dedupe_documents": ("WebSearch.agent_tools", "dedupe_documents"),
     "summarize_documents": ("WebSearch.agent_tools", "summarize_documents"),
     "websearch_langchain_tools": ("WebSearch.langchain_tools", "websearch_langchain_tools"),
+    "websearch_swarm_tools": ("WebSearch.swarm_tools", "websearch_swarm_tools"),
+    "swarm_tool_manifests": ("WebSearch.swarm_tools", "swarm_tool_manifests"),
+    "swarm_dispatch": ("WebSearch.swarm_tools", "swarm_dispatch"),
     "run_cowork_pipeline": ("WebSearch.browser_agent", "run_cowork_pipeline"),
 }
 
