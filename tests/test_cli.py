@@ -237,6 +237,6 @@ class TestLowSwarmCLI:
 
     def test_cli_pyproject_scripts_entry(self) -> None:
         """Verify pyproject.toml defines low-swarm script entrypoint."""
-        pyproject_path = Path("/Users/usuario/Swarm/pyproject.toml")
+        pyproject_path = Path(__file__).resolve().parents[1] / "pyproject.toml"
         content = pyproject_path.read_text(encoding="utf-8")
         assert 'low-swarm = "swarm_sdk.cli:main"' in content

@@ -70,6 +70,7 @@ class SemanticCache:
         self._lock = threading.Lock()
         self._embedding_lock = threading.Lock()
         self._query_embeddings: OrderedDict[str, np.ndarray] = OrderedDict()
+        self._writes_since_evict = 0
         self._semantic_matrix: np.ndarray | None = None
         self._semantic_rows: list[tuple[int, str]] = []
         self._semantic_data_version = -1
@@ -279,6 +280,7 @@ class SemanticCache:
             response = self._redis_cache.get(f"{tenant_id}:{normalized}")
             if response is not None:
                 self._exact_hits += 1
+                self._touch_semantic(text, tenant_id)
                 return response
         with self._lock:
             row = self._conn.execute(
@@ -288,6 +290,7 @@ class SemanticCache:
         if row is not None:
             self._exact_hits += 1
             response = str(row[0])
+            self._touch_semantic(text, tenant_id)
             if self._redis_cache is not None:
                 self._redis_cache.set(f"{tenant_id}:{normalized}", response)
             return response
@@ -356,19 +359,29 @@ class SemanticCache:
         scored against the semantic layer in a single matrix operation.
         """
         results: list[str | None] = [None] * len(texts)
+        if not texts:
+            return results
         pending: list[tuple[int, str]] = []
+        # One exact-cache query for the whole batch instead of one per text.
+        keys: list[tuple[int, str]] = []
         for i, text in enumerate(texts):
             key = hashlib.sha256(normalize(text).encode()).hexdigest()
-            with self._lock:
-                row = self._conn.execute(
-                    "SELECT response FROM exact_cache WHERE key = ? AND tenant_id = ?",
-                    (key, tenant_id),
-                ).fetchone()
-            if row is not None:
-                results[i] = str(row[0])
+            keys.append((i, key))
+        placeholders = ",".join("?" * len(keys))
+        with self._lock:
+            rows = self._conn.execute(
+                f"SELECT key, response FROM exact_cache WHERE key IN ({placeholders}) "
+                "AND tenant_id = ?",
+                [key for _, key in keys] + [tenant_id],
+            ).fetchall()
+        found = {str(row[0]): str(row[1]) for row in rows}
+        for i, key in keys:
+            hit = found.get(key)
+            if hit is not None:
+                results[i] = hit
                 self._exact_hits += 1
             else:
-                pending.append((i, text))
+                pending.append((i, texts[i]))
 
         if not pending:
             return results
@@ -441,7 +454,12 @@ class SemanticCache:
             self._conn.commit()
             self._semantic_write_version += 1
         if tenant_id == "default":
-            self._evict_if_needed()
+            # Amortize eviction: full sweep only after ~10% more writes, not on
+            # every insert (COUNT + LRU select + multi-row delete under lock).
+            self._writes_since_evict += 1
+            if self._writes_since_evict >= max(1, self.max_entries // 10):
+                self._writes_since_evict = 0
+                self._evict_if_needed()
         if self._redis_cache is not None:
             self._redis_cache.set(f"{tenant_id}:{normalized}", response)
         if self._index is not None and tenant_id == "default":

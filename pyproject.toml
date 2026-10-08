@@ -67,6 +67,7 @@ dependencies = [
     "beautifulsoup4>=4.12",
     "mcp>=2,<3",
     "pyarrow>=18.0",
+    "langchain-xai>=0.3",
 ]
 
 [tool.uv]
@@ -140,8 +141,12 @@ jupyter = [
     "cryptography==48.0.1",
     "ipykernel>=6",
     "jupyter-ai>=2",
+    "jupyterlab-code-formatter>=3.1.0",
+    "jupyterlab-git>=0.55.0",
+    "jupyterlab-lsp>=5.3.0",
     "notebook>=7",
     "pip>=25",
+    "python-lsp-server>=1.15.0",
 ]
 websearch = [
     "selectolax>=0.3",

@@ -15,9 +15,14 @@ Optional **Jupyter Notebook + Jupyter AI** (uses prebuilt `cryptography` wheels;
 
 ```bash
 uv sync --extra jupyter --extra dev
-uv run python -m ipykernel install --user --name=swarm --display-name="Python (Swarm)"
-uv run jupyter lab    # or: uv run jupyter notebook
+./scripts/jupyter.sh
 ```
+
+The script binds JupyterLab to `127.0.0.1`, serves notebooks from `.Jupyter/`,
+keeps Jupyter's default token authentication enabled, and opens the local UI in
+your browser. The `jupyter` extra also includes the Ruff formatter, Python LSP,
+and JupyterLab Git. See [`.Jupyter/README.md`](.Jupyter/README.md) for setup
+and troubleshooting.
 
 FastEmbed is the default embedder and reranker. Its default model (`sentence-transformers/all-MiniLM-L6-v2`, MiniLM2) is ONNX INT8 on CPU. Token budgets use **tiktoken** (`cl100k_base`) by default, with optional Hugging Face `tokenizers.Tokenizer` packing. sqlite-vec stores int8 vectors; Qdrant can use scalar int8 when `vectorstore.quantization` is `int8`. Set `vectorstore.backend: mem0` (optional extra `mem0`) to use [Mem0](https://docs.mem0.ai/) Platform `MemoryClient` for long-term recall (`MEM0_API_KEY`; env var *name* only in YAML). FAISS GPU (`vectorstore.gpu: true`) needs a CUDA `faiss-gpu` build and falls back to CPU when that is missing.
 

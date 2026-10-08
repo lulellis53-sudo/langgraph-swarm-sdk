@@ -12,6 +12,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, cast
 
+from swarm_sdk.commands import register_all
 from swarm_sdk.config.loader import load_swarm_config
 from swarm_sdk.core.rules import HostRuleEngine
 from swarm_sdk.orchestrator.low_swarm import LowSwarmEngine
@@ -494,6 +495,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Enable verbose telemetry output",
     )
 
+    # Subcommand: agentic (alias of run; keeps dest command == "agentic" so
+    # handlers can tell which spelling the user invoked)
+    p_agentic = subparsers.add_parser(
+        "agentic", aliases=["agentic"], help="Alias of `run` (autonomous code synthesis)"
+    )
+    p_agentic.add_argument("task", help="Description of synthesis task to execute")
+    p_agentic.add_argument("--files", nargs="*", default=None)
+    p_agentic.add_argument("--tier", default="auto", choices=["auto", "flash_lite", "pro"])
+    p_agentic.add_argument("--profile", action="store_true")
+    p_agentic.add_argument("--apply", action="store_true")
+    p_agentic.add_argument("--verbose", action="store_true")
+
     # Subcommand: vault
     p_vault = subparsers.add_parser("vault", help="Manage macOS Keychain credentials")
     vault_subs = p_vault.add_subparsers(dest="vault_command", required=False)
@@ -527,6 +540,9 @@ def build_parser() -> argparse.ArgumentParser:
     # Subcommand: doctor
     subparsers.add_parser("doctor", help="Inspect host invariants, SIMD, and CLI tooling")
 
+    # Orchestrator command groups (spawn, swarm, parallel)
+    parser._swarm_handlers = register_all(subparsers)  # type: ignore[attr-defined]
+
     return parser
 
 
@@ -556,7 +572,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.print_help()
         return 2
 
-    if cmd == "run":
+    if cmd in ("run", "agentic"):
         return handle_run(args, console)
     elif cmd == "vault":
         if not getattr(args, "vault_command", None):
@@ -567,6 +583,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return handle_ingest(args, console)
     elif cmd == "doctor":
         return handle_doctor(args, console)
+
+    handler = getattr(parser, "_swarm_handlers", {}).get(cmd)
+    if handler is not None:
+        return handler(args, console)
 
     parser.print_help()
     return 2

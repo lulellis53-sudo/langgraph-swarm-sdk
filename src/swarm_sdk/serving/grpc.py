@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
+import time
 import uuid
 
 import grpc
@@ -23,6 +24,27 @@ from swarm_sdk.vault import prime_runtime_secrets
 _PLANS: dict[str, Plan] = {}
 #: Completed plan results, keyed by plan id; powers PlanStatus polling.
 _RESULTS: dict[str, swarm_pb2.PlanResultMsg] = {}
+#: When each result was recorded, for TTL sweeps.
+_RESULT_TS: dict[str, float] = {}
+#: How long a completed result stays pollable.
+_RESULT_TTL_S = 3600.0
+#: Hard cap on retained plans/results (FIFO backstop).
+_DICT_CAP = 1024
+
+
+def _sweep_results(now: float | None = None) -> None:
+    """Drop TTL-expired results and enforce the size cap (oldest first)."""
+    now = time.time() if now is None else now
+    expired = [pid for pid, ts in _RESULT_TS.items() if now - ts > _RESULT_TTL_S]
+    for pid in expired:
+        _RESULTS.pop(pid, None)
+        _RESULT_TS.pop(pid, None)
+    while len(_RESULTS) > _DICT_CAP:
+        oldest = next(iter(_RESULTS))
+        _RESULTS.pop(oldest, None)
+        _RESULT_TS.pop(oldest, None)
+    while len(_PLANS) > _DICT_CAP:
+        _PLANS.pop(next(iter(_PLANS)))
 
 
 def _to_handle(plan: Plan) -> swarm_pb2.PlanHandle:
@@ -66,6 +88,7 @@ def _from_handle(handle: swarm_pb2.PlanHandle) -> Plan:
 
 def _to_result_msg(plan_id: str, result: PlanResult) -> swarm_pb2.PlanResultMsg:
     """Serialize a plan result to wire form and record it for status polling."""
+    _sweep_results()
     _RESULTS[plan_id] = swarm_pb2.PlanResultMsg(
         plan_id=plan_id,
         outputs=[
@@ -89,6 +112,7 @@ def _to_result_msg(plan_id: str, result: PlanResult) -> swarm_pb2.PlanResultMsg:
             wall_s=result.usage.wall_s,
         ),
     )
+    _RESULT_TS[plan_id] = time.time()
     return _RESULTS[plan_id]
 
 
@@ -173,6 +197,9 @@ class SwarmServicer(swarm_pb2_grpc.SwarmServiceServicer):
                 jev=jev_for(self.sdk.settings),
             )
         )
+        # The plan is no longer needed once the result is recorded; dropping it
+        # keeps long-lived `swarm-grpc` processes from accumulating plans forever.
+        _PLANS.pop(plan_id, None)
         return _to_result_msg(plan_id, result)
 
     def PlanStatus(

@@ -14,7 +14,7 @@ from swarm_sdk.commands import Handler, markup_safe
 from swarm_sdk.orchestrator.graph import run_plan
 from swarm_sdk.orchestrator.plan import Plan
 from swarm_sdk.orchestrator.spawn import make_factory, spawn
-from swarm_sdk.runtime import parallel_cap
+from swarm_sdk.execution import parallel_cap
 
 
 def _positive_int(text: str) -> int:

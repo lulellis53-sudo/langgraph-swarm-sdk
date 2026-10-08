@@ -20,9 +20,10 @@ import html as html_lib
 import json
 import re
 import sqlite3
+import statistics
 import sys
 import time
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote
@@ -200,9 +201,8 @@ def _evidence_series(
         by_date.setdefault(point.date, []).append(point.value)
     series: list[EvidencePoint] = []
     for point_date in sorted(by_date):
-        same = sorted(by_date[point_date])
-        middle = len(same) // 2
-        median = same[middle] if len(same) % 2 else (same[middle - 1] + same[middle]) / 2
+        same = by_date[point_date]
+        median = statistics.median(same)
         series.append(EvidencePoint(point_date, median, "", ""))
     return series
 

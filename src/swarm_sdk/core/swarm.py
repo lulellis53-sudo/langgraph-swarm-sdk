@@ -16,7 +16,6 @@ from swarm_sdk.agents.manifest import (
     agents_root,
     langgraph_manifests,
     load_all_agent_manifests,
-    role_contract,
 )
 from swarm_sdk.config.loader import SwarmFileConfig, load_swarm_config
 from swarm_sdk.config.settings import Settings, load_merged_settings
@@ -24,7 +23,6 @@ from swarm_sdk.core.jev_router import JevRouter
 from swarm_sdk.execution import fan_out, offload
 from swarm_sdk.gpu import set_enabled as set_opencl_enabled
 from swarm_sdk.memory.base import MemoryHit, MemoryStore
-from swarm_sdk.memory.sqlite_vec import SqliteVecStore
 from swarm_sdk.models.chat import (
     complete_with_usage,
     last_ai_text,
@@ -44,33 +42,31 @@ from swarm_sdk.prompting.budget import PackedPrompt, TokenBudget, count_text
 from swarm_sdk.retrieval.cache import SemanticCache
 from swarm_sdk.retrieval.embeddings import (
     Embedder,
-    FastEmbedder,
-    HashEmbedder,
-    LlamaCppEmbedder,
-    LlamaServerEmbedder,
 )
 from swarm_sdk.retrieval.ordering import order_for_prompt
 from swarm_sdk.retrieval.recall import recall_hits, recall_with_confidence
-from swarm_sdk.retrieval.rerank import FastEmbedReranker, KeywordReranker, Reranker
+from swarm_sdk.retrieval.rerank import Reranker
 
 if TYPE_CHECKING:
     from langchain_core.language_models.chat_models import BaseChatModel
     from langchain_core.runnables import RunnableConfig
     from langgraph.checkpoint.base import BaseCheckpointSaver
+from swarm_sdk.core.factories import (
+    default_embedder,
+    default_reranker,
+    open_store,
+)
+from swarm_sdk.core.prompts import (
+    _DEFAULT_NODE_PROMPTS,
+    CODER_PROMPT,
+    RESEARCHER_PROMPT,
+    REVIEWER_PROMPT,
+    ROUTER_SYSTEM,
+    manifest_node_prompt,
+)
 
 logger = logging.getLogger(__name__)
 
-ROUTER_SYSTEM = 'Route work. Reply with JSON only: {"mode":"parallel" or "swarm","tasks":[]}.'
-RESEARCHER_PROMPT = "You are the researcher. Use only the supplied context. Be brief."
-CODER_PROMPT = "You are the coder. Be brief."
-REVIEWER_PROMPT = "You are the reviewer. Be brief."
-# Fallback one-line prompts for the default trio when no manifest wires a node
-# (e.g. an installed wheel used outside the repository, without ``Agents/``).
-_DEFAULT_NODE_PROMPTS = {
-    "researcher": RESEARCHER_PROMPT,
-    "coder": CODER_PROMPT,
-    "reviewer": REVIEWER_PROMPT,
-}
 _JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
 
 
@@ -113,28 +109,6 @@ def _parse_route(raw: str) -> RouteDecision:
         return RouteDecision()
 
 
-def manifest_node_prompt(agents_root: str, manifest: AgentManifest) -> str:
-    """System prompt for one manifest-wired swarm node.
-
-    Preference order: the role contract (``Agents/{Name}/AGENTS.md``), then the
-    manifest ``role`` line, then a one-line default naming the node.
-
-    Args:
-        agents_root: Directory holding the ``Agents/{Name}/`` folders.
-        manifest: Validated manifest of the wired agent.
-
-    Returns:
-        The prompt text, truncated to the manifest's prompt budget.
-    """
-    contract = role_contract(agents_root, manifest.name)
-    text = contract or manifest.role
-    if not text:
-        node = manifest.langgraph_node or manifest.name.lower()
-        return f"You are the {node}. Be brief."
-    budget = TokenBudget(max_tokens=manifest.token_budget.max_prompt)
-    return budget.pack(system=text, memories=[], turns=[]).system
-
-
 def _websearch_tools() -> list[object]:
     """LangChain web-search tools from the WebSearch package; empty when absent.
 
@@ -149,72 +123,6 @@ def _websearch_tools() -> list[object]:
             continue
         return list(imported.websearch_langchain_tools())
     return []
-
-
-def _fastembed_available() -> bool:
-    """Return whether the optional ``fastembed`` package is importable."""
-    try:
-        importlib.import_module("fastembed")
-    except ImportError:
-        return False
-    return True
-
-
-def default_embedder(settings: Settings) -> Embedder:
-    """Build the embedder ``embed_backend`` selects (llama-cpp, hash, or FastEmbed)."""
-    batch = settings.embed_batch_size
-    if settings.embed_backend == "llama-cpp":
-        model_path = settings.llama_embed_model or settings.embed_model
-        return LlamaCppEmbedder(
-            model_path,
-            settings.embed_dim,
-            batch,
-            n_ctx=settings.llama_n_ctx,
-            n_gpu_layers=settings.llama_gpu_layers,
-            n_batch=settings.llama_n_batch,
-        )
-    if settings.embed_backend == "llama-server":
-        return LlamaServerEmbedder(
-            settings.llama_server_url,
-            model=settings.embed_model,
-            dim=settings.embed_dim,
-            batch_size=settings.llama_n_batch,
-        )
-    if settings.embed_backend == "hash" or not _fastembed_available():
-        return HashEmbedder(settings.embed_dim, batch, settings.embed_model)
-    return FastEmbedder(settings.embed_model, settings.embed_dim, batch)
-
-
-def default_reranker(settings: Settings) -> Reranker:
-    """Build the reranker; keyword stand-in when FastEmbed is unavailable."""
-    if not _fastembed_available():
-        return KeywordReranker()
-    return FastEmbedReranker(settings.rerank_model)
-
-
-def open_store(settings: Settings) -> MemoryStore:
-    """Open the vector memory store ``memory_backend`` selects (sqlite-vec default)."""
-    if settings.memory_backend == "faiss":
-        from swarm_sdk.memory.faiss_store import FaissStore
-
-        return FaissStore(settings.embed_dim, gpu=settings.vector_gpu)
-    if settings.memory_backend == "qdrant":
-        from swarm_sdk.memory.qdrant_store import QdrantStore
-
-        return QdrantStore(
-            settings.memory_path,
-            settings.embed_dim,
-            quantization=settings.vector_quantization,
-        )
-    if settings.memory_backend == "opencl":
-        from swarm_sdk.memory.opencl_store import OpenClVecStore
-
-        return OpenClVecStore(settings.embed_dim, quantize=settings.opencl_quantize)
-    if settings.memory_backend == "mem0":
-        from swarm_sdk.memory.mem0_store import Mem0Store
-
-        return Mem0Store.from_settings(settings)
-    return SqliteVecStore(settings.memory_path, settings.embed_dim)
 
 
 class CompiledGraph(Protocol):

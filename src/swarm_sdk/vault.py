@@ -46,21 +46,8 @@ _NAME = re.compile(r"^[A-Z][A-Z0-9_]{0,63}$")
 type Runner = Callable[[Sequence[str]], str | None]
 type InputRunner = Callable[[Sequence[str], str], str | bool | None]
 
-
-def _api_keychain_args() -> list[str]:
-    """Path of APIKEYCHAIN when that file exists, else nothing.
-
-    Swarm items use ``swarm/<NAME>``. The user key store uses
-    ``APIKEYCHAIN/<NAME>`` in ``~/Library/Keychains/APIKEYCHAIN.keychain-db``
-    (override with ``KEYS_KEYCHAIN``). A missing file skips the lookup.
-    """
-    raw = os.environ.get("KEYS_KEYCHAIN")
-    path = (
-        Path(raw).expanduser()
-        if raw
-        else Path.home() / "Library" / "Keychains" / "APIKEYCHAIN.keychain-db"
-    )
-    return [str(path)] if path.is_file() else []
+# Successful lookups only; missing names stay uncached so a later `keys set` is visible.
+_SECRET_CACHE: dict[str, str] = {}
 
 
 def _keychain_args() -> list[str]:
@@ -237,6 +224,11 @@ def get_with_source(
     return None
 
 
+def clear_cache() -> None:
+    """Drop memoized secret values (call after rotating keys)."""
+    _SECRET_CACHE.clear()
+
+
 def get(
     name: str,
     *,
@@ -244,9 +236,26 @@ def get(
     dotenv: Path | None = None,
     environ: MutableMapping[str, str] | None = None,
 ) -> str | None:
-    """Return the secret value for ``name`` or None."""
+    """Return the secret value for ``name`` or None.
+
+    Default lookups (no ``runner``/``dotenv``/``environ``) memoize successful
+    values for the life of the process; call :func:`clear_cache` after rotation.
+    Environment variables still win over the memo.
+    """
+    _check(name)
+    env = os.environ if environ is None else environ
+    if value := env.get(name):
+        return value
+    use_cache = runner is None and dotenv is None and environ is None
+    if use_cache:
+        cached = _SECRET_CACHE.get(name)
+        if cached is not None:
+            return cached
     found = get_with_source(name, runner=runner, dotenv=dotenv, environ=environ)
-    return found[0] if found else None
+    value = found[0] if found else None
+    if use_cache and value:
+        _SECRET_CACHE[name] = value
+    return value
 
 
 def resolve(
@@ -306,9 +315,10 @@ def set_secret(
 
     if runner is not None:
         result = runner(cmd, command)
-        if isinstance(result, bool):
-            return result
-        return result is not None
+        ok = result if isinstance(result, bool) else result is not None
+        if ok:
+            clear_cache()
+        return ok
 
     if sys.platform != "darwin":
         return False
@@ -322,7 +332,10 @@ def set_secret(
             timeout=TIMEOUT_S,
             check=False,
         )
-        return proc.returncode == 0
+        if proc.returncode == 0:
+            clear_cache()
+            return True
+        return False
     except (OSError, subprocess.TimeoutExpired):
         return False
 
@@ -478,6 +491,7 @@ __all__ = [
     "KNOWN_NAMES",
     "Runner",
     "VaultError",
+    "clear_cache",
     "get",
     "get_jev_key",
     "get_openai_key",

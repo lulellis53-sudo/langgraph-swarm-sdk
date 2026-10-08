@@ -16,18 +16,16 @@ price is a snippet-class observation, never a verified store invoice.
 
 from __future__ import annotations
 
-import json
 import re
 import sqlite3
 import subprocess
-import sys
 import time
 from datetime import date
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote
 
 import httpx
-from urllib.parse import unquote
 
 _PKG_DIR = Path(__file__).resolve().parent
 DB_PATH = _PKG_DIR / "offers.db"
@@ -86,7 +84,9 @@ def _key(name: str) -> str:
         return ""
 
 
-_KEYS = {name: "" for name in ("BRAVE_API_KEY", "TAVILY_API_KEY", "EXA_API_KEY", "BRIGHTDATA_API_KEY")}
+_KEYS = {
+    name: "" for name in ("BRAVE_API_KEY", "TAVILY_API_KEY", "EXA_API_KEY", "BRIGHTDATA_API_KEY")
+}
 
 #: Brightdata SERP zone; the keychain holds an MCP token, not a SERP key, so
 #: this provider degrades loudly when the zone rejects the token.
