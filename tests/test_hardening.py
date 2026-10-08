@@ -6,9 +6,8 @@ from pathlib import Path
 
 import httpx
 import pytest
+from WebSearch.frontend import http_utils
 from WebSearch.frontend.websearchers import SearchHit, load_providers, parallel_search
-
-from WebSearch.frontend import websearchers
 from WebSearch.midend import default_fetch
 
 
@@ -18,7 +17,7 @@ def test_default_fetch_caps_body_bytes(
     """The streaming cap keeps exactly the first ``max_bytes`` of the body."""
     payload = b"x" * 5000
     transport = httpx.MockTransport(lambda _request: httpx.Response(200, content=payload))
-    monkeypatch.setattr(websearchers, "_HTTP_CLIENT", httpx.Client(transport=transport))
+    monkeypatch.setattr(http_utils, "_HTTP_CLIENT", httpx.Client(transport=transport))
 
     assert default_fetch("https://example.com/a", max_bytes=1024) == payload[:1024]
     assert default_fetch("https://example.com/a") == payload
@@ -29,7 +28,7 @@ def test_default_fetch_reports_errors_as_oserror(
 ) -> None:
     """HTTP failures stay ``OSError`` so the crawler chain falls through."""
     transport = httpx.MockTransport(lambda _request: httpx.Response(500))
-    monkeypatch.setattr(websearchers, "_HTTP_CLIENT", httpx.Client(transport=transport))
+    monkeypatch.setattr(http_utils, "_HTTP_CLIENT", httpx.Client(transport=transport))
 
     with pytest.raises(OSError):
         default_fetch("https://example.com/a", max_bytes=10)
