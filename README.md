@@ -98,7 +98,11 @@ Current `onnxruntime` wheels do not include macOS x86_64, so FastEmbed is skippe
 ```bash
 uv run swarm-api
 uv run swarm-grpc
+uv run websearch --prompt "query" --route semantic
+uv run agents
 ```
+
+`websearch` is the WebSearch CLI (`WebSearch.cli:main`; also `python -m WebSearch`). `agents` validates `Agents/*/agent.yaml` against `Agents/coordination.yaml` (`python -m swarm_sdk.agents`).
 
 `POST /v1/runs` with `{"text": "...", "thread_id": "t1"}`. `GET /v1/health`. gRPC `SwarmService.Run` and `SwarmService.Recall` call the same core.
 
