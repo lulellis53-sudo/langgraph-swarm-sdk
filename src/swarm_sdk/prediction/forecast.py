@@ -272,17 +272,25 @@ class PredictionFrame(Protocol):
     """Structural view of the prediction frame ``ForecastEngine.predict`` returns."""
 
     @property
-    def columns(self) -> Iterable[str]: ...
+    def columns(self) -> Iterable[str]:
+        """Column labels of the frame."""
+        ...
 
-    def itertuples(self, *, index: bool) -> Iterable[tuple]: ...
+    def itertuples(self, *, index: bool) -> Iterable[tuple]:
+        """Yield rows as tuples; ``index`` controls the leading index element."""
+        ...
 
 
 class _ForecastEngineLike(Protocol):
     """Structural view of the worktree forecast engine the adapter drives."""
 
-    def fit(self, frame: object) -> _ForecastEngineLike: ...
+    def fit(self, frame: object) -> _ForecastEngineLike:
+        """Fit the engine on ``frame``; return ``self`` for chaining."""
+        ...
 
-    def predict(self, horizon: int, **kwargs: object) -> PredictionFrame: ...
+    def predict(self, horizon: int, **kwargs: object) -> PredictionFrame:
+        """Forecast ``horizon`` steps ahead; return the prediction frame."""
+        ...
 
 
 class MlForecaster:

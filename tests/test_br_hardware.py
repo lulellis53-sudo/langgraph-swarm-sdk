@@ -40,7 +40,7 @@ def test_queries_name_the_product_the_brazilian_site_and_the_day() -> None:
     assert "site:kabum.com.br" in broad
     assert "after:2026-10-05 before:2026-10-06" in broad
     assert "cupom OR codigo OR promo OR desconto" in coupon
-    memory = next(item for item in PRODUCTS if item.sku == "ddr5-32gb")
+    memory = next(item for item in PRODUCTS if item.sku == "ddr5-1x32gb")
     memory_query, _ = build_queries(memory, source, on=date(2026, 10, 5))
     assert "DDR5 32GB" in memory_query
 
@@ -74,7 +74,7 @@ def test_verified_pix_floor_ignores_used_card_and_leads() -> None:
     conn = connect(":memory:")
     import_observation(
         conn,
-        sku="ddr5-32gb",
+        sku="ddr5-1x32gb",
         source="kabum",
         url="https://kabum.com.br/a",
         observed_on="2026-10-05",
@@ -86,7 +86,7 @@ def test_verified_pix_floor_ignores_used_card_and_leads() -> None:
     )
     import_observation(
         conn,
-        sku="ddr5-32gb",
+        sku="ddr5-1x32gb",
         source="pichau",
         url="https://pichau.com.br/a",
         observed_on="2026-10-05",
@@ -98,7 +98,7 @@ def test_verified_pix_floor_ignores_used_card_and_leads() -> None:
     )
     import_observation(
         conn,
-        sku="ddr5-32gb",
+        sku="ddr5-1x32gb",
         source="olx",
         url="https://olx.com.br/a",
         observed_on="2026-10-05",
@@ -110,7 +110,7 @@ def test_verified_pix_floor_ignores_used_card_and_leads() -> None:
     )
     import_observation(
         conn,
-        sku="ddr5-32gb",
+        sku="ddr5-1x32gb",
         source="magalu",
         url="https://magazineluiza.com.br/a",
         observed_on="2026-10-05",
@@ -226,7 +226,7 @@ def test_import_rejects_a_snippet_without_evidence() -> None:
     with pytest.raises(ValueError, match="evidence"):
         import_observation(
             conn,
-            sku="ddr5-16gb",
+            sku="ddr5-1x16gb",
             source="promobit",
             url="https://promobit.com.br/x",
             observed_on="2026-10-05",

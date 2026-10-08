@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 
 def register(subparsers: Any) -> tuple[str, Handler]:
+    """Register the ``swarm`` command group; return ``(name, handler)``."""
     parser = subparsers.add_parser("swarm", help="Run a message through the handoff swarm")
     parser.add_argument("text", help="Message for the swarm")
     parser.add_argument("--thread-id", default="default", help="Conversation thread id")

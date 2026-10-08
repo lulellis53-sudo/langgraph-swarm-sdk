@@ -56,7 +56,7 @@ from swarm_sdk.core.factories import (
     default_reranker,
     open_store,
 )
-from swarm_sdk.core.prompts import (
+from swarm_sdk.core.prompts import (  # noqa: F401 -- API-freeze re-exports (test_api_freeze_core_swarm)
     _DEFAULT_NODE_PROMPTS,
     CODER_PROMPT,
     RESEARCHER_PROMPT,

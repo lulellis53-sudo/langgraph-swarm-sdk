@@ -13,7 +13,12 @@ __all__ = ["PerplexitySearchEngine", "ask_perplexity"]
 
 def __getattr__(name: str) -> Any:
     if name in __all__:
-        from swarm_sdk.search.perplexity import PerplexitySearchEngine, ask_perplexity
+        from swarm_sdk.search.perplexity import (
+            PerplexitySearchEngine,
+            ask_perplexity,
+        )
 
-        return {"PerplexitySearchEngine": PerplexitySearchEngine, "ask_perplexity": ask_perplexity}[name]
+        if name == "PerplexitySearchEngine":
+            return PerplexitySearchEngine
+        return ask_perplexity
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -20,9 +20,9 @@ provider configured in Jupyter AI settings; a hosted provider generally needs
 credentials, while local model support such as Ollama is another route.
 
 For this machine, the recommended chat route is the supported Codex persona.
-The `codex` CLI is already installed locally. Jupyter AI also
+Jupyter AI also
 needs the separate `@agentclientprotocol/codex-acp` adapter available on `PATH`; it is
-not installed by the Python extra. Installing a global npm package requires
+not installed by the Python extra. The current adapter release
 the machine's global-install approval. After approval and installation, restart
 JupyterLab and select the Codex persona in Chat. No API key needs to be added
 to this project.

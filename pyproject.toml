@@ -68,6 +68,7 @@ dependencies = [
     "mcp>=2,<3",
     "pyarrow>=18.0",
     "langchain-xai>=0.3",
+    "tree-sitter-python>=0.25.0",
 ]
 
 [tool.uv]
@@ -252,5 +253,11 @@ exclude = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# importlib mode: prepend mode puts test basedirs (e.g. Agents/) at sys.path[0],
+# where data dirs like Agents/Prediction shadow the real Prediction package.
+importmode = "importlib"
 testpaths = ["Agents/benchmark", "tests"]
-pythonpath = ["src", ".", "Agents", "Agents/math"]
+# No "Agents" entry: data dirs there (Agents/Prediction) shadow the real
+# Prediction/WebSearch packages as namespace portions. Everything imported
+# from the tree lives in Agents/benchmark or Agents/math.
+pythonpath = ["src", ".", "Agents/benchmark", "Agents/math"]

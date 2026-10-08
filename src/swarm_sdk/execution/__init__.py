@@ -18,14 +18,22 @@ TASK_SYSTEM = "Answer only the task. Be brief."
 SYNTH_SYSTEM = "Merge the JSON briefs into one short answer."
 
 
-# GIL/free-threading policy lives in the single audited module `concurrency.py`
-# (test_gil_probe_only_in_concurrency_module); re-exported here for convenience.
+# GIL/free-threading policy: the private `sys._is_gil_enabled` probe is confined
+# to this module (test_gil_probe_only_in_execution_module); the caps live in
+# `concurrency.py`, re-exported here for convenience.
 from swarm_sdk.execution.concurrency import (  # noqa: E402
     FREE_THREADED_POOL_WORKERS,
     GIL_POOL_WORKERS,
-    gil_enabled,
     parallel_cap,
 )
+
+
+def gil_enabled() -> bool:
+    """Return whether the GIL is enabled (``True`` on standard CPython builds)."""
+    try:
+        return sys._is_gil_enabled()
+    except AttributeError:
+        return True
 
 
 def _pool_workers() -> int:

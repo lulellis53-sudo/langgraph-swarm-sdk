@@ -25,6 +25,9 @@ from swarm_sdk.vault import (
     set_secret,
 )
 
+# Handlers for the orchestrator command groups, (re)populated by build_parser.
+_SWARM_HANDLERS: dict[str, Any] = {}
+
 # -----------------------------------------------------------------------------
 # Rich Console & Fallback Abstraction
 # -----------------------------------------------------------------------------
@@ -541,7 +544,8 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("doctor", help="Inspect host invariants, SIMD, and CLI tooling")
 
     # Orchestrator command groups (spawn, swarm, parallel)
-    parser._swarm_handlers = register_all(subparsers)  # type: ignore[attr-defined]
+    _SWARM_HANDLERS.clear()
+    _SWARM_HANDLERS.update(register_all(subparsers))
 
     return parser
 
@@ -584,7 +588,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     elif cmd == "doctor":
         return handle_doctor(args, console)
 
-    handler = getattr(parser, "_swarm_handlers", {}).get(cmd)
+    handler = _SWARM_HANDLERS.get(cmd)
     if handler is not None:
         return handler(args, console)
 
