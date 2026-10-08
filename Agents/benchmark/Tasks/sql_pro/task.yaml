@@ -1,8 +1,0 @@
-name: sql_pro
-skill: sql-pro
-sdk_entry: benchmark.sql_pro.harness.SqlProSuite
-fixtures: benchmark/sql_pro/fixtures/schema.sql
-metrics: [latency_ms, row_count, explain_plan]
-models: none
-pass:
-  all_cases: true

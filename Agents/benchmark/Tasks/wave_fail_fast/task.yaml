@@ -1,8 +1,0 @@
-name: wave_fail_fast
-sdk_entry: benchmark.Tasks.wave_fail_fast.benchmark_wave_fail_fast.run
-metrics:
-  - wave_tokens_burned
-  - siblings_still_running
-models: scripted (no network, no API keys)
-pass:
-  improvement_pct_min: 25.0

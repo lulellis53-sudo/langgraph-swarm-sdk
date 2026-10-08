@@ -1,6 +1,0 @@
-name: websearch_tools
-sdk_entry: benchmark.websearch_bench.run_benchmark
-metrics: [appeared, scraped, norm_pct, tokens, api_tokens, search_ms, scrape_ms]
-models: none
-pass:
-  offline_fixture: true
