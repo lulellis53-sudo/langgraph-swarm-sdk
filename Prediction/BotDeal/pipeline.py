@@ -93,25 +93,39 @@ def _site_query(
 
 
 def _scrape(url: str, *, timeout_s: int) -> str:
-    """Fetch one page through the security-preflight and extract its text."""
+    """Fetch one page through the security preflight, the WebSearch politeness
+    layer, and the lane's text extractor.
+
+    The fetch deliberately goes through ``polite_fetch`` rather than a bare
+    ``httpx.get``: that is where per-host rate limiting, robots caching and the
+    declared user agent live. Bypassing it would make this pipeline an
+    impolite crawler that the WebSearch lane cannot see or throttle.
+    """
     from WebSearch.backend.docs import extract_and_normalize
+    from WebSearch.midend.politeness import polite_fetch
 
     if not url.startswith(("http://", "https://")):
         return ""
     host = url.split("/")[2] if "://" in url else ""
     if not host or host.split(":")[0] in {"localhost", "127.0.0.1", "0.0.0.0", "::1"}:
         return ""
-    try:
+
+    def _get(target: str) -> tuple[bytes, int | None]:
         response = httpx.get(
-            url,
+            target,
             timeout=timeout_s,
             follow_redirects=True,
             headers={"User-Agent": "Mozilla/5.0 (BotDeal price harvest)"},
         )
         response.raise_for_status()
+        return response.content, response.status_code
+
+    try:
+        body, _status = polite_fetch(url, _get)
     except Exception:
         return ""
-    doc = extract_and_normalize(response.text, url)
+    text = body.decode("utf-8", errors="replace") if isinstance(body, bytes) else str(body)
+    doc = extract_and_normalize(text, url)
     return doc.text[:4000]
 
 
@@ -282,8 +296,7 @@ def multi_search(
                     (
                         c
                         for c in (
-                            harvest.parse_brl_cents(m.group(0))
-                            for m in _PRICE.finditer(page_text)
+                            harvest.parse_brl_cents(m.group(0)) for m in _PRICE.finditer(page_text)
                         )
                         if c is not None
                     ),

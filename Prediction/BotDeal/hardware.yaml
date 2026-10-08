@@ -4,24 +4,24 @@
 version: 1
 
 products:
-  - {sku: rtx-5090, name: NVIDIA GeForce RTX 5090, category: gpu, terms: [RTX 5090]}
-  - {sku: rtx-5080, name: NVIDIA GeForce RTX 5080, category: gpu, terms: [RTX 5080]}
-  - {sku: rtx-5070-ti, name: NVIDIA GeForce RTX 5070 Ti, category: gpu, terms: [RTX 5070 Ti]}
-  - {sku: rtx-5070, name: NVIDIA GeForce RTX 5070, category: gpu, terms: [RTX 5070]}
-  - {sku: rtx-5060, name: NVIDIA GeForce RTX 5060, category: gpu, terms: [RTX 5060]}
-  - {sku: rtx-5060-ti, name: NVIDIA GeForce RTX 5060 Ti, category: gpu, terms: [RTX 5060 Ti]}
-  - {sku: rtx-5000-ada, name: NVIDIA RTX 5000 Ada, category: gpu, terms: [RTX 5000 Ada]}
-  - {sku: ryzen-5-9600x, name: AMD Ryzen 5 9600X, category: cpu, terms: [Ryzen 5 9600X]}
-  - {sku: ryzen-7-9700x, name: AMD Ryzen 7 9700X, category: cpu, terms: [Ryzen 7 9700X]}
-  - {sku: ryzen-7-9800x, name: AMD Ryzen 7 9800X, category: cpu, terms: [Ryzen 7 9800X]}
-  - {sku: ryzen-9-9900x, name: AMD Ryzen 9 9900X, category: cpu, terms: [Ryzen 9 9900X]}
-  - {sku: ryzen-9-9950x, name: AMD Ryzen 9 9950X, category: cpu, terms: [Ryzen 9 9950X]}
+  - {sku: rtx-5090,      name: NVIDIA GeForce RTX 5090, category: gpu,    terms: [RTX 5090]}
+  - {sku: rtx-5080,      name: NVIDIA GeForce RTX 5080, category: gpu,    terms: [RTX 5080]}
+  - {sku: rtx-5070-ti,   name: NVIDIA GeForce RTX 5070 Ti, category: gpu, terms: [RTX 5070 Ti]}
+  - {sku: rtx-5070,      name: NVIDIA GeForce RTX 5070, category: gpu,    terms: [RTX 5070]}
+  - {sku: rtx-5060,      name: NVIDIA GeForce RTX 5060, category: gpu,    terms: [RTX 5060]}
+  - {sku: rtx-5060-ti,   name: NVIDIA GeForce RTX 5060 Ti, category: gpu, terms: [RTX 5060 Ti]}
+  - {sku: rtx-5000-ada,  name: NVIDIA RTX 5000 Ada,     category: gpu,    terms: [RTX 5000 Ada]}
+  - {sku: ryzen-5-9600x,   name: AMD Ryzen 5 9600X,   category: cpu, terms: [Ryzen 5 9600X]}
+  - {sku: ryzen-7-9700x,   name: AMD Ryzen 7 9700X,   category: cpu, terms: [Ryzen 7 9700X]}
+  - {sku: ryzen-7-9800x,   name: AMD Ryzen 7 9800X,   category: cpu, terms: [Ryzen 7 9800X]}
+  - {sku: ryzen-9-9900x,   name: AMD Ryzen 9 9900X,   category: cpu, terms: [Ryzen 9 9900X]}
+  - {sku: ryzen-9-9950x,   name: AMD Ryzen 9 9950X,   category: cpu, terms: [Ryzen 9 9950X]}
   - {sku: ryzen-7-9800x3d, name: AMD Ryzen 7 9800X3D, category: cpu, terms: [Ryzen 7 9800X3D]}
   - {sku: ryzen-7-9850x3d, name: AMD Ryzen 7 9850X3D, category: cpu, terms: [Ryzen 7 9850X3D]}
   - {sku: ryzen-9-9950x3d, name: AMD Ryzen 9 9950X3D, category: cpu, terms: [Ryzen 9 9950X3D]}
   - {sku: ryzen-9-9950x3d2, name: AMD Ryzen 9 9950X3D2, category: cpu, terms: [Ryzen 9 9950X3D2]}
-  - {sku: ddr5-1x8gb, name: DDR5 1x8GB, category: memory, terms: [DDR5 8GB, memoria ddr5 8gb]}
-  - {sku: ddr5-2x8gb, name: DDR5 2x8GB, category: memory, terms: [DDR5 2x8GB, kit ddr5 16gb]}
+  - {sku: ddr5-1x8gb,  name: DDR5 1x8GB,  category: memory, terms: [DDR5 8GB, memoria ddr5 8gb]}
+  - {sku: ddr5-2x8gb,  name: DDR5 2x8GB,  category: memory, terms: [DDR5 2x8GB, kit ddr5 16gb]}
   - {sku: ddr5-1x16gb, name: DDR5 1x16GB, category: memory, terms: [DDR5 16GB, memoria ddr5 16gb]}
   - {sku: ddr5-2x16gb, name: DDR5 2x16GB, category: memory, terms: [DDR5 2x16GB, kit ddr5 32gb]}
   - {sku: ddr5-1x32gb, name: DDR5 1x32GB, category: memory, terms: [DDR5 32GB, memoria ddr5 32gb]}
@@ -29,17 +29,17 @@ products:
   - {sku: ddr5-1x64gb, name: DDR5 1x64GB, category: memory, terms: [DDR5 64GB, memoria ddr5 64gb]}
 
 sources:
-  - {name: kabum, domain: kabum.com.br, kind: retailer}
-  - {name: terabyte, domain: terabyteshop.com.br, kind: retailer}
-  - {name: pichau, domain: pichau.com.br, kind: retailer}
-  - {name: amazon-br, domain: amazon.com.br, kind: retailer}
-  - {name: magalu, domain: magazineluiza.com.br, kind: retailer}
-  - {name: mercadolivre, domain: mercadolivre.com.br, kind: marketplace}
-  - {name: casasbahia, domain: casasbahia.com.br, kind: retailer}
-  - {name: olx, domain: olx.com.br, kind: marketplace}
-  - {name: promobit, domain: promobit.com.br, kind: community}
-  - {name: x, domain: x.com, kind: social}
-  - {name: telegram, domain: t.me, kind: social}
+  - {name: kabum,       domain: kabum.com.br,          kind: retailer}
+  - {name: terabyte,    domain: terabyteshop.com.br,   kind: retailer}
+  - {name: pichau,      domain: pichau.com.br,         kind: retailer}
+  - {name: amazon-br,   domain: amazon.com.br,         kind: retailer}
+  - {name: magalu,      domain: magazineluiza.com.br,  kind: retailer}
+  - {name: mercadolivre, domain: mercadolivre.com.br,  kind: marketplace}
+  - {name: casasbahia,  domain: casasbahia.com.br,     kind: retailer}
+  - {name: olx,         domain: olx.com.br,            kind: marketplace}
+  - {name: promobit,    domain: promobit.com.br,       kind: community}
+  - {name: x,           domain: x.com,                 kind: social}
+  - {name: telegram,    domain: t.me,                  kind: social}
 
 # Telegram sniper: bot watches BR promo channels, parses BRL prices, and
 # alerts when a floor lands in FLOOR_TARGETS. Token comes from the Keychain
