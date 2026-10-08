@@ -207,18 +207,27 @@ def build_queries(
     source: Source,
     *,
     on: date,
+    lookback_days: int = 1,
 ) -> tuple[str, str]:
     """Return the broad query and the coupon query for one product and site.
 
-    ``before`` is the next calendar day, so the window is ``on``.
+    The window ends on ``on`` (today's market date) and reaches back
+    ``lookback_days`` days, so consecutive runs overlap and a product can
+    accumulate the multi-day history the forecast needs. A single day can
+    never satisfy :data:`FORECAST_MIN_DAYS`.
 
     Args:
         product: Catalog product.
         source: Discovery site.
-        on: Market date used as the ``after:`` bound.
+        on: Market date marking the end of the window.
+        lookback_days: Window length in days; ``1`` reproduces the original
+            same-day window.
     """
+    if lookback_days < 1:
+        raise ValueError("lookback_days must be at least 1")
     product_clause = " OR ".join(f'"{term}"' for term in product.terms)
-    window = f"after:{on.isoformat()} before:{(on + timedelta(days=1)).isoformat()}"
+    start = on - timedelta(days=lookback_days)
+    window = f"after:{start.isoformat()} before:{(on + timedelta(days=1)).isoformat()}"
     site = f"site:{source.domain}"
     broad = f"({product_clause}) (preco OR oferta) {site} {window}"
     coupon = f"({product_clause}) (cupom OR codigo OR promo OR desconto) {site} {window}"
@@ -464,6 +473,32 @@ def rebuild_alerts(conn: sqlite3.Connection) -> int:
     return written
 
 
+def forecastable_payments(conn: sqlite3.Connection, sku: str) -> list[str]:
+    """Return observed payment methods for ``sku``, most-populated first.
+
+    The lane writes ``card`` while some operator flows write ``pix``, so a run
+    must forecast whichever payment actually accumulated history rather than
+    assuming one.
+
+    Args:
+        conn: Open offer database.
+        sku: Catalog product sku.
+
+    Returns:
+        Payment names ordered by descending number of observed floor days.
+    """
+    rows = conn.execute(
+        """
+        SELECT payment, COUNT(*) AS n FROM daily_floors
+        WHERE sku = ? AND data_origin = 'observed'
+        GROUP BY payment
+        ORDER BY n DESC, payment
+        """,
+        (sku,),
+    ).fetchall()
+    return [row["payment"] for row in rows]
+
+
 def write_forecast(
     conn: sqlite3.Connection,
     sku: str,
@@ -471,6 +506,7 @@ def write_forecast(
     engine: ForecastModel | None,
     horizon: int = 7,
     cutoff: str | None = None,
+    payment: str = "pix",
 ) -> str:
     """Forecast one observed price floor, or record that the history is too short.
 
@@ -480,30 +516,40 @@ def write_forecast(
         engine: Fitted by this function. ``None`` records an unavailable forecast.
         horizon: Days ahead. Must be positive.
         cutoff: Last market date allowed into the series. ``None`` uses the latest floor.
+        payment: Payment method whose floor series is forecast. Defaults to
+            ``pix``; callers should pass a value from
+            :func:`forecastable_payments` so the series is the one that exists.
 
     Returns:
         ``ready`` or ``unavailable``.
 
     Raises:
-        ValueError: When ``horizon`` is below 1 or ``sku`` is unknown.
+        ValueError: When ``horizon`` is below 1, ``sku`` is unknown, or
+            ``payment`` is not an allowed payment method.
     """
     if horizon < 1:
         raise ValueError("horizon must be at least 1")
+    if payment not in _PAYMENTS:
+        raise ValueError(f"payment must be one of {sorted(_PAYMENTS)}, got {payment!r}")
     if sku not in {item.sku for item in PRODUCTS}:
         raise ValueError(f"unknown sku: {sku}")
     rows = conn.execute(
         """
         SELECT market_date, floor_cents FROM daily_floors
-        WHERE sku = ? AND payment = 'pix' AND data_origin = 'observed'
+        WHERE sku = ? AND payment = ? AND data_origin = 'observed'
         ORDER BY market_date
         """,
-        (sku,),
+        (sku, payment),
     ).fetchall()
     if cutoff is not None:
         rows = [row for row in rows if row["market_date"] <= cutoff]
     last = cutoff or (rows[-1]["market_date"] if rows else market_today().isoformat())
     if engine is None or len(rows) < FORECAST_MIN_DAYS:
-        detail = "need 14 observed pix floors" if engine is not None else "no forecast engine"
+        detail = (
+            f"need {FORECAST_MIN_DAYS} observed {payment} floors"
+            if engine is not None
+            else "no forecast engine"
+        )
         _save_prediction(conn, sku, horizon, last, None, "unavailable", detail)
         return "unavailable"
     import pandas as pd
@@ -580,6 +626,11 @@ def main(argv: list[str] | None = None) -> None:
     forecast = sub.add_parser("forecast")
     forecast.add_argument("--sku", required=True)
     forecast.add_argument("--horizon", type=int, default=7)
+    forecast.add_argument(
+        "--payment",
+        default=None,
+        help="Payment series to forecast; defaults to the most-populated observed one.",
+    )
     args = parser.parse_args(argv)
     if args.command == "queries":
         _print_queries()
@@ -593,11 +644,16 @@ def main(argv: list[str] | None = None) -> None:
             alerts = rebuild_alerts(conn)
             print(f"floors={floors} alerts={alerts}")
         else:
+            payment = args.payment or next(
+                iter(forecastable_payments(conn, args.sku)),
+                "pix",
+            )
             status = write_forecast(
                 conn,
                 args.sku,
                 engine=_live_engine(),
                 horizon=args.horizon,
+                payment=payment,
             )
             print(status)
     finally:
