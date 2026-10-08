@@ -9,9 +9,14 @@ results straight into a prompt use :func:`search_brief`.
 
 from __future__ import annotations
 
+import asyncio
+import os
 import re
-from collections.abc import Mapping, Sequence
-from dataclasses import asdict
+import threading
+import time
+from collections import OrderedDict
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from WebSearch.backend.docs import ExtractedDoc
@@ -20,8 +25,11 @@ from WebSearch.backend.route import dedupe_normalize, semantic_handler
 from WebSearch.frontend.websearchers import (
     _SEARCH_CACHE_TTL_S,
     ProvidersConfig,
+    SearcherSpec,
     SearchFn,
     SearchHit,
+    dedupe_hits,
+    load_providers,
     parallel_search,
 )
 from WebSearch.repeater import normalize_url
@@ -151,6 +159,258 @@ def search_brief(
     return render_brief(hits, max_chars=max_chars)
 
 
+# --- status-reporting agent surface -------------------------------------------
+
+
+#: Status values a searcher can report for one query.
+STATUS_VALUES = ("ok", "empty", "no_key", "not_implemented", "disabled", "error")
+
+_QUERY_RESULT_CACHE: OrderedDict[
+    tuple[str, tuple[str, ...] | None, tuple[str, ...], tuple[str, ...]],
+    tuple[float, SearchResult, ProvidersConfig, tuple[tuple[str, SearchFn], ...]],
+] = OrderedDict()
+_QUERY_RESULT_CACHE_LOCK = threading.Lock()
+_QUERY_RESULT_CACHE_MAX = 128
+
+
+@dataclass(frozen=True, slots=True)
+class SearcherStatus:
+    """One searcher's outcome for one query: a status plus a short human hint."""
+
+    status: str
+    detail: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class SearchResult:
+    """Query result with per-searcher status: hits plus why a searcher contributed none.
+
+    Attributes:
+        query: The query as passed in.
+        hits: Merged unique hits, config order, best first.
+        status: searcher id → why it did or did not contribute.
+        timings_ms: searcher id → wall time of its backend call.
+        tokens: Sum of per-hit API token usage (0 for keyless and cached hits).
+    """
+
+    query: str
+    hits: tuple[SearchHit, ...] = ()
+    status: dict[str, SearcherStatus] = field(default_factory=dict)
+    timings_ms: dict[str, float] = field(default_factory=dict)
+    tokens: int = 0
+
+
+def _searcher_enabled(spec: SearcherSpec, enabled_ids: Sequence[str] | None) -> bool:
+    """Runtime decision: ``enabled_ids`` overrides the YAML ``enabled`` flag."""
+    if enabled_ids is not None:
+        return spec.id in enabled_ids
+    return spec.enabled
+
+
+def _query_cache_key(
+    query: str,
+    cfg: ProvidersConfig,
+    backends: Mapping[str, SearchFn] | None,
+    enabled_ids: Sequence[str] | None,
+) -> tuple[str, tuple[str, ...] | None, tuple[str, ...], tuple[str, ...]]:
+    return (
+        query,
+        tuple(sorted(enabled_ids)) if enabled_ids is not None else None,
+        tuple(spec.id for spec in cfg.searchers),
+        tuple(sorted(backends or {})),
+    )
+
+
+def _cached_result(
+    key: tuple[str, tuple[str, ...] | None, tuple[str, ...], tuple[str, ...]],
+    ttl_s: float,
+    cfg: ProvidersConfig,
+    backends: Mapping[str, SearchFn] | None,
+) -> SearchResult | None:
+    """Live cache entry for *key* whose config and backends are still the same objects."""
+    now = time.monotonic()
+    with _QUERY_RESULT_CACHE_LOCK:
+        entry = _QUERY_RESULT_CACHE.get(key)
+        if entry is None:
+            return None
+        expires_at, result, entry_cfg, entry_fns = entry
+        if (
+            now >= expires_at
+            or entry_cfg is not cfg
+            or any(backends is not None and backends.get(sid) is not fn for sid, fn in entry_fns)
+        ):
+            del _QUERY_RESULT_CACHE[key]
+            return None
+        _QUERY_RESULT_CACHE.move_to_end(key)
+        return result
+
+
+def _store_result(
+    key: tuple[str, tuple[str, ...] | None, tuple[str, ...], tuple[str, ...]],
+    ttl_s: float,
+    result: SearchResult,
+    cfg: ProvidersConfig,
+    backends: Mapping[str, SearchFn] | None,
+) -> None:
+    with _QUERY_RESULT_CACHE_LOCK:
+        while len(_QUERY_RESULT_CACHE) >= _QUERY_RESULT_CACHE_MAX:
+            _QUERY_RESULT_CACHE.popitem(last=False)
+        _QUERY_RESULT_CACHE[key] = (
+            time.monotonic() + ttl_s,
+            result,
+            cfg,
+            tuple((sid, fn) for sid, fn in (backends or {}).items()),
+        )
+
+
+def search(
+    query: str,
+    *,
+    config: ProvidersConfig | None = None,
+    backends: Mapping[str, SearchFn] | None = None,
+    enabled_ids: Sequence[str] | None = None,
+    limit: int = 0,
+    cache_ttl_s: float = _SEARCH_CACHE_TTL_S,
+) -> SearchResult:
+    """Run every enabled searcher and report why each one did or did not contribute.
+
+    Searchers disabled in the registry (or outside ``enabled_ids``) are never
+    called and report ``disabled``. An enabled searcher whose API key env vars
+    all resolve empty reports ``no_key``; one without a registered backend
+    reports ``not_implemented``. A backend that runs reports ``ok`` with hits
+    or ``empty`` without, and a backend that raises reports ``error`` and never
+    affects the other searchers.
+
+    Results are cached per (query, config, backends, enabled_ids) for
+    ``cache_ttl_s`` seconds (LRU, identity-checked so a rebuilt config or
+    backend set is a different entry); ``<= 0`` disables the cache.
+
+    Args:
+        query (str): User query (a dork string works as-is).
+        config (ProvidersConfig | None): Registry; default ``load_providers()``.
+        backends (Mapping[str, SearchFn] | None): id → callable; default HTTP APIs.
+        enabled_ids (Sequence[str] | None): When given, only these ids run.
+        limit (int): Max merged hits; ``0`` returns everything.
+        cache_ttl_s (float): Query-result cache lifetime in seconds.
+
+    Returns:
+        SearchResult: Unique hits plus per-searcher status, timings and tokens.
+    """
+    cfg = config if config is not None else load_providers()
+    key = _query_cache_key(query, cfg, backends, enabled_ids)
+    if cache_ttl_s > 0 and (cached := _cached_result(key, cache_ttl_s, cfg, backends)):
+        return cached
+
+    table = dict(backends) if backends is not None else {}
+    hits: list[SearchHit] = []
+    statuses: dict[str, SearcherStatus] = {}
+    timings: dict[str, float] = {}
+    for spec in cfg.searchers:
+        if not _searcher_enabled(spec, enabled_ids):
+            reason = "not in enabled_ids" if enabled_ids is not None else "enabled: false"
+            statuses[spec.id] = SearcherStatus("disabled", reason)
+            continue
+        key_names = [spec.api_key_env, *spec.api_key_fallback_envs]
+        if any(name for name in key_names) and not any(
+            os.environ.get(name, "").strip() for name in key_names
+        ):
+            statuses[spec.id] = SearcherStatus(
+                "no_key", f"set {spec.api_key_env or key_names[-1]} to enable"
+            )
+            continue
+        fn = table.get(spec.id)
+        if fn is None:
+            statuses[spec.id] = SearcherStatus("not_implemented", "no backend registered")
+            continue
+        started = time.perf_counter()
+        try:
+            batch = list(fn(query, spec))
+        except Exception as exc:  # status, not crash: one searcher never breaks the query
+            timings[spec.id] = (time.perf_counter() - started) * 1000.0
+            statuses[spec.id] = SearcherStatus("error", str(exc)[:120])
+            continue
+        timings[spec.id] = (time.perf_counter() - started) * 1000.0
+        hits.extend(batch)
+        statuses[spec.id] = SearcherStatus("ok" if batch else "empty")
+    merged = dedupe_hits(hits)
+    if limit and limit > 0:
+        merged = merged[:limit]
+    result = SearchResult(
+        query=query,
+        hits=tuple(merged),
+        status=statuses,
+        timings_ms=timings,
+        tokens=sum(hit.api_tokens for hit in merged),
+    )
+    if cache_ttl_s > 0:
+        _store_result(key, cache_ttl_s, result, cfg, backends)
+    return result
+
+
+async def asearch(
+    query: str,
+    *,
+    config: ProvidersConfig | None = None,
+    backends: Mapping[str, SearchFn] | None = None,
+    enabled_ids: Sequence[str] | None = None,
+    limit: int = 0,
+    cache_ttl_s: float = _SEARCH_CACHE_TTL_S,
+) -> SearchResult:
+    """Awaitable :func:`search` — the blocking run happens in a worker thread."""
+    return await asyncio.to_thread(
+        search,
+        query,
+        config=config,
+        backends=backends,
+        enabled_ids=enabled_ids,
+        limit=limit,
+        cache_ttl_s=cache_ttl_s,
+    )
+
+
+def as_tool(
+    *,
+    config: ProvidersConfig | None = None,
+    backends: Mapping[str, SearchFn] | None = None,
+    enabled_ids: Sequence[str] | None = None,
+    limit: int = 5,
+    max_tokens: int = 200,
+    count_tokens: Callable[[str], int] | None = None,
+) -> Callable[[str], str]:
+    """Bind :func:`search` into a plain ``(query) -> brief`` callable for an agent.
+
+    The brief is :func:`render_brief` output over the merged hits, trimmed to
+    ``max_tokens`` when a ``count_tokens`` counter is supplied (default counter:
+    none, and the brief is only bounded by ``render_brief``'s character cap of
+    four characters per token).
+
+    Args:
+        config (ProvidersConfig | None): Registry; default ``load_providers()``.
+        backends (Mapping[str, SearchFn] | None): id → callable; default none.
+        enabled_ids (Sequence[str] | None): When given, only these ids run.
+        limit (int): Max hits in a brief.
+        max_tokens (int): Prompt budget for the brief.
+        count_tokens (Callable[[str], int] | None): Token counter for trimming.
+
+    Returns:
+        Callable[[str], str]: Query → cited, prompt-ready brief string.
+    """
+
+    def tool(query: str) -> str:
+        result = search(
+            query, config=config, backends=backends, enabled_ids=enabled_ids, limit=limit
+        )
+        brief = render_brief(list(result.hits)[:limit], max_chars=max_tokens * 4)
+        if count_tokens is None or count_tokens(brief) <= max_tokens:
+            return brief
+        lines = brief.splitlines()
+        while len(lines) > 2 and count_tokens("\n".join(lines)) > max_tokens:
+            lines = lines[:-1]
+        return "\n".join(lines)
+
+    return tool
+
+
 def dedupe_documents(docs: Sequence[ExtractedDoc]) -> dict[str, Any]:
     """Normalize and deduplicate extracted documents for agent workflows."""
     clean = dedupe_normalize(docs)
@@ -184,4 +444,16 @@ def summarize_documents(
     }
 
 
-__all__ = ["dedupe_documents", "render_brief", "search_brief", "search_hits", "summarize_documents"]
+__all__ = [
+    "STATUS_VALUES",
+    "SearchResult",
+    "SearcherStatus",
+    "asearch",
+    "as_tool",
+    "dedupe_documents",
+    "render_brief",
+    "search",
+    "search_brief",
+    "search_hits",
+    "summarize_documents",
+]

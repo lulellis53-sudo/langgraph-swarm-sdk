@@ -20,10 +20,10 @@ from typing import TYPE_CHECKING, Any, Literal, Protocol
 from urllib.parse import urlencode, urlsplit
 
 import yaml
-
-from swarm_sdk.retrieval.redis_exact import RedisExactCache
 from WebSearch.frontend.dorks import parse_dork
 from WebSearch.repeater import normalize_url, repeater
+
+from swarm_sdk.retrieval.redis_exact import RedisExactCache
 
 if TYPE_CHECKING:
     from httpx import Client as HttpxClient
@@ -76,6 +76,9 @@ class SearcherSpec:
     #: Extra key env names tried in order when the primary key is missing, rejected (401/403)
     #: or out of quota (429). Only ``google_search`` rotates on failure today.
     api_key_fallback_envs: tuple[str, ...] = ()
+    #: ``False`` keeps the searcher registered but never called (status ``disabled``);
+    #: ``search(enabled_ids=...)`` re-enables it for one call.
+    enabled: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -319,7 +322,8 @@ def type_is_searcher_kind(value: object) -> bool:
     return value in ("docs", "websearcher")
 
 
-_PROVIDERS_CACHE: dict[tuple[str, int, int], ProvidersConfig] = {}
+_PROVIDERS_CACHE: OrderedDict[tuple[str, int, int], ProvidersConfig] = OrderedDict()
+_PROVIDERS_CACHE_MAX = 8
 
 
 def load_providers(path: Path | None = None) -> ProvidersConfig:
@@ -341,7 +345,11 @@ def load_providers(path: Path | None = None) -> ProvidersConfig:
     cached = _PROVIDERS_CACHE.get(key)
     if cached is None:
         cached = _parse_providers(target)
+        while len(_PROVIDERS_CACHE) >= _PROVIDERS_CACHE_MAX:
+            _PROVIDERS_CACHE.popitem(last=False)
         _PROVIDERS_CACHE[key] = cached
+    else:
+        _PROVIDERS_CACHE.move_to_end(key)
     return cached
 
 
@@ -373,6 +381,7 @@ def _parse_providers(target: Path) -> ProvidersConfig:
         dork_mode = str(item.get("dork") or "native")
         if dork_mode not in {"native", "translate"}:
             raise ValueError(f"searcher {item.get('id')!r}: dork must be native or translate")
+        enabled_raw = item.get("enabled", True)
         searchers.append(
             SearcherSpec(
                 id=str(item["id"]),
@@ -384,6 +393,7 @@ def _parse_providers(target: Path) -> ProvidersConfig:
                 base_url_env=str(base_env) if isinstance(base_env, str) else None,
                 dork=dork_mode,
                 api_key_fallback_envs=fallbacks,
+                enabled=bool(enabled_raw),
             )
         )
     extractors_block = raw.get("extractors")
@@ -976,11 +986,28 @@ async def _bright_data_search(query: str, token: str, engine: str) -> object:
     for block in result.content:
         value = getattr(block, "text", None)
         if isinstance(value, str):
-            try:
-                return json.loads(value)
-            except json.JSONDecodeError:
-                continue
+            payload = _parse_mcp_text(value)
+            if payload is not None:
+                return payload
     return None
+
+
+def _parse_mcp_text(value: str) -> Any | None:
+    """Parse an MCP text block, unwrapping Bright Data's security markers.
+
+    The ``=====UNTRUSTED_<id>_`` wrapper marks fetched external content; the
+    payload between the markers is data, not instructions.
+    """
+    wrapped = re.search(
+        r"=====UNTRUSTED_\w+_BEGIN=====\s*(.*?)\s*=====UNTRUSTED_\w+_END=====",
+        value,
+        re.DOTALL,
+    )
+    payload_text = wrapped.group(1) if wrapped else value
+    try:
+        return json.loads(payload_text)
+    except json.JSONDecodeError:
+        return None
 
 
 def _bright_data_hits(payload: object, searcher_id: str) -> list[SearchHit]:
@@ -1679,6 +1706,8 @@ def registry_search(
     table = dict(backends if backends is not None else builtin_searchers())
     hits: list[SearchHit] = []
     for spec in _select_specs(cfg, searcher_id):
+        if not spec.enabled:
+            continue
         fn = table.get(spec.id)
         if fn is None:
             continue
@@ -1786,7 +1815,11 @@ def parallel_search(
 
     cfg = config or load_providers()
     table = dict(backends if backends is not None else builtin_searchers())
-    jobs = [(spec, table[spec.id]) for spec in _select_specs(cfg, searcher_id) if spec.id in table]
+    jobs = [
+        (spec, table[spec.id])
+        for spec in _select_specs(cfg, searcher_id)
+        if spec.id in table and spec.enabled
+    ]
     if not jobs:
         return []
 
