@@ -3,7 +3,7 @@
 > **Merged persona:** former **Benchmark Creator** (`benchmark-creator`) — workload
 > definition, measured baselines, suite authoring, and regression gates live here.
 > **Canonical methodology:** [`Benchmark.md`](Benchmark.md) (full protocol);
-> metrics index: [`Documents/Benchmark.md`](../../Documents/Benchmark.md).
+> metrics index: [`docs/Benchmark.md`](../../docs/Benchmark.md).
 
 ## Persona
 

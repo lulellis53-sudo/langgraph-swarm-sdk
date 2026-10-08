@@ -1,6 +1,6 @@
-"""Measure the runtime claims of Documents/Python3.15.md §11 on this host.
+"""Measure the runtime claims of docs/Python3.15.md §11 on this host.
 
-Canonical dossier paths: ``~/Swarm/Documents/Python3.15.md`` and personal mirror
+Canonical dossier paths: ``~/Swarm/docs/Python3.15.md`` and personal mirror
 ``~/Desktop/Documentos/Python3.15.md``. Section §11.3 documents how to run this harness.
 
 Each workload prints *measured* numbers (median of several runs) next to the
@@ -294,7 +294,7 @@ def run(*, quick: bool = False) -> dict[str, Any]:
     ]
     return {
         "dossier": {
-            "section": "Documents/Python3.15.md §11",
+            "section": "docs/Python3.15.md §11",
             "mirror": "~/Desktop/Documentos/Python3.15.md",
             "verification": "§11.3",
         },

@@ -12,7 +12,7 @@ version: 1
 providers:
   # Paidmodels. OAuth: Codex openai:gpt-6-luna, Grok xai:grok-4.6,
   # Claude anthropic:claude-sonnet-4.6. API key: MiniMax, Z.ai, Kimi, Xiaomi MiMo.
-  # Rows stay at their existing priorities. Detail is MODELS.md.
+  # Rows stay at their existing priorities. Detail is docs/MODELS.md.
   # ---- Paid: medium tier, medium effort ----
   - name: openai:gpt-4o-mini
     provider: openai

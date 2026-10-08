@@ -49,9 +49,9 @@ For swarm coordination: start from `[Agents/SKILLS.md](Agents/SKILLS.md)` and `[
 | `[src/swarm_sdk/pb/](src/swarm_sdk/pb/)`                     | gRPC: `swarm.proto` + generated `swarm_pb2*` stubs                                                       |
 | `[Main/config/swarm.yaml](Main/config/swarm.yaml)`           | Provider registry, routes, defaults (`SWARM_*` env overrides)                                            |
 | `[Main/](Main/)`                                             | Embeddings/vectorstore re-exports, YAML, Essentials                                                      |
-| `[WebSearch/](WebSearch/)`                                   | Git worktree (`feature/websearch`): search pipeline — see `[WebSearch/PIPELINE.md](WebSearch/PIPELINE.md)` |
-| `[Prediction/](../Swarm-Prediction/Prediction/)`               | Git worktree (`feat/prediction-engine`): mlforecast engine — sibling `../Swarm-Prediction` |
-| `[Newsletter/](../Newsletter/Newsletter/)`                   | Git worktree (`feat/newsletter`): offline digest MVP — sibling `../Newsletter` |
+| `[WebSearch/](WebSearch/)`                                   | Websearch feature the swarm agents call: `frontend/` providers + fan-out, `midend/` crawl, `backend/` extract/store; registry `[WebSearch/providers.yaml](WebSearch/providers.yaml)`; rules in `[WebSearch/AGENTS.md](WebSearch/AGENTS.md)` |
+| `[Prediction/](Prediction/)`                                 | Forecast engine (mlforecast). `Prediction/BotDeal/` is the prediction lane that trains the forecast (worktree `~/Myworkspace/BotDeal`, branch `feat/botdeal`) |
+| `[Newsletter/](Newsletter/)`                                 | Offline digest MVP (lane worktree `feat/newsletter` at `~/Myworkspace/Modules/Newsletter`)                |
 | `[Agents/](Agents/)`                                         | Specialist **swarm personas** (`AGENTS.md` + `agent.yaml` per role)                                      |
 | `[Agents/coordination.yaml](Agents/coordination.yaml)`       | Task graph for multi-agent workflows                                                                     |
 | `[Agents/SKILLS.md](Agents/SKILLS.md)`                       | Specialist catalog: persona → handoff node/plan-worker wiring, how to add a specialist                    |
@@ -62,7 +62,7 @@ For swarm coordination: start from `[Agents/SKILLS.md](Agents/SKILLS.md)` and `[
 | `[.cursor/templates/](.cursor/templates/)`                   | Static scaffolds — `[python_static_template_lite.py](.cursor/templates/python_static_template_lite.py)` or full `[python_static_template.py](.cursor/templates/python_static_template.py)` |
 | `[.vscode/](.vscode/)`                                       | Workspace settings + extension recommendations (Cursor/VS Code)                                          |
 | `[.cursor/extensions.txt](.cursor/extensions.txt)`           | Install list mirroring recommended extensions                                                            |
-| `[Documents/](Documents/)`                                     | Architecture manuals; doc map: `[Documents/SWARM-DOC-MAP.md](Documents/SWARM-DOC-MAP.md)` ↔ `~/Desktop/Documentos/SwarmSDK-Bridge.md` |
+| `[docs/](docs/)`                                     | Architecture manuals; doc map: `[docs/SWARM-DOC-MAP.md](docs/SWARM-DOC-MAP.md)` ↔ `~/Desktop/Documentos/SwarmSDK-Bridge.md` |
 
 Edit `[src/swarm_sdk/pb/swarm.proto](src/swarm_sdk/pb/swarm.proto)` then `uv run python -m swarm_sdk.pb` to regenerate stubs. Never commit `.env`.
 
@@ -71,8 +71,8 @@ Edit `[src/swarm_sdk/pb/swarm.proto](src/swarm_sdk/pb/swarm.proto)` then `uv run
 - Agent index: `[Agents/SKILLS.md](Agents/SKILLS.md)`
 - Workspace layout: `[codeworkspace/swarm.code-workspace](codeworkspace/swarm.code-workspace)`
 - Benchmarks: `[Agents/benchmark/README.md](Agents/benchmark/README.md)`
-- Toolchains and CPython support: `[Toolchain.md](Toolchain.md)`
-- Personal ↔ repo doc bridge: `[Documents/SWARM-DOC-MAP.md](Documents/SWARM-DOC-MAP.md)`
+- Toolchains and CPython support: `[docs/Toolchain.md](docs/Toolchain.md)`
+- Personal ↔ repo doc bridge: `[docs/SWARM-DOC-MAP.md](docs/SWARM-DOC-MAP.md)`
 - Static template: [@.cursor/templates/python_static_template.py](.cursor/templates/python_static_template.py)
 
 ---
@@ -85,6 +85,8 @@ Edit `[src/swarm_sdk/pb/swarm.proto](src/swarm_sdk/pb/swarm.proto)` then `uv run
 - **Install:** `uv sync --extra dev` (add `--extra faiss`, `--extra faiss-gpu`, `--extra embed`, `--extra molten`, `--extra observability`, `--extra qdrant`, `--extra mem0`, `--extra jupyter` as needed).
 
 Use `uv run …` so commands use the project virtualenv.
+
+**One environment:** `~/Myworkspace/Swarm/.venv` is the only virtualenv. Git worktrees (`BotDeal`, `Prediction`, `Modules/Newsletter`, `Websearch`) reuse it: `source scripts/dev-env.sh`, then `uv run --no-sync …` (plain `uv run` would re-point the editable `swarm_sdk` install at the worktree). pytest puts `src/` first on the path, so each worktree tests its own SDK source. Do not create another `.venv`.
 
 ---
 

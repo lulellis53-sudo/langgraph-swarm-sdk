@@ -191,13 +191,13 @@ uv run --extra forecast python Agents/benchmark/Tasks/prediction_forecast/benchm
 
 Case definition: `benchmark/Tasks/prediction_forecast/task.yaml`.
 
-See also **Python 3.15 dossier §11.3** (`Documents/Python3.15.md`) for the separate
+See also **Python 3.15 dossier §11.3** (`docs/Python3.15.md`) for the separate
 PEP 810 `lazy import` micro-benchmark (`Tasks/python315_claims/`, workload **F**).
 
 ### Python 3.15 dossier claims (`Tasks/python315_claims/`)
 
 Offline harness comparing **measured** speedups on this host to the **claimed**
-speedups in `Documents/Python3.15.md` §11.2. Rows that cannot run (mimalloc probe,
+speedups in `docs/Python3.15.md` §11.2. Rows that cannot run (mimalloc probe,
 free-threaded build, missing `SWARM_PY315`) are reported as `skipped` with a reason.
 
 ```bash

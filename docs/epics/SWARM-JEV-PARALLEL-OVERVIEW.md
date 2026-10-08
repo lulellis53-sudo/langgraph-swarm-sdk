@@ -92,7 +92,7 @@ at intake and per-step boundaries — not a single Coder loop.
 | `src/swarm_sdk/server/graphs.py` | Enhancement | `plan` graph: Jev-enabled factory | Med | worker |
 | `Agents/coordination.yaml` | Enhancement | Reference tasks for parallel + websearch pipeline | Low | validate |
 | `Agents/benchmark/tests/` | New | Integration: plan + Jev + parallel wave | Med | fixtures |
-| `Documents/LangSwarm.md` | Docs | §9 Jev integration status updated | Low | code |
+| `docs/LangSwarm.md` | Docs | §9 Jev integration status updated | Low | code |
 | `Main/config/swarm.yaml` | Config | Feature flag `jev_routing_enabled` (proposed) | Low | — |
 
 **Risk profile (draft):** 4 low, 5 medium, 0 high (no schema migrations).
@@ -161,7 +161,7 @@ Use **Jev at worker boundary** (each `PlanStep` execution), not inside every LLM
 - [ ] Reference parallel plan in benchmark or docs executes 2+ steps in one wave
 - [ ] `uv run python -m swarm_sdk.agents.validate` green
 - [ ] Quality gate green (pytest, ruff, ty on touched paths)
-- [ ] `Documents/LangSwarm.md` §9 reflects implemented wiring
+- [ ] `docs/LangSwarm.md` §9 reflects implemented wiring
 
 ---
 
@@ -205,7 +205,7 @@ Use **Jev at worker boundary** (each `PlanStep` execution), not inside every LLM
 
 - Parallel coworkers: `WebFetch` / `Normalizer` / `Persister` wave barriers in `WebSearch/`.
 - Jev + graph: `LowSwarmEngine._build_graph`.
-- Full swarm docs: `Documents/LangSwarm.md` §9.
+- Full swarm docs: `docs/LangSwarm.md` §9.
 
 ### Test locations
 
@@ -233,5 +233,5 @@ Use **Jev at worker boundary** (each `PlanStep` execution), not inside every LLM
 ## Next steps
 
 1. **Confirm epic in Jira** (key, title, Confluence path) — required by `/create-epic-plan` Phase 0.
-2. Publish this doc to Confluence when approved, or keep at `Documents/epics/SWARM-JEV-PARALLEL-OVERVIEW.md`.
-3. Run `/create-implementation-plan Documents/epics/SWARM-JEV-PARALLEL-OVERVIEW.md` after confirmation.
+2. Publish this doc to Confluence when approved, or keep at `docs/epics/SWARM-JEV-PARALLEL-OVERVIEW.md`.
+3. Run `/create-implementation-plan docs/epics/SWARM-JEV-PARALLEL-OVERVIEW.md` after confirmation.

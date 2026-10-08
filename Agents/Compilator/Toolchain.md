@@ -3035,7 +3035,7 @@ Lifeguard outputs a structured JSON file:
   4. `SubclassesAccess`: Invokes `__subclasses__()` (relies on prior module execution).
 
 #### 4. Driving the Python Runtime
-In Python 3.15+, `output.json` directly drives `sys.set_lazy_imports_filter()`; on Python 3.12–3.14, it drives a custom `importlib.util.LazyLoader` meta-path finder. See [**`Documents/Lifeguard.md`**](../../Documents/Lifeguard.md) for Meta Lifeguard + Swarm `MetaLifeguardAuditor` (host copy: `~/Desktop/Documentos/Lifeguard.md`).
+In Python 3.15+, `output.json` directly drives `sys.set_lazy_imports_filter()`; on Python 3.12–3.14, it drives a custom `importlib.util.LazyLoader` meta-path finder. See [**`docs/Lifeguard.md`**](../../docs/Lifeguard.md) for Meta Lifeguard + Swarm `MetaLifeguardAuditor` (host copy: `~/Desktop/Documentos/Lifeguard.md`).
 
 That tool is not `low-swarm`'s auditor. `swarm_sdk.core.lifeguard_ast` rejects a top-level import of `torch`, `transformers`, `pandas`, `polars`, `scipy`, or `sklearn`, and it rejects `os.system`, `subprocess`, `eval`, `exec`, and `shutil.rmtree`. Import Polars inside the function that builds the frame (`UsageLog.summary` already does). PEP 810 `-X lazy_imports=all` is a third switch, on the 3.15 interpreter only. The three do not replace each other.
 
@@ -3829,7 +3829,7 @@ uv pip install --python "$HOME/Swarm/.venv/bin/python" --no-binary <name> <name>
 
 #### Tokens, milliseconds, RAM
 
-The interpreter does not decide prompt size. Swarm does. Think level `low` is 512 tokens, `medium` is 2048, `high` is 8192, `xhigh` is 32768 (`swarm_sdk.models.selection.THINK_TOKEN_BUDGET`). Retrieval keeps 10 chunks after a 20-wide rerank. A cache hit at cosine 0.97 sends no prompt. The write-up is `Documents/RAGTECHNIQUES.MD` (Swarm SDK map + token budgets in `swarm_sdk.prompting.budget`). Measured interpreter micros stay in `Python3.15.md` §7.6. The large Δ% tables in the performance manuals are design targets.
+The interpreter does not decide prompt size. Swarm does. Think level `low` is 512 tokens, `medium` is 2048, `high` is 8192, `xhigh` is 32768 (`swarm_sdk.models.selection.THINK_TOKEN_BUDGET`). Retrieval keeps 10 chunks after a 20-wide rerank. A cache hit at cosine 0.97 sends no prompt. The write-up is `docs/RAGTECHNIQUES.MD` (Swarm SDK map + token budgets in `swarm_sdk.prompting.budget`). Measured interpreter micros stay in `Python3.15.md` §7.6. The large Δ% tables in the performance manuals are design targets.
 
 ---
 

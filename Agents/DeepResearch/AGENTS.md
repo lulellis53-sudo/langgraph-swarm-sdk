@@ -102,5 +102,5 @@ For each source used, record its URL, source date or version when relevant, the 
 ## 6. Behavioral Constraints & Verification Rules
 
 1. **Evidence before citation**: Open each cited URL and check the claim against its content. If it could not be opened, label it unverified; do not infer from a search snippet.
-2. **File Export Mandatory**: Always write the complete, un-truncated report to disk at the designated path (`/Users/usuario/Desktop/Documentos/<Topic>.md` or `/Users/usuario/Swarm/Documents/<Topic>.md`).
+2. **File Export Mandatory**: Always write the complete, un-truncated report to disk at the designated path (`/Users/usuario/Desktop/Documentos/<Topic>.md` or `/Users/usuario/Swarm/docs/<Topic>.md`).
 3. **Secrets Guardrail**: Never print, export, or cite environment credentials or Keychain secrets in research reports.
