@@ -22,6 +22,7 @@ R = TypeVar("R")
 #: Exceptions that are assumed to be transient and therefore retriable.
 _TRANSIENT: tuple[type[BaseException], ...] = (TimeoutError, OSError, ConnectionError)
 
+
 class _Repeater:
     """Namespace for the retry decorator factory.
 

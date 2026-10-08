@@ -1,9 +1,0 @@
-name: prediction_perf
-sdk_entry: benchmark.Tasks.prediction_perf.benchmark_prediction_perf.run
-metrics:
-  - fit_p50_ms_small
-  - predict_p50_ms_small
-  - backtest_p50_ms_small
-models: none (offline, synthetic seeded panels)
-pass:
-  correctness_mae_max: 1.0

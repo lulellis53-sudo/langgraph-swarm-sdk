@@ -1,6 +1,0 @@
-name: model_fallback
-sdk_entry: swarm_sdk.models.selection.FallbackChain
-metrics: [provider_health]
-models: predefined
-pass:
-  min_routes: 1

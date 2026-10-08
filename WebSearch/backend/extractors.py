@@ -30,12 +30,11 @@ def extract_text(name: ExtractorName, html: str) -> str:
 
 
 def _selectolax(html: str) -> str:
-    try:
-        parser_mod = importlib.import_module("selectolax.parser")
+    try:  # selectolax 1.x dropped the Modest backend (selectolax.parser); lexbor is the parser
+        parser_mod = importlib.import_module("selectolax.lexbor")
     except ImportError:
         return ""
-    html_parser = parser_mod.HTMLParser
-    tree = html_parser(html)
+    tree = parser_mod.LexborHTMLParser(html)
     tree.strip_tags(["script", "style", "noscript"])
     body = tree.body
     raw = body.text(separator="\n") if body is not None else tree.text()

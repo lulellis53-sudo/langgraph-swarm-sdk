@@ -1,9 +1,0 @@
-name: cache_lookup_latency
-sdk_entry: swarm_sdk.retrieval.cache.SemanticCache.lookup
-metrics: [latency_us, p95_us, mad_us, cv_pct, paired_delta_ms]
-models: none
-pass:
-  offline_no_api_keys: true
-  paths_return_expected_responses: true
-  batch_matches_single_results: true
-  abba_verdict_label_present: true

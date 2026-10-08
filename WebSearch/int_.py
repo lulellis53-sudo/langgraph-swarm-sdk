@@ -43,6 +43,9 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "dedupe_documents": ("WebSearch.agent_tools", "dedupe_documents"),
     "summarize_documents": ("WebSearch.agent_tools", "summarize_documents"),
     "websearch_langchain_tools": ("WebSearch.langchain_tools", "websearch_langchain_tools"),
+    "websearch_swarm_tools": ("WebSearch.swarm_tools", "websearch_swarm_tools"),
+    "swarm_tool_manifests": ("WebSearch.swarm_tools", "swarm_tool_manifests"),
+    "swarm_dispatch": ("WebSearch.swarm_tools", "swarm_dispatch"),
     "run_cowork_pipeline": ("WebSearch.browser_agent", "run_cowork_pipeline"),
 }
 

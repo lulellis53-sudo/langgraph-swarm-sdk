@@ -1,9 +1,0 @@
-name: rag_quality
-sdk_entry: benchmark.Tasks.rag_quality.benchmark_rag_quality.run
-metrics:
-  - recall_at_k
-  - mrr
-  - false_inject_rate
-models: none (offline, BagOfWordsEmbedder, KeywordReranker)
-pass:
-  baseline_recall_at_k_gt: 0.0

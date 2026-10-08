@@ -5,30 +5,45 @@ version: 1
 searchers:
   - id: context7
     kind: docs
+    enabled: true
     description: Library and API docs (Context7 MCP).
   - id: brave
     kind: websearcher
+    enabled: true
     api_key_env: BRAVE_API_KEY
     description: Brave Search API (web).
   - id: ddg
     kind: websearcher
-    description: DuckDuckGo text search (no API key).
+    enabled: true
+    description: DuckDuckGo text search via the ddgs package (no API key).
   - id: ddglite
     kind: websearcher
+    enabled: true
     description: DuckDuckGo Lite plain-HTML search (no API key, no package).
   - id: tavily
     kind: websearcher
+    enabled: true
     dork: translate  # site:/-site:/after:/before: become API fields; terms stay as text
-    api_key_env: TAVILY_API_KEY
+    api_key_env: TAVILY_API_KEY_1  # TAVILY_API_KEY answers 401 (2026-10-08); _1 and _2 answer 200
+    api_key_env_fallbacks: [TAVILY_API_KEY_2, TAVILY_API_KEY]
     description: Tavily Search API.
+  - id: openrouter_web
+    kind: websearcher
+    enabled: true
+    dork: translate  # site:/-site: become plugin include/exclude domains
+    api_key_env: OPENROUTER_API_KEY
+    engine: openai/gpt-oss-20b:free
+    description: OpenRouter web-search plugin (cheap model cites sources).
   - id: parallel
     kind: websearcher
+    enabled: true
     dork: translate  # site:/-site:/after: become Parallel source-policy filters
-    api_key_env: PARALLEL_API_KEY
+    api_key_env: PARALELAI_API_KEY  # key name used in the user's .env; endpoint api.parallel.ai is unverified for paralel.ai
     engine: fast
     description: Parallel Search API (AI-optimized web search).
   - id: jina
     kind: websearcher
+    enabled: true
     api_key_env: JINA_API_KEY
     base_url: https://s.jina.ai
     description: >-
@@ -36,35 +51,23 @@ searchers:
       on api.jina.ai.
   - id: apify
     kind: websearcher
+    enabled: false
     api_key_env: APIFY_API_KEY
     base_url: https://api.apify.com/v2
     description: Apify API (fails without token / actor config).
-  - id: openrouter_web
-    kind: websearcher
-    dork: translate  # site:/-site: become the plugin's include_domains / exclude_domains
-    api_key_env: OPENROUTER_API_KEY
-    engine: qwen/qwen3.8-27b:free  # model that runs the search; any OpenRouter slug works
-    description: OpenRouter web-search plugin (cited pages as hits; usage in tokens).
   - id: exa
     kind: websearcher
+    enabled: true
     dork: translate
     api_key_env: EXA_API_KEY
     description: Exa Search API.
-  - id: bright_data
-    kind: websearcher
-    engine: google
-    api_key_env: BRIGHTDATA_MCP_TOKEN
-    description: Live SERP via Bright Data MCP search_engine.
-  - id: searxng
-    kind: websearcher
-    engine: duckduckgo,bing
-    base_url_env: SEARXNG_URL
-    description: Self-hosted SearXNG JSON (DuckDuckGo + Bing engines).
   - id: google_search
     kind: websearcher
-    api_key_env: GEMINI_API_KEY
-    # GEMINI_API_KEY, else GOOGLE_API_KEY, else GEMINI_API_KEY_2. Rotate on 401/403/429.
-    api_key_env_fallbacks: [GOOGLE_API_KEY, GEMINI_API_KEY_2]
+    enabled: true
+    api_key_env: GOOGLE_API_KEY
+    # GOOGLE_API_KEY, then _1, then _2. Rotate on 401/403/429. Grounding answers 429 on the free
+    # tier for all three keys (2026-10-08): it needs billing enabled.
+    api_key_env_fallbacks: [GOOGLE_API_KEY_1, GOOGLE_API_KEY_2]
     engine: gemini-3.5-flash
     base_url: https://generativelanguage.googleapis.com/v1beta
     # Gemini 3 bills each executed search query. Paid tier: 5,000 free Gemini 3.x
@@ -72,12 +75,31 @@ searchers:
     # Search runs as the native ``google_search`` tool call (the old ``google_search_retrieval``
     # grounding tool is retired); cited sources come back in ``groundingMetadata``.
     description: Gemini with the Google Search tool call (cited sources + token usage).
+  - id: ddg_mcp
+    kind: websearcher
+    enabled: true
+    base_url_env: DDG_MCP_URL
+    engine: stdio  # no DDG_MCP_URL: spawn the pinned npm duckduckgo-mcp-server (zhsama) over stdio
+    description: DuckDuckGo MCP server (``search`` tool over streamable HTTP; fails closed without DDG_MCP_URL).
+  - id: context
+    kind: websearcher
+    enabled: true
+    api_key_env: CONTEXT_API_KEY
+    base_url: https://api.context.dev/v1
+    description: Context.dev web search (POST /web/search, bearer auth; NOT context7).
   - id: kimisearch
     kind: websearcher
+    enabled: false
     api_key_env: MOONSHOT_API_KEY
     base_url_env: MOONSHOT_BASE_URL
     engine: kimi-k3
     description: Moonshot Kimi Web Search Basic API (standalone /v1/tools/search).
+  - id: bright_data
+    kind: websearcher
+    enabled: true
+    engine: google
+    api_key_env: BRIGHTDATA_MCP_TOKEN
+    description: Live SERP via Bright Data MCP search_engine.
 
 extractors:
   order:
@@ -94,6 +116,7 @@ extractors:
 crawlers:
   order:
     - httpx
+    - httpx2
     - curl_cffi
     - scrapy
     - playwright

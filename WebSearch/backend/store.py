@@ -211,9 +211,7 @@ def semantic_search(
                     heapq.heappush(best, candidate)
                 elif candidate[:2] > best[0][:2]:
                     heapq.heapreplace(best, candidate)
-        scored = [
-            (-rowid, url, text, score) for score, rowid, url, text in best
-        ]
+        scored = [(-rowid, url, text, score) for score, rowid, url, text in best]
         scored.sort(key=lambda item: (-item[3], item[0]))
 
     by_url = {doc.url: doc for doc in batch}
@@ -255,7 +253,7 @@ def _load_sqlite_vec(conn: sqlite3.Connection) -> bool:
         enable_extension(True)
         sqlite_vec.load(conn)
         return True
-    except (ImportError, AttributeError, sqlite3.Error):
+    except ImportError, AttributeError, sqlite3.Error:
         return _reject_unavailable_vector_table(conn)
     finally:
         enable_extension(False)
@@ -263,11 +261,7 @@ def _load_sqlite_vec(conn: sqlite3.Connection) -> bool:
 
 def _reject_unavailable_vector_table(conn: sqlite3.Connection) -> bool:
     """Refuse to misread an existing sqlite-vec virtual table as a blob table."""
-    row = conn.execute(
-        "SELECT sql FROM sqlite_master WHERE name='semantic_vectors'"
-    ).fetchone()
+    row = conn.execute("SELECT sql FROM sqlite_master WHERE name='semantic_vectors'").fetchone()
     if row and str(row[0]).upper().startswith("CREATE VIRTUAL TABLE"):
-        raise RuntimeError(
-            "semantic_vectors uses sqlite-vec, but this SQLite build cannot load it"
-        )
+        raise RuntimeError("semantic_vectors uses sqlite-vec, but this SQLite build cannot load it")
     return False

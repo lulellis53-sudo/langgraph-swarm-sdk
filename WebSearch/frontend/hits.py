@@ -74,6 +74,30 @@ def normalize_hit(hit: SearchHit) -> SearchHit:
     return replace(hit, title=title, snippet=normalize_text(hit.snippet))
 
 
+def hit_score(hit: SearchHit, query: str) -> float:
+    """Relevance of *hit* for *query* in 0-1: share of query terms present.
+
+    Used to choose which copy of a duplicated page to keep. Deliberately simple
+    and dependency-free: this runs per duplicate group during fusion, so it must
+    not cost an embedding call or a model round trip. Case-insensitive; query
+    terms are de-duplicated, so repeating a word cannot inflate the score.
+
+    Args:
+        hit (SearchHit): Candidate hit.
+        query (str): The user/orchestrator query the hits came from.
+
+    Returns:
+        float: Fraction of distinct query terms found in the title or snippet.
+            ``0.0`` when the query has no usable terms, which makes callers fall
+            back to their previous behaviour (keep the first copy).
+    """
+    terms = {t for t in _TOKEN.findall(query.casefold()) if t}
+    if not terms:
+        return 0.0
+    haystack = {t for t in _TOKEN.findall(f"{hit.title} {hit.snippet}".casefold()) if t}
+    return len(terms & haystack) / len(terms)
+
+
 def _simhash(text: str) -> int | None:
     """64-bit SimHash over word 3-shingles; ``None`` when the text is too short."""
     tokens = _TOKEN.findall(text.casefold())
@@ -143,4 +167,4 @@ def near_dedupe(hits: Sequence[SearchHit], *, max_distance: int = 6) -> list[Sea
     ]
 
 
-__all__ = ["near_dedupe", "normalize_hit"]
+__all__ = ["hit_score", "near_dedupe", "normalize_hit"]
