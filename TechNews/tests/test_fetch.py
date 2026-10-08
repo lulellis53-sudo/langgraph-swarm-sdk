@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from technews.scrape.fetch import USER_AGENT, FetchError, Fetcher, RobotsDisallowed, make_client
+from technews.scrape.fetch import USER_AGENT, Fetcher, FetchError, RobotsDisallowed, make_client
 
 
 class Clock:
