@@ -35,41 +35,56 @@ def test_load_providers_yaml() -> None:
         "trafilatura",
         "bs4",
     )
-    assert cfg.crawl.crawler_order == ("httpx", "curl_cffi", "scrapy", "playwright", "crawlee")
+    assert cfg.crawl.crawler_order == (
+        "httpx",
+        "httpx2",
+        "curl_cffi",
+        "scrapy",
+        "playwright",
+        "crawlee",
+    )
     assert searcher_ids(cfg) == (
         "context7",
         "brave",
         "ddg",
         "ddglite",
         "tavily",
+        "parallel",
+        "jina",
         "apify",
-        "openrouter_web",
         "exa",
-        "bright_data",
-        "searxng",
-        "google_ground",
+        "google_search",
+        "ddg_mcp",
+        "context",
         "kimisearch",
+        "bright_data",
     )
-    assert get_searcher(cfg, "tavily").api_key_env == "TAVILY_API_KEY"
+    tavily = get_searcher(cfg, "tavily")
+    assert tavily.api_key_env == "TAVILY_API_KEY_1"  # TAVILY_API_KEY answers 401 (2026-10-08)
+    assert tavily.api_key_fallback_envs == ("TAVILY_API_KEY_2", "TAVILY_API_KEY")
     assert get_searcher(cfg, "exa").api_key_env == "EXA_API_KEY"
     assert get_searcher(cfg, "brave").api_key_env == "BRAVE_API_KEY"
     assert get_searcher(cfg, "bright_data").api_key_env == "BRIGHTDATA_MCP_TOKEN"
     assert cfg.llm.model == "openrouter:z-ai/glm-5.3-flash"
-    assert get_searcher(cfg, "searxng").engine == "duckduckgo,bing"
     assert "https" in cfg.crawl.schemes
 
 
 def test_searcher_reads_named_key_from_dedicated_vault(monkeypatch: pytest.MonkeyPatch) -> None:
+    from WebSearch.frontend import secrets as ws_secrets
     from WebSearch.frontend import websearchers
 
+    ws_secrets._keychain_secret.cache_clear()  # earlier tests may have cached an empty lookup
     monkeypatch.delenv("APIFY_API_KEY", raising=False)
     monkeypatch.setattr(vault, "get", lambda name: "vault-key" if name == "APIFY_API_KEY" else None)
     spec = SearcherSpec(id="apify", kind="websearcher", api_key_env="APIFY_API_KEY")
-    assert websearchers.env_key(spec) == "vault-key"
+    try:
+        assert websearchers.env_key(spec) == "vault-key"
+    finally:
+        ws_secrets._keychain_secret.cache_clear()
 
 
 def test_bright_data_mcp_search_normalizes_google_hits(monkeypatch: pytest.MonkeyPatch) -> None:
-    from WebSearch.frontend import websearchers
+    from WebSearch.frontend import providers, websearchers
 
     monkeypatch.setenv("BRIGHTDATA_MCP_TOKEN", "synthetic-token")
 
@@ -79,7 +94,7 @@ def test_bright_data_mcp_search_normalizes_google_hits(monkeypatch: pytest.Monke
             "organic": [{"title": "Example", "link": "https://example.com", "description": "ok"}]
         }
 
-    monkeypatch.setattr(websearchers, "_bright_data_search", fake_call)
+    monkeypatch.setattr(providers, "_bright_data_search", fake_call)
     spec = SearcherSpec(
         id="bright_data", kind="websearcher", api_key_env="BRIGHTDATA_MCP_TOKEN", engine="google"
     )
@@ -90,6 +105,7 @@ def test_bright_data_mcp_search_normalizes_google_hits(monkeypatch: pytest.Monke
 
 def test_parallel_search_uses_each_provider_key(monkeypatch: pytest.MonkeyPatch) -> None:
     from WebSearch import parallel_search
+    from WebSearch.frontend import secrets as ws_secrets
     from WebSearch.frontend import websearchers
 
     ids = ("brave", "tavily", "exa", "bright_data")
@@ -97,7 +113,7 @@ def test_parallel_search_uses_each_provider_key(monkeypatch: pytest.MonkeyPatch)
     for name in names:
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setattr(vault, "get", lambda name: f"synthetic-{name}")
-    websearchers._keychain_secret.cache_clear()
+    ws_secrets._keychain_secret.cache_clear()
     barrier = Barrier(4)
     seen: dict[str, str] = {}
 
@@ -124,7 +140,7 @@ def test_parallel_search_uses_each_provider_key(monkeypatch: pytest.MonkeyPatch)
             cache_ttl_s=0,
         )
     finally:
-        websearchers._keychain_secret.cache_clear()
+        ws_secrets._keychain_secret.cache_clear()
     assert set(seen) == set(ids)
     assert seen == dict(zip(ids, (f"synthetic-{name}" for name in names), strict=True))
     assert len(hits) == 4
@@ -150,7 +166,7 @@ def test_kimisearch_fails_closed_without_key() -> None:
 
 
 def test_kimisearch_parses_web_search_basic_response(monkeypatch) -> None:
-    from WebSearch.frontend import websearchers
+    from WebSearch.frontend import providers
 
     payload = {
         "search_results": [
@@ -158,7 +174,7 @@ def test_kimisearch_parses_web_search_basic_response(monkeypatch) -> None:
         ]
     }
     monkeypatch.setenv("MOONSHOT_API_KEY", "k")
-    monkeypatch.setattr(websearchers, "_httpx_json", lambda *a, **k: payload)
+    monkeypatch.setattr(providers, "call_json", lambda *a, **k: payload)
     spec = SearcherSpec(id="kimisearch", kind="websearcher", api_key_env="MOONSHOT_API_KEY")
     hits = search_kimi("q", spec)
     assert hits and hits[0].title == "A"
@@ -414,7 +430,8 @@ def test_dork_builder() -> None:
 
 def test_google_ground_parses_chunks_and_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
     from WebSearch import frontend
-    from WebSearch.frontend import websearchers
+    from WebSearch.frontend import providers
+    from WebSearch.frontend import secrets as ws_secrets
 
     payload = {
         "candidates": [
@@ -433,14 +450,14 @@ def test_google_ground_parses_chunks_and_tokens(monkeypatch: pytest.MonkeyPatch)
         "usageMetadata": {"totalTokenCount": 42},
     }
     monkeypatch.setenv("GEMINI_API_KEY", "k")
-    monkeypatch.setattr(websearchers, "request_json", lambda *a, **k: payload)
+    monkeypatch.setattr(providers, "request_json", lambda *a, **k: payload)
     spec = SearcherSpec(id="google_ground", kind="websearcher", api_key_env="GEMINI_API_KEY")
     hits = frontend.search_google_ground("q", spec)
     assert [h.title for h in hits] == ["a.com", "b.com"]
     assert hits[1].snippet == "claim"
     assert (hits[0].api_tokens, hits[1].api_tokens) == (42, 0)
     monkeypatch.delenv("GEMINI_API_KEY")
-    monkeypatch.setattr(websearchers, "_keychain_secret", lambda name: "")
+    monkeypatch.setattr(ws_secrets, "_keychain_secret", lambda name: "")
     assert frontend.search_google_ground("q", spec) == []
 
 

@@ -99,6 +99,7 @@ from WebSearch.frontend.providers import (
 # --- fan-out / fusion ---
 from WebSearch.frontend.fanout import (
     _rrf_fuse,
+    _select_specs,
     builtin_searchers,
     dedupe_hits,
     parallel_search,

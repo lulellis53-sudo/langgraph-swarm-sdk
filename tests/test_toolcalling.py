@@ -8,7 +8,6 @@ from __future__ import annotations
 import json
 
 import pytest
-
 from WebSearch.frontend.websearchers import ProvidersConfig, SearcherSpec, SearchHit
 from WebSearch.toolcalling import ToolError, bind_tools, dispatch_tool_call, tool_manifests
 
@@ -162,7 +161,7 @@ def test_swarm_tools_web_search_executes() -> None:
     pytest.importorskip("langchain_core")
     from WebSearch.swarm_tools import websearch_swarm_tools
 
-    tools = websearch_swarm_tools(backends=_backends())
+    tools = websearch_swarm_tools(config=_config(), backends=_backends())
     search_tool = next(t for t in tools if t.name == "web_search")
     result = search_tool.invoke({"query": "swarm agents", "limit": 2})
     assert isinstance(result, list)
