@@ -3,6 +3,5 @@
   "graphs": {
     "swarm": "./src/swarm_sdk/server/graphs.py:swarm_graph",
     "plan": "./src/swarm_sdk/server/graphs.py:plan_graph"
-  },
-  "env": ".env.example"
+  }
 }
