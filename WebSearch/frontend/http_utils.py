@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import logging
 import threading
-from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit

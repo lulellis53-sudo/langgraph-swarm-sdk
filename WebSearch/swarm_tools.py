@@ -22,12 +22,11 @@ Usage with the framework-agnostic layer::
 
 from __future__ import annotations
 
-import json
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Any
 
 from WebSearch.agent_tools import search_brief, search_hits
-from WebSearch.toolcalling import ToolError, dispatch_tool_call, tool_manifests
+from WebSearch.toolcalling import dispatch_tool_call, tool_manifests
 
 if TYPE_CHECKING:
     from langchain_core.tools import BaseTool
@@ -198,6 +197,4 @@ def swarm_dispatch(
     Thin alias over ``toolcalling.dispatch_tool_call`` for Swarm SDK callers.
     Unknown tools and bad arguments return ``{"error": ...}``.
     """
-    return dispatch_tool_call(
-        name, arguments, config=config, backends=backends, fetch=fetch
-    )
+    return dispatch_tool_call(name, arguments, config=config, backends=backends, fetch=fetch)

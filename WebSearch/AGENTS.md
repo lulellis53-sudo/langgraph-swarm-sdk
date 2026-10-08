@@ -40,7 +40,6 @@ uv run ruff check WebSearch tests
 - **Crawler failover** — `crawlers.order` in YAML is tried sequentially; missing extras (e.g. `playwright`, `crawlee`) fail closed. `httpx2`/`requests`/`aiohttp` intentionally excluded from default order (plain HTTP, add latency on dead URLs).
 - **Prefilter runs before extraction** — `backend/prefilter.py` enforces `schemes`, `blocked_domains`, `min_snippet_chars`, `require_title` from the YAML `prefilter:` block.
 - **Google dorks** — `dork()` builds query strings; `parse_dork()` is its inverse. Providers with `dork: translate` map operators to API fields (Tavily, Exa, Parallel); others get raw text.
-- **Docker** — `docker/compose.yaml` runs SearXNG (needed for `searxng_ddg`/`searxng_bing`). Set `SEARXNG_URL` env var.
 - **LLM models** — `claude-cli:default` and `codex-cli:default` use CLI login (no API key). `llm.model` is `provider:name` format. `WEBSEARCH_LLM_MODEL` overrides.
 - **`--autonomous`** uses a model roster per role (playwright → dedupe → summarize); first ready model per role wins. `--doctor` shows readiness without printing keys.
 
@@ -52,4 +51,3 @@ uv run ruff check WebSearch tests
 | `WEBSEARCH_LLM_MODEL` | Override `llm.model` |
 | `WEBSEARCH_EMBED_MODEL` / `WEBSEARCH_EMBED_DIM` | FastEmbed model/dimension |
 | `WEBSEARCH_EMBED_BACKEND` | `lexical`, `fastembed`, or `llama-cpp` |
-| `SEARXNG_URL` | SearXNG instance for searxng_* providers |

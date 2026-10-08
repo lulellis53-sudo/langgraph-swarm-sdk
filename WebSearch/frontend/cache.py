@@ -23,7 +23,9 @@ _REDIS_SEARCH_CACHE_LOCK = threading.Lock()
 _REDIS_SEARCH_CACHE_URL = ""
 _REDIS_SEARCH_CACHE: object = None
 
-SearchFn = object  # Avoid circular import; actual type is Callable[[str, SearcherSpec], list[SearchHit]]
+SearchFn = (
+    object  # Avoid circular import; actual type is Callable[[str, SearcherSpec], list[SearchHit]]
+)
 
 
 def _redis_search_cache():
@@ -126,9 +128,7 @@ def _search_cache_get(searcher_id: str, query: str, fn: object) -> list | None:
         return hits
 
 
-def _search_cache_put(
-    searcher_id: str, query: str, fn: object, hits: list, ttl_s: float
-) -> None:
+def _search_cache_put(searcher_id: str, query: str, fn: object, hits: list, ttl_s: float) -> None:
     """Store hits with ``api_tokens`` zeroed: a cache hit costs no API call."""
     with _SEARCH_CACHE_LOCK:
         while len(_SEARCH_CACHE) >= _SEARCH_CACHE_MAX:

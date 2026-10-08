@@ -15,9 +15,7 @@ import yaml
 from WebSearch.frontend.types import (
     _CRAWLERS,
     _EXTRACTORS,
-    CrawlerName,
     CrawlSpec,
-    ExtractorName,
     LlmSpec,
     PrefilterPolicy,
     ProvidersConfig,

@@ -15,27 +15,51 @@ Layout:
 
 from __future__ import annotations
 
-# --- types (dataclasses and protocols) ---
-from WebSearch.frontend.types import (
-    CrawlerName,
-    CrawlSpec,
-    ExtractorName,
-    LlmSpec,
-    NullSink,
-    PrefilterPolicy,
-    ProvidersConfig,
-    ResultSink,
-    SearchFn,
-    SearchHit,
-    SearchResult,
-    SearcherKind,
-    SearcherSpec,
-    SearcherStatus,
-    SearcherStatusName,
-    SinkReport,
-    WebSearcher,
-    _CRAWLERS,
-    _EXTRACTORS,
+# --- cache ---
+from WebSearch.frontend.cache import (
+    cached_provider_search as _cached_provider_search,
+)
+
+# --- fan-out / fusion ---
+from WebSearch.frontend.fanout import (
+    _rrf_fuse,
+    _select_specs,
+    builtin_searchers,
+    dedupe_hits,
+    parallel_search,
+    registry_search,
+    search,
+    searcher_ids,
+    type_is_hit,
+)
+
+# --- HTTP utilities ---
+from WebSearch.frontend.http_utils import (
+    call_json,
+    dig,
+    request_json,
+    shared_executor,
+    shared_http_client,
+)
+
+# --- provider implementations ---
+from WebSearch.frontend.providers import (
+    hits_from_maps,
+    search_apify,
+    search_brave,
+    search_bright_data,
+    search_context,
+    search_ddg,
+    search_ddg_lite,
+    search_ddg_mcp,
+    search_exa,
+    search_google_ground,
+    search_google_search,
+    search_jina,
+    search_kimi,
+    search_openrouter_web,
+    search_parallel,
+    search_tavily,
 )
 
 # --- registry (YAML loading) ---
@@ -61,52 +85,27 @@ from WebSearch.frontend.secrets import (
     env_keys,
 )
 
-# --- HTTP utilities ---
-from WebSearch.frontend.http_utils import (
-    call_json,
-    dig,
-    request_json,
-    shared_executor,
-    shared_http_client,
-)
-
-# --- cache ---
-from WebSearch.frontend.cache import (
-    cached_provider_search as _cached_provider_search,
-)
-
-# --- provider implementations ---
-from WebSearch.frontend.providers import (
-    hits_from_maps,
-    search_apify,
-    search_brave,
-    search_bright_data,
-    search_context,
-    search_ddg,
-    search_ddg_lite,
-    search_ddg_mcp,
-    search_exa,
-    search_google_ground,
-    search_google_search,
-    search_jina,
-    search_kimi,
-    search_openrouter_web,
-    search_parallel,
-    search_searxng,
-    search_tavily,
-)
-
-# --- fan-out / fusion ---
-from WebSearch.frontend.fanout import (
-    _rrf_fuse,
-    _select_specs,
-    builtin_searchers,
-    dedupe_hits,
-    parallel_search,
-    registry_search,
-    search,
-    searcher_ids,
-    type_is_hit,
+# --- types (dataclasses and protocols) ---
+from WebSearch.frontend.types import (
+    _CRAWLERS,
+    _EXTRACTORS,
+    CrawlerName,
+    CrawlSpec,
+    ExtractorName,
+    LlmSpec,
+    NullSink,
+    PrefilterPolicy,
+    ProvidersConfig,
+    ResultSink,
+    SearcherKind,
+    SearcherSpec,
+    SearcherStatus,
+    SearcherStatusName,
+    SearchFn,
+    SearchHit,
+    SearchResult,
+    SinkReport,
+    WebSearcher,
 )
 
 # Internal names preserved for backward compatibility.
@@ -115,6 +114,13 @@ _SEARCH_CACHE_TTL_S = 300.0
 _MAX_WORKERS = 8
 
 __all__ = [
+    # Backward-compatible facade: names the refactor moved to providers/fanout/cache/types.
+    "_CRAWLERS",
+    "_EXTRACTORS",
+    "_select_specs",
+    "_cached_provider_search",
+    "search_google_ground",
+    "search_parallel",
     "CrawlerName",
     "CrawlSpec",
     "DEFAULT_AUTONOMOUS_DECISION",
@@ -167,7 +173,6 @@ __all__ = [
     "SEARCHER_ALIASES",
     "canon_searcher_id",
     "search_google_search",
-    "search_searxng",
     "search_tavily",
     "search_jina",
     "search_kimi",

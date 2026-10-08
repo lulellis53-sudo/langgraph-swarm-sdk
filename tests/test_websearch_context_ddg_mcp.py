@@ -3,11 +3,10 @@
 from typing import Any
 
 import pytest
+from WebSearch.frontend import providers
 from WebSearch.frontend.fanout import builtin_searchers
 from WebSearch.frontend.types import SearcherSpec
 from WebSearch.frontend.websearchers import load_providers
-
-from WebSearch.frontend import providers
 
 
 def _spec(searcher_id: str, **kw: Any) -> SearcherSpec:

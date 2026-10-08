@@ -85,7 +85,8 @@ def semantic_handler(
                     "summary": s.summary,
                 }
                 for s in sorted(
-                    summaries, key=lambda summary: vector_scores.get(summary.url, summary.score),
+                    summaries,
+                    key=lambda summary: vector_scores.get(summary.url, summary.score),
                     reverse=True,
                 )
             ],

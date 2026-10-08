@@ -74,9 +74,7 @@ def dedupe_hits(hits: Sequence[SearchHit], query: str = "") -> list[SearchHit]:
             carried = tuple(
                 dict.fromkeys((*incumbent.also_from, incumbent.searcher_id, *hit.also_from))
             )
-            best[key] = replace(
-                hit, also_from=tuple(s for s in carried if s != hit.searcher_id)
-            )
+            best[key] = replace(hit, also_from=tuple(s for s in carried if s != hit.searcher_id))
         elif hit.searcher_id not in incumbent.also_from:
             best[key] = replace(incumbent, also_from=(*incumbent.also_from, hit.searcher_id))
     return [best[key] for key in order]
@@ -103,7 +101,6 @@ def builtin_searchers() -> dict[str, SearchFn]:
         search_kimi,
         search_openrouter_web,
         search_parallel,
-        search_searxng,
         search_tavily,
     )
 
@@ -120,9 +117,6 @@ def builtin_searchers() -> dict[str, SearchFn]:
         "openrouter_web": search_openrouter_web,
         "google_search": search_google_search,
         "google_ground": search_google_search,
-        "searxng": search_searxng,
-        "searxng_ddg": search_searxng,
-        "searxng_bing": search_searxng,
         "kimisearch": search_kimi,
         "context": search_context,
         "ddg_mcp": search_ddg_mcp,
@@ -383,7 +377,7 @@ def parallel_search(
         with semaphore:
             try:
                 return cached_provider_search(spec, query, fn, cache_ttl_s)
-            except (TimeoutError, OSError, ConnectionError, ValueError):
+            except TimeoutError, OSError, ConnectionError, ValueError:
                 logger.warning("searcher %s failed", spec.id, exc_info=True)
                 return []
 

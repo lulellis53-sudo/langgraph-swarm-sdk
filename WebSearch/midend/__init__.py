@@ -711,9 +711,7 @@ def _scrape_one(url: str, *, fetch: _Fetcher, crawl: CrawlSpec) -> ScrapedPage:
         raw, crawler = fetch(url)
     except PrivateTarget as exc:
         elapsed = (time.perf_counter() - start) * 1000
-        return ScrapedPage(
-            url=url, html="", status=0, error=type(exc).__name__, elapsed_ms=elapsed
-        )
+        return ScrapedPage(url=url, html="", status=0, error=type(exc).__name__, elapsed_ms=elapsed)
     except (TimeoutError, OSError, ConnectionError) as exc:
         elapsed = (time.perf_counter() - start) * 1000
         return ScrapedPage(url=url, html="", status=0, error=type(exc).__name__, elapsed_ms=elapsed)

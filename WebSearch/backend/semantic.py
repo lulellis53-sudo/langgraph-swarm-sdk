@@ -80,9 +80,7 @@ def default_embedder() -> Embedder:
         return LexicalEmbedder(dim)
     from swarm_sdk.retrieval.embeddings import FastEmbedder
 
-    return FastEmbedder(
-        model_name=model_name or "sentence-transformers/all-MiniLM-L6-v2", dim=dim
-    )
+    return FastEmbedder(model_name=model_name or "sentence-transformers/all-MiniLM-L6-v2", dim=dim)
 
 
 @dataclass(frozen=True, slots=True)

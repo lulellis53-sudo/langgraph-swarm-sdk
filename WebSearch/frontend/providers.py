@@ -405,24 +405,6 @@ def search_openrouter_web(query: str, spec: SearcherSpec) -> list:
     return hits
 
 
-def search_searxng(query: str, spec: SearcherSpec) -> list:
-    """SearXNG JSON search with DuckDuckGo + Bing engines."""
-    root = env_base(spec)
-    if not root:
-        return []
-    engines = spec.engine or "duckduckgo,bing"
-    data = call_json(
-        "GET",
-        f"{root}/search",
-        params={"q": query, "format": "json", "engines": engines},
-    )
-    if data is None:
-        return []
-    return hits_from_maps(
-        dig(data, "results"), spec.id, title="title", url="url", snippet="content"
-    )
-
-
 def search_google_search(query: str, spec: SearcherSpec) -> list:
     """Gemini with Google Search grounding; returns the cited web sources."""
     keys = env_keys(spec)
