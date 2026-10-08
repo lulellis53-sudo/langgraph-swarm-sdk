@@ -22,6 +22,9 @@ htmlcov/
 .remember/
 .superpowers/
 .idea/
+.DS_Store
+**/.DS_Store
+.mimosa/
 
 # --- Secrets & Vaults ---------------------------------------------------------
 .env
