@@ -2,7 +2,9 @@ version: "1"
 name: Researcher
 role: read_only_research
 
-model: openai:gpt-4o-mini
+model: openai:gpt-6-luna
+# api_endpoint: POST https://api.openai.com/v1/chat/completions
+api_key_env: CODEX_OAUTH_TOKEN
 think_level: medium
 
 token_budget:

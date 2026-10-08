@@ -142,7 +142,10 @@ _SECRET_SHAPE = re.compile(
     r"(sk|tp|ttp|xai|gsk|pk)-[A-Za-z0-9_-]{16,}|AQ\.[A-Za-z0-9_-]{20,}|[A-Za-z0-9+/_-]{40,}"
 )
 _SECRET_KEYS = ("api_key", "apikey", "token", "secret", "password")
-_ENV_REF = re.compile(r"\$\{[A-Z][A-Z0-9_]*(:?[?-][^}]*)?\}")  # compose substitution
+_ENV_REF = re.compile(
+    r"\$\{[A-Z][A-Z0-9_]*(:?[?-][^}]*)?\}"  # compose substitution
+    r"|\$\{\{\s*((secrets|env|vars)\.[A-Za-z0-9_]+|github\.token)\s*\}\}"  # Actions expression
+)
 _NOT_SECRETS = {"id-token"}  # GitHub OIDC permission, value is read/write
 
 

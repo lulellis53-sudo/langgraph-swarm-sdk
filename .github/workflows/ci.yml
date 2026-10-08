@@ -71,7 +71,7 @@ jobs:
           for root in roots:
               files.extend(root.rglob("*.yml"))
               files.extend(root.rglob("*.yaml"))
-          for extra in (Path("providers.yaml"), Path(".yamllint.yml")):
+          for extra in (Path("WebSearch/providers.yaml"), Path(".yamllint.yml")):
               if extra.is_file():
                   files.append(extra)
           unique = sorted({p.resolve() for p in files})

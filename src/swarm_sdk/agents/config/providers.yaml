@@ -40,3 +40,65 @@ providers:
     models: ["poolside:poolside/laguna-s-2.1"]
     api_key_env: POOLSIDE_API_KEY
     priority: 46
+  # Added 2026-10-08. Model ids come from each vendor's docs/catalog; an empty
+  # list means the key is registered but no verified default model id yet.
+  - name: google
+    models: ["google:gemini-3.8-flash"]
+    api_key_env: GOOGLE_API_KEY
+    priority: 47
+  - name: openrouter
+    models: ["openrouter:poolside/laguna-s-2.1:free"]
+    api_key_env: OPENROUTER_API_KEY
+    priority: 48
+  - name: zenmux
+    models: []
+    api_key_env: ZENMUX_API_KEY
+    priority: 49
+  - name: mistral
+    models: []
+    api_key_env: MISTRAL_API_KEY
+    priority: 50
+  - name: nvidia
+    models: ["nvidia:nvidia/nemotron-3-ultra-550b-a55b"]
+    api_key_env: NVIDIA_NIM_API_KEY
+    priority: 51
+  - name: sambanova
+    models: ["sambanova:gpt-oss-120b"]
+    api_key_env: SAMBANOVA_API_KEY
+    priority: 52
+  - name: kimi
+    models: ["kimi:kimi-k3"]
+    api_key_env: KIMI_API_KEY
+    priority: 53
+  - name: xiaomi
+    models: ["xiaomi:mimo-v2.6-pro"]
+    api_key_env: MIMO_API_KEY
+    priority: 54
+  - name: opencode
+    models: ["opencode:nemotron-3-ultra-free"]
+    api_key_env: OPENCODE_API_KEY
+    priority: 55
+  - name: meta
+    models: ["meta:muse-spark-1.3"]
+    api_key_env: META_API_KEY
+    priority: 56
+  - name: cohere
+    models: []
+    api_key_env: COHERE_API_KEY
+    priority: 57
+  - name: fireworks
+    models: []
+    api_key_env: FIREWORKS_API_KEY
+    priority: 58
+  - name: novita
+    models: []
+    api_key_env: NOVITA_API_KEY
+    priority: 59
+  - name: huggingface
+    models: []
+    api_key_env: HUGGINGFACE_API_KEY
+    priority: 60
+  - name: ollama
+    models: []
+    api_key_env: OLLAMA_CLOUD_API_KEY
+    priority: 61
