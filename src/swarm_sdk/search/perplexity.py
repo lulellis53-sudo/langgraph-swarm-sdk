@@ -10,11 +10,18 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import os
 import re
 import sys
 from pathlib import Path
 from typing import Any
+
+from swarm_sdk.search.perplexity_parse import (
+    extract_related_queries,
+    extract_sources,
+    normalize_result,
+)
 
 try:
     # Optional "scrape" extra, not part of the quality-gate environment.
@@ -23,11 +30,16 @@ try:
         Page,
         async_playwright,
     )
+    from playwright.async_api import (
+        Error as PlaywrightError,
+    )
 except ImportError:
     raise ImportError(
         "Playwright is required to use PerplexitySearchEngine. "
         "Install it via: pip install playwright && playwright install chromium"
     )
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -156,16 +168,16 @@ class PerplexitySearchEngine:
                     if await cookie_btn.is_visible(timeout=2000):
                         await cookie_btn.click()
                         await page.wait_for_timeout(400)
-                except Exception:
-                    pass
+                except PlaywrightError:
+                    logger.warning("Cookie consent dialog not dismissed", exc_info=True)
 
                 # 3. Dismiss any sign-in welcome prompt if present
                 try:
                     dismiss_btn = page.get_by_role("button", name="Dismiss")
                     if await dismiss_btn.is_visible(timeout=1000):
                         await dismiss_btn.click()
-                except Exception:
-                    pass
+                except PlaywrightError:
+                    logger.warning("Sign-in welcome prompt not dismissed", exc_info=True)
 
                 # 4. Input query into main search area (#ask-input)
                 search_input = page.locator("#ask-input")
@@ -184,7 +196,8 @@ class PerplexitySearchEngine:
                         await submit_btn.click()
                     else:
                         await page.keyboard.press("Enter")
-                except Exception:
+                except PlaywrightError:
+                    logger.debug("Submit button not found; pressing Enter", exc_info=True)
                     await page.keyboard.press("Enter")
 
                 # 6. Wait for result URL
@@ -211,80 +224,24 @@ class PerplexitySearchEngine:
                 is_rate_limited = "Sign up and repeat your request" in answer_text
 
                 # 8. Extract related / follow-up queries
-                related_queries: list[str] = []
-                try:
-                    related_queries = await page.evaluate("""() => {
-                        const buttons = Array.from(document.querySelectorAll('button[aria-label]'));
-                        const excluded = new Set([
-                            'Copy', 'Share', 'Helpful', 'Not helpful', 'Fork', 'More actions',
-                            'Edit query', 'Copy query', 'Sign in', 'Dismiss', 'Collapse pane',
-                            'Expand pane', 'Collapse sidebar', 'Create project', 'Filter projects',
-                            'Collapse Projects', 'Collapse Sessions', 'Session actions', 'Submit',
-                            'Dictation', 'Model', 'Add files or tools', 'Search', 'Computer',
-                            'View plans', 'Scroll to end'
-                        ]);
-                        const results = [];
-                        for (const b of buttons) {
-                            const label = (b.getAttribute('aria-label') || '').trim();
-                            if (!label || excluded.has(label) || label.length < 5) continue;
-                            if (label.startsWith('Sources') || label.endsWith('sources')) continue;
-                            results.push(label);
-                        }
-                        return Array.from(new Set(results));
-                    }""")
-                except Exception:
-                    pass
+                related_queries = await extract_related_queries(page)
 
                 # 9. Extract sources from Links tab
-                sources: list[dict[str, str]] = []
-                try:
-                    links_tab = page.get_by_role("tab", name="Links")
-                    if await links_tab.is_visible(timeout=3000):
-                        await links_tab.click()
-                        await page.wait_for_timeout(1000)
-                        sources = await page.evaluate("""() => {
-                            const results = [];
-                            const anchors = Array.from(document.querySelectorAll('a[href]'));
-                            for (const a of anchors) {
-                                const href = a.href;
-                                if (!href.startsWith('http') || href.includes('perplexity.ai')
-                                    || href.includes('cloudflare.com')) {
-                                    continue;
-                                }
-                                const lines = a.innerText.split('\\n')
-                                    .map(s => s.trim()).filter(Boolean);
-                                const domain = lines[0] || '';
-                                const title = lines.length > 2
-                                    ? lines[2] : (lines[1] || lines[0] || href);
-                                const snippet = lines.length > 3 ? lines.slice(3).join(' ') : '';
-                                results.push({
-                                    url: href,
-                                    domain: domain,
-                                    title: title,
-                                    snippet: snippet
-                                });
-                            }
-                            return results;
-                        }""")
-                except Exception:
-                    pass
+                sources = await extract_sources(page)
 
                 # Save successful session state
                 if not is_rate_limited and self.storage_state_path:
                     try:
                         self.storage_state_path.parent.mkdir(parents=True, exist_ok=True)
                         await context.storage_state(path=str(self.storage_state_path))
-                    except Exception:
-                        pass
+                    except (OSError, PlaywrightError):
+                        logger.warning(
+                            "Could not save session state to %s",
+                            self.storage_state_path,
+                            exc_info=True,
+                        )
 
-                return {
-                    "query": query,
-                    "url": page.url,
-                    "answer": answer_text,
-                    "sources": sources,
-                    "related_queries": related_queries,
-                    "rate_limited": is_rate_limited,
-                }
+                return normalize_result(query, page.url, answer_text, sources, related_queries)
 
             finally:
                 await browser.close()

@@ -8,17 +8,21 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-__all__ = ["RunResult", "Settings", "SwarmSDK"]
+__all__ = ["EmbedFn", "RerankFn", "RunResult", "SearchFn", "Settings", "SwarmSDK"]
 __version__ = "0.1.0"
 
 if TYPE_CHECKING:
     from swarm_sdk.config.settings import Settings
     from swarm_sdk.core.swarm import RunResult, SwarmSDK
+    from swarm_sdk.protocols import EmbedFn, RerankFn, SearchFn
 
 _LAZY: dict[str, tuple[str, str]] = {
     "Settings": ("swarm_sdk.config.settings", "Settings"),
     "SwarmSDK": ("swarm_sdk.core.swarm", "SwarmSDK"),
     "RunResult": ("swarm_sdk.core.swarm", "RunResult"),
+    "SearchFn": ("swarm_sdk.protocols", "SearchFn"),
+    "EmbedFn": ("swarm_sdk.protocols", "EmbedFn"),
+    "RerankFn": ("swarm_sdk.protocols", "RerankFn"),
 }
 
 

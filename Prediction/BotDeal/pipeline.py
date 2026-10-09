@@ -27,6 +27,7 @@ from typing import Any
 
 import httpx
 import yaml
+
 from Prediction import harvest
 from Prediction.BotDeal.database import append_products, day_dir_for_date
 from Prediction.BotDeal.discovery import products_from_hits
@@ -243,9 +244,10 @@ def multi_search(
     day = today.isoformat()
     month = today.strftime("%B")
 
+    from WebSearch.agent_tools import search_hits
+
     from Prediction.BotDeal.sniper import match_sku
     from Prediction.br_hardware import connect, import_observation, rebuild_alerts, rebuild_floors
-    from WebSearch.agent_tools import search_hits
 
     db = connect(store_db)
     digest: dict[str, Any] = {"hits": 0, "prices": {}, "errors": []}
@@ -353,6 +355,7 @@ def multi_search(
 def monthly_stats(month: str) -> dict[str, dict[str, float]]:
     """Per-SKU max/avg/min of parsed prices for one month of Parquet data."""
     import polars as pl
+
     from Prediction.BotDeal.database import read_month
 
     frame = read_month(month)

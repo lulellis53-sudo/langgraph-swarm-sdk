@@ -3531,6 +3531,9 @@ compress = [
 ]
 dev = [
     { name = "hypothesis" },
+    { name = "lightgbm" },
+    { name = "mlforecast" },
+    { name = "pandas" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
@@ -3713,6 +3716,7 @@ requires-dist = [
     { name = "langgraph-checkpoint-sqlite", specifier = ">=3.1.1" },
     { name = "langgraph-sdk", specifier = ">=0.4.5" },
     { name = "langgraph-swarm", specifier = ">=0.1" },
+    { name = "lightgbm", marker = "extra == 'dev'", specifier = ">=4.7.0" },
     { name = "lightgbm", marker = "extra == 'forecast'", specifier = ">=4.7.0" },
     { name = "llama-cpp-python", marker = "extra == 'llama-cpp'", specifier = ">=0.3.0" },
     { name = "llama-cpp-python", marker = "extra == 'molten'", specifier = ">=0.3.0" },
@@ -3720,6 +3724,7 @@ requires-dist = [
     { name = "mcp", specifier = ">=2,<3" },
     { name = "mcp", marker = "extra == 'websearch'", specifier = ">=2,<3" },
     { name = "mem0ai", marker = "extra == 'mem0'", specifier = ">=1.0" },
+    { name = "mlforecast", marker = "extra == 'dev'", specifier = ">=1.1.0" },
     { name = "mlforecast", marker = "extra == 'forecast'", specifier = ">=1.1.0" },
     { name = "msgspec", marker = "extra == 'serialization'", specifier = ">=0.22" },
     { name = "notebook", marker = "extra == 'jupyter'", specifier = ">=7" },
@@ -3738,6 +3743,7 @@ requires-dist = [
     { name = "optuna", marker = "extra == 'tune'", specifier = ">=4" },
     { name = "orjson", specifier = ">=3.10" },
     { name = "orjson", marker = "extra == 'serialization'", specifier = ">=3.10" },
+    { name = "pandas", marker = "extra == 'dev'", specifier = ">=2.2" },
     { name = "pandas", marker = "extra == 'forecast'", specifier = ">=2.2" },
     { name = "parsel", marker = "extra == 'scrape'", specifier = ">=1.9" },
     { name = "pip", marker = "extra == 'jupyter'", specifier = ">=25" },

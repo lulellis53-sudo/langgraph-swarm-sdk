@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Iterable
-from typing import Protocol, cast
+from typing import TYPE_CHECKING, Protocol, cast
 
 
 class Reranker(Protocol):
@@ -105,6 +105,17 @@ class CrossEncoderProto(Protocol):
 
     def rerank(self, query: str, documents: list[str]) -> Iterable[float]:
         """Return one relevance score per document, in input order."""
+
+
+if TYPE_CHECKING:
+    from typing import cast
+
+    from swarm_sdk.protocols import RerankFn
+
+    # Structural conformance checks only; never evaluated at runtime.
+    _: RerankFn = cast(RerankFn, IdentityReranker)
+    _ = cast(RerankFn, KeywordReranker)
+    _ = cast(RerankFn, FastEmbedReranker)
 
 
 __all__ = [

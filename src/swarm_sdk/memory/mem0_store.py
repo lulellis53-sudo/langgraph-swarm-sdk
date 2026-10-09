@@ -202,3 +202,12 @@ class Mem0Store:
         """
         del vector, k
         return []
+
+
+if TYPE_CHECKING:
+    from typing import cast
+
+    from swarm_sdk.protocols import SearchFn
+
+    # Structural conformance check only; never evaluated at runtime.
+    _: SearchFn = cast(SearchFn, Mem0Store)

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import threading
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
@@ -238,3 +238,12 @@ class OpenClVecStore:
                 )
                 for index, score in zip(best_indexes, best_scores, strict=True)
             ]
+
+
+if TYPE_CHECKING:
+    from typing import cast
+
+    from swarm_sdk.protocols import SearchFn
+
+    # Structural conformance check only; never evaluated at runtime.
+    _: SearchFn = cast(SearchFn, OpenClVecStore)

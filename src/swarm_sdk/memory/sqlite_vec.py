@@ -6,6 +6,7 @@ import json
 import sqlite3
 import threading
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -271,3 +272,12 @@ class SqliteVecStore:
     def close(self) -> None:
         """Close the database connection."""
         self._conn.close()
+
+
+if TYPE_CHECKING:
+    from typing import cast
+
+    from swarm_sdk.protocols import SearchFn
+
+    # Structural conformance check only; never evaluated at runtime.
+    _: SearchFn = cast(SearchFn, SqliteVecStore)

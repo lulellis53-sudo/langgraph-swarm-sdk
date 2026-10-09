@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 from swarm_sdk.memory.base import MemoryHit
@@ -76,3 +78,12 @@ class QdrantStore:
                 )
             )
         return hits
+
+
+if TYPE_CHECKING:
+    from typing import cast
+
+    from swarm_sdk.protocols import SearchFn
+
+    # Structural conformance check only; never evaluated at runtime.
+    _: SearchFn = cast(SearchFn, QdrantStore)

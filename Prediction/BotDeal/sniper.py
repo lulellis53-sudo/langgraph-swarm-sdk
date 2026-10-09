@@ -21,6 +21,7 @@ import re
 from typing import Any
 
 import httpx
+
 from Prediction import harvest
 from Prediction.BotDeal.database import append_products
 from Prediction.BotDeal.hardware import load_catalog, merged_floor_targets
@@ -170,6 +171,7 @@ def _next_offset(result: dict[str, Any]) -> int:
 def telegram_settings() -> dict[str, Any]:
     """Read the ``telegram:`` block from ``hardware.yaml`` (defaults when absent)."""
     import yaml as _yaml
+
     from Prediction.BotDeal.hardware import HARDWARE_YAML
 
     data = _yaml.safe_load(HARDWARE_YAML.read_text()).get("telegram", {})

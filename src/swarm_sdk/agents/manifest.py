@@ -117,8 +117,17 @@ class AgentManifestLoader:
     """Load and index agent manifests from the ``Agents/`` tree."""
 
     @staticmethod
+    def _looks_like_agents_dir(path: Path) -> bool:
+        """True when ``path`` holds ``coordination.yaml`` or a persona ``agent.yaml``."""
+        return (path / "coordination.yaml").is_file() or any(path.glob("*/agent.yaml"))
+
+    @staticmethod
     def agents_root(start: Path | None = None) -> Path:
-        """Resolve the ``Agents`` directory from cwd or a parent.
+        """Resolve the ``Agents`` directory from ``start`` or a parent.
+
+        Walks ancestors so a lane checkout without ``Agents/`` still finds the
+        sibling Agents worktree (``…/Agents/Agents`` when that folder is the
+        git root).
 
         Args:
             start: Starting directory; defaults to ``Path.cwd()``.
@@ -126,11 +135,14 @@ class AgentManifestLoader:
         Returns:
             Path to the ``Agents`` folder (may not exist yet).
         """
-        root = start or Path.cwd()
-        if (root / "Agents").is_dir():
-            return root / "Agents"
-        if (root.parent / "Agents").is_dir():
-            return root.parent / "Agents"
+        root = (start or Path.cwd()).resolve()
+        for cur in (root, *root.parents):
+            direct = cur / "Agents"
+            if AgentManifestLoader._looks_like_agents_dir(direct):
+                return direct
+            nested = direct / "Agents"
+            if AgentManifestLoader._looks_like_agents_dir(nested):
+                return nested
         return root / "Agents"
 
     @staticmethod

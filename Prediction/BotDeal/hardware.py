@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+
 from Prediction.br_hardware import FLOOR_TARGETS, Product, Source
 
 __all__ = ["HARDWARE_YAML", "Catalog", "floor_targets_cents", "load_catalog"]

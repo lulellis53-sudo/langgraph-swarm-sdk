@@ -1,6 +1,7 @@
 import pandas as pd
 from hypothesis import given, settings
 from hypothesis import strategies as st
+
 from Prediction.engine import ForecastConfig, ForecastEngine
 
 

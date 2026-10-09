@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 from WebSearch.backend.prefilter import prefilter_hits, unwrap_redirect
+from WebSearch.frontend import SearchHit, parallel_search, registry_search
 from WebSearch.frontend.hits import near_dedupe, normalize_hit
 from WebSearch.frontend.websearchers import (
     NullSink,
@@ -17,8 +18,6 @@ from WebSearch.frontend.websearchers import (
     SinkReport,
     load_providers,
 )
-
-from WebSearch.frontend import SearchHit, parallel_search, registry_search
 
 # ---- Result sink types -----------------------------------------------------------------------
 

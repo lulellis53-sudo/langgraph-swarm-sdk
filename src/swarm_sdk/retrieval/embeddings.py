@@ -11,7 +11,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Iterable
 from email.message import Message
-from typing import IO, Protocol, cast
+from typing import IO, TYPE_CHECKING, Protocol, cast
 from urllib.parse import urlsplit
 
 import numpy as np
@@ -369,6 +369,18 @@ class TextEmbeddingProto(Protocol):
         **kwargs: object,
     ) -> Iterable[Iterable[float]]:
         """Embed ``texts`` into one row per text; ``query`` selects query-side prefixing."""
+
+
+if TYPE_CHECKING:
+    from typing import cast
+
+    from swarm_sdk.protocols import EmbedFn
+
+    # Structural conformance checks only; never evaluated at runtime.
+    _: EmbedFn = cast(EmbedFn, HashEmbedder)
+    _ = cast(EmbedFn, FastEmbedder)
+    _ = cast(EmbedFn, LlamaCppEmbedder)
+    _ = cast(EmbedFn, LlamaServerEmbedder)
 
 
 __all__ = [

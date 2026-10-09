@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from swarm_sdk.agents.manifest import agents_root
 from swarm_sdk.cli import main
 from swarm_sdk.orchestrator.plan import StepOutput
 from swarm_sdk.orchestrator.task_command import (
@@ -157,10 +158,20 @@ def test_cli_prints_the_agent_reply(
 
 def test_real_coder_selector() -> None:
     """The installed Coder persona is reachable as @coder."""
-    agents = Path(__file__).resolve().parents[1] / "Agents"
+    agents = agents_root(Path(__file__).resolve().parents[1])
     manifest = agents / "Coder" / "agent.yaml"
     if not manifest.is_file():
         pytest.skip("Coder manifest is not in this tree")
     resolved = resolve_task(parse_task_command('@coder --Task "ping"'), agents_dir=agents)
     assert resolved.directory == "Coder"
     assert resolved.manifest.name == "Coder"
+
+
+def test_agents_root_walks_nested_worktree(tmp_path: Path) -> None:
+    """A lane checkout without Agents/ still finds the sibling Agents worktree."""
+    nested = tmp_path / "Agents" / "Agents"
+    nested.mkdir(parents=True)
+    (nested / "coordination.yaml").write_text("agents: []\n")
+    start = tmp_path / "Websearch"
+    start.mkdir()
+    assert agents_root(start) == nested.resolve()

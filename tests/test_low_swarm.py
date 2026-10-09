@@ -13,7 +13,7 @@ class TestLowSwarmEngine:
     """Test suite for LowSwarmEngine end-to-end orchestration."""
 
     def test_happy_path_success(self) -> None:
-        """Happy path: task -> router -> coder -> lifeguard passes -> test verifier passes -> status='success'."""
+        """Happy path: task -> router -> coder -> lifeguard passes -> verifier passes -> success."""
         engine = LowSwarmEngine()
         result = engine.run(
             task="Create a calculator module with add and subtract functions",
@@ -44,7 +44,7 @@ class TestLowSwarmEngine:
         assert result.get("synthesized_code") == {}
 
     def test_lifeguard_resynthesis_loop_fixes_code(self) -> None:
-        """Lifeguard resynthesis loop: coder initially outputs top-level os.system -> lifeguard rejects -> loops back -> coder fixes -> passes."""
+        """Lifeguard loop: unsafe os.system output is rejected, coder retries until pass."""
 
         def iterative_synthesizer(state: SwarmState) -> dict[str, str]:
             iteration = state.get("iteration", 0)
@@ -121,18 +121,23 @@ class TestLowSwarmEngine:
 
     def test_custom_test_runner_pass_and_fail(self) -> None:
         """Custom test_runner validates synthesized code execution."""
+
         # Failing runner
-        failing_runner = lambda state: {
-            "passed": False,
-            "error": "Unit tests failed: 2 assertion errors",
-        }
+        def failing_runner(state: dict) -> dict:
+            return {
+                "passed": False,
+                "error": "Unit tests failed: 2 assertion errors",
+            }
+
         engine_fail = LowSwarmEngine(test_runner=failing_runner)
         res_fail = engine_fail.run("Test task", target_files=["module.py"])
         assert res_fail["status"] == "failed"
         assert "Unit tests failed" in str(res_fail["error"])
 
         # Passing runner
-        passing_runner = lambda state: {"passed": True, "tests_run": 5}
+        def passing_runner(state: dict) -> dict:
+            return {"passed": True, "tests_run": 5}
+
         engine_pass = LowSwarmEngine(test_runner=passing_runner)
         res_pass = engine_pass.run("Test task", target_files=["module.py"])
         assert res_pass["status"] == "success"
@@ -140,7 +145,10 @@ class TestLowSwarmEngine:
 
     def test_rag_pipeline_context_injection(self) -> None:
         """RAG pipeline injects context chunks during router execution."""
-        mock_rag = lambda task: ["Chunk A: architectural guideline", "Chunk B: invariant rule"]
+
+        def mock_rag(task: str) -> list[str]:
+            return ["Chunk A: architectural guideline", "Chunk B: invariant rule"]
+
         engine = LowSwarmEngine(rag_pipeline=mock_rag)
         result = engine.run("Implement optimized vector loop", target_files=["vector.py"])
 
@@ -149,7 +157,7 @@ class TestLowSwarmEngine:
         assert "Chunk B: invariant rule" in result["context_chunks"]
 
     def test_orchestrator_init_exports(self) -> None:
-        """Verify LowSwarmEngine and SwarmState are properly re-exported in orchestrator __init__."""
+        """Verify LowSwarmEngine and SwarmState are re-exported in orchestrator __init__."""
         import swarm_sdk.orchestrator as orch
 
         assert hasattr(orch, "LowSwarmEngine")

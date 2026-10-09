@@ -124,6 +124,7 @@ def _embed(text: str, embedder) -> bytes:
 def vector_stage(conn: sqlite3.Connection) -> int:
     """Upsert deduped observations into a sqlite-vec table (semantic lookup)."""
     import sqlite_vec
+
     from Prediction.mcp_server import load_lexical_embedder
 
     conn.enable_load_extension(True)

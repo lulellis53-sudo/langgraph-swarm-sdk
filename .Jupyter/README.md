@@ -20,12 +20,12 @@ provider configured in Jupyter AI settings; a hosted provider generally needs
 credentials, while local model support such as Ollama is another route.
 
 For this machine, the recommended chat route is the supported Codex persona.
-Jupyter AI also
-needs the separate `@agentclientprotocol/codex-acp` adapter available on `PATH`; it is
-not installed by the Python extra. The current adapter release
-the machine's global-install approval. After approval and installation, restart
-JupyterLab and select the Codex persona in Chat. No API key needs to be added
-to this project.
+Jupyter AI needs the separate `@agentclientprotocol/codex-acp` adapter on
+`PATH`; the Python extra does not install it. The current adapter release
+could not resolve its Codex dependency from the configured npm registry, so
+version 1.13.1 was installed; it includes Codex 0.156.1. Restart JupyterLab
+and select the Codex persona in Chat. Choose ChatGPT sign-in if prompted; no
+API key is added to this project.
 
 ## 1. Local architecture and data flow
 
@@ -165,19 +165,21 @@ notebook, `.Jupyter` workspace file, or source-controlled configuration.
 
 #### Codex ACP setup
 
-The Codex CLI is present at `~/.local/bin/codex`; the npm ACP adapter is a
-separate global install. Once that install is approved, run JupyterLab from
-this project so its inherited `PATH` can discover the adapter:
+The npm ACP adapter is a separate global install. The current working
+installation is pinned to 1.13.1 because the latest release requires a Codex
+package version not available from the configured npm registry. Run JupyterLab
+from this project so its inherited `PATH` can discover the adapter:
 
 ```bash
-npm install -g @agentclientprotocol/codex-acp
+npm install -g @agentclientprotocol/codex-acp@1.13.1
 ./scripts/jupyter.sh
 ```
 
-The adapter supports ChatGPT sign-in, which does not require adding an API key to the project. In JupyterLab,
-open **Chat**, create a chat, and select **Codex**. Review tool permissions
-before allowing the agent to edit files or run commands. If the persona is not
-listed, check `command -v codex-acp` and restart the server.
+The adapter supports ChatGPT sign-in, which does not require adding an API key
+to the project. In JupyterLab, open **Chat**, create a chat, and select
+**Codex**. Review tool permissions before allowing the agent to edit files or
+run commands. If the persona is not listed, check `command -v codex-acp` and
+restart the server.
 
 ### 5.2 Jupyternaut option
 

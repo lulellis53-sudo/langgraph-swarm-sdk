@@ -213,7 +213,7 @@ Open **Agent** mode, `@`-attach the review or files, then `/code-fixer`. Fixes *
 | Branch | Worktree | Owns |
 | --- | --- | --- |
 | `swarm_sdk` (also `main`) | `~/Myworkspace/Swarm` | SDK (`src/swarm_sdk/`), tests, `pyproject.toml` |
-| `Agents` | (branch only; `Agents/` lives in the SDK tree) | Specialist personas and coordination |
+| `Agents` | `~/Myworkspace/Agents` (synced from `swarm_sdk`) | Specialist personas and coordination |
 | `Websearch` | `~/Myworkspace/Websearch` | `WebSearch/` pipeline |
 | `Prediction` | `~/Myworkspace/Prediction` | Forecast engine |
 | `BotDeal` | `~/Myworkspace/BotDeal` | PromoDeals / BotDeal lane |

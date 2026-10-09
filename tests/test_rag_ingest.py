@@ -364,7 +364,7 @@ def test_cross_backend_load_numpy_from_faiss(tmp_path: Path) -> None:
 
 
 def test_retrieval_module_re_exports() -> None:
-    """Verify that DocumentChunk, RetrievalResult, RAGIngestionPipeline are re-exported in swarm_sdk.retrieval."""
+    """Verify retrieval re-exports: DocumentChunk, RetrievalResult, RAGIngestionPipeline."""
     import swarm_sdk.retrieval as ret
 
     assert hasattr(ret, "DocumentChunk")

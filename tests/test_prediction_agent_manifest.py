@@ -5,11 +5,17 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 import yaml
 
 from swarm_sdk.agents.manifest import load_agent_manifest
 
-AGENTS_ROOT = Path(__file__).parent.parent / "Agents"
+AGENTS_ROOT = Path(__file__).resolve().parents[1] / "Agents"
+
+pytestmark = pytest.mark.skipif(
+    not (AGENTS_ROOT / "coordination.yaml").is_file(),
+    reason="Agents/ is not in this checkout",
+)
 
 
 def test_prediction_manifest_loads() -> None:

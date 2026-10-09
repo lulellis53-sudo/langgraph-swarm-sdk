@@ -94,6 +94,9 @@ dev = [
     "types-PyYAML>=6.0.12",
     "types-requests>=2.32.0",
     "yamllint>=1.37",
+    "pandas>=2.2",
+    "lightgbm>=4.7.0",
+    "mlforecast>=1.1.0",
 ]
 # ## Observability (OTel traces for FastAPI / httpx)
 observability = [
@@ -199,6 +202,8 @@ swarm-api = "swarm_sdk.serving.http:main"
 swarm-grpc = "swarm_sdk.serving.grpc:main"
 swarm-vault = "swarm_sdk.vault:main"
 low-swarm = "swarm_sdk.cli:main"
+websearch = "WebSearch.cli:main"
+agents = "swarm_sdk.agents.validate:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -210,8 +215,11 @@ dev = [
     "pytest-benchmark>=5.3.0",
 ]
 
+[tool.hatch.build]
+dev-mode-dirs = [".", "src"]
+
 [tool.hatch.build.targets.wheel]
-packages = ["src/swarm_sdk"]
+packages = ["src/swarm_sdk", "WebSearch"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "src/swarm_sdk/pb/swarm.proto" = "swarm_sdk/pb/swarm.proto"
@@ -229,7 +237,7 @@ src = [
     "Main",
     "tests",
 ]
-extend-exclude = ["src/swarm_sdk/pb"]
+extend-exclude = ["src/swarm_sdk/pb", "scratch"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
@@ -260,4 +268,4 @@ testpaths = ["Agents/benchmark", "tests"]
 # No "Agents" entry: data dirs there (Agents/Prediction) shadow the real
 # Prediction/WebSearch packages as namespace portions. Everything imported
 # from the tree lives in Agents/benchmark or Agents/math.
-pythonpath = ["src", ".", "Agents/benchmark", "Agents/math"]
+pythonpath = ["src", ".", "Agents/benchmark", "Agents/math", "Agents", "TechNews/src"]
