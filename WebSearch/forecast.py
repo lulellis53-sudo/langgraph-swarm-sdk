@@ -34,7 +34,10 @@ class ForecastUnavailable(RuntimeError):
 
 
 class _Engine(Protocol):
+    """Minimal pandas forecasting interface expected by :func:`forecast_hits`."""
+
     def fit(self, df: pd.DataFrame) -> Any: ...
+
     def predict(self, horizon: int) -> pd.DataFrame: ...
 
 
@@ -75,6 +78,7 @@ def run_series(conn: sqlite3.Connection, query: str) -> pd.DataFrame:
 
 
 def _default_engine() -> _Engine:
+    """Lazily build the external forecasting engine or raise :class:`ForecastUnavailable`."""
     try:
         from Prediction import ForecastConfig, ForecastEngine  # ty: ignore[unresolved-import]
     except ImportError as exc:
