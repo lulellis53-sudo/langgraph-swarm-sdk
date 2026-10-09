@@ -16,9 +16,7 @@ import asyncio
 import time
 from typing import Any
 
-import pytest
-
-from swarm_sdk.orchestrator.plan import Plan, PlanStep, UsageTotals
+from swarm_sdk.orchestrator.plan import Plan, PlanStep
 from swarm_sdk.orchestrator.spawn import _fallback_plan, _validate_plan
 from swarm_sdk.orchestrator.worker import WorkerAgent
 
@@ -164,11 +162,14 @@ async def _run_parallel(steps: list[PlanStep], factory: Any, max_concurrency: in
 
     factories = []
     for step in steps:
+
         def make(step: PlanStep = step) -> Any:
             async def one() -> Any:
                 worker = factory(step)
                 return await worker.run(step.id, step.description, {})
+
             return one()
+
         factories.append(make)
 
     await bounded_gather(factories, max_concurrency=max_concurrency)
@@ -182,9 +183,7 @@ def test_wave_parallel_speedup() -> None:
     root = "."
 
     def factory(step: PlanStep) -> WorkerAgent:
-        return WorkerAgent(
-            manifest, agents_root=root, model_override=_FakeModel("ok")
-        )
+        return WorkerAgent(manifest, agents_root=root, model_override=_FakeModel("ok"))
 
     seq_time = asyncio.run(_run_sequential(steps, factory))
     par_time = asyncio.run(_run_parallel(steps, factory, max_concurrency=8))
@@ -222,9 +221,7 @@ def test_cache_hit_latency(benchmark: Any) -> None:
     """Cache lookup latency vs full worker.run on a cache hit."""
     manifest = _FakeManifest()
     cache = _DictCache()
-    worker = WorkerAgent(
-        manifest, agents_root=".", cache=cache, model_override=_FakeModel("ok")
-    )
+    worker = WorkerAgent(manifest, agents_root=".", cache=cache, model_override=_FakeModel("ok"))
 
     # Prime the cache.
     asyncio.run(worker.run("S1", "do something", {}))
@@ -240,9 +237,7 @@ def test_cache_miss_vs_hit_speedup() -> None:
     """Cache hit should be dramatically faster than a model call."""
     manifest = _FakeManifest()
     cache = _DictCache()
-    worker = WorkerAgent(
-        manifest, agents_root=".", cache=cache, model_override=_FakeModel("ok")
-    )
+    worker = WorkerAgent(manifest, agents_root=".", cache=cache, model_override=_FakeModel("ok"))
 
     # Measure miss (cold).
     miss_start = time.perf_counter()
@@ -307,7 +302,9 @@ def test_pruner_token_reduction() -> None:
     compressed_tokens = count_text("\n".join(compressed))
 
     reduction = 1 - compressed_tokens / original_tokens
-    print(f"\n  original={original_tokens}  compressed={compressed_tokens}  reduction={reduction:.1%}")
+    print(
+        f"\n  original={original_tokens}  compressed={compressed_tokens}  reduction={reduction:.1%}"
+    )
     assert compressed_tokens < original_tokens
     assert len(compressed) <= 7  # digest + 6 recent turns
 
@@ -365,7 +362,11 @@ def test_import_time_target() -> None:
     import sys
 
     result = subprocess.run(
-        [sys.executable, "-c", "import time; t=time.perf_counter(); import swarm_sdk; print(f'{(time.perf_counter()-t)*1000:.1f}')"],
+        [
+            sys.executable,
+            "-c",
+            "import time; t=time.perf_counter(); import swarm_sdk; print(f'{(time.perf_counter()-t)*1000:.1f}')",
+        ],
         capture_output=True,
         text=True,
         timeout=30,

@@ -22,8 +22,14 @@ def test_catalog_loads_from_yaml() -> None:
     skus = catalog.skus
     assert "rtx-5090" in skus
     assert {
-        "ryzen-5-9600x", "ryzen-9-9950x3d2", "ryzen-7-9850x3d", "ryzen-7-9800x",
-        "ddr5-2x16gb", "ddr5-1x8gb", "ddr5-2x32gb", "rtx-5060-ti",
+        "ryzen-5-9600x",
+        "ryzen-9-9950x3d2",
+        "ryzen-7-9850x3d",
+        "ryzen-7-9800x",
+        "ddr5-2x16gb",
+        "ddr5-1x8gb",
+        "ddr5-2x32gb",
+        "rtx-5060-ti",
     } <= skus
     assert any(source.name == "kabum" for source in catalog.sources)
     assert {source.name for source in catalog.sources} == {

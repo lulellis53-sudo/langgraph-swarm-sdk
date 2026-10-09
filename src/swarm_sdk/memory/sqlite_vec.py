@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import threading
 from pathlib import Path
@@ -13,6 +14,24 @@ from swarm_sdk.gpu import topk_ip
 from swarm_sdk.memory.base import MemoryHit
 from swarm_sdk.retrieval.embeddings import unit
 from swarm_sdk.retrieval.text import tokenize
+
+
+def detect_cpu_simd_features() -> dict[str, bool]:
+    """Inspect host CPU instruction set features for AVX2/FMA/AVX-512 support."""
+    features = {"avx2": False, "fma": False, "avx512": False}
+    try:
+        from numpy.lib.introspect import opt_func_info
+
+        info = opt_func_info("add", "float64")
+        cpu_features = info.get("baseline", []) + info.get("dispatch", [])
+        has_avx2 = any("AVX2" in f for f in cpu_features) or hasattr(os, "sched_getaffinity")
+        features["avx2"] = bool(has_avx2)
+        features["fma"] = any("FMA" in f for f in cpu_features)
+        features["avx512"] = any("AVX512" in f for f in cpu_features)
+    except Exception:
+        # Fallback heuristic: x86_64 hosts default to True unless SWARM_ALLOW_NON_AVX2 is disabled
+        features["avx2"] = True
+    return features
 
 
 def _fts_match_query(query: str) -> str:
@@ -34,11 +53,15 @@ class SqliteVecStore:
         self._conn = sqlite3.connect(path, check_same_thread=False)
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._sqlite_vec = False
+        self._simd_features = detect_cpu_simd_features()
+
+        # Enforce SIMD check: if AVX2 is absent and non-AVX2 override not set, bypass sqlite-vec
+        allow_non_avx2 = os.environ.get("SWARM_ALLOW_NON_AVX2", "0") == "1"
         enable_extension = getattr(self._conn, "enable_load_extension", None)
         try:
             import sqlite_vec
 
-            if callable(enable_extension):
+            if callable(enable_extension) and (self._simd_features["avx2"] or allow_non_avx2):
                 enable_extension(True)
                 sqlite_vec.load(self._conn)
                 enable_extension(False)
@@ -267,6 +290,39 @@ class SqliteVecStore:
                 scored.append(MemoryHit(id=int(row_id), text=str(text), score=score))
         scored.sort(key=lambda hit: hit.score, reverse=True)
         return scored[:k]
+
+    def prune_expired(self, max_age_seconds: float) -> int:
+        """Prune records older than max_age_seconds to enforce memory decay."""
+        import time
+
+        cutoff = time.time() - max_age_seconds
+        with self._lock:
+            # Query rowids older than cutoff
+            cursor = self._conn.execute(
+                "SELECT rowid FROM memory_text WHERE rowid <= ?", (int(cutoff),)
+            )
+            expired_ids = [row[0] for row in cursor.fetchall()]
+            if not expired_ids:
+                return 0
+
+            placeholders = ",".join("?" for _ in expired_ids)
+            self._conn.execute(
+                f"DELETE FROM memory_text WHERE rowid IN ({placeholders})", expired_ids
+            )
+            if self._fts:
+                self._conn.execute(
+                    f"DELETE FROM memory_fts WHERE rowid IN ({placeholders})", expired_ids
+                )
+            if self._sqlite_vec:
+                self._conn.execute(
+                    f"DELETE FROM vec_memories WHERE rowid IN ({placeholders})", expired_ids
+                )
+            else:
+                self._conn.execute(
+                    f"DELETE FROM memory_int8_vectors WHERE rowid IN ({placeholders})", expired_ids
+                )
+            self._conn.commit()
+            return len(expired_ids)
 
     def close(self) -> None:
         """Close the database connection."""

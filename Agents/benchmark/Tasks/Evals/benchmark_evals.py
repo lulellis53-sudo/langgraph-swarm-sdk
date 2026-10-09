@@ -39,11 +39,13 @@ class _Probe:
         self.peak = 0
 
     def begin(self, system: str, user: str) -> None:
+        """Record the start of one model call (increments in-flight)."""
         with self.lock:
             self.in_flight += 1
             self.peak = max(self.peak, self.in_flight)
 
     def end(self, system: str, user: str) -> None:
+        """Record the end of one model call and log the prompt pair."""
         with self.lock:
             self.in_flight -= 1
             self.calls.append((system, user))

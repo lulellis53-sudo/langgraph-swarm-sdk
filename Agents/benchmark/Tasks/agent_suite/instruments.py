@@ -172,6 +172,14 @@ class _Prometheus:
         self._build()
 
     def observe(self, mode: str, status: str, seconds: float, prompt_tokens: int) -> None:
+        """Record one step's status, latency, and prompt tokens.
+
+        Args:
+            mode: Execution mode label (``swarm``, ``parallel``, ...).
+            status: Step outcome label (``ok``, ``error``, ...).
+            seconds: Step wall time in seconds.
+            prompt_tokens: Prompt tokens consumed (ignored when <= 0).
+        """
         if not self.available:
             return
         self.steps.labels(mode=mode, status=status).inc()
@@ -180,10 +188,22 @@ class _Prometheus:
             self.tokens.labels(mode=mode).inc(prompt_tokens)
 
     def set_in_flight(self, mode: str, peak: int) -> None:
+        """Publish the peak in-flight gauge for ``mode``.
+
+        Args:
+            mode: Execution mode label.
+            peak: Highest observed in-flight count.
+        """
         if self.available:
             self.in_flight.labels(mode=mode).set(peak)
 
     def report(self) -> dict[str, object]:
+        """Aggregate the registry samples into a JSON-ready report.
+
+        Returns:
+            Dict with step counts, latency sums/counts, tokens, and samples
+            (``{"available": False}`` when the registry is missing).
+        """
         if not self.available or self.registry is None:
             return {"available": False}
         samples: list[dict[str, object]] = []
@@ -253,6 +273,15 @@ class _OpenTelemetry:
             clear()
 
     def span(self, name: str, **attributes: str | int | float | bool) -> object:
+        """Start a current span (or a no-op context when tracing is unavailable).
+
+        Args:
+            name: Span name.
+            **attributes: Span attributes to attach.
+
+        Returns:
+            A context manager yielding the span.
+        """
         if self.tracer is None:
             from contextlib import nullcontext
 
@@ -261,11 +290,18 @@ class _OpenTelemetry:
         return start(name, attributes=attributes)
 
     def shutdown(self) -> None:
+        """Shut down the tracer provider (no-op when tracing is unavailable)."""
         shutdown = getattr(self.provider, "shutdown", None)
         if callable(shutdown):
             shutdown()
 
     def report(self) -> dict[str, object]:
+        """Summarize finished spans grouped by name and mode.
+
+        Returns:
+            Dict with span counts, error spans, and per-span percentiles
+            (``{"available": False}`` when tracing is unavailable).
+        """
         if not self.available or self.exporter is None:
             return {"available": False}
         finished = self.exporter.get_finished_spans()
@@ -352,15 +388,39 @@ class SuiteInstruments:
         self.otel.reset()
 
     def observe_step(self, mode: str, status: str, elapsed_ns: int, prompt_tokens: int) -> None:
+        """Forward one step observation to the Prometheus recorder.
+
+        Args:
+            mode: Execution mode label.
+            status: Step outcome label.
+            elapsed_ns: Step wall time in nanoseconds.
+            prompt_tokens: Prompt tokens consumed.
+        """
         self.prometheus.observe(mode, status, elapsed_ns / 1e9, prompt_tokens)
 
     def set_in_flight(self, mode: str, peak: int) -> None:
+        """Forward the peak in-flight count to the Prometheus recorder.
+
+        Args:
+            mode: Execution mode label.
+            peak: Highest observed in-flight count.
+        """
         self.prometheus.set_in_flight(mode, peak)
 
     def span(self, name: str, **attributes: str | int | float | bool) -> object:
+        """Open an OpenTelemetry span for the wrapped operation.
+
+        Args:
+            name: Span name.
+            **attributes: Span attributes to attach.
+
+        Returns:
+            A context manager yielding the span.
+        """
         return self.otel.span(name, **attributes)
 
     def shutdown(self) -> None:
+        """Flush and shut down the OpenTelemetry exporter."""
         self.otel.shutdown()
 
     def langchain_report(self) -> dict[str, object]:
@@ -391,9 +451,11 @@ class SuiteInstruments:
         }
 
     def prometheus_report(self) -> dict[str, object]:
+        """Return the Prometheus metrics summary (steps, latency, tokens)."""
         return self.prometheus.report()
 
     def otel_report(self) -> dict[str, object]:
+        """Return the OpenTelemetry span summary (counts and percentiles)."""
         return self.otel.report()
 
 

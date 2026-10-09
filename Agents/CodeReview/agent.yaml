@@ -1,0 +1,55 @@
+version: '1'
+name: CodeReview
+role: review_changes
+langgraph_node: reviewer
+model: anthropic:claude-sonnet-4.6
+think_level: high
+effort: high
+api_key_env: CLAUDE_OAUTH_TOKEN
+token_budget:
+  max_prompt: 8192
+  max_completion: 2048
+tasks:
+- id: diff_review
+  description: Review a diff or PR for correctness, security, style, and test coverage;
+    apply two-stage critique (RuleChecker + ReviewFilter) and emit structured findings
+    with severity.
+  outputs:
+  - findings
+  - verdict
+  - reachability_map
+- id: security_smell_check
+  description: 'Scan a diff for security smells: injection, secret exposure, unsafe
+    deserialization, OWASP Top 10, and untrusted source-to-sink reachability.'
+  outputs:
+  - security_findings
+  - severity_map
+  - reachability_map
+- id: pydantic_schema_check
+  description: Flag public Python APIs that use untyped dict/dataclass payloads instead
+    of pydantic.BaseModel v2; emit file/line findings for Coder to apply. Read-only
+    invariance.
+  outputs:
+  - findings
+  - verdict
+capabilities:
+- web_search
+- ast
+- diff_reading
+- static_analysis
+- security_patterns
+- lint
+- two_stage_critique
+- reachability_analysis
+skills:
+- skills/SKILL.md
+telemetry:
+  enabled: true
+  metrics:
+  - token_count
+  - latency_ms
+  - throughput_rpm
+  - jev_score
+  - success_rate
+  export_format: json_lines
+  log_destination: Benchmarks/telemetry.jsonl

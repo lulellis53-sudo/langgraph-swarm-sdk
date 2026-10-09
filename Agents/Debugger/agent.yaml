@@ -1,35 +1,53 @@
-version: "1"
+version: '1'
 name: Debugger
-role: root_cause_failures
-
-model: openai:gpt-6-luna
-# api_endpoint: POST https://api.openai.com/v1/chat/completions
-api_key_env: CODEX_OAUTH_TOKEN
-effort: high
+role: root_cause_failures_and_apply_fixes
+model: anthropic:claude-sonnet-4.6
 think_level: high
-
+effort: high
+api_key_env: CLAUDE_OAUTH_TOKEN
 token_budget:
-  max_prompt: 4096
-  max_completion: 1024
-
+  max_prompt: 8192
+  max_completion: 2048
 tasks:
-  - id: reproduce_failure
-    description: >-
-      Reproduce a reported failure and isolate it to a minimal test case.
-    outputs:
-      - reproduction_steps
-      - minimal_test_case
-
-  - id: identify_root_cause
-    description: >-
-      Trace a failure to its root cause and propose the minimal fix.
-    outputs:
-      - root_cause_statement
-      - fix_proposal
-
+- id: reproduce_failure
+  description: Reproduce a reported failure or review defect and isolate it to a minimal
+    test case.
+  outputs:
+  - reproduction_steps
+  - minimal_test_case
+- id: identify_root_cause
+  description: Trace a failure to its root cause and propose the minimal fix.
+  outputs:
+  - root_cause_statement
+  - fix_proposal
+- id: apply_review_findings
+  description: Implement CodeReview findings (critical and high severity first) as
+    the smallest correct patches; run ruff, pyright, targeted tests, and validate
+    manifest integrity.
+  outputs:
+  - claimed_files
+  - changed_files
+  - test_commands
+  - verification_status
 capabilities:
-  - ast
-  - stack_trace_analysis
-  - log_reading
-  - test_runner
-  - bisect
+- ast
+- stack_trace_analysis
+- log_reading
+- test_runner
+- bisect
+- code_edit
+- diff
+- lint
+- typecheck
+skills:
+- skills/SKILL.md
+telemetry:
+  enabled: true
+  metrics:
+  - token_count
+  - latency_ms
+  - throughput_rpm
+  - jev_score
+  - success_rate
+  export_format: json_lines
+  log_destination: Benchmarks/telemetry.jsonl

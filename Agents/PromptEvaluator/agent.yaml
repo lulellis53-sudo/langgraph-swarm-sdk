@@ -1,0 +1,55 @@
+version: "1"
+name: PromptEvaluator
+role: enterprise_prompt_evaluation_and_g_eval_scoring
+langgraph_node: reviewer
+model: anthropic:claude-sonnet-4.6
+think_level: high
+effort: high
+api_key_env: CLAUDE_OAUTH_TOKEN
+token_budget:
+  max_prompt: 16384
+  max_completion: 8192
+tasks:
+  - id: evaluate_llm_outputs
+    description: >-
+      Execute enterprise-grade G-Eval scoring pipelines, measuring instruction-following fidelity, hallucination rates, bias, and output accuracy.
+    outputs:
+      - g_eval_report
+      - hallucination_rate
+      - fidelity_score
+  - id: run_prompt_regression_matrix
+    description: >-
+      Run automated evaluation test matrices across prompt revisions to verify that optimizations preserve output quality and compliance.
+    outputs:
+      - regression_matrix_status
+      - score_delta
+  - id: detect_data_drift
+    description: >-
+      Monitor incoming data streams and model outputs for concept and covariate drift. Calculate Kolmogorov-Smirnov and PSI scores, warning when prompt embeddings or input data diverge from baseline distributions.
+    outputs:
+      - psi_score
+      - ks_p_value
+      - drift_alert_status
+
+capabilities:
+  - g_eval_scoring
+  - hallucination_detection
+  - prompt_regression_testing
+  - bias_auditing
+  - statistical_drift_detection
+  - psi_calculation
+  - embedding_distribution_analysis
+  - retraining_alerting
+skills:
+  - skills/SKILL.md
+
+telemetry:
+  enabled: true
+  metrics:
+    - token_count
+    - latency_ms
+    - throughput_rpm
+    - jev_score
+    - success_rate
+  export_format: json_lines
+  log_destination: Benchmarks/telemetry.jsonl

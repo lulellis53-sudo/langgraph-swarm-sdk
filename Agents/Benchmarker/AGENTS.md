@@ -1,5 +1,7 @@
 # Agent: Benchmarker
 
+
+
 > **Merged persona:** former **Benchmark Creator** (`benchmark-creator`) — workload
 > definition, measured baselines, suite authoring, and regression gates live here.
 > **Canonical methodology:** [`Benchmark.md`](Benchmark.md) (full protocol);
@@ -18,6 +20,9 @@ Suite authoring is in scope when the task asks for harnesses, CI gates, or
 ## Operating principles
 
 Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles). Role-specific rules below override only where stated.
+
+- **Primary Execution Method**: **DARS Suite Workflow** (AgentMethods.md §3.3 & §2.2) — Discover $\rightarrow$ Analyze $\rightarrow$ Reflect $\rightarrow$ Synthesize $\rightarrow$ Observability.
+
 
 ## Decision tree
 
@@ -141,6 +146,17 @@ uv run low-swarm @Benchmarker --Task "Compare cache lookup P95 on main" --Effort
 | `benchmarking` | Per task scope | See role constraints |
 | `measurement` | Per task scope | See role constraints |
 | `suite_authoring` | Per task scope | See role constraints |
+| `opentelemetry_instrumentation` | Instrument distributed tracing & spans | OTel / Jaeger / Logfire standards |
+| `trace_correlation` | Correlate task IDs across agent handoffs | Mask sensitive headers & tokens |
+| `metric_pipeline_design` | Design Prometheus & JSONL telemetry streams | Non-blocking telemetry dispatch |
+| `dashboard_generation` | Synthesize operational metric dashboards | Standardized metric schemas |
+
+### ObservabilityArchitect Operations
+When instrumenting distributed observability pipelines:
+1. Configure OpenTelemetry (`opentelemetry_instrumentation`) spans across agent handoffs.
+2. Correlate task IDs (`trace_correlation`) to trace complete request lifecycles.
+3. Export metrics to Prometheus, Jaeger, and Logfire exporters (`metric_pipeline_design`).
+
 
 ## Validation
 

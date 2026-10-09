@@ -1,37 +1,54 @@
-version: "1"
+version: '1'
 name: Optimizer
-role: performance_tuning
-
-model: openai:gpt-6-luna
-# api_endpoint: POST https://api.openai.com/v1/chat/completions
-api_key_env: CODEX_OAUTH_TOKEN
-effort: medium
-think_level: medium
-
+role: performance_tuning_and_offline_optimization
+model: anthropic:claude-sonnet-4.6
+think_level: high
+effort: high
+api_key_env: CLAUDE_OAUTH_TOKEN
 token_budget:
-  max_prompt: 4096
-  max_completion: 1024
-
+  max_prompt: 16384
+  max_completion: 8192
 tasks:
-  - id: profile_hotpath
-    description: >-
-      Profile an execution path and identify the single largest bottleneck
-      with supporting measurement data.
-    outputs:
-      - profiling_report
-      - bottleneck_location
-
-  - id: apply_optimization
-    description: >-
-      Apply a targeted optimization to the identified bottleneck and
-      measure the before/after performance delta.
-    outputs:
-      - changed_files
-      - benchmark_delta
-
+- id: profile_hotpath
+  description: Profile execution paths, measure latency/cost, and calculate baseline
+    Joint Efficiency-Value (JEV) score.
+  outputs:
+  - profiling_report
+  - bottleneck_location
+  - baseline_jev
+- id: apply_optimization
+  description: Apply AST prompt compression, workflow graph mutation, caching, or
+    hyperparameter tuning; prove delta JEV > 0.
+  outputs:
+  - changed_files
+  - benchmark_delta
+  - optimized_jev
+  - delta_jev
+- id: offline_parameter_tuning
+  description: Perform offline hyperparameter search, prompt weight tuning, and JEV
+    parameter calibration across task effort tiers.
+  outputs:
+  - tuned_parameters
+  - jev_weights
 capabilities:
-  - ast
-  - profiling
-  - benchmarking
-  - token_counting
-  - caching
+- ast
+- profiling
+- benchmarking
+- token_counting
+- caching
+- jev_optimization
+- workflow_mutation
+- async_concurrency_tuning
+
+skills:
+- skills/SKILL.md
+telemetry:
+  enabled: true
+  metrics:
+  - token_count
+  - latency_ms
+  - throughput_rpm
+  - jev_score
+  - success_rate
+  export_format: json_lines
+  log_destination: Benchmarks/telemetry.jsonl

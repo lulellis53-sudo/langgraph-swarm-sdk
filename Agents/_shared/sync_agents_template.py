@@ -66,6 +66,14 @@ CURSOR_BOILERPLATE = re.compile(
     re.MULTILINE,
 )
 def capabilities_table(yaml_path: Path) -> str:
+    """Render the persona ``capabilities:`` list as a Markdown table.
+
+    Args:
+        yaml_path: Path to the persona's ``agent.yaml`` manifest.
+
+    Returns:
+        Markdown table block, or ``""`` when the file or list is missing.
+    """
     if not yaml_path.is_file():
         return ""
     text = yaml_path.read_text(encoding="utf-8")
@@ -89,6 +97,14 @@ def capabilities_table(yaml_path: Path) -> str:
 
 
 def inject_operating_after_persona(content: str) -> str:
+    """Insert the Operating principles section right after the Persona section.
+
+    Args:
+        content: ``AGENTS.md`` source text.
+
+    Returns:
+        Content with the section injected (unchanged when already present).
+    """
     if "## Operating principles" in content:
         return content
     if "## Persona" not in content:
@@ -114,6 +130,14 @@ def inject_operating_after_persona(content: str) -> str:
 
 
 def normalize_python_sections(content: str) -> str:
+    """Replace legacy Python/template sections with the canonical modules block.
+
+    Args:
+        content: ``AGENTS.md`` source text.
+
+    Returns:
+        Content with normalized Python sections.
+    """
     content = STATIC_SECTION.sub("\n" + PYTHON_MODULES, content)
     content = PYTHON_TOPIC_H2.sub("\n" + PYTHON_MODULES, content)
     content = PYTHON_TOPIC.sub("\n", content)
@@ -124,6 +148,14 @@ def normalize_python_sections(content: str) -> str:
 
 
 def inject(path: Path) -> bool:
+    """Apply all template injections to one persona ``AGENTS.md``.
+
+    Args:
+        path: Path of the ``AGENTS.md`` to update.
+
+    Returns:
+        ``True`` when the file changed, ``False`` otherwise.
+    """
     content = path.read_text(encoding="utf-8")
     original = content
     agent_dir = path.parent
@@ -167,6 +199,7 @@ def inject(path: Path) -> bool:
 
 
 def main() -> None:
+    """Sync every persona ``AGENTS.md`` under ``Agents/`` and report updates."""
     changed = 0
     for path in sorted(AGENTS_ROOT.glob("*/AGENTS.md")):
         if path.parent.name in SKIP_DIRS:

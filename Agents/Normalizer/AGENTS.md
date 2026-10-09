@@ -1,6 +1,8 @@
 # Normalizer
 
 
+
+
 Deterministic cowork agent in the three-stage web pipeline:
 **WebFetch (Playwright) -> Normalizer (normalize + dedupe) -> Persister (SQLite)**.
 

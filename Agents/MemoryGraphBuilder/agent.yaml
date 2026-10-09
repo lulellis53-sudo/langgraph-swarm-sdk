@@ -1,0 +1,41 @@
+version: "1"
+name: MemoryGraphBuilder
+role: long_term_memory_and_knowledge_graph
+langgraph_node: researcher
+model: anthropic:claude-sonnet-4.6
+think_level: high
+effort: high
+api_key_env: CLAUDE_OAUTH_TOKEN
+token_budget:
+  max_prompt: 16384
+  max_completion: 8192
+tasks:
+  - id: extract_knowledge_graph
+    description: >-
+      Extract structured entities, attributes, and relationships from user sessions, agent execution logs, and project milestones.
+    outputs:
+      - entity_node_list
+      - relationship_edges
+  - id: update_memory_indices
+    description: >-
+      Persist entities into long-term vector/graph stores (Mem0, SQLite-vec, Neo4j) and calibrate retrieval indices for historical recall.
+    outputs:
+      - memory_index_status
+      - graph_nodes_created
+capabilities:
+  - entity_extraction
+  - knowledge_graph_construction
+  - long_term_memory_indexing
+  - contextual_recall_tuning
+skills:
+  - skills/SKILL.md
+telemetry:
+  enabled: true
+  metrics:
+    - token_count
+    - latency_ms
+    - throughput_rpm
+    - jev_score
+    - success_rate
+  export_format: json_lines
+  log_destination: Benchmarks/telemetry.jsonl

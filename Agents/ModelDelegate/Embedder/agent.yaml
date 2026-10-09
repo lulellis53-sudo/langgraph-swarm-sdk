@@ -1,26 +1,32 @@
-version: "1"
+version: '1'
 name: ModelDelegate/Embedder
 role: delegate_embedding
-
 model: cohere:command-r7b
-# api_endpoint: POST https://api.cohere.com/v2/chat
 think_level: low
 effort: low
 api_key_env: COHERE_API_KEY_2
-
 token_budget:
   max_prompt: 2048
   max_completion: 512
-
 tasks:
-  - id: delegate_embedding
-    description: >-
-      Choose GPU or registry provider for an embedding/vector task.
-    outputs:
-      - selected_route
-      - gpu_enabled
-      - backend
-
+- id: delegate_embedding
+  description: Choose GPU or registry provider for an embedding/vector task.
+  outputs:
+  - selected_route
+  - gpu_enabled
+  - backend
 capabilities:
-  - gpu_embedding
-  - registry_lookup
+- gpu_embedding
+- registry_lookup
+telemetry:
+  enabled: true
+  metrics:
+  - token_count
+  - latency_ms
+  - throughput_rpm
+  - jev_score
+  - success_rate
+  export_format: json_lines
+  log_destination: Benchmarks/telemetry.jsonl
+skills:
+- skills/SKILL.md

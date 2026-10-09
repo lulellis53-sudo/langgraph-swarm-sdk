@@ -61,6 +61,11 @@ dependencies = [
     "langgraph-sdk>=0.4.5",
     "python-dotenv>=1.2.3",
     "rich>=15.0.0",
+    "loguru>=0.7.3",
+    "logfire>=3.0.0",
+    "opentelemetry-api>=1.30",
+    "opentelemetry-sdk>=1.30",
+    "prometheus-client>=0.20",
     # ## Web search / extraction (WebSearch.backend extractors, MCP server)
     "selectolax>=0.3",
     "trafilatura>=2.0",

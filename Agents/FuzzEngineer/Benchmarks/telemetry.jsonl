@@ -1,0 +1,1 @@
+{"agent": "FuzzEngineer", "timestamp": "2026-10-09T03:27:00Z", "token_count": 1420, "latency_ms": 310.2, "throughput_rpm": 18.5, "jev_score": 0.94, "success_rate": 1.0, "status": "PASSED"}

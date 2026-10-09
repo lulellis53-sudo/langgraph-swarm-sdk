@@ -1,0 +1,1 @@
+{"agent": "PromptEvaluator", "timestamp": "2026-10-09T03:50:00Z", "token_count": 1550, "latency_ms": 320.5, "throughput_rpm": 19.2, "jev_score": 0.95, "success_rate": 1.0, "status": "PASSED"}

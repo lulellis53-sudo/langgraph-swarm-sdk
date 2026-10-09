@@ -45,6 +45,19 @@ RESULTS_DIR = Path(__file__).parent / "results" / "websearch_tools"
 
 @dataclass(frozen=True, slots=True)
 class ToolRow:
+    """Per-tool benchmark measurements for one query.
+
+    Attributes:
+        tool: Search tool identifier.
+        appeared: Hits returned before dedupe.
+        scraped: Pages successfully fetched.
+        norm_pct: Percentage of raw characters removed by normalization.
+        tokens: Tokens of the normalized documents.
+        api_tokens: Tokens reported by the search API itself.
+        search_ms: Search latency in milliseconds.
+        scrape_ms: Crawl/scrape latency in milliseconds.
+    """
+
     tool: str
     appeared: int
     scraped: int
@@ -155,6 +168,14 @@ def format_table(report: Mapping[str, Any]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Benchmark the WebSearch tools on one query and print a table or JSON.
+
+    Args:
+        argv: Argument vector to parse, or ``None`` to use ``sys.argv[1:]``.
+
+    Returns:
+        Process exit code (``0`` on success).
+    """
     parser = argparse.ArgumentParser(description="Benchmark WebSearch tools on one query")
     parser.add_argument("--query", required=True)
     parser.add_argument("--json", action="store_true", help="print JSON instead of a table")

@@ -1,0 +1,46 @@
+version: '1'
+name: TokenSaver
+role: token_efficiency_and_throughput_optimizer
+langgraph_node: reviewer
+model: anthropic:claude-sonnet-4.6
+think_level: high
+effort: high
+api_key_env: CLAUDE_OAUTH_TOKEN
+token_budget:
+  max_prompt: 16384
+  max_completion: 8192
+tasks:
+- id: prune_prompt_bloat
+  description: Analyze prompts, remove context rot, apply AST-based prompt compression
+    (LLMLingua-2), and offload static reference documentation.
+  outputs:
+  - pruned_prompt
+  - token_reduction_pct
+  - original_token_count
+  - final_token_count
+- id: optimize_throughput_rpm
+  description: Optimize model invocation topologies, request batching, semantic caching
+    (SHA-256 + INT8 cosine), and reduce wall-clock latency (ms) and API requests per
+    minute (RPM).
+  outputs:
+  - cache_hit_rate
+  - latency_ms_reduction_pct
+  - rpm_reduction_pct
+capabilities:
+- token_counting
+- prompt_compression
+- semantic_caching
+- ast_pruning
+- throughput_benchmarking
+skills:
+- skills/SKILL.md
+telemetry:
+  enabled: true
+  metrics:
+  - token_count
+  - latency_ms
+  - throughput_rpm
+  - jev_score
+  - success_rate
+  export_format: json_lines
+  log_destination: Benchmarks/telemetry.jsonl

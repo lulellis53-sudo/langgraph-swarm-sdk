@@ -24,15 +24,10 @@ agents:
     contract: Agents/Coder/AGENTS.md
     manifest: Agents/Coder/agent.yaml
 
-  - name: CodeFixer
-    role: apply review fixes
-    contract: Agents/CodeFixer/AGENTS.md
-    manifest: Agents/CodeFixer/agent.yaml
-
-  - name: Reviewer
+  - name: CodeReview
     role: review diffs and PRs
-    contract: Agents/Reviewer/AGENTS.md
-    manifest: Agents/Reviewer/agent.yaml
+    contract: Agents/CodeReview/AGENTS.md
+    manifest: Agents/CodeReview/agent.yaml
 
   - name: Tester
     role: write and run tests
@@ -129,50 +124,20 @@ agents:
     contract: Agents/math/AGENTS.md
     manifest: Agents/math/agent.yaml
 
-  - name: Tuner
-    role: offline parameter tuning
-    contract: Agents/Tuner/AGENTS.md
-    manifest: Agents/Tuner/agent.yaml
-
-  - name: PythonCoder
-    role: python implementation
-    contract: Agents/PythonCoder/AGENTS.md
-    manifest: Agents/PythonCoder/agent.yaml
-
-  - name: JSCoder
-    role: js_ts implementation
-    contract: Agents/JSCoder/AGENTS.md
-    manifest: Agents/JSCoder/agent.yaml
-
-  - name: RustCoder
-    role: rust implementation
-    contract: Agents/RustCoder/AGENTS.md
-    manifest: Agents/RustCoder/agent.yaml
-
   - name: Simplify
     role: complexity reduction
     contract: Agents/Simplify/AGENTS.md
     manifest: Agents/Simplify/agent.yaml
 
-  - name: Infra
-    role: ci_cd and environments
-    contract: Agents/Infra/AGENTS.md
-    manifest: Agents/Infra/agent.yaml
-
-  - name: Caching
-    role: cache_layer_specialist
-    contract: Agents/Caching/AGENTS.md
-    manifest: Agents/Caching/agent.yaml
+  - name: TokenSaver
+    role: token_efficiency_and_throughput_optimizer
+    contract: Agents/TokenSaver/AGENTS.md
+    manifest: Agents/TokenSaver/agent.yaml
 
   - name: Databaser
     role: schema_migrations_queries
     contract: Agents/Databaser/AGENTS.md
     manifest: Agents/Databaser/agent.yaml
-
-  - name: CCoder
-    role: c_cpp_implementation
-    contract: Agents/CCoder/AGENTS.md
-    manifest: Agents/CCoder/agent.yaml
 
   - name: ApiDesigner
     role: api_contracts
@@ -194,15 +159,36 @@ agents:
     contract: Agents/Compilator/AGENTS.md
     manifest: Agents/Compilator/agent.yaml
 
-  - name: Researcher
-    role: read_only_research
-    contract: Agents/Researcher/AGENTS.md
-    manifest: Agents/Researcher/agent.yaml
+  - name: GuideCreator
+    role: synthesize_agent_guidelines
+    contract: Agents/GuideCreator/AGENTS.md
+    manifest: Agents/GuideCreator/agent.yaml
 
-  - name: WebResearcher
-    role: cited_web_lookup
-    contract: Agents/WebResearcher/AGENTS.md
-    manifest: Agents/WebResearcher/agent.yaml
+  - name: Writer
+    role: copywriting_and_humanizer_verification
+    contract: Agents/Writer/AGENTS.md
+    manifest: Agents/Writer/agent.yaml
+
+  - name: FuzzEngineer
+    role: property_based_and_automated_fuzzing
+    contract: Agents/FuzzEngineer/AGENTS.md
+    manifest: Agents/FuzzEngineer/agent.yaml
+
+  - name: MemoryGraphBuilder
+    role: long_term_memory_and_knowledge_graph
+    contract: Agents/MemoryGraphBuilder/AGENTS.md
+    manifest: Agents/MemoryGraphBuilder/agent.yaml
+
+  - name: PromptEvaluator
+    role: enterprise_prompt_evaluation_and_g_eval_scoring
+    contract: Agents/PromptEvaluator/AGENTS.md
+    manifest: Agents/PromptEvaluator/agent.yaml
+
+
+
+
+
+
 
 # Task board — replace with tasks for the active project.
 # Each task must have: id, title, assigned agent(s), depends_on, and status.

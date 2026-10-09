@@ -1,35 +1,45 @@
-version: "1"
+version: '1'
 name: DeepResearch
 role: deep_technical_research
-
-model: zai:glm-5.2
-# api_endpoint: POST https://api.z.ai/api/paas/v4/chat/completions
-api_key_env: ZHIPU_API_KEY
+langgraph_node: researcher
+model: anthropic:claude-sonnet-4.6
 think_level: high
 effort: high
-
+api_key_env: CLAUDE_OAUTH_TOKEN
 token_budget:
   max_prompt: 16384
   max_completion: 8192
-
 tasks:
-  - id: evidence_synthesis
-    description: >-
-      Turn a broad technical question into a sourced synthesis: claims,
-      supporting and contradicting sources, and what remains unknown.
-    outputs:
-      - synthesis_report
-      - evidence_ledger
-
-  - id: source_verification
-    description: >-
-      Check a set of claims against primary sources. Mark each claim
-      supported, contradicted, or unverified, and cite the source.
-    outputs:
-      - verification_report
-      - citation_list
-
+- id: deep_technical_investigation
+  description: Execute multi-hop primary source retrieval, SearXNG / web search, and
+    evidence graph assembly; synthesize publication-grade research dossiers and write
+    directly to destination .md file.
+  outputs:
+  - synthesis_report
+  - evidence_ledger
+  - output_file_path
+- id: source_verification
+  description: Perform zero-hallucination URL liveness checks via read_url_content
+    and audit claims against primary documentation.
+  outputs:
+  - verification_report
+  - citation_list
 capabilities:
-  - web_search
-  - citation
-  - synthesis
+- web_search
+- read_url_content
+- citation
+- synthesis
+- file_writer
+- argus_evidence_graph
+skills:
+- skills/SKILL.md
+telemetry:
+  enabled: true
+  metrics:
+  - token_count
+  - latency_ms
+  - throughput_rpm
+  - jev_score
+  - success_rate
+  export_format: json_lines
+  log_destination: Benchmarks/telemetry.jsonl
