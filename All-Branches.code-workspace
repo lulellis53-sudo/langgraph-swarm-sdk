@@ -35,6 +35,11 @@
   ],
   "extensions": {
     "recommendations": [
+      "ms-vscode-remote.remote-containers",
+      "ms-azuretools.vscode-docker",
+      "ms-python.python",
+      "charliermarsh.ruff",
+      "astral-sh.ty",
       "eamodio.gitlens",
       "tmokmss.vscode-git-worktree-switcher",
       "116Ideas.worktree-autosync"
@@ -49,6 +54,9 @@
     "scm.repositories.visible": 12,
     "scm.repositories.sortOrder": "name",
     "explorer.sortOrder": "foldersNestsFiles",
+    "dev.containers.dockerPath": "/usr/local/bin/docker",
+    "dev.containers.copyGitConfig": true,
+    "remote.containers.workspaceMountConsistency": "cached",
     "files.exclude": {
       "**/.venv": true,
       "**/__pycache__": true,
