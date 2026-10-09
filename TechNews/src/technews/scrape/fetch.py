@@ -51,6 +51,15 @@ class Fetcher:
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
+        """Configure a fetcher over an existing client.
+
+        Args:
+            client: HTTP client to issue requests with (tests inject a mock transport).
+            min_interval: Minimum seconds between two requests to the same host.
+            retries: Extra attempts after a transient (429/5xx/transport) failure.
+            clock: Monotonic clock source, injectable for deterministic tests.
+            sleep: Blocking sleep used to honour ``min_interval`` and backoff.
+        """
         self._client = client
         self._min_interval = min_interval
         self._retries = retries

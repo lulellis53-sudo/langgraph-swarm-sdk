@@ -8,8 +8,12 @@ from __future__ import annotations
 import json
 
 import pytest
-
-from WebSearch.frontend.websearchers import ProvidersConfig, SearcherSpec, SearchHit
+from WebSearch.frontend.websearchers import (
+    ProvidersConfig,
+    SearcherSpec,
+    SearchFn,
+    SearchHit,
+)
 from WebSearch.toolcalling import ToolError, bind_tools, dispatch_tool_call, tool_manifests
 
 
@@ -21,7 +25,7 @@ def _config() -> ProvidersConfig:
     )
 
 
-def _backends():
+def _backends() -> dict[str, SearchFn]:
     def backend(query: str, spec: SearcherSpec) -> list[SearchHit]:
         del spec
         return [

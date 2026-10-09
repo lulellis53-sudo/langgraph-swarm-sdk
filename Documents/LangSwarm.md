@@ -139,7 +139,7 @@ LangGraph Swarm DAG routing, ONNX embeddings, and optional Numba/CUDA kernels ta
 | Layer | Component | Role |
 | :--- | :--- | :--- |
 | Orchestration | LangGraph Swarm + Python 3.15 | `SwarmState` DAG; IO-bound LLM calls parallelized without GIL serialization |
-| Data / memory | FastEmbed + Numba | ONNX embeddings in agents; `@njit` for math-heavy context ([AGENTMEMORY.md](AGENTMEMORY.md)) |
+| Data / memory | FastEmbed + Numba | ONNX embeddings in agents; `@njit` for math-heavy context ([Memory.md](Memory.md)) |
 | Reliability | Lifeguard | `dRSS/dt` leak detection; SIGKILL + restart on heartbeat TTL; mitigates OpenMP/Numba pool deadlocks |
 
 | Capability | Approach | Pros | Cons |

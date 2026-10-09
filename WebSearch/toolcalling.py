@@ -21,9 +21,12 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from WebSearch.agent_tools import search_hits
+
+if TYPE_CHECKING:
+    from WebSearch.frontend.websearchers import SearchFn
 
 __all__ = [
     "TOOL_NAMES",
@@ -189,7 +192,7 @@ def _validate(name: str, arguments: Mapping[str, Any], schema: dict[str, Any]) -
 
 
 def _resolve_config(
-    config: Any | None, backends: Mapping[str, Callable[[str, Any], list[Any]]] | None
+    config: Any | None, backends: Mapping[str, SearchFn | Callable[[str, Any], list[Any]]] | None
 ) -> Any:
     """Return ``config``, or one enabling exactly the injected backend ids.
 
@@ -213,7 +216,7 @@ def dispatch_tool_call(
     arguments: Mapping[str, Any] | str,
     *,
     config: Any | None = None,
-    backends: Mapping[str, Callable[[str, Any], list[Any]]] | None = None,
+    backends: Mapping[str, SearchFn | Callable[[str, Any], list[Any]]] | None = None,
     fetch: Callable[[str], bytes] | None = None,
 ) -> dict[str, Any]:
     """Execute one model tool call and return a JSON-serializable result.
@@ -300,7 +303,7 @@ def dispatch_tool_call(
 def bind_tools(
     *,
     config: Any | None = None,
-    backends: Mapping[str, Callable[[str, Any], list[Any]]] | None = None,
+    backends: Mapping[str, SearchFn | Callable[[str, Any], list[Any]]] | None = None,
     fetch: Callable[[str], bytes] | None = None,
     format: str = "openai",
 ) -> tuple[list[dict[str, Any]], Callable[[str, Mapping[str, Any] | str], dict[str, Any]]]:

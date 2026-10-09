@@ -1,10 +1,8 @@
-#!/usr/bin/env python3
+"""DuckDuckGo Websearch MCP Server.
 
-"""
-DuckDuckGo Websearch MCP Server.
-Provides tools to search DuckDuckGo, fetch instant encyclopedic answers,
-and extract full webpage markdown content without API keys.
-Requires MCP 2.x (``MCPServer``, pinned in ``pyproject.toml``).
+Provides tools to search DuckDuckGo, fetch instant encyclopedic answers, and
+extract full webpage markdown content without API keys. Requires MCP 2.x
+(``MCPServer``, pinned in ``pyproject.toml``).
 """
 
 from __future__ import annotations

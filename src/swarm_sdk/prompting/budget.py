@@ -150,7 +150,7 @@ class PackedPrompt:
 
     @property
     def text(self) -> str:
-        """Full prompt text (``system`` alone, or ``system\\nuser``)."""
+        r"""Full prompt text (``system`` alone, or ``system\nuser``)."""
         if self.user:
             return f"{self.system}\n{self.user}"
         return self.system

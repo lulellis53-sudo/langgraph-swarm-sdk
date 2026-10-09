@@ -52,7 +52,8 @@ class _ActionWorker:
         """Run the bound action in a worker thread and wrap its text as a ``StepOutput``."""
         from swarm_sdk.orchestrator.plan import StepOutput
 
-        # Deterministic worker: it ignores the LLM-oriented step inputs and only runs its bound action.
+        # Deterministic worker: it ignores the LLM-oriented step inputs and only
+        # runs its bound action.
         del description, dep_outputs, files, task
         started = time.perf_counter()
         # Fetch/SQLite actions block, so run them off the event loop.
@@ -114,7 +115,8 @@ def run_cowork_pipeline(
     for index, url in enumerate(unique_urls):
         sid = f"F{index}"
 
-        # Default arguments freeze this iteration's url/sid (avoids the late-binding closure bug in loops).
+        # Default arguments freeze this iteration's url/sid (avoids the
+        # late-binding closure bug in loops).
         def make_fetch_action(target: str = url, tag: str = sid) -> Callable[[], str]:
             """Bind ``target``/``tag`` per iteration so each action keeps its own URL."""
 

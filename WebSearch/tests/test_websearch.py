@@ -15,6 +15,7 @@ from WebSearch.frontend.websearchers import (
     PrefilterPolicy,
     ProvidersConfig,
     SearcherSpec,
+    SearchFn,
     SinkReport,
     load_providers,
 )
@@ -34,7 +35,7 @@ def test_null_sink_stores_nothing() -> None:
 # ---- providers.yaml: prefilter config --------------------------------------------------------
 
 
-def _load(tmp_path: Path, text: str):
+def _load(tmp_path: Path, text: str) -> ProvidersConfig:
     path = tmp_path / "providers.yaml"
     path.write_text(text, encoding="utf-8")
     return load_providers(path)
@@ -310,7 +311,7 @@ def _config(*ids: str, policy: PrefilterPolicy | None = None) -> ProvidersConfig
     )
 
 
-def _backend(hits: Sequence[SearchHit]):
+def _backend(hits: Sequence[SearchHit]) -> SearchFn:
     return lambda query, spec: [replace(h, searcher_id=spec.id) for h in hits]
 
 

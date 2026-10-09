@@ -1,13 +1,13 @@
 # Enterprise Database Architectures for Multi-Agent Swarms & LangGraph Integration
 
 > **CANONICAL DOSSIER** (merged `DATABASE.md`, `DB.md`): PostgreSQL + pgvector, SQLite + sqlite-vec, DuckDB analytics, LangGraph persistence.
-> Swarm runtime: [`memory/sqlite_vec.py`](../src/swarm_sdk/memory/sqlite_vec.py), [`core/checkpoint.py`](../src/swarm_sdk/core/checkpoint.py), [AGENTMEMORY.md](AGENTMEMORY.md) (vector tiers), [Python3.15.md](Python3.15.md) (free-threading pools).
+> Swarm runtime: [`memory/sqlite_vec.py`](../src/swarm_sdk/memory/sqlite_vec.py), [`core/checkpoint.py`](../src/swarm_sdk/core/checkpoint.py), [Memory.md](Memory.md) (vector tiers), [Python3.15.md](Python3.15.md) (free-threading pools).
 
 ---
 
 ## How to use this document
 
-Use the decision workflow for **where state lives** (shared vs embedded vs analytics). Benchmarks are illustrative (Graviton cloud rig); validate on your deployment. Related vector-engine survey: [AGENTMEMORY.md](AGENTMEMORY.md) Part IV; RAG storage notes: [RAGTECHNIQUES.MD](RAGTECHNIQUES.MD) §15.
+Use the decision workflow for **where state lives** (shared vs embedded vs analytics). Benchmarks are illustrative (Graviton cloud rig); validate on your deployment. Related vector-engine survey: [Memory.md](Memory.md) Part IV; RAG storage notes: [RAGTECHNIQUES.MD](RAGTECHNIQUES.MD) §15.
 
 ## Swarm SDK implementation map
 

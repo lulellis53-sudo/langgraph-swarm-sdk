@@ -1,30 +1,45 @@
 {
   "folders": [
-    { "name": "SDK (integration)", "path": ".." },
-    { "name": "Agents", "path": "../Agents" },
-    { "name": "Main", "path": "../Main" },
-    { "name": "Benchmark", "path": "../Agents/benchmark" },
-    { "name": "WebSearch", "path": "../WebSearch" },
-    { "name": "Prediction", "path": "../../Swarm-Prediction" },
-    { "name": "Newsletter", "path": "../../Newsletter" }
+    {
+      "name": "lane · swarm_sdk (Swarm)",
+      "path": "../../Swarm"
+    },
+    {
+      "name": "lane · Websearch",
+      "path": ".."
+    },
+    {
+      "name": "lane · Agents",
+      "path": "../../Agents"
+    },
+    {
+      "name": "lane · Prediction",
+      "path": "../../Prediction"
+    },
+    {
+      "name": "lane · newsletter",
+      "path": "../../Modules/Newsletter"
+    },
+    {
+      "name": "lane · WebScraper",
+      "path": "../../WebScraper"
+    }
   ],
   "settings": {
-    "python.defaultInterpreterPath": "${workspaceFolder:SDK (integration)}/.venv/bin/python",
-    "python.testing.cwd": "${workspaceFolder:SDK (integration)}",
-    "python.envFile": "${workspaceFolder:SDK (integration)}/.env",
-    "ruff.interpreter": ["${workspaceFolder:SDK (integration)}/.venv/bin/python"],
-    "ty.interpreter": "${workspaceFolder:SDK (integration)}/.venv/bin/python",
-    "ty.diagnosticMode": "workspace",
-    "ty.experimental.useUv": "on",
-    "jupyter.notebookFileRoot": "${workspaceFolder:SDK (integration)}",
-    "jupyter.allowUnauthorizedRemoteConnection": false,
-    "colab.logging.level": "info",
-    "colab.uploading": true,
-    "colab.activityBarContentView": true,
-    "colab.activityBarResourceView": true,
-    "colab.serverMounting": false,
-    "colab.terminal": true,
-    "colab.importNotebookFromUrl": true,
-    "docker.composeFile": "${workspaceFolder:SDK (integration)}/docker/compose.yaml"
+    "git.autoRepositoryDetection": true,
+    "git.openRepositoryInParentFolders": "never",
+    "git.detectSubmodules": true,
+    "git.showProgress": true,
+    "scm.repositories.visible": 12,
+    "scm.repositories.sortOrder": "discovery time",
+    "files.exclude": {
+      "**/.venv": true,
+      "**/__pycache__": true,
+      "**/.pytest_cache": true,
+      "**/node_modules": true
+    }
+  },
+  "extensions": {
+    "recommendations": []
   }
 }

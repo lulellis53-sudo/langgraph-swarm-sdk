@@ -98,19 +98,23 @@ def create_app(
 
     @app.get("/health")
     def health() -> dict[str, str]:
+        """Liveness probe; always returns ``{\"status\": \"ok\"}``."""
         return {"status": "ok"}
 
     @app.get("/doctor")
     def doctor_report() -> dict[str, Any]:
+        """Readiness report for crawlers, providers, extractors, and models."""
         return doctor(load_providers())
 
     @app.get("/presets")
     def presets() -> dict[str, Any]:
+        """Named dork presets from the providers file."""
         return load_providers().dork_presets
 
     @app.get("/Agents")
     @app.get("/agents")
     def agents() -> dict[str, Any]:
+        """Catalog of the document agents (summarize and dedupe)."""
         return {
             "agents": [
                 {"name": "summarize", "description": "Rank and summarize documents by query."},
@@ -121,6 +125,7 @@ def create_app(
     @app.post("/Agents")
     @app.post("/agents")
     def run_agent(body: AgentRequest) -> dict[str, Any]:
+        """Run the summarize or dedupe document agent on posted documents."""
         docs = [ExtractedDoc(**doc.model_dump()) for doc in body.documents]
         if body.action == "dedupe":
             return dedupe_documents(docs)
@@ -133,6 +138,7 @@ def create_app(
 
     @app.post("/search")
     def search(body: SearchRequest) -> dict[str, Any]:
+        """Run one CLI-equivalent search and return the report dict."""
         args = _namespace(**body.model_dump())
         try:
             return run(args, backends=backends, fetch=fetch)
@@ -141,6 +147,7 @@ def create_app(
 
     @app.post("/browse")
     def browse_endpoint(body: BrowseRequest) -> dict[str, Any]:
+        """Run the LLM + Playwright browse agent on ``body.question``."""
         from WebSearch.browser_agent import browse
 
         cfg = load_providers()

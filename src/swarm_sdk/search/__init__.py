@@ -1,5 +1,7 @@
-"""
-Search SDK module providing web and AI search engines.
+"""Web and AI search engines.
+
+Re-exports the Perplexity engine so ``swarm_sdk.search`` is the single entry
+point. Playwright (the ``scrape`` extra) is required by that engine.
 """
 
 from __future__ import annotations

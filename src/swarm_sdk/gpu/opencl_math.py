@@ -331,7 +331,8 @@ class _ClState:
         self._ensure_init()
         return self.program is not None and self.queue is not None
 
-    def _cl(self):
+    def _cl(self) -> Any:
+        """Import and return the ``pyopencl`` module on first use."""
         import pyopencl as cl
 
         return cl

@@ -30,6 +30,7 @@ def extract_text(name: ExtractorName, html: str) -> str:
 
 
 def _selectolax(html: str) -> str:
+    """Extract body text with selectolax/lexbor; ``""`` when unavailable."""
     try:  # selectolax 1.x dropped the Modest backend (selectolax.parser); lexbor is the parser
         parser_mod = importlib.import_module("selectolax.lexbor")
     except ImportError:
@@ -57,6 +58,7 @@ def _regex(html: str) -> str:
 
 
 def _trafilatura(html: str) -> str:
+    """Extract main-article text with trafilatura; ``""`` when unavailable."""
     try:
         trafilatura = importlib.import_module("trafilatura")
     except ImportError:
@@ -66,6 +68,7 @@ def _trafilatura(html: str) -> str:
 
 
 def _bs4(html: str) -> str:
+    """Extract text with BeautifulSoup; ``""`` when bs4 is unavailable."""
     try:
         bs4_mod = importlib.import_module("bs4")
     except ImportError:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""
-MCP server for Perplexity AI Search.
-Allows Antigravity, Swarm, and LLM Agents to use Perplexity as an MCP tool.
+"""MCP server for Perplexity AI Search.
+
+Allows Antigravity, Swarm, and LLM agents to use Perplexity as an MCP tool.
 """
 
 from __future__ import annotations
@@ -24,8 +24,7 @@ mcp = MCPServer("perplexity-search")
     ),
 )
 async def perplexity_web_search(query: str, focus: str = "web") -> str:
-    """
-    Search the live web using Perplexity AI.
+    """Search the live web using Perplexity AI.
 
     Args:
         query: The question or query to search for.

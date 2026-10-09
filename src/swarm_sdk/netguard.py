@@ -22,6 +22,12 @@ def validate_http_url(url: str) -> str:
     private, and reserved literal IPs are rejected (cloud metadata ranges
     included); DNS names are left to the caller's egress policy.
 
+    Args:
+        url: Absolute peer/endpoint URL to validate.
+
+    Returns:
+        The URL unchanged, so it can be used inline.
+
     Raises:
         ValueError: When the URL is not an absolute http(s) URL with a usable
             host, or when it carries control characters.

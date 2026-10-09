@@ -1,9 +1,10 @@
-"""
-DuckDuckGo Web Search & Deep Crawler Suite for Antigravity Swarm.
+"""DuckDuckGo Web Search & Deep Crawler Suite for Antigravity Swarm.
+
 Integrates:
+
 - httpx (HTTP/2 async client with connection pooling)
 - selectolax & bs4 (BeautifulSoup4 fallback DOM parsing, tables, code blocks)
-- trafilatura (State-of-the-art article text extraction & readability)
+- trafilatura (state-of-the-art article text extraction & readability)
 - Crawlee/Scrapy-inspired asynchronous BFS/DFS crawler queue
 """
 

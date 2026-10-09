@@ -48,6 +48,7 @@ def sql_handler(db_path: str | Path) -> Handler:
     """Path ``sql``: INSERT OR IGNORE into the SQLite documents table (Persister)."""
 
     def handle(docs: Sequence[ExtractedDoc]) -> dict[str, Any]:
+        """Insert ``docs`` into SQLite; report stored count and db path."""
         conn = connect(db_path)
         try:
             return {"stored": put_documents(conn, docs), "db": str(db_path)}
@@ -67,6 +68,7 @@ def semantic_handler(
     chosen_embedder = embedder if embedder is not None else default_embedder()
 
     def handle(docs: Sequence[ExtractedDoc]) -> dict[str, Any]:
+        """Vector-search ``docs`` for the query and return ranked summaries."""
         conn = connect(db_path)
         try:
             matches = semantic_search(

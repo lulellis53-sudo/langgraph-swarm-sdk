@@ -417,6 +417,7 @@ def as_tool(
     """
 
     def _tool(query: str) -> str:
+        """Run one query through search + brief rendering."""
         result = search(
             query,
             config=config,

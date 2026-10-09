@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from datetime import date
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -34,7 +36,7 @@ def _backend(*urls: str) -> SearchFn:
     return search
 
 
-def _run_daily(conn, day: date, *urls: str):
+def _run_daily(conn: sqlite3.Connection, day: date, *urls: str) -> list[dict]:
     return daily(
         conn,
         day=day,
@@ -55,7 +57,8 @@ class _Store:
         self.rows.append((text, vector))
         return len(self.rows)
 
-    def search(self, vector, k):  # pragma: no cover - protocol filler
+    def search(self, vector: np.ndarray, k: int) -> list:  # pragma: no cover - filler
+        """Return no neighbours; only the ``add`` path is exercised here."""
         return []
 
 
@@ -134,7 +137,7 @@ def test_weekly_force_runs_on_a_weekday() -> None:
     assert result["status"] == "ingested" and result["ingested"] == 2
 
 
-def test_cli_daily_weekly_status(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_cli_daily_weekly_status(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     db = str(tmp_path / "d.db")
     backends = {"ddg": _backend("https://n.example/gears")}
 

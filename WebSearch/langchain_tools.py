@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 
 def _hits_payload(hits: list[SearchHit]) -> list[dict[str, object]]:
+    """Convert hits to JSON-ready dicts for LangChain tool outputs."""
     return [asdict(hit) for hit in hits]
 
 

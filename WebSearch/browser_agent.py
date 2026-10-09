@@ -55,6 +55,7 @@ class BrowseError(RuntimeError):
 
 
 def _resolve(host: str) -> list[str]:
+    """Resolve ``host`` to IP strings; ``[]`` when DNS fails."""
     try:
         return [str(info[4][0]) for info in socket.getaddrinfo(host, None)]
     except socket.gaierror:
@@ -279,6 +280,7 @@ def _secret_present(name: str) -> bool:
 
 
 def _memory_key(query: str) -> str:
+    """Stable blake2s key for the case/whitespace-folded query."""
     folded = " ".join(query.casefold().split())
     return hashlib.blake2s(folded.encode(), digest_size=8).hexdigest()
 
@@ -351,6 +353,7 @@ def parse_keep(raw: str, urls: set[str]) -> list[str] | None:
 
 
 def _excerpt(doc: ExtractedDoc) -> str:
+    """First ``_DEDUPE_CHARS`` chars of whitespace-collapsed doc text."""
     text = " ".join(doc.text.split())
     return text[:_DEDUPE_CHARS]
 
@@ -468,6 +471,7 @@ def run_autonomous(
     base_fetch = fetch
 
     def _capturing(url: str) -> bytes:
+        """Fetch ``url`` and record the raw bytes for later extraction."""
         if base_fetch is not None:
             raw = base_fetch(url)
         else:
@@ -566,6 +570,7 @@ def _open_memory(cfg: ProvidersConfig, ready: ReadyFn) -> MemoryProvider | None:
 
 
 def _recall(store: MemoryProvider, query: str) -> str:
+    """Return the stored brief for ``query``; ``""`` on any failure."""
     try:
         return store.get(_memory_key(query)) or ""
     except (OSError, RuntimeError, ValueError, TypeError) as exc:
@@ -574,6 +579,7 @@ def _recall(store: MemoryProvider, query: str) -> str:
 
 
 def _remember(store: MemoryProvider, query: str, answer: str) -> None:
+    """Store the first 4000 chars of ``answer`` under the query key."""
     try:
         store.put(_memory_key(query), answer[:4000])
     except (OSError, RuntimeError, ValueError, TypeError) as exc:
@@ -594,6 +600,7 @@ class _Mem0Memory:
     """Adapts a Mem0 store to :class:`MemoryProvider` with a one-day brief lifetime."""
 
     def __init__(self, store: _AgedMemory) -> None:
+        """Bind the adapter to the backing store."""
         self._store = store
 
     def get(self, key: str) -> str | None:

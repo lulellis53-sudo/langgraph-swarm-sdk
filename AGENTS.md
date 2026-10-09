@@ -69,7 +69,7 @@ Edit `[src/swarm_sdk/pb/swarm.proto](src/swarm_sdk/pb/swarm.proto)` then `uv run
 ### Subtopic: Quick links
 
 - Agent index: `[Agents/SKILLS.md](Agents/SKILLS.md)`
-- Workspace layout: `[codeworkspace/swarm.code-workspace](codeworkspace/swarm.code-workspace)`
+- Workspace layout: `[codeworkspace/swarm.code-workspace](codeworkspace/swarm.code-workspace)` — multi-root; all lane worktrees in one Source Control view (see `~/Myworkspace/AGENTS.md`)
 - Benchmarks: `[Agents/benchmark/README.md](Agents/benchmark/README.md)`
 - Toolchains and CPython support: `[Toolchain.md](Toolchain.md)`
 - Personal ↔ repo doc bridge: `[Documents/SWARM-DOC-MAP.md](Documents/SWARM-DOC-MAP.md)`

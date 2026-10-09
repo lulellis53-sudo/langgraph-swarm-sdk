@@ -18,6 +18,7 @@ class Buffer:
     size: int
 
     def __post_init__(self) -> None:
+        """Reject degenerate lifetimes and non-positive sizes at construction time."""
         if self.lower_time >= self.upper_time:
             raise ValueError(
                 f"Invalid buffer lifetime: lower_time ({self.lower_time}) "

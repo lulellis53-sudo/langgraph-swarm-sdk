@@ -1,9 +1,13 @@
-"""Peer HTTP clients: httpx2 (HTTP/2), aiohttp, and requests."""
+"""Peer HTTP clients: httpx2 (HTTP/2), aiohttp, and requests.
+
+Every URL is screened by :func:`swarm_sdk.netguard.validate_http_url` before a
+request leaves the process, so no caller can point a peer hop at loopback, a
+private IP, or a cloud metadata endpoint.
+"""
 
 from __future__ import annotations
 
 from typing import Any
-from urllib.parse import urlparse
 
 import aiohttp
 import httpx2
@@ -11,13 +15,7 @@ import requests
 
 from swarm_sdk.netguard import validate_http_url
 
-
-def validate_http_url(url: str) -> str:
-    """Return ``url`` if it is an absolute http(s) URL; raise ValueError otherwise."""
-    parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https") or not parsed.hostname:
-        raise ValueError(f"refusing non-http(s) URL: {url!r}")
-    return url
+__all__ = ["async_post_json", "post_json", "validate_http_url"]
 
 
 def post_json(
@@ -39,9 +37,9 @@ def post_json(
         Response JSON object.
 
     Raises:
-        ValueError: If ``url`` is not an absolute http(s) URL.
         TypeError: If the response body is not a JSON object.
-        ValueError: If ``url`` fails the SSRF guard.
+        ValueError: If ``url`` fails the SSRF guard (non-http(s), no host,
+            control characters, or a private/loopback/reserved IP).
         requests.HTTPError | httpx2.HTTPError: On non-success status.
     """
     validate_http_url(url)
@@ -70,8 +68,8 @@ async def async_post_json(url: str, payload: dict[str, Any]) -> dict[str, Any]:
         Response JSON object.
 
     Raises:
-        ValueError: If ``url`` is not an absolute http(s) URL.
         TypeError: If the response body is not a JSON object.
+        ValueError: If ``url`` fails the SSRF guard (see :func:`post_json`).
         aiohttp.ClientResponseError: On non-success status.
     """
     validate_http_url(url)
@@ -83,6 +81,3 @@ async def async_post_json(url: str, payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(body, dict):
         raise TypeError("peer response must be a JSON object")
     return body
-
-
-__all__ = ["async_post_json", "post_json", "validate_http_url"]

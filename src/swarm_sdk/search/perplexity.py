@@ -1,8 +1,8 @@
-"""
-Perplexity AI Playwright Automation Engine & SDK Tool.
+"""Perplexity AI Playwright Automation Engine & SDK Tool.
 
-Enables automated, headless web searches through Perplexity AI (https://www.perplexity.ai),
-extracting synthesized text answers, rich source citations, and related follow-up queries.
+Enables automated, headless web searches through Perplexity AI
+(https://www.perplexity.ai), extracting synthesized text answers, rich source
+citations, and related follow-up queries.
 """
 
 from __future__ import annotations
@@ -38,10 +38,10 @@ DEFAULT_STORAGE_PATH = Path.home() / ".perplexity" / "session_state.json"
 
 
 class PerplexitySearchEngine:
-    """
-    Search engine that automates queries on Perplexity AI using Playwright.
-    Handles stealth evasions, cookie consents, response streaming, source parsing,
-    and follow-up extraction.
+    """Search engine that automates queries on Perplexity AI using Playwright.
+
+    Handles stealth evasions, cookie consents, response streaming, source
+    parsing, and follow-up extraction.
     """
 
     def __init__(
@@ -72,8 +72,7 @@ class PerplexitySearchEngine:
         query: str,
         focus: str = "web",
     ) -> dict[str, Any]:
-        """
-        Execute an asynchronous search on Perplexity AI.
+        """Execute an asynchronous search on Perplexity AI.
 
         Args:
             query: The search query string.
@@ -81,12 +80,13 @@ class PerplexitySearchEngine:
 
         Returns:
             Dict containing:
-                - 'query': Original search query
-                - 'url': Perplexity search results URL
-                - 'answer': Full synthesized answer text
-                - 'sources': List of cited sources [{'title', 'url', 'domain', 'snippet'}]
-                - 'related_queries': List of suggested follow-up questions
-                - 'rate_limited': True if anonymous request limit was reached
+
+            - 'query': Original search query
+            - 'url': Perplexity search results URL
+            - 'answer': Full synthesized answer text
+            - 'sources': List of cited sources [{'title', 'url', 'domain', 'snippet'}]
+            - 'related_queries': List of suggested follow-up questions
+            - 'rate_limited': True if anonymous request limit was reached
         """
         async with async_playwright() as p:
             browser = await p.chromium.launch(
@@ -300,12 +300,21 @@ async def ask_perplexity(
     headless: bool = True,
     session_cookie: str | None = None,
 ) -> dict[str, Any]:
-    """
-    Convenience function to search Perplexity AI.
+    """Search Perplexity AI in one call.
 
     Usage:
         result = await ask_perplexity("What are the key features introduced in Python 3.14?")
         print(result["answer"])
+
+    Args:
+        query: The question or query to search for.
+        focus: Search focus mode (default ``"web"``).
+        headless: Run the browser headless (default ``True``).
+        session_cookie: Optional Perplexity session cookie; falls back to the
+            ``PERPLEXITY_SESSION_COOKIE`` environment variable.
+
+    Returns:
+        The same dict shape as :meth:`PerplexitySearchEngine.search_async`.
     """
     engine = PerplexitySearchEngine(headless=headless, session_cookie=session_cookie)
     return await engine.search_async(query=query, focus=focus)

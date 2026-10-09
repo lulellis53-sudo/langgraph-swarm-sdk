@@ -1,13 +1,13 @@
-# Agent Memory & Vector Storage for Multi-Agent Swarms
+# Agent Memory, Vector Storage & Knowledge Graph Architecture
 
-> **CANONICAL DOSSIER** (merged `VectorDB.md`): multi-tier agent memory, Mem0-style orchestration, and vector database engine selection.
-> Runtime behavior: [`src/swarm_sdk/retrieval/`](../src/swarm_sdk/retrieval/), [REDIS.md](REDIS.md) §8 (exact cache), [RAGTECHNIQUES.MD](RAGTECHNIQUES.MD) §11.1 (survey of Mem0 / Zep / Graphiti).
+> **CANONICAL DOSSIER** (merged `AGENTMEMORY.md` + `GRAPH.md`): multi-tier agent memory, Mem0-style orchestration, vector database selection, LangGraph state-graph execution, and GraphRAG hybrid retrieval.
+> Runtime behavior: [`src/swarm_sdk/retrieval/`](../src/swarm_sdk/retrieval/), [REDIS.md](REDIS.md) §8 (exact cache), [RAGTECHNIQUES.MD](RAGTECHNIQUES.MD) §11.1 (survey of Mem0 / Zep / Graphiti), [LangSwarm.md](LangSwarm.md) (handoffs).
 
 ---
 
 ## How to use this document
 
-Use the index to jump to **memory orchestration** (Parts I–II) or **vector engine trade-offs** (Parts III–V). Benchmark tables are illustrative unless tied to a repo benchmark; verify on your hardware and corpus.
+Use the index to jump to **memory orchestration** (Parts I–II), **vector engine trade-offs** (Parts III–V), or **execution graph / GraphRAG** (Part VII). Benchmark tables are illustrative unless tied to a repo benchmark; verify on your hardware and corpus.
 
 ## Swarm SDK implementation map
 
@@ -42,12 +42,17 @@ Use the index to jump to **memory orchestration** (Parts I–II) or **vector eng
   - [4.4 FastEmbed & LangGraph Swarm](#44-fastembed--langgraph-swarm)
 - [Part V — Comparison, benchmarks & pitfalls](#part-v--comparison-benchmarks--pitfalls)
 - [Part VI — Primary citations](#part-vi--primary-citations)
+- [Part VII — LangGraph state graph & GraphRAG](#part-vii--langgraph-state-graph--graphrag)
+  - [7.1 Execution topology](#71-execution-topology)
+  - [7.2 Node embeddings for routing](#72-node-embeddings-for-routing)
+  - [7.3 GraphRAG retrieval pipeline](#73-graphrag-retrieval-pipeline)
+  - [7.4 Reference state machine snippet](#74-reference-state-machine-snippet)
 
 ---
 
 ## Part I — Executive summary & decision flow
 
-**Core recommendation:** Adopt a **3-tier memory model** (short-term context, long-term episodic vectors, graph-semantic relationships) with **task-scoped handoffs** so subagents do not inherit full session history. Back episodic and semantic tiers with a vector engine matched to scale and latency (in-memory Redis/Qdrant vs out-of-core LanceDB).
+**Core recommendation:** Adopt a **3-tier memory model** (short-term context, long-term episodic vectors, graph-semantic relationships) with **task-scoped handoffs** so subagents do not inherit full session history. Back episodic and semantic tiers with a vector engine matched to scale and latency (in-memory Redis/Qdrant vs out-of-core LanceDB). Orchestrate specialists as a **LangGraph state graph** ($G = (V, E)$) with optional **GraphRAG** context (dense retrieval + graph expansion).
 
 ```ascii
 [User Interaction]
@@ -101,7 +106,18 @@ Vector **storage** choice (when episodic tier grows past single-node RAM):
 
 ### 2.2 Mem0 graph memory APIs
 
-Mem0 orchestrates **hybrid vector + graph** retrieval: nodes and edges (e.g. `User` → `prefers` → `Python`) contextualize flat embedding hits. In Swarm, treat Mem0 as an **optional** backend when the `mem0` extra is installed; core retrieval remains `swarm_sdk.retrieval`.
+Mem0 orchestrates **hybrid vector + graph** retrieval: nodes and edges contextualize flat embedding hits. Represent execution history as temporal **entity–relation–entity** triples:
+
+$$\text{Triple} = (\text{Entity}_{\text{subject}}, \text{Relation}_{\text{predicate}}, \text{Entity}_{\text{object}})$$
+
+Example triples:
+
+- `("compilator", "compiled_with", "ThinLTO")`
+- `("compilator", "uses_allocator", "Mimalloc")`
+- `("vault_module", "contains_defect", "unparenthesized_exception_tuple")`
+- `("opencl_store", "upgraded_lock_to", "RLock")`
+
+In Swarm, treat Mem0 as an **optional** backend when the `mem0` extra is installed; core retrieval remains `swarm_sdk.retrieval`.
 
 ### 2.3 Subagent memory handoff protocols
 
@@ -136,7 +152,14 @@ m = Memory.from_config({
         "provider": "redis",
         "config": {"host": "localhost", "port": 6379},
     },
+    "version": "v1.1",
 })
+
+m.add(
+    "Agent compilator optimized low_swarm.py with memory_guarded decorator",
+    user_id="usuario",
+    agent_id="orchestrator",
+)
 
 m.add(
     "User prefers explicit typing; subagent failed when return types were omitted.",
@@ -257,3 +280,145 @@ Swarm: Redis also backs **exact semantic cache** when configured ([REDIS.md](RED
 6. [Qdrant quantization](https://qdrant.tech/documentation/guides/quantization/)
 7. [FastEmbed](https://github.com/qdrant/fastembed)
 8. [LangGraph](https://github.com/langchain-ai/langgraph)
+
+---
+
+## Part VII — LangGraph state graph & GraphRAG
+
+Technical guide for **StateGraph** topologies, agent node embeddings, Mem0 knowledge-graph stores, and **GraphRAG** hybrid retrieval feeding specialist prompts.
+
+### 7.1 Execution topology
+
+LangGraph structures multi-agent swarm execution as a directed state graph ($G = (V, E)$): vertices ($V$) are specialist subagents (e.g. `@router`, `@coder`, `@reviewer`, `@compilator`); edges ($E$) are conditional handoffs.
+
+```
+                  +--------------------------+
+                  |  Entry Point: Jev Router |
+                  +------------+-------------+
+                               |
+               +---------------+---------------+
+               | Conditional Edge (Safety/Score)|
+               v                               v
+    +--------------------+           +-------------------+
+    |    Coder Node      |           |   Blocked End     |
+    +---------+----------+           +-------------------+
+              |
+              v
+    +--------------------+
+    |   Lifeguard Node   |
+    +---------+----------+
+              |
+       +------+------+
+       |  Approved?  |
+       v             v (Violations Found -> Re-try Coder)
+  +---------+   +---------+
+  | Verifier|   |  Coder  |
+  +----+----+   +---------+
+       |
+       v
+    [ END ]
+```
+
+### 7.2 Node embeddings for routing
+
+Each graph node can carry a semantic vector for its domain specialty and instruction contract:
+
+- **Embedding model:** `BAAI/bge-small-en-v1.5` (384 dimensions).
+- **Node signature:** $\mathbf{v}_{\text{agent}} \in \mathbb{R}^{384}$.
+- **Routing rule:** $\text{TargetAgent} = \arg\max_{a \in A} \cos(\mathbf{v}_{\text{task}}, \mathbf{v}_{a})$
+
+See also [§4.4](#44-fastembed--langgraph-swarm) for the Swarm embedding stack.
+
+### 7.3 GraphRAG retrieval pipeline
+
+GraphRAG combines vector similarity with graph traversal (1-hop / 2-hop entity expansion):
+
+```
+[User Task Prompt]
+       |
+       v
++-------------------------------+      +--------------------------------+
+| Vector Search (RediSearch)    |  +---| Graph Traversal (Neo4j/Mem0)   |
+| Top-K Vector Chunks (Dense)   |      | Entity Subgraph Expansion (2-hop)|
++---------------+---------------+      +---------------+----------------+
+                |                                      |
+                +------------------+-------------------+
+                                   |
+                                   v
+             [Merged GraphRAG Context Payload for Agent]
+```
+
+### 7.4 Reference state machine snippet
+
+```python
+#!/usr/bin/env python3
+"""LangGraph Multi-Agent Swarm State Machine Implementation."""
+
+from __future__ import annotations
+
+import logging
+from typing import Any, TypedDict
+
+from langgraph.graph import END, StateGraph
+
+logger = logging.getLogger(__name__)
+
+
+class SwarmGraphState(TypedDict, total=False):
+    """State schema for LangGraph agent swarm."""
+
+    task: str
+    target_files: list[str]
+    synthesized_code: dict[str, str]
+    audit_approved: bool
+    status: str
+
+
+class LangGraphSwarmEngine:
+    """Directed Agent State Graph Engine."""
+
+    def __init__(self) -> None:
+        self.builder = StateGraph(SwarmGraphState)
+        self._wire_nodes()
+        self.graph = self.builder.compile()
+
+    def _wire_nodes(self) -> None:
+        self.builder.add_node("router", self.node_router)
+        self.builder.add_node("coder", self.node_coder)
+        self.builder.add_node("reviewer", self.node_reviewer)
+
+        self.builder.set_entry_point("router")
+        self.builder.add_edge("router", "coder")
+        self.builder.add_edge("coder", "reviewer")
+        self.builder.add_conditional_edges(
+            "reviewer",
+            self._route_after_review,
+            {"coder": "coder", END: END},
+        )
+
+    def node_router(self, state: SwarmGraphState) -> dict[str, Any]:
+        """Routes task prompt and sets target files."""
+        return {"status": "routed", "target_files": ["solution.py"]}
+
+    def node_coder(self, state: SwarmGraphState) -> dict[str, Any]:
+        """Synthesizes target code implementation."""
+        return {
+            "status": "coded",
+            "synthesized_code": {"solution.py": "def run(): return 42"},
+        }
+
+    def node_reviewer(self, state: SwarmGraphState) -> dict[str, Any]:
+        """Audits synthesized code for correctness."""
+        return {"status": "reviewed", "audit_approved": True}
+
+    def _route_after_review(self, state: SwarmGraphState) -> str:
+        if state.get("audit_approved"):
+            return END
+        return "coder"
+
+
+if __name__ == "__main__":
+    engine = LangGraphSwarmEngine()
+    result = engine.graph.invoke({"task": "Build zero-copy PyArrow pipeline"})
+    print("Graph Execution Final State:", result)
+```

@@ -20,6 +20,7 @@ from swarm_sdk.agents.manifest import (
 )
 from swarm_sdk.config.loader import SwarmFileConfig, load_swarm_config
 from swarm_sdk.config.settings import Settings, load_merged_settings
+from swarm_sdk.core.jev_router import JevRouter
 from swarm_sdk.execution import fan_out, offload
 from swarm_sdk.gpu import set_enabled as set_opencl_enabled
 from swarm_sdk.memory.base import MemoryHit, MemoryStore
@@ -55,6 +56,7 @@ from swarm_sdk.retrieval.rerank import FastEmbedReranker, KeywordReranker, Reran
 if TYPE_CHECKING:
     from langchain_core.language_models.chat_models import BaseChatModel
     from langchain_core.runnables import RunnableConfig
+    from langchain_core.tools.base import BaseTool
     from langgraph.checkpoint.base import BaseCheckpointSaver
 
 logger = logging.getLogger(__name__)
@@ -73,8 +75,16 @@ _DEFAULT_NODE_PROMPTS = {
 _JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
 
 
-def _handoff(agent_name: str, description: str):
-    """Keyword-only langgraph-swarm API: agent_name, optional name and description."""
+def _handoff(agent_name: str, description: str) -> BaseTool:
+    """Build the langgraph-swarm handoff tool that transfers control to an agent.
+
+    Args:
+        agent_name: Target agent id; the tool is exposed as ``transfer_to_<agent_name>``.
+        description: When/how the router should use this transfer.
+
+    Returns:
+        The handoff tool bound to ``agent_name``.
+    """
     from langgraph_swarm import create_handoff_tool
 
     return create_handoff_tool(

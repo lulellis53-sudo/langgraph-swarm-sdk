@@ -93,9 +93,10 @@ def _to_result_msg(plan_id: str, result: PlanResult) -> swarm_pb2.PlanResultMsg:
 
 
 class SwarmServicer(swarm_pb2_grpc.SwarmServiceServicer):
-    """Implements ``swarm.v1.SwarmService``: single-run, memory recall, and the
-    three orchestration RPCs (spawn a plan, execute it, poll its status)."""
+    """Implement ``swarm.v1.SwarmService``: single-run, memory recall, and orchestration.
 
+    The three orchestration RPCs are: spawn a plan, execute it, poll its status.
+    """
     def __init__(self, sdk: SwarmSDK) -> None:
         """Bind the servicer to an ``SwarmSDK`` instance."""
         self.sdk = sdk

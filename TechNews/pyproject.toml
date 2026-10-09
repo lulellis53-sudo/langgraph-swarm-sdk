@@ -29,7 +29,20 @@ target-version = "py314"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP"]
+select = ["E", "F", "I", "UP", "D", "ANN"]
+# ``Any`` stays legal: it is only used where a type is genuinely dynamic.
+ignore = ["ANN401"]
+
+[tool.ruff.lint.pydocstyle]
+# Google convention: summary line, blank line, then ``Args:``/``Returns:``/``Raises:``.
+convention = "google"
+
+[tool.ruff.lint.flake8-annotations]
+allow-star-arg-any = true
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert behavior; a docstring per test adds noise without information.
+"tests/**" = ["D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107"]
 
 [tool.ruff.format]
 quote-style = "double"

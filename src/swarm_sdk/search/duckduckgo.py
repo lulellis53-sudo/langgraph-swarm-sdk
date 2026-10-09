@@ -1,5 +1,5 @@
-"""
-DuckDuckGo Search Engine & Page Extractor.
+"""DuckDuckGo Search Engine & Page Extractor.
+
 High-performance asynchronous scraper using httpx, selectolax, and trafilatura.
 Zero external API key dependencies.
 """

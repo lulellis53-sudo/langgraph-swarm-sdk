@@ -31,15 +31,22 @@ class Store:
     """Deduplicating article store backed by one SQLite file."""
 
     def __init__(self, path: Path | str) -> None:
+        """Open (creating if needed) the SQLite database at ``path``.
+
+        Args:
+            path: Database file path; parent directories are created.
+        """
         self._path = Path(path)
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(self._path)
         self._conn.executescript(_SCHEMA)
 
     def __enter__(self) -> Self:
+        """Enter a ``with`` block and return the store itself."""
         return self
 
     def __exit__(self, *exc: object) -> None:
+        """Leave a ``with`` block and close the connection, swallowing nothing."""
         self.close()
 
     def close(self) -> None:

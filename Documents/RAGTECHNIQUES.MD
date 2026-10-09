@@ -805,7 +805,7 @@ def generate_node(state: CRAGState) -> dict[str, Any]:
 ```
 
 ### 11.1 Agent Memory Layers: Mem0, Zep/Graphiti & Temporal Knowledge Graphs
-Swarm-focused manual (tiers, handoffs, vector engines): [AGENTMEMORY.md](AGENTMEMORY.md). Sections §9–§11 index *documents*; agentic systems additionally need memory that persists *across sessions* — episodic interaction state, evolving user facts, prior tool outcomes. This is a distinct layer that feeds the RAG loop as structured context:
+Swarm-focused manual (tiers, handoffs, vector engines, graph): [Memory.md](Memory.md). Sections §9–§11 index *documents*; agentic systems additionally need memory that persists *across sessions* — episodic interaction state, evolving user facts, prior tool outcomes. This is a distinct layer that feeds the RAG loop as structured context:
 
 | Framework | Architecture | Distinguishing property |
 | :--- | :--- | :--- |

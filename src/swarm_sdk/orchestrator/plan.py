@@ -261,7 +261,7 @@ class UsageTotals(BaseModel):
 
     @property
     def total_tokens(self) -> int:
-        """prompt + completion tokens across all non-cached calls."""
+        """Sum prompt and completion tokens across all non-cached calls."""
         return self.prompt_tokens + self.completion_tokens
 
 

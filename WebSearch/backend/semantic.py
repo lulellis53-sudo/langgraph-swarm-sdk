@@ -23,7 +23,9 @@ _MIN_SENTENCE_CHARS = 20
 class Embedder(Protocol):
     """Text embedder returning one unit vector per text."""
 
-    def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray: ...
+    def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:
+        """Embed ``texts``; ``query`` selects the query-side representation."""
+        ...
 
 
 class LexicalEmbedder:
@@ -34,6 +36,7 @@ class LexicalEmbedder:
     """
 
     def __init__(self, dim: int = 1024) -> None:
+        """Create a lexical embedder with ``dim`` hashed features."""
         self.dim = dim
 
     def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:

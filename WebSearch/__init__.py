@@ -16,4 +16,5 @@ def __getattr__(name: str) -> Any:
 
 
 def __dir__() -> list[str]:
+    """Return sorted public names for ``dir(WebSearch)``."""
     return sorted(__all__)

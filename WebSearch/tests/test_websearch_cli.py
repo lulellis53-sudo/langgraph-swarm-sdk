@@ -5,7 +5,9 @@ from __future__ import annotations
 import io
 import json
 import sqlite3
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Any, Never
 
 import numpy as np
 import pytest
@@ -24,7 +26,7 @@ PAGE = (
 )
 
 
-def _backend(prefix: str, urls: list[str]):
+def _backend(prefix: str, urls: list[str]) -> SearchFn:
     def search(query: str, spec: SearcherSpec) -> list[SearchHit]:
         seen.setdefault(spec.id, []).append(query)
         return [
@@ -120,7 +122,7 @@ def test_route_sql_and_semantic_end_to_end(tmp_path: Path) -> None:
 def test_route_isolates_a_failing_path() -> None:
     doc = ExtractedDoc("https://a.example", "Some text that is long enough to keep.", "x", 10)
 
-    def boom(_docs):
+    def boom(_docs: Sequence[ExtractedDoc]) -> Never:
         raise sqlite3.OperationalError("disk full")
 
     clean, results = route(
@@ -221,12 +223,14 @@ def test_semantic_search_indexes_and_reuses_vectors(tmp_path: Path) -> None:
 
 
 class _FakeEngine:
-    def fit(self, df):
+    last: Any
+
+    def fit(self, df: Any) -> _FakeEngine:
         self.last = df
         return self
 
-    def predict(self, horizon: int):
-        import pandas as pd
+    def predict(self, horizon: int) -> Any:
+        import pandas as pd  # ty: ignore[unresolved-import]
 
         ds = pd.date_range(self.last["ds"].max() + pd.Timedelta(days=1), periods=horizon, freq="D")
         return pd.DataFrame({"unique_id": "q", "ds": ds, "lgbm": [-1.0] + [5.0] * (horizon - 1)})
