@@ -23,13 +23,16 @@ linked source, configuration, and tests before applying them.
 - [RAG overview stub](RAG.md) — redirect to `RAGTECHNIQUES.MD`
 - [Low-resource optimization](LowResourceOptimization.md)
 - [Memory allocators](MemoryAllocators.md)
-- [Python 3.15](Python3.15.md) — canonical 3.15 / free-threading / performance dossier
+- [Python 3.15](Python3.15.md) — canonical 3.15 / free-threading / performance dossier (merged `Numba.md` §4.3, `Lifeguard.md` §3.11)
+- [Numba stub](Numba.md) — redirect to `Python3.15.md` §4.3
+- [Lifeguard stub](Lifeguard.md) — redirect to `Python3.15.md` §3.11
 - [Python free-threaded runtime](PythonFreeThreadedRuntime.md) — redirect stub
 - [Python performance guide](PythonPerformanceGuide.md) — redirect stub
-- [Lifeguard](Lifeguard.md) — AST safety, lazy imports, ops self-healing, runtime RSS/`healthz`
 - [Enterprise databases](Database.md) — canonical dossier (merged `DATABASE.md`, `DB.md`; `DB.md` stub remains)
-- [Agent memory & vector storage](AGENTMEMORY.md) — canonical dossier (merged `VectorDB.md`)
-- [Vector DB stub](VectorDB.md) — redirect to `AGENTMEMORY.md`
+- [Agent memory, vectors & knowledge graph](Memory.md) — canonical dossier (merged `AGENTMEMORY.md`, `GRAPH.md`, `VectorDB.md`)
+- [Agent memory stub](AGENTMEMORY.md) — redirect to `Memory.md`
+- [Graph architecture stub](GRAPH.md) — redirect to `Memory.md` Part VII
+- [Vector DB stub](VectorDB.md) — redirect to `Memory.md`
 - [MoltenVK and Vulkan](Molten.md)
 - [Agent methods](AgenticMethod.MD)
 - [Liveboard design](design-liveboard.md)

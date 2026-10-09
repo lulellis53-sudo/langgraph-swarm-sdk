@@ -38,10 +38,22 @@ Use the index to find a topic, then verify technical and version-specific claims
   - [3.8 Enterprise Incremental Map/Reduce Pipeline](#38-enterprise-incremental-mapreduce-pipeline)
   - [3.9 Stub Annotations (.pyi @lifeguard: pure / unsafe) & CI/CD GitHub Actions Quality Gate](#39-stub-annotations-pyi-lifeguard-pure--unsafe--cicd-github-actions-quality-gate)
   - [3.10 Four-Phase Progressive Adoption Roadmap](#310-four-phase-progressive-adoption-roadmap)
+  - [3.11 Swarm SDK Lifeguard layers (merged `Lifeguard.md`)](#311-swarm-sdk-lifeguard-layers-merged-lifeguardmd)
+    - [3.11.1 Four layers & decision workflow](#3111-four-layers--decision-workflow)
+    - [3.11.2 In-repo `MetaLifeguardAuditor`](#3112-in-repo-metalifeguardauditor)
+    - [3.11.3 LifeguardSystem ops plane](#3113-lifeguardsystem-ops-plane)
+    - [3.11.4 Runtime guards, checklist & pitfalls](#3114-runtime-guards-checklist--pitfalls)
 - [4. Enterprise Numerical, Columnar & Symbolic Mathematics](#4-enterprise-numerical-columnar--symbolic-mathematics)
   - [4.1 PyArrow Columnar Analytics (pyarrow.compute AVX2 Kernels & Zero-Copy Layouts)](#41-pyarrow-columnar-analytics-pyarrowcompute-avx2-kernels--zero-copy-layouts)
   - [4.2 SymPy Exact Symbolic Mathematics & Algorithmic Verification](#42-sympy-exact-symbolic-mathematics--algorithmic-verification)
-  - [4.3 Numba 0.63+ Hybrid Free-Threaded JIT / NoJIT Dynamic Polymorphism](#43-numba-063-hybrid-free-threaded-jit--nojit-dynamic-polymorphism)
+  - [4.3 Numba JIT, vectorization & GPU (merged `Numba.md`)](#43-numba-jit-vectorization--gpu-merged-numbamd)
+    - [4.3.1 LLVM JIT pipeline & hardware dispatch](#431-llvm-jit-pipeline--hardware-dispatch)
+    - [4.3.2 AVX2 / AVX-512 CPU vectorization](#432-avx2--avx-512-cpu-vectorization)
+    - [4.3.3 NUMA topology binding](#433-numa-topology-binding)
+    - [4.3.4 OpenMP runtime collisions](#434-openmp-runtime-collisions)
+    - [4.3.5 NVIDIA CUDA / cuTile tiled kernels](#435-nvidia-cuda--cutile-tiled-kernels)
+    - [4.3.6 Free-threaded JIT / NoJIT polymorphism](#436-free-threaded-jit--nojit-polymorphism)
+    - [4.3.7 Illustrative benchmarks & pitfalls](#437-illustrative-benchmarks--pitfalls)
   - [4.4 Dense Vector SIMD Math & Memory Alignment Standards](#44-dense-vector-simd-math--memory-alignment-standards)
 - [5. Memory Architecture, Allocation & Compaction](#5-memory-architecture-allocation--compaction)
   - [5.1 Microsoft mimalloc v3.5: Thread-Sharded Heaps & Lock-Free Allocation](#51-microsoft-mimalloc-v35-thread-sharded-heaps--lock-free-allocation)
@@ -824,6 +836,118 @@ sequenceDiagram
     RT-->>Dev: Verified 3x–6x Faster Startup Latency & Lower RSS Footprint
 ```
 
+### 3.11 Swarm SDK Lifeguard layers (merged `Lifeguard.md`)
+
+**Authority in this repo:** [`src/swarm_sdk/core/lifeguard_ast.py`](../src/swarm_sdk/core/lifeguard_ast.py), [`low_swarm.py`](../src/swarm_sdk/orchestrator/low_swarm.py). Orchestration narrative: [LangSwarm.md §16](LangSwarm.md#16-automated-self-healing--pre-flight-verification-with-lifeguard). Sections [§3.1–§3.10](#31-the-lazy-imports-paradigm-pep-810-explicit-syntax--pep-690-foundation) cover **Meta Lifeguard (upstream)** PEP 810 static analysis; this section maps how the **name** Lifeguard is used in the LangGraph Swarm SDK at runtime and in ops.
+
+**Lifeguard is not one binary.** Swarm uses it at four layers:
+
+| Layer | What it is | Swarm default |
+| :--- | :--- | :--- |
+| **A. Meta Lifeguard (upstream)** | Rust/Python analyzer for **PEP 810 lazy-import** safety ([facebook/Lifeguard](https://github.com/facebook/Lifeguard)) | Optional CLI (`lifeguard_lazy_imports`); not required for `uv sync` |
+| **B. `MetaLifeguardAuditor` (in-repo)** | Python AST gate: no dangerous import-time calls; optional heavy-module lazy hints | **On** in `LowSwarmEngine` `lifeguard_node`; exported from `swarm_sdk.core` |
+| **C. LifeguardSystem (upstream)** | YAML-scheduled **validations + remediation** ([LifeguardSystem/lifeguard](https://github.com/LifeguardSystem/lifeguard)) | Optional ops daemon |
+| **D. Runtime hooks** | RSS **memory ceiling** in `AllocatorManager`; **`GET /healthz`** on `swarm-api` | Active when serving or using allocator context managers |
+
+On **macOS** dev hosts, combine B + D with launchd and process limits. On **Linux**, add systemd, cgroup v2 memory limits, and optionally C.
+
+#### 3.11.1 Four layers & decision workflow
+
+```text
+                    [Code / agent output]
+                              |
+              +---------------+---------------+
+              |                               |
+      [Pre-flight AST]                  [Runtime serve]
+   MetaLifeguardAuditor                  swarm-api / graph
+   (prohibited calls,                    + AllocatorManager
+    optional lazy imports)                 + /healthz
+              |                               |
+              v                               v
+      [Reject -> coder loop]          [MemoryError on ceiling]
+              |                               |
+              +---------------+---------------+
+                              |
+                    [Optional ops plane]
+              LifeguardSystem validations
+              (schedule, execute, actions)
+```
+
+| Component | Location | Behavior |
+| :--- | :--- | :--- |
+| `MetaLifeguardAuditor`, `audit_code` | `core/lifeguard_ast.py` | AST visit; `LifeguardAuditReport.is_approved` |
+| Violation categories | same | `prohibited_call`, `unlazy_import`, `syntax_error` |
+| Heavy import set | `HEAVY_MODULES` | `torch`, `transformers`, `pandas`, `polars`, `scipy`, `sklearn` |
+| Prohibited calls | `EXACT_PROHIBITED_CALLS`, prefixes | `os.system`, `eval`/`exec`, `subprocess.*`, `socket.*`, `shutil.rmtree`, … |
+| Graph node | `orchestrator/low_swarm.py` | `node_lifeguard` → handoff to `coder` on failure (bounded depth) |
+| Lazy import proxy | `core/compression.py` | PEP 810–friendly deferred imports for heavy stacks |
+| Memory ceiling | `core/allocator.py` | `MemoryError` when RSS ≥ configured GB ceiling |
+| Liveness | `serving/http.py` | `GET /healthz` → `{"status":"ok"}` |
+| CLI surfacing | `cli.py` | Rich table row **Lifeguard Audit** from `lifeguard_report` state |
+
+**Layer A (upstream):** Parallel AST analysis; conservative — unproven-safe modules land in `LOAD_IMPORTS_EAGERLY` ([§3.4](#34-output-architecture-deep-dive-into-lazy_eligible-and-load_imports_eagerly)). `MetaLifeguardAuditor` is **narrower** (security-focused) and does **not** replace the Rust CLI for full-repo PEP 810 migration.
+
+#### 3.11.2 In-repo `MetaLifeguardAuditor`
+
+```python
+from swarm_sdk.core.lifeguard_ast import MetaLifeguardAuditor, audit_code
+
+report = audit_code(source, enforce_lazy=False)
+assert report.is_approved
+```
+
+- `enforce_lazy=True` — flag top-level imports of `HEAVY_MODULES` unless suppressed (`# lifeguard` / `# noqa`; see `_has_suppression_comment` in source).
+- Module-scope **calls** to prohibited APIs are always violations.
+
+After the coder produces patches, `lifeguard_node` audits synthesized code. Failures append feedback and may route back to `coder` (max handoff depth 2). State key: `lifeguard_report` (dict from `LifeguardAuditReport`).
+
+#### 3.11.3 LifeguardSystem ops plane
+
+Validations run on a **schedule**; each **`execute`s** a callable; **actions** are `(validation_response, settings) -> ...` hooks in YAML:
+
+```yaml
+validations:
+  - validation_name: swarm_api_health
+    description: Poll swarm-api liveness
+    schedule:
+      every:
+        minutes: 1
+    execute:
+      command: mypkg.checks.healthz
+      args:
+        - "http://127.0.0.1:8080/healthz"
+    actions:
+      - lifeguard.actions.database.save_result_into_database
+```
+
+Point validations at `swarm-api` `/healthz`, Redis when enabled, and LangGraph Server URL. Examples: [LangSwarm.md §16.2–16.3](LangSwarm.md#162-operational-self-healing-daemon-with-lifeguardsystem).
+
+#### 3.11.4 Runtime guards, checklist & pitfalls
+
+**Allocator RSS ceiling:** `AllocatorManager` raises  
+`MemoryError: Lifeguard memory ceiling breached during execution: …`  
+when RSS exceeds `ceiling_gb` — useful on **16 GB** hosts before swap thrash ([§1.3](#13-hardware-baseline--host-physical-invariants-intel-i7-9750h)).
+
+| Signal | Linux (typical) | macOS (dev) |
+| :--- | :--- | :--- |
+| Memory cap | cgroup v2 `memory.max` | `ulimit -v`, allocator ceiling (D) |
+| Restart policy | systemd `Restart=on-failure` | launchd `KeepAlive` |
+| Leak trend | `dRSS/dt` from `/proc/pid/statm` | `ps` / Instruments / allocator reports |
+
+**Operational checklist**
+
+1. **CI / synthesis:** low-swarm / E2E paths should leave `lifeguard_report.is_approved` true after codegen audits.
+2. **Lazy-import migration (3.15):** Run upstream `lifeguard` on packages before global PEP 810; fix `LOAD_IMPORTS_EAGERLY` ([§3.4](#34-output-architecture-deep-dive-into-lazy_eligible-and-load_imports_eagerly)).
+3. **Serving:** Monitor `/healthz`; configure LifeguardSystem or systemd for the API process.
+4. **Memory:** Set allocator ceilings for batch ingest / benchmarks on 16 GB hosts.
+
+| Pitfall | Mitigation |
+| :--- | :--- |
+| False deadlock from CPU-bound work without heartbeat | Async yields; longer TTL; don’t rely on heartbeat alone on pure compute |
+| Meta Lifeguard vs in-repo auditor mismatch | Rust Meta Lifeguard for PEP 810 migration; `MetaLifeguardAuditor` for agent codegen safety |
+| `enforce_lazy=True` with module-level `torch` | Move imports into functions or documented suppression comments |
+| LifeguardSystem action failures | Log `validation_response`; idempotent actions; alert on repeated PROBLEM status |
+
 ---
 
 ## 4. Enterprise Numerical, Columnar & Symbolic Mathematics
@@ -866,10 +990,75 @@ expr2 = x**2 + 2 * x * y + y**2
 is_identical = sp.simplify(expr1 - expr2) == 0
 ```
 
-### 4.3 Numba 0.63+ Hybrid Free-Threaded JIT / NoJIT Dynamic Polymorphism
+### 4.3 Numba JIT, vectorization & GPU (merged `Numba.md`)
 
-- **Numba Free-Threaded Compilation**: With `@njit(nogil=True, fastmath=True)`, Numba compiles Python numerical loops into machine code, releases the GIL, and runs concurrently across 12 hardware threads.
-- **NoJIT Polymorphism**: In development and testing, LLVM JIT compilation incurs a 200–500 ms warmup penalty. Setting `NUMBA_DISABLE_JIT=1` runs clean scalar Python/NumPy code with zero compilation latency.
+Numba is an LLVM-backed just-in-time compiler for Python numerical code. Use it for hot loops that are awkward in PyArrow or NumPy alone; pair with [§4.4](#44-dense-vector-simd-math--memory-alignment-standards) alignment rules and [§6](#6-hardware-simd-vectorization--safe-runtime-dispatch) CPU dispatch on heterogeneous hosts.
+
+#### 4.3.1 LLVM JIT pipeline & hardware dispatch
+
+```text
+[Python Code] ---> [AST Parser] ---> [Numba IR]
+                                         |
+                                         v
+                                  [Type Inference]
+                                         |
+                                         v
+                                 [LLVM IR Gen]
+                                         |
+            +----------------------------+-----------------------------+
+            |                            |                             |
+            v                            v                             v
+   [CPU AVX-512 Pass]             [NUMA Binding]               [PTX Emitter]
+    (Target: x86_64)            (numactl --cpunodebind=0)      (Target: CUDA SIMT)
+            |                            |                             |
+            v                            v                             v
+[Vectorized Thread Pool]       [OpenMP Fork/Join]             [NVIDIA cuTile Kernels]
+```
+
+#### 4.3.2 AVX2 / AVX-512 CPU vectorization
+
+`@njit(fastmath=True)` plus LLVM auto-vectorization emits SIMD on capable x86_64 CPUs — roughly **8×** throughput for float32 on AVX2 and up to **16×** on AVX-512. On this repo’s Intel i7-9750H baseline ([§1.3](#13-hardware-baseline--host-physical-invariants-intel-i7-9750h)), treat **AVX2** as the practical ceiling (no AVX-512 on that part).
+
+#### 4.3.3 NUMA topology binding
+
+On multi-socket hosts, remote NUMA access adds latency. Pin process and allocations to one node when benchmarking or serving steady CPU kernels:
+
+```bash
+numactl --cpubind=0 --membind=0 python -m your_numba_worker
+```
+
+#### 4.3.4 OpenMP runtime collisions
+
+`parallel=True` / `numba.prange` competes with other OpenMP stacks (PyTorch, OpenBLAS-linked NumPy). Symptoms: thread oversubscription or deadlocks.
+
+- Set `export OMP_NUM_THREADS=1` for external libraries.
+- Set `export NUMBA_NUM_THREADS=<cores>` for Numba’s pool.
+- Prefer `NUMBA_THREADING_LAYER=tbb` when nested OpenMP is unavoidable.
+
+#### 4.3.5 NVIDIA CUDA / cuTile tiled kernels
+
+`numba.cuda.jit` targets SIMT GPUs. For memory-bound kernels, tile into shared memory to cut global VRAM traffic. See Numba CUDA JIT and `cuda.vectorize` references in [§13](#13-primary-citations--authoritative-evidence-ledger).
+
+#### 4.3.6 Free-threaded JIT / NoJIT polymorphism
+
+- **Free-threaded compilation:** With `@njit(nogil=True, fastmath=True)`, Numba releases the GIL and can run numerical loops concurrently on free-threaded CPython ([§2.1](#21-pep-703-free-threaded-concurrency-nogil-internals-brc-drc-immortality)).
+- **NoJIT polymorphism:** LLVM warmup is often 200–500 ms per kernel. Use `NUMBA_DISABLE_JIT=1` in tests or fast iteration; use `@njit` (never bare `@jit`) in production paths to avoid **object mode** fallback (near-zero speedup).
+
+#### 4.3.7 Illustrative benchmarks & pitfalls
+
+*Unverified lab figures — not Swarm CI defaults.*
+
+| Metric (float64 matrix) | Pure Python | Numba AVX2 | Numba CUDA | Δ vs Python | Speedup |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Ops/sec | 400 | 18,000 | 340,000 | +84,900% (CUDA) | ~850× (CUDA) |
+| Latency P50 | 2500 ms | 55 ms | 2 ms | −99.9% (CUDA) | ~1250× (CUDA) |
+| L1 cache miss rate | 45% | 12% | 2% | −95.5% (CUDA) | — |
+| NUMA remote access | 50% | <1% (`numactl`) | N/A | −98% | — |
+
+**Pitfalls**
+
+1. **Object mode fallback** — failed type inference compiles object mode; always prefer `@njit`.
+2. **OpenMP deadlocks** — nested `prange` with foreign OpenMP; segregate thread pools ([§4.3.4](#434-openmp-runtime-collisions)).
 
 ### 4.4 Dense Vector SIMD Math & Memory Alignment Standards
 
@@ -1716,3 +1905,8 @@ suite over the illustrative tables in §11.2–§11.3 for SDK or CI gating.
 28. [PEP 793 — PyModExport: A New Entry Point for C Extension Modules](https://peps.python.org/pep-0793/) — Modern slot-driven entry point replacing legacy `PyInit_*`.
 29. [PEP 782 — New PyBytesWriter C API](https://peps.python.org/pep-0782/) — High-performance dynamic bytes buffer allocator and serializer for native extensions.
 30. [What's New in Python 3.15 (Official Documentation)](https://docs.python.org/3.15/whatsnew/3.15.html) — Comprehensive release notes and migration guide for Python 3.15.
+31. [Numba CUDA JIT kernel reference](https://numba.readthedocs.io/en/stable/cuda-reference/kernel.html) — SIMT kernel compilation and launch semantics.
+32. [Numba `cuda.vectorize`](https://numba.readthedocs.io/en/stable/cuda/ufunc.html) — Universal functions on the CUDA target.
+33. [Linux `numactl` manual](https://linux.die.net/man/8/numactl) — NUMA CPU/memory binding for benchmark stability.
+34. [LifeguardSystem](https://github.com/LifeguardSystem/lifeguard) — Scheduled validations, execute hooks, and remediation actions.
+35. [cgroup v2 memory](https://www.kernel.org/doc/Documentation/cgroup-v2.txt) — Optional Linux memory limits for serving workloads.
