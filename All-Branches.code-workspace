@@ -2,38 +2,47 @@
   "folders": [
     {
       "name": "branch swarm_sdk",
-      "path": "../../Swarm"
+      "path": "../Swarm"
     },
     {
       "name": "branch Websearch",
-      "path": ".."
+      "path": "."
     },
     {
       "name": "branch Websearch · TechNews",
-      "path": "../TechNews"
+      "path": "TechNews"
     },
     {
       "name": "branch Prediction",
-      "path": "../../Prediction"
+      "path": "../Prediction"
     },
     {
       "name": "branch BotDeal",
-      "path": "../../BotDeal"
+      "path": "../BotDeal"
     },
     {
       "name": "branch newsletter",
-      "path": "../../Modules/Newsletter"
+      "path": "../Modules/Newsletter"
     },
     {
       "name": "branch Agents",
-      "path": "../../Agents"
+      "path": "../Agents"
     },
     {
       "name": "branch WebScraper",
-      "path": "../../WebScraper"
+      "path": "../WebScraper"
     }
   ],
+  "extensions": {
+    "recommendations": [
+      "eamodio.gitlens",
+      "tmokmss.vscode-git-worktree-switcher",
+      "116Ideas.worktree-autosync"
+    ]
+  },
   "settings": {
+    "git.detectWorktrees": true,
+    "git.detectWorktreesLimit": 50,
     "git.autoRepositoryDetection": true,
     "git.openRepositoryInParentFolders": "never",
     "scm.alwaysShowRepositories": true,

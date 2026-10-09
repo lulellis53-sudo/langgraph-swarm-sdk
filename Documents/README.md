@@ -1,44 +1,22 @@
-# Documentation index
+# Documentation index (repository)
 
-Use the root [README](../README.md) for supported setup, configuration, and
-runtime behavior. This folder also contains research notes and historical design
-records; those are not product guarantees. Verify implementation details in the
-linked source, configuration, and tests before applying them.
+Long-form manuals live in **personal docs** on this machine:
 
-## Project guides
+**`~/Documentos/`** → `~/Desktop/Documentos/` (same folder; home symlink)
 
-- [Repository layout](LAYOUT.md) — where the project's main components live.
-- [WebSearch workflow](workflow.md) — search, fetch, and extraction flow.
-- [Google dork queries](dorks.md) — query builder syntax and examples.
-- [LangGraph Swarm reference](LangSwarm.md) — canonical architecture manual (merged `LangGraphSwarm.md`, acceleration research)
-- [LangGraphSwarm stub](LangGraphSwarm.md) — redirect to `LangSwarm.md`
-- [Perplexity integration notes](perplexity_playwright_guide.md) — use the documented API for integrations.
+| Topic | Personal path |
+| --- | --- |
+| Index (full list) | [`~/Documentos/README.md`](file:///Users/usuario/Documentos/README.md) |
+| Benchmarks | [`~/Documentos/Benchmark.md`](file:///Users/usuario/Documentos/Benchmark.md) |
+| Databases | [`~/Documentos/Database.md`](file:///Users/usuario/Documentos/Database.md) |
+| LangGraph Swarm | [`~/Documentos/LangSwarm.md`](file:///Users/usuario/Documentos/LangSwarm.md) |
+| Low-resource optimization | [`~/Documentos/LowResourceOptimization.md`](file:///Users/usuario/Documentos/LowResourceOptimization.md) |
+| Memory / RAG / graph | [`~/Documentos/Memory.md`](file:///Users/usuario/Documentos/Memory.md) |
+| Memory allocators | [`~/Documentos/MemoryAllocators.md`](file:///Users/usuario/Documentos/MemoryAllocators.md) |
+| Molten / Vulkan | [`~/Documentos/Molten.md`](file:///Users/usuario/Documentos/Molten.md) |
+| Python 3.15 | [`~/Documentos/Python3.15.md`](file:///Users/usuario/Documentos/Python3.15.md) |
+| RAG techniques | [`~/Documentos/RAGTECHNIQUES.MD`](file:///Users/usuario/Documentos/RAGTECHNIQUES.MD) |
+| Redis & caching | [`~/Documentos/REDIS.md`](file:///Users/usuario/Documentos/REDIS.md) |
+| Serialization | [`~/Documentos/SERIALIZATION.md`](file:///Users/usuario/Documentos/SERIALIZATION.md) |
 
-## Research and design notes
-
-- [Redis & caching](REDIS.md) — canonical manual (merged caching + optional SDK Redis cache)
-- [Caching architecture](CACHING.md) — redirect stub
-- [Optional Redis cache (SDK)](redis-cache.md) — redirect stub
-- [RAG techniques](RAGTECHNIQUES.MD) — canonical dossier (merged `RAG.md`)
-- [RAG overview stub](RAG.md) — redirect to `RAGTECHNIQUES.MD`
-- [Low-resource optimization](LowResourceOptimization.md)
-- [Memory allocators](MemoryAllocators.md)
-- [Python 3.15](Python3.15.md) — canonical 3.15 / free-threading / performance dossier (merged `Numba.md` §4.3, `Lifeguard.md` §3.11)
-- [Numba stub](Numba.md) — redirect to `Python3.15.md` §4.3
-- [Lifeguard stub](Lifeguard.md) — redirect to `Python3.15.md` §3.11
-- [Python free-threaded runtime](PythonFreeThreadedRuntime.md) — redirect stub
-- [Python performance guide](PythonPerformanceGuide.md) — redirect stub
-- [Enterprise databases](Database.md) — canonical dossier (merged `DATABASE.md`, `DB.md`; `DB.md` stub remains)
-- [Agent memory, vectors & knowledge graph](Memory.md) — canonical dossier (merged `AGENTMEMORY.md`, `GRAPH.md`, `VectorDB.md`)
-- [Agent memory stub](AGENTMEMORY.md) — redirect to `Memory.md`
-- [Graph architecture stub](GRAPH.md) — redirect to `Memory.md` Part VII
-- [Vector DB stub](VectorDB.md) — redirect to `Memory.md`
-- [MoltenVK and Vulkan](Molten.md)
-- [Agent methods](AgenticMethod.MD)
-- [Liveboard design](design-liveboard.md)
-- [`superpowers/specs/`](superpowers/specs/) and [`superpowers/plans/`](superpowers/plans/)
-  contain dated design records and implementation plans.
-
-Research documents may discuss external systems, preview features, or hardware
-that this project does not use. Treat performance figures as unverified unless
-the document links a reproducible benchmark, its workload, and its results.
+Repo stubs (same names) redirect here. Project runtime docs: root [`README.md`](../README.md), [`WebSearch/PIPELINE.md`](../WebSearch/PIPELINE.md), [`AGENTS.md`](../AGENTS.md).

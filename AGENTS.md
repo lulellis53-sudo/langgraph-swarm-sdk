@@ -26,7 +26,9 @@ Human-oriented overview: `[README.md](README.md)`.
 
 **LangGraph Swarm SDK** — a Python library and runtime for parallel multi-LLM swarms: LangGraph handoffs, semantic cache, hybrid retrieval, reranking, token budgets, and optional HTTP/gRPC APIs. The design goal is **fewer tokens** and **more relevant context**, not maximal model verbosity.
 
-On the **`Websearch`** worktree, **`WebSearch/`** is a **shared module** (search/fetch/extract pipeline), not a product. **`TechNews/`** in this checkout is a **product** that depends on `WebSearch`. Other consumers: **Newsletter** (`~/Myworkspace/Modules/Newsletter`), **BotDeal** (WebSearch-backed harvest on the Prediction/BotDeal lanes). See `~/Myworkspace/AGENTS.md` (product vs module table).
+**Branch:** `Websearch` (feature lane). **Main** integration branch is `swarm_sdk` on `~/Myworkspace/Swarm`.
+
+**`WebSearch/`** is the **module** (search/fetch/extract). **`TechNews/`** is a **product** in this checkout (future optional branch `TechNews`). Other products: **Newsletter** (`newsletter`), **BotDeal** (`BotDeal`, under **Prediction** feature family). See `~/Myworkspace/AGENTS.md` (branch map).
 
 ### Subtopic: Two kinds of “agents”
 
@@ -67,6 +69,7 @@ For swarm coordination: start from `[Agents/SKILLS.md](Agents/SKILLS.md)` and `[
 | `[.vscode/](.vscode/)`                                       | Workspace settings + extension recommendations (Cursor/VS Code)                                          |
 | `[.cursor/extensions.txt](.cursor/extensions.txt)`           | Install list mirroring recommended extensions                                                            |
 | `[Documents/](Documents/)`                                     | Architecture manuals; doc map: `[Documents/SWARM-DOC-MAP.md](Documents/SWARM-DOC-MAP.md)` ↔ `~/Desktop/Documentos/SwarmSDK-Bridge.md` |
+| `[All-Branches.code-workspace](All-Branches.code-workspace)`   | **Cursor:** multi-root workspace — every git branch as an Explorer root on the left |
 
 Edit `[src/swarm_sdk/pb/swarm.proto](src/swarm_sdk/pb/swarm.proto)` then `uv run python -m swarm_sdk.pb` to regenerate stubs. Never commit `.env`.
 
@@ -100,12 +103,21 @@ Use `uv run …` so commands use the project virtualenv.
 - Prefer the installed project tools where appropriate: `rg` / `fd` for search, `bat` / `eza` for reading and listing, `sd` for focused text replacement, `uv` for Python environments and commands, `yq` / `jq` for structured data, and `gh` for GitHub workflows. Use a tool only when it fits the task; do not invoke unrelated tools just because they are installed.
 - Check availability instead of assuming a command or subcommand exists. Keep shell arguments safely quoted and account for the configured `zsh` behavior.
 
-### Subtopic: Git CLI and worktrees
+### Subtopic: Git and worktrees — **GitKraken MCP first**
 
-- Use the installed `git` CLI to inspect repository state and history (`git status`, `git diff`, `git log`, `git show`, `git blame`) before editing. Use `git worktree list` and `git branch --show-current` to confirm the intended checkout and branch before making changes.
-- Follow the repository's fixed branch/worktree lanes. Keep changes in the worktree that owns the target files; do not edit a sibling lane through the main checkout.
-- Review the diff after changes. Do not commit unless asked. Never use force-push or `--no-verify`; inspect targets before destructive Git operations and obtain the required approval for actions that may discard user work.
-- Use `gh` only for GitHub-specific tasks and only when installed and authenticated; do not assume a GitHub action or remote mutation is authorized by local Git access.
+In Cursor, use **GitKraken MCP** (`user-gitkraken`) before raw `git` in the terminal:
+
+| Task | MCP tool | Example |
+| --- | --- | --- |
+| All lanes | `git_worktree` | `directory: ~/Myworkspace/Swarm`, `action: list` |
+| One lane | `git_status` | `directory: ~/Myworkspace/Websearch` |
+| Diff / log | `git_log_or_diff` | same `directory` as the worktree you own |
+| Stage / commit | `git_add`, `git_commit` | only when the user asks |
+| Branches | `git_branch` | `action: list`, `directory: <worktree>` |
+
+GitKraken **desktop** → **Worktrees** for the same map. Cursor SCM is one repo object DB — it will not replace per-lane status; MCP or desktop will.
+
+Shell `git` is fallback when MCP is unavailable. Follow fixed branch/worktree lanes; edit files only in the worktree that owns them. Do not commit unless asked; no force-push or `--no-verify`. Use `gh` / GitKraken `pull_request_*` for GitHub when authenticated.
 
 ### Subtopic: MCP servers
 

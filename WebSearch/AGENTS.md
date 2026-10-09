@@ -1,5 +1,9 @@
 # AGENTS.md — WebSearch
 
+## All branches in the left sidebar (Cursor)
+
+Open a **multi-root workspace**: **File → Open Workspace from File…** → [`All-Branches.code-workspace`](../All-Branches.code-workspace). For **git per lane**, use **GitKraken MCP** (`git_worktree` on `~/Myworkspace/Swarm`, `git_status` on each worktree path) or GitKraken **Worktrees** — see `~/Myworkspace/AGENTS.md`.
+
 3-stage search pipeline: **frontend** (search providers) → **midend** (crawl/scrape) → **backend** (extract/normalize/store). Python package `WebSearch/` — the websearch feature the swarm agents call, part of the LangGraph Swarm SDK monorepo. See the parent `Swarm/AGENTS.md` for branch rules, quality gate, and security.
 
 ## Commands
