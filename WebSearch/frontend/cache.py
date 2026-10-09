@@ -8,21 +8,29 @@ import os
 import threading
 import time
 from collections import OrderedDict
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import replace
+from typing import TYPE_CHECKING
 
 from WebSearch.frontend.types import SearcherSpec
+
+if TYPE_CHECKING:
+    from WebSearch.frontend.types import SearchHit
 
 logger = logging.getLogger(__name__)
 
 _SEARCH_CACHE_TTL_S = 300.0
 _SEARCH_CACHE_MAX = 256
-_SEARCH_CACHE: OrderedDict[tuple[str, str, int], tuple[float, list, object]] = OrderedDict()
+_SEARCH_CACHE: OrderedDict[tuple[str, str, int], tuple[float, list[SearchHit], object]] = (
+    OrderedDict()
+)
 _SEARCH_CACHE_LOCK = threading.Lock()
 _REDIS_SEARCH_CACHE_LOCK = threading.Lock()
 _REDIS_SEARCH_CACHE_URL = ""
 _REDIS_SEARCH_CACHE: object = None
 
+#: Search backend signature; ``object`` avoids a circular import at runtime.
+#: The real shape is ``Callable[[str, SearcherSpec], list[SearchHit]]``.
 SearchFn = (
     object  # Avoid circular import; actual type is Callable[[str, SearcherSpec], list[SearchHit]]
 )

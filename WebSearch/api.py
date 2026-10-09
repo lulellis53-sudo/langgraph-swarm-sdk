@@ -29,6 +29,7 @@ from WebSearch.doctor import doctor
 from WebSearch.frontend.dorks import DorkError
 from WebSearch.frontend.websearchers import SearchFn, load_providers
 from WebSearch.midend import FetchFn
+from WebSearch.observability_sentry import configure_sentry
 
 
 class SearchRequest(BaseModel):
@@ -95,6 +96,7 @@ def create_app(
 ) -> FastAPI:
     """Build the app. The keyword arguments let tests swap providers, fetcher and model."""
     app = FastAPI(title="WebSearch", version="1.0")
+    configure_sentry()
 
     @app.get("/health")
     def health() -> dict[str, str]:

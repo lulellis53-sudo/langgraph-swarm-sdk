@@ -86,6 +86,7 @@ def connect(path: str | Path) -> sqlite3.Connection:
 
 
 def _query_for(base: str, day: date) -> str:
+    """Append the long date suffix used to scope a daily topic query."""
     return f"{base} {day.strftime('%B')} {day.day} {day.year}"
 
 
@@ -154,6 +155,7 @@ def daily(
 
 
 def _signal(conn: sqlite3.Connection, kind: str, week: str, detail: dict[str, Any]) -> None:
+    """Append one ingest signal row to the digest database."""
     conn.execute(
         "INSERT INTO signals(ts, kind, week, detail) VALUES (?, ?, ?, ?)",
         (time.time(), kind, week, json.dumps(detail, sort_keys=True)),
@@ -253,6 +255,7 @@ def status(conn: sqlite3.Connection) -> dict[str, Any]:
 
 
 def _parse_topics(raw: Sequence[str]) -> dict[str, str]:
+    """Parse ``name=query`` topic flags into a name → query mapping."""
     topics: dict[str, str] = {}
     for item in raw:
         name, sep, query = item.partition("=")

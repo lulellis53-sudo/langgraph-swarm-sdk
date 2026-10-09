@@ -16,7 +16,21 @@ uv run pytest WebSearch/tests -q
 
 # Lint
 uv run ruff check WebSearch
+
+# Optional error monitoring (requires secrets in Keychain / .env)
+uv sync --extra observability
+# SENTRY_DSN + SENTRY_ENVIRONMENT → WebSearch.api auto-inits via observability_sentry.py
 ```
+
+## Sentry (MCP + SDK)
+
+| Layer | Config | Auth |
+| --- | --- | --- |
+| **Cursor MCP** | Global server **`Sentry`** → `~/.gemini/mcp/sentry` | `SENTRY_ACCESS_TOKEN` (Keychain: `swarm/SENTRY_ACCESS_TOKEN`) |
+| **This worktree** | [`Main/config/sentry.yaml`](../Main/config/sentry.yaml) | `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_REGION_URL` (slugs/URLs only) |
+| **Runtime SDK** | `WebSearch/observability_sentry.py` | `SENTRY_DSN` — set with `uv run swarm-vault set SENTRY_DSN` |
+
+In Agent chat, use Sentry MCP (`find_organizations`, `search_issues`, `analyze_issue_with_seer`) with org/project from env or `sentry.yaml` defaults. Prefer **GitKraken** for git; **Sentry MCP** for production errors affecting WebSearch.
 
 ## Architecture
 

@@ -39,6 +39,7 @@ _ALWAYS = {"regex", "selectolax_regex"}
 
 
 def _module(name: str) -> dict[str, Any]:
+    """Describe one optional dependency: installed flag plus version."""
     target, dist = _MODULES.get(name, (name, name))
     try:
         importlib.import_module(target)
@@ -73,11 +74,13 @@ def _autonomous(cfg: ProvidersConfig) -> dict[str, Any]:
     cache: dict[str, bool] = {}
 
     def ready(name: str) -> bool:
+        """Cached ``model_key_ready`` check for a registry model name."""
         if name not in cache:
             cache[name] = model_key_ready(name)
         return cache[name]
 
     def roster(names: tuple[str, ...]) -> list[dict[str, Any]]:
+        """Build name/ready rows for one autonomous model roster."""
         return [{"name": name, "ready": ready(name)} for name in names]
 
     playwright = roster(cfg.autonomous_playwright)
@@ -149,6 +152,7 @@ def render(report: dict[str, Any]) -> str:
     """Plain-text table of :func:`doctor` output."""
 
     def mark(ok: object) -> str:
+        """Render a readiness flag as ``ok`` or ``MISSING``."""
         return "ok" if ok else "MISSING"
 
     lines = [f"config: {report['config']}", "crawlers:"]

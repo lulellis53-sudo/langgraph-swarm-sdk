@@ -195,6 +195,7 @@ def _browse_report(
 
 
 def _targets(raw: str) -> list[str]:
+    """Split a comma route string into non-empty target names."""
     return [part.strip() for part in raw.split(",") if part.strip()]
 
 
@@ -292,6 +293,7 @@ def run(
 
 
 def _render(report: dict[str, Any], hits_text: str) -> str:
+    """Render a CLI report as human-readable text."""
     if "autonomous" in report:
         auto = report["autonomous"]
         browse = report["browse"]

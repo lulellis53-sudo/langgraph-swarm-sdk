@@ -23,6 +23,10 @@
     {
       "name": "lane · WebScraper",
       "path": "../../WebScraper"
+    },
+    {
+      "name": "lane · BotDeal",
+      "path": "../../BotDeal"
     }
   ],
   "settings": {

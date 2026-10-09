@@ -26,6 +26,8 @@ Human-oriented overview: `[README.md](README.md)`.
 
 **LangGraph Swarm SDK** — a Python library and runtime for parallel multi-LLM swarms: LangGraph handoffs, semantic cache, hybrid retrieval, reranking, token budgets, and optional HTTP/gRPC APIs. The design goal is **fewer tokens** and **more relevant context**, not maximal model verbosity.
 
+On the **`Websearch`** worktree, **`WebSearch/`** is a **shared module** (search/fetch/extract pipeline), not a product. **`TechNews/`** in this checkout is a **product** that depends on `WebSearch`. Other consumers: **Newsletter** (`~/Myworkspace/Modules/Newsletter`), **BotDeal** (WebSearch-backed harvest on the Prediction/BotDeal lanes). See `~/Myworkspace/AGENTS.md` (product vs module table).
+
 ### Subtopic: Two kinds of “agents”
 
 1. **Coding assistant (you in Cursor)** — edits this repo, runs tests, opens PRs. Follow the sections below.
@@ -49,9 +51,11 @@ For swarm coordination: start from `[Agents/SKILLS.md](Agents/SKILLS.md)` and `[
 | `[src/swarm_sdk/pb/](src/swarm_sdk/pb/)`                     | gRPC: `swarm.proto` + generated `swarm_pb2*` stubs                                                       |
 | `[Main/config/swarm.yaml](Main/config/swarm.yaml)`           | Provider registry, routes, defaults (`SWARM_*` env overrides)                                            |
 | `[Main/](Main/)`                                             | Embeddings/vectorstore re-exports, YAML, Essentials                                                      |
-| `[WebSearch/](WebSearch/)`                                   | Git worktree (`feature/websearch`): search pipeline — see `[WebSearch/PIPELINE.md](WebSearch/PIPELINE.md)` |
-| `[Prediction/](../Swarm-Prediction/Prediction/)`               | Git worktree (`feat/prediction-engine`): mlforecast engine — sibling `../Swarm-Prediction` |
-| `[Newsletter/](../Newsletter/Newsletter/)`                   | Git worktree (`feat/newsletter`): offline digest MVP — sibling `../Newsletter` |
+| `[WebSearch/](WebSearch/)`                                   | **Module** — search pipeline; see `[WebSearch/PIPELINE.md](WebSearch/PIPELINE.md)` |
+| `[TechNews/](TechNews/)`                                     | **Product** — tech digest/scrape app using `WebSearch` (maintained on this branch) |
+| `[Prediction/](../Prediction/Prediction/)`                   | **Module** — forecast engine; worktree `~/Myworkspace/Prediction` |
+| Newsletter (product)                                         | `~/Myworkspace/Modules/Newsletter` — branch `newsletter`; imports `WebSearch` |
+| BotDeal (product)                                            | `~/Myworkspace/BotDeal` — uses `WebSearch` + `Prediction` |
 | `[Agents/](Agents/)`                                         | Specialist **swarm personas** (`AGENTS.md` + `agent.yaml` per role)                                      |
 | `[Agents/coordination.yaml](Agents/coordination.yaml)`       | Task graph for multi-agent workflows                                                                     |
 | `[Agents/SKILLS.md](Agents/SKILLS.md)`                       | Specialist catalog: persona → handoff node/plan-worker wiring, how to add a specialist                    |
@@ -69,7 +73,7 @@ Edit `[src/swarm_sdk/pb/swarm.proto](src/swarm_sdk/pb/swarm.proto)` then `uv run
 ### Subtopic: Quick links
 
 - Agent index: `[Agents/SKILLS.md](Agents/SKILLS.md)`
-- Workspace layout: `[codeworkspace/swarm.code-workspace](codeworkspace/swarm.code-workspace)` — multi-root; all lane worktrees in one Source Control view (see `~/Myworkspace/AGENTS.md`)
+- Workspace / git lanes: Cursor SCM shows **one** repo for all worktrees — use **GitKraken MCP** (`git_worktree` + `git_status` per lane path) or GitKraken desktop **Worktrees**; see `~/Myworkspace/AGENTS.md`
 - Benchmarks: `[Agents/benchmark/README.md](Agents/benchmark/README.md)`
 - Toolchains and CPython support: `[Toolchain.md](Toolchain.md)`
 - Personal ↔ repo doc bridge: `[Documents/SWARM-DOC-MAP.md](Documents/SWARM-DOC-MAP.md)`

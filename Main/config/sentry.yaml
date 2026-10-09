@@ -1,0 +1,21 @@
+# Websearch worktree — Sentry defaults for MCP triage and optional SDK (env-var names only).
+# Secrets: Keychain (swarm/SENTRY_ACCESS_TOKEN, swarm/SENTRY_DSN) or owner-only .env — never commit values.
+
+mcp:
+  # User auth token for @sentry/mcp-server (issues, Seer, search_events)
+  access_token_env: SENTRY_ACCESS_TOKEN
+  organization_slug_env: SENTRY_ORG
+  project_slug_env: SENTRY_PROJECT
+  region_url_env: SENTRY_REGION_URL
+
+defaults:
+  # Set SENTRY_ORG / SENTRY_PROJECT after `find_organizations` / `find_projects` in MCP
+  project_slug: websearch
+  environment: development
+  region_url: https://us.sentry.io
+
+sdk:
+  dsn_env: SENTRY_DSN
+  environment_env: SENTRY_ENVIRONMENT
+  traces_sample_rate: 0.1
+  send_default_pii: false
