@@ -15,6 +15,14 @@ if TYPE_CHECKING:
 
 
 def register(subparsers: Any) -> tuple[str, Handler]:
+    """Add the ``swarm`` subcommand and return its (name, handler) pair.
+
+    Args:
+        subparsers: argparse subparsers collection of the root CLI parser.
+
+    Returns:
+        Tuple of the command name and the handler bound to it.
+    """
     parser = subparsers.add_parser("swarm", help="Run a message through the handoff swarm")
     parser.add_argument("text", help="Message for the swarm")
     parser.add_argument("--thread-id", default="default", help="Conversation thread id")

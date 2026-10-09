@@ -15,6 +15,14 @@ from swarm_sdk.orchestrator.spawn import spawn
 
 
 def register(subparsers: Any) -> tuple[str, Handler]:
+    """Add the ``spawn`` subcommand and return its (name, handler) pair.
+
+    Args:
+        subparsers: argparse subparsers collection of the root CLI parser.
+
+    Returns:
+        Tuple of the command name and the handler bound to it.
+    """
     parser = subparsers.add_parser("spawn", help="Decompose a goal into a plan of agent steps")
     parser.add_argument("goal", help="Free-text goal to decompose")
     parser.add_argument("--agents-dir", type=Path, default=None, help="Agents directory")

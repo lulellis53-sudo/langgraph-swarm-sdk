@@ -597,9 +597,23 @@ class _Mem0Memory:
         self._store = store
 
     def get(self, key: str) -> str | None:
+        """Return the stored brief, or None when missing or older than one day.
+
+        Args:
+            key: Memory key produced by ``_memory_key``.
+
+        Returns:
+            The stored value, or ``None`` when missing or expired.
+        """
         return self._store.get(key, max_age_s=_MEMORY_MAX_AGE_S)
 
     def put(self, key: str, value: str) -> None:
+        """Store ``value`` under ``key`` in the backing Mem0 store.
+
+        Args:
+            key: Memory key produced by ``_memory_key``.
+            value: Answer text to persist.
+        """
         self._store.put(key, value)
 
 

@@ -28,6 +28,14 @@ def _positive_int(text: str) -> int:
 
 
 def register(subparsers: Any) -> tuple[str, Handler]:
+    """Add the ``parallel`` subcommand and return its (name, handler) pair.
+
+    Args:
+        subparsers: argparse subparsers collection of the root CLI parser.
+
+    Returns:
+        Tuple of the command name and the handler bound to it.
+    """
     parser = subparsers.add_parser(
         "parallel", help="Execute a plan in dependency waves with bounded parallelism"
     )
