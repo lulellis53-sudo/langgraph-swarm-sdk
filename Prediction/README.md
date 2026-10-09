@@ -9,6 +9,21 @@ Long-format input only: columns **`unique_id`**, **`ds`**, **`y`**.
 uv sync --extra forecast
 ```
 
+## Web-grounded forecasts (`swarm_sdk.prediction`)
+
+This lane also owns **`src/swarm_sdk/prediction/`** — evidence from WebSearch plus optional
+`Prediction.ForecastEngine` (``--extra forecast``). Example:
+
+```python
+from swarm_sdk.prediction import WebPredictionEngine, make_websearch_tool
+
+engine = WebPredictionEngine(search=make_websearch_tool())
+result = engine.predict("RTX 5090 street price next month", horizon=14)
+```
+
+Requires the repo root on ``PYTHONPATH`` (or an editable install) so top-level ``WebSearch`` and
+``Prediction`` packages resolve via ``_worktree.ensure_repo_on_path``.
+
 For optional forecast persistence, install `uv sync --extra forecast-lancedb`. Pass a local
 path, object-storage URI, or remote LanceDB URI to `LanceForecastStore`. Remote credentials
 can be supplied through the environment variable named by `api_key_env` (`LANCEDB_API_KEY`
