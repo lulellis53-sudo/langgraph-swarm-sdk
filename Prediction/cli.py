@@ -102,6 +102,14 @@ def _cmd_webpredict(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the mlforecast CLI (backtest, predict, or webpredict subcommands).
+
+    Args:
+        argv: Argument vector to parse, or ``None`` to use ``sys.argv[1:]``.
+
+    Returns:
+        Process exit code (``0`` on success, ``1`` on forecast/evidence errors).
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--freq", default="D", help="pandas frequency alias (default D)")
     parser.add_argument(

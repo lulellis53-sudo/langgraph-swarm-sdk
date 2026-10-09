@@ -19,6 +19,18 @@ from Prediction import ForecastConfig, ForecastEngine
 def benchmark(
     series_count: int, observations: int, horizon: int, windows: int
 ) -> dict[str, float | int]:
+    """Fit and backtest a synthetic panel, returning wall-clock timings.
+
+    Args:
+        series_count: Number of synthetic SKU series to generate.
+        observations: Daily observations per series.
+        horizon: Forecast horizon in days passed to ``backtest``.
+        windows: Number of rolling-origin backtest windows.
+
+    Returns:
+        Mapping of configuration keys plus ``prophet_fits``, ``fit_seconds``
+        and ``backtest_seconds`` measurements.
+    """
     dates = pd.date_range("2024-01-01", periods=observations, freq="D")
     frame = pd.concat(
         [
@@ -52,6 +64,7 @@ def benchmark(
 
 
 def main() -> None:
+    """Run the Prophet benchmark for the requested series/window combos and print JSON."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--series", type=int, nargs="+", default=[1, 5, 20])
     parser.add_argument("--observations", type=int, default=180)

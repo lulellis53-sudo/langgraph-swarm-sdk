@@ -15,6 +15,7 @@ Run from the lane root with its venv (WebSearch is vendored here):
 from __future__ import annotations
 
 import re
+import sqlite3
 import statistics
 import sys
 from pathlib import Path
@@ -25,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from Prediction.br_hardware import (  # noqa: E402
     PRODUCTS,
     SOURCES,
+    Product,
     connect,
     import_observation,
     market_today,
@@ -94,8 +96,14 @@ def leads_for(query: str) -> list[tuple[str, str, str]]:
     return [(h.url, h.title, h.snippet) for h in hits]
 
 
-def harvest_product(conn, product, day: str) -> None:
-    """Search every source for one product and store snippet-price observations."""
+def harvest_product(conn: sqlite3.Connection, product: Product, day: str) -> None:
+    """Search every source for one product and store snippet-price observations.
+
+    Args:
+        conn: Open offers database connection.
+        product: Catalog product to search for.
+        day: Observation date (``YYYY-MM-DD``) recorded with each import.
+    """
     low, high = PLAUSIBLE[product.sku]
     terms = " OR ".join(f'"{t}"' for t in product.terms)
     for source in SOURCES:
@@ -153,6 +161,11 @@ def _report_line(label: str, prices: list[float], baseline: float | None) -> str
 
 
 def main() -> int:
+    """Harvest prices for every plausible product, rebuild floors, and print the deal report.
+
+    Returns:
+        Process exit code (``0`` on success).
+    """
     import swarm_sdk.vault as vault
 
     vault.load_into_env(

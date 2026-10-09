@@ -22,6 +22,7 @@ import re
 import sqlite3
 import sys
 import time
+from collections.abc import Callable
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -123,8 +124,14 @@ def _page_text(client: httpx.Client, url: str) -> str:
         return ""
 
 
-def build_tool():
-    """Build a ``(query, limit) -> [(url, text), ...]`` tool for the engine."""
+def build_tool() -> Callable[..., list[tuple[str, str]]]:
+    """Build a ``(query, limit) -> [(url, text), ...]`` tool for the engine.
+
+    Returns:
+        A callable that searches the web for ``query`` and returns fetched pages
+        whose extracted text exceeds 400 characters.
+    """
+
     def tool(query: str, *, limit: int = 6) -> list[tuple[str, str]]:
         with httpx.Client(timeout=_FETCH_TIMEOUT_S, follow_redirects=True) as client:
             documents: list[tuple[str, str]] = []

@@ -116,6 +116,17 @@ def _harvest_sku(conn, catalog, sku: str, *, window_days: int, limit: int) -> li
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Harvest observed prices for the requested SKUs and persist them to the offers DB.
+
+    Args:
+        argv: Argument vector to parse, or ``None`` to use ``sys.argv[1:]``.
+
+    Returns:
+        Process exit code (``0`` on success).
+
+    Raises:
+        SystemExit: If a requested SKU is not in the catalog.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--skus", default="rtx-5090,ddr5-32gb", help="comma-separated SKUs")
     parser.add_argument("--days", type=int, default=7, help="after: window in days")

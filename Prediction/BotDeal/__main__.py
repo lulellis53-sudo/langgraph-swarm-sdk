@@ -9,6 +9,14 @@ from Prediction.br_hardware import main as br_hardware_main
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Dispatch the BotDeal subcommands (mcp, harvest, run, hardware).
+
+    Args:
+        argv: Argument vector to parse, or ``None`` to use ``sys.argv[1:]``.
+
+    Returns:
+        Process exit code from the selected subcommand.
+    """
     parser = argparse.ArgumentParser(description="BotDeal — BR hardware deal pipeline")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("mcp", help="stdio MCP server (promodeals_mcp)")

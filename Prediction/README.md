@@ -1,6 +1,6 @@
-# Prediction — offline forecasting lane
+# Prediction — forecasting **module**
 
-Global LightGBM time-series forecasts via [mlforecast](https://github.com/nixtla/mlforecast).
+Shared library for time-series ML (not a product lane). **Products** that use it: **BotDeal** (prices/deals), optionally Newsletter/TechNews for enriched digests. Global LightGBM forecasts via [mlforecast](https://github.com/nixtla/mlforecast).
 Long-format input only: columns **`unique_id`**, **`ds`**, **`y`**.
 
 ## Install

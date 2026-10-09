@@ -234,6 +234,11 @@ def graph_stage(series: dict[str, dict[str, np.ndarray]], out_dir: Path) -> Path
 
 
 def main() -> int:
+    """Run the polars → numpy → sympy → vector → graph analytics demo over offers.db.
+
+    Returns:
+        Process exit code (``0`` on success).
+    """
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     daily = polars_stage(conn)

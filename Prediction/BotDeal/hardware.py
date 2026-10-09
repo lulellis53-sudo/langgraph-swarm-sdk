@@ -47,6 +47,7 @@ class Catalog:
 
     @property
     def skus(self) -> frozenset[str]:
+        """Return the set of product SKUs present in the catalog."""
         return frozenset(product.sku for product in self.products)
 
 
