@@ -36,9 +36,13 @@ class ForecastUnavailable(RuntimeError):
 class _Engine(Protocol):
     """Minimal pandas forecasting interface expected by :func:`forecast_hits`."""
 
-    def fit(self, df: pd.DataFrame) -> Any: ...
+    def fit(self, df: pd.DataFrame) -> Any:
+        """Train the underlying forecast model on ``df`` returned by :func:`run_series`."""
+        ...
 
-    def predict(self, horizon: int) -> pd.DataFrame: ...
+    def predict(self, horizon: int) -> pd.DataFrame:
+        """Produce a horizon-day prediction frame with an ``lgbm`` column."""
+        ...
 
 
 def record_run(

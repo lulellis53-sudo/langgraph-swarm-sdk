@@ -104,6 +104,7 @@ _DEDUPE_SCHEMA: dict[str, Any] = {
 
 
 def _openai_format(tools: Sequence[tuple[str, str, dict[str, Any]]]) -> list[dict[str, Any]]:
+    """Convert one tool list into the OpenAI ``tools`` wire format."""
     return [
         {
             "type": "function",
@@ -114,6 +115,7 @@ def _openai_format(tools: Sequence[tuple[str, str, dict[str, Any]]]) -> list[dic
 
 
 def _anthropic_format(tools: Sequence[tuple[str, str, dict[str, Any]]]) -> list[dict[str, Any]]:
+    """Convert one tool list into the Anthropic ``input_schema`` wire format."""
     return [
         {"name": name, "description": description, "input_schema": schema}
         for name, description, schema in tools
@@ -121,6 +123,7 @@ def _anthropic_format(tools: Sequence[tuple[str, str, dict[str, Any]]]) -> list[
 
 
 def _tools() -> list[tuple[str, str, dict[str, Any]]]:
+    """Return the bundled tool declarations consumed by the agent tool backend."""
     return [
         (
             "web_search",
