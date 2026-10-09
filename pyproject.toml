@@ -218,13 +218,9 @@ line-length = 100
 target-version = "py314"
 src = [
     "src",
-    "Agents/tests",
-    "Agents/benchmark",
-    "Agents/math/algorithms",
     "WebSearch",
-    "Prediction",
+    "WebSearch/tests",
     "Main",
-    "tests",
 ]
 extend-exclude = ["src/swarm_sdk/pb"]
 
@@ -250,5 +246,5 @@ exclude = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["Agents/benchmark", "tests"]
-pythonpath = [".", "Agents", "Agents/math"]
+testpaths = ["WebSearch/tests"]
+pythonpath = ["."]

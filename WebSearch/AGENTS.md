@@ -12,10 +12,10 @@ uv run --extra websearch python -m WebSearch.api                      # FastAPI 
 uv run agents                                                         # validate Agents/*/agent.yaml
 
 # Tests (offline — fake backends, no network, no API keys)
-uv run pytest tests/test_websearch*.py tests/test_toolcalling.py -q
+uv run pytest WebSearch/tests -q
 
 # Lint
-uv run ruff check WebSearch tests
+uv run ruff check WebSearch
 ```
 
 ## Architecture

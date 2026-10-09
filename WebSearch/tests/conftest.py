@@ -38,7 +38,7 @@ def pytest_configure(config: pytest.Config) -> None:
 
 @pytest.fixture(autouse=True)
 def _isolate_secrets(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """Keep real credentials out of every test in ``tests/``.
+    """Keep real credentials out of every test in ``WebSearch/tests``.
 
     Clears each env name the configs reference, blocks the macOS Keychain CLI, hides the
     project ``.env`` and points ``~`` at an empty directory so no fallback finds a real

@@ -297,7 +297,8 @@ def test_near_dedupe_handles_empty_input() -> None:
 
 # ---- parallel_search / registry_search pipeline ----------------------------------------------
 
-ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
+TESTS_ROOT = Path(__file__).resolve().parent
 
 
 def _config(*ids: str, policy: PrefilterPolicy | None = None) -> ProvidersConfig:
@@ -486,12 +487,12 @@ def test_registry_search_drops_rejected_hits_from_a_mixed_batch() -> None:
 @pytest.mark.parametrize("first", ["frontend", "backend"])
 def test_either_package_can_be_imported_first(first: str) -> None:
     code = (
-        "import sys; sys.path.insert(0, 'tests'); import conftest; "
+        f"import sys; sys.path.insert(0, {repr(str(TESTS_ROOT))}); import conftest; "
         f"import WebSearch.{first}; import WebSearch.frontend, WebSearch.backend"
     )
     result = subprocess.run(
         [sys.executable, "-c", code],
-        cwd=ROOT,
+        cwd=REPO_ROOT,
         capture_output=True,
         text=True,
         timeout=60,
