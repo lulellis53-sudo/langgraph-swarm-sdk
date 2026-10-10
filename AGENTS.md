@@ -38,34 +38,27 @@ For swarm coordination: start from `[Agents/SKILLS.md](Agents/SKILLS.md)` and `[
 ## Topic: Repository layout
 
 ```
-                                   SDK
-                                   . LangGraph
-                                   . Project Configs
-                                   . Share
-                                   . src
-                                        |
-           +----------------------------+----------------------------+
-           |                    |                    |               |
-           v                    v                    v               v
-     +---------+          +--------+           +-------+      +----------+
-     | Modules |          | Agents |           | Tools |      |  Vector  |
-     +---------+          +--------+           +-------+      +----------+
-           |                                       |
-           |                                       +-----> +------------+
-           |                                       |       |   Swarm    |  #1 multi-orchestration agents
-           +-----> +------------+                  |       +------------+
-           |       | Newsletter |                  |
-           |       +------------+                  +-----> +------------+
-           |                                       |       | Prediction |  # algorithms; each module has its own forecast
-           +-----> +---------+                     |       +------------+
-           |       | BotDeal |                     |
-           |       +---------+                     +-----> +------------+
-           |                                       |       | WebSearch  |  # WebSearch / WebFetch = agent tooling
-           +-----> +----------+                    |       +------------+
-                   | TechNews |                    |
-                   +----------+                    +-----> +------------+
-                                                           | WebScraper |
-                                                           +------------+
+                      SDK
+                      . LangGraph
+                      . Project Configs
+                      . Share
+                      . src
+                            |
+      +-----------+---------+----------+-----------+
+      |           |         |          |
+      v           v         v          v
+ +----------+ +----------+ +----------+ +----------+
+ | Modules  | |  Agents  | |  Tools   | |  Vector  |
+ +----------+ +----------+ +----------+ +----------+
+      |                         |
+      +-- Newsletter            +-- Swarm
+      +-- BotDeal               +-- Prediction
+      +-- TechNews              +-- WebSearch
+                                +-- WebScraper
+
+ # Swarm       multi-orchestration agents
+ # Prediction  algorithms; each module has its own forecast
+ # WebSearch   WebSearch / WebFetch = agent tooling
 ```
 
 ### Subtopic: Repository map
