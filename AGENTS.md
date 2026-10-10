@@ -38,18 +38,18 @@ For swarm coordination: start from `[Agents/SKILLS.md](Agents/SKILLS.md)` and `[
 ## Topic: Repository layout
 
 ```
-                      SDK
-                      . LangGraph
-                      . Project Configs
-                      . Share
-                      . src
-                            |
-      +-----------+---------+----------+-----------+
-      |           |         |          |
-      v           v         v          v
- +----------+ +----------+ +----------+ +----------+
- | Modules  | |  Agents  | |  Tools   | |  Vector  |
- +----------+ +----------+ +----------+ +----------+
+                            SDK
+                            . LangGraph
+                            . Project Configs
+                            . Share
+                            . src
+                                  |
+       +--------+--------+--------+--------+--------+
+       |        |        |        |        |
+       v        v        v        v        v
+ +----------+ +----------+ +----------+ +----------+ +----------+
+ | Modules  | |  Agents  | |  Tools   | |  Vector  | |   RAG    |
+ +----------+ +----------+ +----------+ +----------+ +----------+
       |                         |
       +-- Newsletter            +-- Swarm
       +-- BotDeal               +-- Prediction
