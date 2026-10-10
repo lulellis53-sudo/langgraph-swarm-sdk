@@ -1,1 +1,6 @@
-SDK
+                    SDK
+                     |
+          +----------+----------+
+          |                     |
+          v                     v
+       Modules                Tools
