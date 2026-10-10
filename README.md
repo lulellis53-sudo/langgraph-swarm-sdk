@@ -17,15 +17,15 @@ Parallel multi-LLM swarm on [LangGraph Swarm](https://github.com/langchain-ai/la
      +---------+          +--------+           +-------+      +----------+
            |                                       |
            |                                       +-----> +------------+
-           |                                       |       |   Swarm    |
+           |                                       |       |   Swarm    |  #1 multi-orchestration agents
            +-----> +------------+                  |       +------------+
            |       | Newsletter |                  |
            |       +------------+                  +-----> +------------+
-           |                                       |       | Prediction |
+           |                                       |       | Prediction |  # algorithms; each module has its own forecast
            +-----> +---------+                     |       +------------+
            |       | BotDeal |                     |
            |       +---------+                     +-----> +------------+
-           |                                       |       | WebSearch  |
+           |                                       |       | WebSearch  |  # WebSearch / WebFetch = agent tooling
            +-----> +----------+                    |       +------------+
                    | TechNews |                    |
                    +----------+                    +-----> +------------+

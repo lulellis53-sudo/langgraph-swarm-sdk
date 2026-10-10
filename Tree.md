@@ -12,15 +12,15 @@
      +---------+          +--------+           +-------+      +----------+
            |                                       |
            |                                       +-----> +------------+
-           |                                       |       |   Swarm    |
+           |                                       |       |   Swarm    |  #1 multi-orchestration agents
            +-----> +------------+                  |       +------------+
            |       | Newsletter |                  |
            |       +------------+                  +-----> +------------+
-           |                                       |       | Prediction |
+           |                                       |       | Prediction |  # algorithms; each module has its own forecast
            +-----> +---------+                     |       +------------+
            |       | BotDeal |                     |
            |       +---------+                     +-----> +------------+
-           |                                       |       | WebSearch  |
+           |                                       |       | WebSearch  |  # WebSearch / WebFetch = agent tooling
            +-----> +----------+                    |       +------------+
                    | TechNews |                    |
                    +----------+                    +-----> +------------+
