@@ -43,6 +43,8 @@ For swarm coordination: start from `[Agents/SKILLS.md](Agents/SKILLS.md)` and `[
                       . Project Configs
                       . Share
                       . src
+                      # Python 3.15
+                      # pyproject.toml
                             |
       +-----------+---------+----------+-----------+
       |           |         |          |

@@ -8,6 +8,8 @@ Parallel multi-LLM swarm on [LangGraph Swarm](https://github.com/langchain-ai/la
                       . Project Configs
                       . Share
                       . src
+                      # Python 3.15
+                      # pyproject.toml
                             |
       +-----------+---------+----------+-----------+
       |           |         |          |
