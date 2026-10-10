@@ -13,7 +13,7 @@ Parallel multi-LLM swarm on [LangGraph Swarm](https://github.com/langchain-ai/la
            |                    |                    |               |
            v                    v                    v               v
      +---------+          +--------+           +-------+      +----------+
-     | Modules |          | Agents |           | Tools |      | Database |
+     | Modules |          | Agents |           | Tools |      |  Vector  |
      +---------+          +--------+           +-------+      +----------+
            |                                       |
            |                                       +-----> +------------+

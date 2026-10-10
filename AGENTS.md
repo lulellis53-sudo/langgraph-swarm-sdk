@@ -48,7 +48,7 @@ For swarm coordination: start from `[Agents/SKILLS.md](Agents/SKILLS.md)` and `[
            |                    |                    |               |
            v                    v                    v               v
      +---------+          +--------+           +-------+      +----------+
-     | Modules |          | Agents |           | Tools |      | Database |
+     | Modules |          | Agents |           | Tools |      |  Vector  |
      +---------+          +--------+           +-------+      +----------+
            |                                       |
            |                                       +-----> +------------+
