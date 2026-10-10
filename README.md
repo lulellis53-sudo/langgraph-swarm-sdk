@@ -3,34 +3,34 @@
 Parallel multi-LLM swarm on [LangGraph Swarm](https://github.com/langchain-ai/langgraph-swarm-py): specialist handoffs, asyncio fan-out, int8 memory, a cross-encoder reranker, a tokenizer budget, and a semantic cache. The point of the cache, reranker, and budget is to send fewer tokens and keep the tokens that remain relevant.
 
 ```
-                              SDK
-                              . LangGraph
-                              . Project Configs
-                              . Share
-                              . src
-                                   |
-              +--------------------+--------------------+
-              |                    |                    |
-              v                    v                    v
-        +---------+          +--------+           +-------+
-        | Modules |          | Agents |           | Tools |
-        +---------+          +--------+           +-------+
-              |                                       |
-              |                                       +-----> +------------+
-              |                                       |       |   Swarm    |
-              +-----> +------------+                  |       +------------+
-              |       | Newsletter |                  |
-              |       +------------+                  +-----> +------------+
-              |                                       |       | Prediction |
-              +-----> +---------+                     |       +------------+
-              |       | BotDeal |                     |
-              |       +---------+                     +-----> +------------+
-              |                                       |       | WebSearch  |
-              +-----> +----------+                    |       +------------+
-                      | TechNews |                    |
-                      +----------+                    +-----> +------------+
-                                                              | WebScraper |
-                                                              +------------+
+                                   SDK
+                                   . LangGraph
+                                   . Project Configs
+                                   . Share
+                                   . src
+                                        |
+           +----------------------------+----------------------------+
+           |                    |                    |               |
+           v                    v                    v               v
+     +---------+          +--------+           +-------+      +----------+
+     | Modules |          | Agents |           | Tools |      | Database |
+     +---------+          +--------+           +-------+      +----------+
+           |                                       |
+           |                                       +-----> +------------+
+           |                                       |       |   Swarm    |
+           +-----> +------------+                  |       +------------+
+           |       | Newsletter |                  |
+           |       +------------+                  +-----> +------------+
+           |                                       |       | Prediction |
+           +-----> +---------+                     |       +------------+
+           |       | BotDeal |                     |
+           |       +---------+                     +-----> +------------+
+           |                                       |       | WebSearch  |
+           +-----> +----------+                    |       +------------+
+                   | TechNews |                    |
+                   +----------+                    +-----> +------------+
+                                                           | WebScraper |
+                                                           +------------+
 ```
 
 ## Requirements
