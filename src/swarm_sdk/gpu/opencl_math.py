@@ -19,12 +19,13 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from swarm_sdk.gpu._opencl_utils import device_rank, workgroup_size
+
 if TYPE_CHECKING:
     import pyopencl as cl
 
 logger = logging.getLogger(__name__)
 
-_LOCAL_SIZE_CAP = 64
 _BUF_CACHE_MAX_ENTRIES = 32
 _BUF_CACHE_MAX_BYTES = 256 * 1024 * 1024
 
@@ -237,15 +238,6 @@ __kernel void bdot2d(__global const uint *bits,
 }
 """
 
-_DISCRETE_HINTS = ("radeon", "amd", "nvidia", "geforce", "quadro", "arc")
-
-
-def _device_rank(device: Any) -> tuple[int, int]:
-    """Discrete GPUs first, then the largest dedicated memory."""
-    name = device.name.lower()
-    discrete = 0 if any(hint in name for hint in _DISCRETE_HINTS) else 1
-    return (discrete, -int(device.global_mem_size))
-
 
 class _ClState:
     """Lazily-initialized OpenCL context, queue, and compiled program."""
@@ -291,7 +283,7 @@ class _ClState:
                     return
                 self.ctx = cl.Context([selected])
             elif gpu_devices:
-                self.ctx = cl.Context([min(gpu_devices, key=_device_rank)])
+                self.ctx = cl.Context([min(gpu_devices, key=device_rank)])
             if self.ctx is None:
                 for platform in cl.get_platforms():
                     cpus = platform.get_devices(device_type=cl.device_type.CPU)
@@ -424,15 +416,6 @@ def _ensure_f32_contiguous(array: np.ndarray, name: str) -> np.ndarray:
     return arr
 
 
-def _wgs_for(width: int) -> int:
-    """Largest power of two work-group width that fits the cap and the device."""
-    cap = max(1, min(_LOCAL_SIZE_CAP, _STATE._max_wg))
-    wgs = 1
-    while wgs * 2 <= width and wgs * 2 <= cap:
-        wgs *= 2
-    return wgs
-
-
 def _run2d(name: str, buffers: list[Any], rows: int, wgs: int, *scalars: int) -> np.ndarray:
     """Run a rows-x-workgroup kernel and return its float32 output."""
     cl = _STATE._cl()
@@ -464,7 +447,7 @@ def l2_norm(vectors: np.ndarray) -> np.ndarray:
 
     rows, cols = matrix.shape
     buffers = _STATE.cached_buffers(None, [matrix])
-    return _run2d("l2_norm2d", buffers, rows, _wgs_for(cols), rows, cols)
+    return _run2d("l2_norm2d", buffers, rows, workgroup_size(cols, _STATE._max_wg), rows, cols)
 
 
 def normalize(vectors: np.ndarray) -> np.ndarray:
@@ -489,8 +472,8 @@ def normalize(vectors: np.ndarray) -> np.ndarray:
     buf_o = cl.Buffer(_STATE.context, mf.WRITE_ONLY, out.nbytes)
     _STATE.kernel("norm_rows2d")(
         _STATE.cmd_queue,
-        (rows, _wgs_for(cols)),
-        (1, _wgs_for(cols)),
+        (rows, workgroup_size(cols, _STATE._max_wg)),
+        (1, workgroup_size(cols, _STATE._max_wg)),
         buf_m,
         buf_o,
         np.uint32(rows),
@@ -525,8 +508,10 @@ def batch_dot(
     buf_m = _STATE.cached_buffers(cache_key, [matrix])[0]
     buf_q = cl.Buffer(_STATE.context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=query)
     if cols % 4 == 0:
-        return _run2d("dot2d4", [buf_m, buf_q], rows, _wgs_for(cols), rows, cols // 4)
-    return _run2d("dot2d", [buf_m, buf_q], rows, _wgs_for(cols), rows, cols)
+        return _run2d(
+            "dot2d4", [buf_m, buf_q], rows, workgroup_size(cols, _STATE._max_wg), rows, cols // 4
+        )
+    return _run2d("dot2d", [buf_m, buf_q], rows, workgroup_size(cols, _STATE._max_wg), rows, cols)
 
 
 def batch_cosine(query: np.ndarray, vectors: np.ndarray) -> np.ndarray:
@@ -572,7 +557,7 @@ def normalize_dot(query: np.ndarray, vectors: np.ndarray) -> np.ndarray:
     mf = cl.mem_flags
     buf_m = cl.Buffer(_STATE.context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=matrix)
     buf_q = cl.Buffer(_STATE.context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=query)
-    wgs = _wgs_for(cols)
+    wgs = workgroup_size(cols, _STATE._max_wg)
     if cols % 4 == 0:
         return _run2d("normdot2d4", [buf_m, buf_q], rows, wgs, rows, cols // 4)
     return _run2d("normdot2d", [buf_m, buf_q], rows, wgs, rows, cols)
@@ -626,7 +611,9 @@ def dequant_dot(
     mf = cl.mem_flags
     buf_c, buf_s = _STATE.cached_buffers(cache_key, [codes, scale])
     buf_q = cl.Buffer(_STATE.context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=query)
-    return _run2d("dq2d", [buf_c, buf_s, buf_q], rows, _wgs_for(cols), rows, cols)
+    return _run2d(
+        "dq2d", [buf_c, buf_s, buf_q], rows, workgroup_size(cols, _STATE._max_wg), rows, cols
+    )
 
 
 def binary_quantize(matrix: np.ndarray) -> np.ndarray:
@@ -678,7 +665,9 @@ def binary_dot(
         cl = _STATE._cl()
         mf = cl.mem_flags
         buf_q = cl.Buffer(_STATE.context, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=query)
-        return _run2d("bdot2d", [buf_b, buf_q], rows, _wgs_for(words), rows, words, dim)
+        return _run2d(
+            "bdot2d", [buf_b, buf_q], rows, workgroup_size(words, _STATE._max_wg), rows, words, dim
+        )
     xor = np.bitwise_xor(bits, query[None, :])
     distance = np.unpackbits(xor.view(np.uint8), axis=1).sum(axis=1)
     return (dim - distance).astype(np.float32)
