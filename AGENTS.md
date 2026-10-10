@@ -38,9 +38,11 @@ For swarm coordination: start from `[Agents/SKILLS.md](Agents/SKILLS.md)` and `[
 ## Topic: Repository layout
 
 ```
-                              +-------+
-                              |  SDK  |
-                              +-------+
+                              SDK
+                              . LangGraph
+                              . Project Configs
+                              . Share
+                              . src
                                    |
               +--------------------+--------------------+
               |                    |                    |
