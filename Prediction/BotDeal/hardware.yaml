@@ -40,6 +40,7 @@ sources:
   - {name: amazon-br, domain: amazon.com.br, kind: retailer}
   - {name: magalu, domain: magazineluiza.com.br, kind: retailer}
   - {name: mercadolivre, domain: mercadolivre.com.br, kind: marketplace}
+  - {name: shopee, domain: shopee.com.br, kind: marketplace}
   - {name: casasbahia, domain: casasbahia.com.br, kind: retailer}
   - {name: olx, domain: olx.com.br, kind: marketplace}
   - {name: promobit, domain: promobit.com.br, kind: community}
