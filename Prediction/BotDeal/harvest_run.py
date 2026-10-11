@@ -82,10 +82,14 @@ def _harvest_sku(conn, catalog, sku: str, *, window_days: int, limit: int) -> li
         print(f"{sku}: search failed {type(exc).__name__}: {exc}")
         return []
     records: list[dict[str, Any]] = []
-    for url, title, snippet in leads[:limit]:
-        source = harvest.source_for(url)
-        if source is None:
-            continue
+    # Resolve sources before cutting to ``limit``: otherwise unknown-host
+    # hits consume the budget and real catalog hits get dropped.
+    resolved = [
+        (url, title, snippet, source)
+        for url, title, snippet in leads
+        if (source := harvest.source_for(url)) is not None
+    ]
+    for url, title, snippet, source in resolved[:limit]:
         cents = next(
             (c for c in (harvest.parse_brl_cents(t) for t in (title, snippet)) if c is not None),
             None,

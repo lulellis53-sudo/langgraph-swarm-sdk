@@ -52,7 +52,7 @@ def product_dork(
 
 def _host(url: str) -> str:
     try:
-        return urllib.parse.urlsplit(url).netloc.removeprefix("www.") or "unknown"
+        return urllib.parse.urlsplit(url).netloc.lower().removeprefix("www.") or "unknown"
     except ValueError:
         return "unknown"
 

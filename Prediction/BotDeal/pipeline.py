@@ -135,7 +135,9 @@ def run(*, skus: list[str] | None = None, limit: int = 10) -> dict[str, Any]:
     month = today.strftime("%B")
     records: list[dict[str, Any]] = []
     for sku in wanted:
-        product = next(item for item in catalog.products if item.sku == sku)
+        product = next((item for item in catalog.products if item.sku == sku), None)
+        if product is None:
+            raise SystemExit(f"unknown sku: {sku}")
         sites = (
             [source.domain for source in catalog.sources if source.kind != "social"]
             if per_site

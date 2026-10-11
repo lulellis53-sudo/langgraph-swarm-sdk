@@ -108,12 +108,19 @@ def _post(
     """Call one Bot API method over HTTPS; the host is pinned, no user URLs."""
     if not token or not re.fullmatch(r"\d+:[A-Za-z0-9_\-]+", token):
         raise ValueError("TELEGRAM_BOT_TOKEN missing or malformed")
-    response = httpx.post(
-        API_BASE.format(token=token, method=method),
-        json=payload,
-        timeout=timeout_s,
-    )
-    response.raise_for_status()
+    try:
+        response = httpx.post(
+            API_BASE.format(token=token, method=method),
+            json=payload,
+            timeout=timeout_s,
+        )
+        response.raise_for_status()
+    except httpx.HTTPError as err:
+        # httpx error messages embed the request URL, which carries the bot
+        # token: re-raise a sanitized error so the token never leaks.
+        status = getattr(err, "response", None)
+        detail = f" HTTP {status.status_code}" if status is not None else ""
+        raise httpx.HTTPError(f"Telegram {method} failed:{detail}") from None
     return response.json()
 
 

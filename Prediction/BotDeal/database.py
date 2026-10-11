@@ -139,9 +139,11 @@ def read_day(month: str, day: int, *, root: Path | None = None) -> pl.DataFrame:
 
 def read_month(month: str, *, root: Path | None = None) -> pl.DataFrame:
     """Scan every ``DAY*/products.parquet`` of the month into one frame."""
-    pattern = str(month_dir(month, root=root) / "DAY*" / _PRODUCT_FILE)
-    scans = pl.scan_parquet(pattern)
-    return scans.collect()
+    month_path = month_dir(month, root=root)
+    if not month_path.is_dir() or not list(month_path.glob(f"DAY*/{_PRODUCT_FILE}")):
+        return pl.DataFrame()
+    pattern = str(month_path / "DAY*" / _PRODUCT_FILE)
+    return pl.scan_parquet(pattern).collect()
 
 
 def pct_drop(new: float, old: float) -> float:

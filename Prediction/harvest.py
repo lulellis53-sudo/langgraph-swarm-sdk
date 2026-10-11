@@ -62,7 +62,7 @@ BASELINES = {
     "ddr5-64gb": None,
 }
 
-_PRICE = re.compile(r"R\$\s?(\d{1,3}(?:\.\d{3})*(?:,\d{2})?|\d+(?:,\d{2})?)")
+_PRICE = re.compile(r"R\$\s?(\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+(?:,\d{2})?)")
 
 
 def parse_brl_cents(text: str) -> int | None:

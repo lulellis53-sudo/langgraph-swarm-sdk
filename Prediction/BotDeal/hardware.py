@@ -31,6 +31,8 @@ class Catalog:
             Product(item["sku"], item["name"], item["category"], tuple(item["terms"]))
             for item in data["products"]
         )
+        if len({product.sku for product in self.products}) != len(self.products):
+            raise ValueError("duplicate sku in hardware catalog")
         self.sources: tuple[Source, ...] = tuple(
             Source(item["name"], item["domain"], item["kind"]) for item in data["sources"]
         )
