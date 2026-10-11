@@ -97,16 +97,22 @@ def leads_for(query: str, *, fresh: bool = False) -> list[tuple[str, str, str]]:
             network again instead of replaying the same hits.
     """
     from WebSearch import builtin_searchers, load_providers
-    from WebSearch.agent_tools import search_hits
+    from WebSearch.frontend.websearchers import parallel_search
 
     table = {k: v for k, v in builtin_searchers().items() if k in BACKENDS}
-    hits = search_hits(
-        query,
-        backends=table,
-        limit=10,
-        config=load_providers(),
-        cache_ttl_s=0.0 if fresh else None,
-    )
+    if fresh:
+        # parallel_search accepts cache_ttl_s=0 (bypass); search_hits does not.
+        hits = parallel_search(
+            query,
+            backends=table,
+            limit=10,
+            config=load_providers(),
+            cache_ttl_s=0.0,
+        )
+    else:
+        from WebSearch.agent_tools import search_hits
+
+        hits = search_hits(query, backends=table, limit=10, config=load_providers())
     return [(h.url, h.title, h.snippet) for h in hits]
 
 
