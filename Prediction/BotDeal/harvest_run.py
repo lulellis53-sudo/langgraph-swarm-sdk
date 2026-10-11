@@ -59,7 +59,15 @@ def _record(
     }
 
 
-def _harvest_sku(conn, catalog, sku: str, *, window_days: int, limit: int) -> list[dict[str, Any]]:
+def _harvest_sku(
+    conn,
+    catalog,
+    sku: str,
+    *,
+    window_days: int,
+    limit: int,
+    fresh: bool = False,
+) -> list[dict[str, Any]]:
     """Run one dork for ``sku``, store observations, and return the records."""
     product = next(item for item in catalog.products if item.sku == sku)
     plausible = catalog.plausible.get(sku)
@@ -77,7 +85,7 @@ def _harvest_sku(conn, catalog, sku: str, *, window_days: int, limit: int) -> li
         }
     query = product_dork(product.terms[0], **dork_kwargs)
     try:
-        leads = harvest.leads_for(query)
+        leads = harvest.leads_for(query, fresh=fresh)
     except Exception as exc:
         print(f"{sku}: search failed {type(exc).__name__}: {exc}")
         return []
@@ -125,6 +133,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--days", type=int, default=7, help="after: window in days")
     parser.add_argument("--limit", type=int, default=10, help="max hits per SKU")
     parser.add_argument("--db", default="offers.db")
+    parser.add_argument(
+        "--fresh",
+        action="store_true",
+        help="bypass the search cache (fresh network hits)",
+    )
     args = parser.parse_args(argv)
 
     catalog = load_catalog()
@@ -138,7 +151,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         all_records: list[dict[str, Any]] = []
         for sku in wanted:
-            records = _harvest_sku(conn, catalog, sku, window_days=args.days, limit=args.limit)
+            records = _harvest_sku(
+                conn, catalog, sku, window_days=args.days, limit=args.limit, fresh=args.fresh
+            )
             all_records.extend(records)
             print(f"{sku}: {len(records)} stored hits")
         floors = rebuild_floors(conn)

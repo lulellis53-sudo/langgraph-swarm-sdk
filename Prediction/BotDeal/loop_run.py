@@ -63,13 +63,21 @@ def main(argv: list[str] | None = None) -> int:
         default="--skus rtx-5090,ddr5-32gb --days 7 --limit 10",
         help="args forwarded to harvest_run.main",
     )
+    parser.add_argument(
+        "--fresh",
+        action="store_true",
+        help="forward --fresh to every cycle so hits bypass the search cache",
+    )
     args = parser.parse_args(argv)
     if args.cycles < 1:
         parser.error("--cycles must be >= 1")
+    harvest_args = args.harvest_args.split()
+    if args.fresh and "--fresh" not in harvest_args:
+        harvest_args.append("--fresh")
     return run_loop(
         cycles=args.cycles,
         sleep_s=args.sleep,
-        harvest_args=args.harvest_args.split(),
+        harvest_args=harvest_args,
     )
 
 

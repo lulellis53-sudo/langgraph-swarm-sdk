@@ -88,13 +88,25 @@ def source_for(url: str) -> str | None:
     return None
 
 
-def leads_for(query: str) -> list[tuple[str, str, str]]:
-    """Run one query through the WebSearch lane with the live backends."""
+def leads_for(query: str, *, fresh: bool = False) -> list[tuple[str, str, str]]:
+    """Run one query through the WebSearch lane with the live backends.
+
+    Args:
+        query: Dork string, passed to the searchers as-is.
+        fresh: Skip the search cache so repeated loop cycles hit the
+            network again instead of replaying the same hits.
+    """
     from WebSearch import builtin_searchers, load_providers
     from WebSearch.agent_tools import search_hits
 
     table = {k: v for k, v in builtin_searchers().items() if k in BACKENDS}
-    hits = search_hits(query, backends=table, limit=10, config=load_providers())
+    hits = search_hits(
+        query,
+        backends=table,
+        limit=10,
+        config=load_providers(),
+        cache_ttl_s=0.0 if fresh else None,
+    )
     return [(h.url, h.title, h.snippet) for h in hits]
 
 
