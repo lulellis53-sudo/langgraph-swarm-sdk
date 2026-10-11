@@ -27,6 +27,11 @@ products:
   - {sku: ddr5-1x32gb, name: DDR5 1x32GB, category: memory, terms: [DDR5 32GB, memoria ddr5 32gb]}
   - {sku: ddr5-2x32gb, name: DDR5 2x32GB, category: memory, terms: [DDR5 2x32GB, kit ddr5 64gb]}
   - {sku: ddr5-1x64gb, name: DDR5 1x64GB, category: memory, terms: [DDR5 64GB, memoria ddr5 64gb]}
+  - {sku: ddr4-1x8gb, name: DDR4 1x8GB, category: memory, terms: [DDR4 8GB, memoria ddr4 8gb]}
+  - {sku: ddr4-2x8gb, name: DDR4 2x8GB, category: memory, terms: [DDR4 2x8GB, kit ddr4 16gb]}
+  - {sku: ddr4-1x16gb, name: DDR4 1x16GB, category: memory, terms: [DDR4 16GB, memoria ddr4 16gb]}
+  - {sku: ddr4-2x16gb, name: DDR4 2x16GB, category: memory, terms: [DDR4 2x16GB, kit ddr4 32gb]}
+  - {sku: ddr4-1x32gb, name: DDR4 1x32GB, category: memory, terms: [DDR4 32GB, memoria ddr4 32gb]}
 
 sources:
   - {name: kabum, domain: kabum.com.br, kind: retailer}
@@ -85,6 +90,11 @@ plausible:
   ddr5-1x32gb: [350, 2000]
   ddr5-2x32gb: [600, 5000]
   ddr5-1x64gb: [700, 4000]
+  ddr4-1x8gb: [80, 400]
+  ddr4-2x8gb: [150, 600]
+  ddr4-1x16gb: [150, 600]
+  ddr4-2x16gb: [250, 900]
+  ddr4-1x32gb: [300, 1000]
 
 # Deal baselines in BRL for the median-ratio report; null = learn from the
 # run's median. The rtx-5090 low-floor range above is the user's target.
@@ -98,3 +108,8 @@ baselines:
   ddr5-1x32gb: null
   ddr5-2x32gb: null
   ddr5-1x64gb: null
+  ddr4-1x8gb: null
+  ddr4-2x8gb: null
+  ddr4-1x16gb: null
+  ddr4-2x16gb: null
+  ddr4-1x32gb: null
