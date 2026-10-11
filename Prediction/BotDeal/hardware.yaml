@@ -32,6 +32,8 @@ products:
   - {sku: ddr4-1x16gb, name: DDR4 1x16GB, category: memory, terms: [DDR4 16GB, memoria ddr4 16gb]}
   - {sku: ddr4-2x16gb, name: DDR4 2x16GB, category: memory, terms: [DDR4 2x16GB, kit ddr4 32gb]}
   - {sku: ddr4-1x32gb, name: DDR4 1x32GB, category: memory, terms: [DDR4 32GB, memoria ddr4 32gb]}
+  - {sku: mb-b650, name: Placa mae AM5 B650, category: motherboard, terms: [placa mae b650, B650], specs: B650}
+  - {sku: mb-b850, name: Placa mae AM5 B850, category: motherboard, terms: [placa mae b850, B850], specs: B850}
 
 sources:
   - {name: kabum, domain: kabum.com.br, kind: retailer}
@@ -96,6 +98,8 @@ plausible:
   ddr4-1x16gb: [150, 600]
   ddr4-2x16gb: [250, 900]
   ddr4-1x32gb: [300, 1000]
+  mb-b650: [700, 2500]
+  mb-b850: [1200, 3500]
 
 # Deal baselines in BRL for the median-ratio report; null = learn from the
 # run's median. The rtx-5090 low-floor range above is the user's target.
@@ -114,3 +118,5 @@ baselines:
   ddr4-1x16gb: null
   ddr4-2x16gb: null
   ddr4-1x32gb: null
+  mb-b650: null
+  mb-b850: null

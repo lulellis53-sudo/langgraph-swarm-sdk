@@ -20,6 +20,10 @@
     },
     "brand": { "type": ["string", "null"] },
     "model": { "type": ["string", "null"] },
+    "specs": {
+      "type": ["string", "null"],
+      "description": "Branch/series spec of the product line, e.g. 'B650', 'B850', 'DDR5'. Null when the catalog defines none."
+    },
     "price": {
       "type": ["number", "null"],
       "minimum": 0,

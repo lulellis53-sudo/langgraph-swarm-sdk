@@ -43,6 +43,7 @@ def _record(
     day: str,
     price_brl: float | None,
     query: str,
+    specs: str | None = None,
 ) -> dict[str, Any]:
     return {
         "unique_id": sku,
@@ -53,6 +54,7 @@ def _record(
         "price": price_brl,
         "currency": "BRL" if price_brl is not None else None,
         "condition": "used" if source == "olx" else "new",
+        "specs": specs,
         "snippet": snippet[:500] or None,
         "query": query,
         "confidence": None,
@@ -123,7 +125,9 @@ def _harvest_sku(
                 print(f"{sku}: observation skipped ({exc})")
                 continue
         if in_range or cents is None:
-            records.append(_record(sku, url, title, snippet, source, day, price_brl, query))
+            records.append(
+                _record(sku, url, title, snippet, source, day, price_brl, query, product.specs)
+            )
     return records
 
 

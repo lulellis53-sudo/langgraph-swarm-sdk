@@ -28,7 +28,13 @@ class Catalog:
     def __init__(self, data: dict[str, Any]) -> None:
         self.version = int(data.get("version", 1))
         self.products: tuple[Product, ...] = tuple(
-            Product(item["sku"], item["name"], item["category"], tuple(item["terms"]))
+            Product(
+                item["sku"],
+                item["name"],
+                item["category"],
+                tuple(item["terms"]),
+                item.get("specs"),
+            )
             for item in data["products"]
         )
         if len({product.sku for product in self.products}) != len(self.products):

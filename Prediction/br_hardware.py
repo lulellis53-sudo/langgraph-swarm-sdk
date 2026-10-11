@@ -105,6 +105,8 @@ class Product:
     name: str
     category: str
     terms: tuple[str, ...]
+    #: Branch/series spec stored with every observation, e.g. "B650", "B850".
+    specs: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
