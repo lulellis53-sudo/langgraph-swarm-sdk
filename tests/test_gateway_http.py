@@ -14,7 +14,9 @@ from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 from pydantic import ConfigDict
 
+from swarm_sdk.config.settings import Settings
 from swarm_sdk.serving.gateway import build_router
+from swarm_sdk.serving.http import create_app
 
 TOKEN = "t0k"
 AUTH = {"Authorization": f"Bearer {TOKEN}"}
@@ -265,3 +267,13 @@ def test_non_streaming_fallback() -> None:
     reply = client.post("/v1/chat/completions", json=body, headers=AUTH).json()
     assert reply["model"] == "fake:b"
     assert reply["choices"][0]["message"]["content"] == "from b"
+
+
+def test_create_app_mounts_gateway_routes() -> None:
+    app = create_app(sdk=object())  # the gateway never touches the SDK object
+    paths = set(app.openapi()["paths"])
+    assert {"/v1/chat/completions", "/v1/models", "/v1/runs"} <= paths
+
+
+def test_api_host_defaults_to_loopback() -> None:
+    assert Settings().api_host == "127.0.0.1"
