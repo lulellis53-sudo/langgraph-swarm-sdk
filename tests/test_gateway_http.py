@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterator
 from typing import Any
 
@@ -147,3 +148,120 @@ def test_non_streaming_tool_call() -> None:
     choice = client.post("/v1/chat/completions", json=body, headers=AUTH).json()["choices"][0]
     assert choice["finish_reason"] == "tool_calls"
     assert choice["message"]["tool_calls"][0]["function"]["name"] == "ls"
+
+
+def sse_events(text: str) -> list[Any]:
+    events: list[Any] = []
+    for line in text.splitlines():
+        if line.startswith("data: "):
+            payload = line[6:]
+            events.append("[DONE]" if payload == "[DONE]" else json.loads(payload))
+    return events
+
+
+def stream_body(**extra: object) -> dict[str, object]:
+    return {**BODY, "stream": True, **extra}
+
+
+def test_stream_order_role_content_usage_done() -> None:
+    model = StreamFake(
+        chunks=[
+            AIMessageChunk(content="he"),
+            AIMessageChunk(
+                content="llo",
+                response_metadata={"finish_reason": "stop"},
+                usage_metadata={"input_tokens": 2, "output_tokens": 3, "total_tokens": 5},
+            ),
+        ]
+    )
+    client = make_client({"fake:a": model})
+    response = client.post("/v1/chat/completions", json=stream_body(), headers=AUTH)
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    events = sse_events(response.text)
+    assert events[-1] == "[DONE]"
+    assert events[0]["choices"][0]["delta"]["role"] == "assistant"
+    text = "".join(
+        event["choices"][0]["delta"].get("content", "")
+        for event in events[:-2]
+        if isinstance(event, dict) and event["choices"]
+    )
+    assert text == "hello"
+    assert events[-2]["choices"] == []
+    assert events[-2]["usage"]["total_tokens"] == 5
+
+
+def test_stream_preserves_non_ascii() -> None:
+    client = make_client({"fake:a": text_model("ação 日本語")})
+    response = client.post("/v1/chat/completions", json=stream_body(), headers=AUTH)
+    deltas = [
+        event["choices"][0]["delta"].get("content", "")
+        for event in sse_events(response.text)
+        if isinstance(event, dict) and event["choices"]
+    ]
+    assert "ação 日本語" in "".join(deltas)
+
+
+def test_stream_tool_call_deltas() -> None:
+    chunk = AIMessageChunk(
+        content="",
+        tool_call_chunks=[{"name": "ls", "args": '{"path": "."}', "id": "call_1", "index": 0}],
+    )
+    client = make_client({"fake:a": StreamFake(chunks=[chunk])})
+    body = stream_body(tools=[{"type": "function", "function": {"name": "ls", "parameters": {}}}])
+    events = sse_events(client.post("/v1/chat/completions", json=body, headers=AUTH).text)
+    calls = [
+        event["choices"][0]["delta"]["tool_calls"][0]
+        for event in events
+        if isinstance(event, dict)
+        and event["choices"]
+        and "tool_calls" in event["choices"][0]["delta"]
+    ]
+    assert calls[0]["id"] == "call_1"
+    assert calls[0]["function"]["name"] == "ls"
+
+
+def test_mid_stream_failure_emits_error_event_then_done() -> None:
+    model = StreamFake(
+        chunks=[AIMessageChunk(content="a"), AIMessageChunk(content="b")], error_at=1
+    )
+    client = make_client({"fake:a": model})
+    events = sse_events(client.post("/v1/chat/completions", json=stream_body(), headers=AUTH).text)
+    assert events[-1] == "[DONE]"
+    assert events[-2]["error"]["type"] == "upstream_error"
+
+
+def test_fallback_serves_second_route_when_first_fails_before_first_chunk() -> None:
+    models = {
+        "fake:a": StreamFake(chunks=[], error_at=0),
+        "fake:b": text_model("from b"),
+    }
+    client = make_client(models)
+    body = stream_body(x_fallback_models=["fake:b"])
+    events = sse_events(client.post("/v1/chat/completions", json=body, headers=AUTH).text)
+    assert events[0]["model"] == "fake:b"
+    assert "from b" in json.dumps(events)
+
+
+def test_all_routes_failing_is_503_with_attempt_count() -> None:
+    models = {
+        "fake:a": StreamFake(chunks=[], error_at=0),
+        "fake:b": StreamFake(chunks=[], error_at=0),
+    }
+    client = make_client(models)
+    body = stream_body(x_fallback_models=["fake:b"])
+    response = client.post("/v1/chat/completions", json=body, headers=AUTH)
+    assert response.status_code == 503
+    assert "2 attempt(s)" in response.json()["detail"]
+
+
+def test_non_streaming_fallback() -> None:
+    models = {
+        "fake:a": StreamFake(chunks=[], error_at=0),
+        "fake:b": text_model("from b"),
+    }
+    client = make_client(models)
+    body = {**BODY, "x_fallback_models": ["fake:b"]}
+    reply = client.post("/v1/chat/completions", json=body, headers=AUTH).json()
+    assert reply["model"] == "fake:b"
+    assert reply["choices"][0]["message"]["content"] == "from b"

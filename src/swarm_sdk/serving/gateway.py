@@ -3,23 +3,28 @@
 from __future__ import annotations
 
 import hmac
+import json
 import logging
 import time
 import uuid
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import AIMessageChunk, BaseMessage
 from pydantic import BaseModel, Field
 
 from swarm_sdk import vault
 from swarm_sdk.models import chat as chat_models
 from swarm_sdk.serving.gateway_convert import (
     GatewayRequestError,
+    chunk_to_openai,
     message_to_openai,
+    role_chunk,
     to_langchain_messages,
+    usage_chunk,
 )
 
 logger = logging.getLogger(__name__)
@@ -103,6 +108,9 @@ def build_router(
             "completion_id": f"chatcmpl-{uuid.uuid4().hex}",
             "created": int(time.time()),
         }
+        if body.stream:
+            name, first, rest = await _open_stream(names, messages, body, loader)
+            return StreamingResponse(_sse(name, first, rest, meta), media_type="text/event-stream")
         return await _complete(names, messages, body, loader, meta)
 
     return router
@@ -124,3 +132,52 @@ async def _complete(
             continue
         return message_to_openai(reply, model=name, **meta)
     raise HTTPException(status_code=503, detail=f"all routes failed after {len(names)} attempt(s)")
+
+
+async def _open_stream(
+    names: list[str],
+    messages: list[BaseMessage],
+    body: ChatCompletionIn,
+    loader: Callable[[str], BaseChatModel],
+) -> tuple[str, AIMessageChunk | None, AsyncIterator[AIMessageChunk]]:
+    """Pick the first route that yields a first chunk; 503 when none does."""
+    for name in names:
+        try:
+            iterator = _bind(loader(name), body).astream(messages).__aiter__()
+            first = await anext(iterator, None)
+        except Exception as err:
+            logger.warning(
+                "gateway route %s failed before first chunk: %s", name, type(err).__name__
+            )
+            continue
+        return name, first, iterator
+    raise HTTPException(status_code=503, detail=f"all routes failed after {len(names)} attempt(s)")
+
+
+def _event(payload: dict[str, Any]) -> str:
+    return f"data: {json.dumps(payload)}\n\n"
+
+
+async def _sse(
+    name: str,
+    first: AIMessageChunk | None,
+    rest: AsyncIterator[AIMessageChunk],
+    meta: dict[str, Any],
+) -> AsyncIterator[str]:
+    """Yield OpenAI stream events; the last usage-bearing chunk wins."""
+    usage: dict[str, int] | None = None
+    yield _event(role_chunk(model=name, **meta))
+    try:
+        pending = [first] if first is not None else []
+        for chunk in pending:
+            usage = dict(chunk.usage_metadata) if chunk.usage_metadata else usage
+            yield _event(chunk_to_openai(chunk, model=name, **meta))
+        async for chunk in rest:
+            usage = dict(chunk.usage_metadata) if chunk.usage_metadata else usage
+            yield _event(chunk_to_openai(chunk, model=name, **meta))
+        if usage:
+            yield _event(usage_chunk(usage, model=name, **meta))
+    except Exception as err:
+        logger.warning("gateway stream from %s failed: %s", name, type(err).__name__)
+        yield _event({"error": {"message": "stream failed", "type": "upstream_error"}})
+    yield "data: [DONE]\n\n"
