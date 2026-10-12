@@ -235,6 +235,11 @@ def route_is_ready(model_name: str) -> bool:
     return True
 
 
+def known_routes() -> tuple[str, ...]:
+    """Return every registry route name, in registry order."""
+    return tuple(_route_index())
+
+
 _MODEL_CACHE: dict[str, BaseChatModel] = {}
 _MODEL_CACHE_LOCK = threading.Lock()
 # Small bound: a swarm uses a handful of distinct models; the oldest entry is evicted past it.
