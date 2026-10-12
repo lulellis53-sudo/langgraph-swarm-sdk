@@ -152,6 +152,10 @@ class GraphBuilder:
         from langchain.agents import create_agent
         from langgraph_swarm import create_swarm
 
+        # Runtime name for the cast below; a module-level import would be circular
+        # (swarm.py imports this module), and by call time swarm is fully loaded.
+        from swarm_sdk.core.swarm import CompiledGraph
+
         sdk = self._sdk
         # Nodes come from the Agents/ catalog: every manifest that wires a
         # ``langgraph_node`` becomes a specialist; prompts are that persona's

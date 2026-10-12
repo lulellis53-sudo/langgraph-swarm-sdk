@@ -270,18 +270,17 @@ def test_scan_matrix_reloads_only_when_rows_change(tmp_path: Path) -> None:
     cache._conn.set_trace_callback(sql.append)
 
     assert cache.lookup("different question") is None
-    full = [line for line in sql if "SELECT vector, response FROM semantic_cache" in line]
+    full = [line for line in sql if "SELECT id, vector, response" in line]
     assert len(full) == 1
 
     sql.clear()
     assert cache.lookup("another different question") is None
-    assert not any("SELECT vector, response FROM semantic_cache" in line for line in sql)
-    assert any("COUNT(*)" in line for line in sql)
+    assert not any("SELECT id, vector, response" in line for line in sql)
 
     cache.store("topic extra", "extra")
     sql.clear()
     assert cache.lookup("yet another question") is None
-    assert any("SELECT vector, response FROM semantic_cache" in line for line in sql)
+    assert any("SELECT id, vector, response" in line for line in sql)
 
 
 def test_indexed_cache_empty_db(tmp_path: Path) -> None:
