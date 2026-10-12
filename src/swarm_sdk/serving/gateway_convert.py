@@ -3,16 +3,10 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from langchain_core.messages import (
-    AIMessage,
-    AIMessageChunk,
-    BaseMessage,
-    HumanMessage,
-    SystemMessage,
-    ToolMessage,
-)
+if TYPE_CHECKING:
+    from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage
 
 
 class GatewayRequestError(ValueError):
@@ -60,6 +54,8 @@ def to_langchain_messages(messages: list[dict[str, Any]]) -> list[BaseMessage]:
     Raises:
         GatewayRequestError: On an unknown role, bad content, or bad tool call.
     """
+    from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+
     converted: list[BaseMessage] = []
     for message in messages:
         role = message.get("role")

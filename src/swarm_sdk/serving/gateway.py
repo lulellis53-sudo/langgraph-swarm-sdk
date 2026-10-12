@@ -8,12 +8,10 @@ import logging
 import time
 import uuid
 from collections.abc import AsyncIterator, Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessageChunk, BaseMessage
 from pydantic import BaseModel, Field
 
 from swarm_sdk import vault
@@ -26,6 +24,10 @@ from swarm_sdk.serving.gateway_convert import (
     to_langchain_messages,
     usage_chunk,
 )
+
+if TYPE_CHECKING:
+    from langchain_core.language_models.chat_models import BaseChatModel
+    from langchain_core.messages import AIMessageChunk, BaseMessage
 
 logger = logging.getLogger(__name__)
 
