@@ -1,0 +1,44 @@
+# Sentry MCP + SDK defaults for this GitHub org (env-var names only — never commit secrets).
+# Token: Keychain swarm/SENTRY_ACCESS_TOKEN or SENTRY_ACCESS_TOKEN → @sentry/mcp-server
+# Install GitHub in Sentry before repo-linked projects: Settings → Integrations → GitHub
+
+version: 1
+
+organization:
+  slug: dsadsadsa
+  region_url: https://us.sentry.io
+  web_url: https://dsadsadsa.sentry.io
+
+mcp:
+  access_token_env: SENTRY_ACCESS_TOKEN
+  organization_slug_env: SENTRY_ORG
+  project_slug_env: SENTRY_PROJECT
+  region_url_env: SENTRY_REGION_URL
+
+# Map each GitHub repository to Sentry project slug(s). MCP: find_projects / create_project(repository=…).
+github_repositories:
+  - repository: lulellis53-sudo/langgraph-swarm-sdk
+    default_project: swarm-sdk
+    projects:
+      swarm-sdk: swarm-sdk
+      botdeal-harvest: botdeal-harvest
+    worktree_defaults:
+      Swarm: swarm-sdk
+      Websearch: swarm-sdk
+      Prediction: swarm-sdk
+      Agents: swarm-sdk
+      WebScraper: swarm-sdk
+      BotDeal: botdeal-harvest
+      Modules/Newsletter: swarm-sdk
+      Modules/TechNews: swarm-sdk
+  - repository: lulellis53-sudo/farm
+    default_project: farm
+    projects:
+      farm: farm
+    note: Create Sentry project after GitHub app is connected to the org.
+
+sdk:
+  dsn_env: SENTRY_DSN
+  environment_env: SENTRY_ENVIRONMENT
+  traces_sample_rate: 0.1
+  send_default_pii: false
