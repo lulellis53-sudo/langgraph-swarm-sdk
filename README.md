@@ -128,14 +128,34 @@ Current `onnxruntime` wheels do not include macOS x86_64, so FastEmbed is skippe
 
 ## Run
 
+### Quickstart with one provider key
+
+Pin the router and every manifest agent to one registered model route. This makes
+the default chat path usable with one provider credential while keeping the
+per-agent multi-provider routes as the default when `SWARM_MODEL` is unset.
+
+```bash
+uv run swarm-vault set OPENAI_API_KEY
+SWARM_MODEL=openai:gpt-4o-mini uv run swarm-chat
+```
+
+Enter `exit` or `quit` to end the session. `SWARM_MODEL` may also be set in the
+owner-only `.env`; model-specific overrides remain available with
+`swarm-chat --model <provider:model>`.
+
 ```bash
 uv run swarm-api
 uv run swarm-grpc
 uv run websearch --prompt "query" --route semantic
 uv run agents
+uv run low-swarm providers
 ```
 
-`websearch` is the WebSearch CLI (`WebSearch.cli:main`; also `python -m WebSearch`). `agents` validates `Agents/*/agent.yaml` against `Agents/coordination.yaml` (`python -m swarm_sdk.agents`).
+`swarm-chat` is the interactive SDK entry point. `low-swarm providers` reports
+provider credential presence and adapter availability without printing secret
+values. `websearch` is the WebSearch CLI (`WebSearch.cli:main`; also
+`python -m WebSearch`). `agents` validates `Agents/*/agent.yaml` against
+`Agents/coordination.yaml` (`python -m swarm_sdk.agents`).
 
 `POST /v1/runs` with `{"text": "...", "thread_id": "t1"}`. `GET /v1/health`. gRPC `SwarmService.Run` and `SwarmService.Recall` call the same core.
 

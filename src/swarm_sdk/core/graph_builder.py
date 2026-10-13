@@ -42,6 +42,8 @@ class GraphBuilder:
         sdk = self._sdk
         if sdk._specialist_model is not None:
             return sdk._specialist_model
+        if sdk.settings.model:
+            return load_chat_model(sdk.settings.model)
         manifest = sdk._langgraph_manifests.get(node)
         if manifest is None:
             return sdk._specialist()

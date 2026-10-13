@@ -203,6 +203,7 @@ swarm-api = "swarm_sdk.serving.http:main"
 swarm-grpc = "swarm_sdk.serving.grpc:main"
 swarm-vault = "swarm_sdk.vault:main"
 low-swarm = "swarm_sdk.cli:main"
+swarm-chat = "swarm_sdk.chat_cli:main"
 websearch = "WebSearch.cli:main"
 agents = "swarm_sdk.agents.validate:main"
 

@@ -543,6 +543,9 @@ def build_parser() -> argparse.ArgumentParser:
     # Subcommand: doctor
     subparsers.add_parser("doctor", help="Inspect host invariants, SIMD, and CLI tooling")
 
+    # Subcommand: providers
+    subparsers.add_parser("providers", help="Show configured and installed model providers")
+
     # Orchestrator command groups (spawn, swarm, parallel)
     _SWARM_HANDLERS.clear()
     _SWARM_HANDLERS.update(register_all(subparsers))
@@ -587,6 +590,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         return handle_ingest(args, console)
     elif cmd == "doctor":
         return handle_doctor(args, console)
+    elif cmd == "providers":
+        from swarm_sdk.models.status import provider_status
+
+        table = create_table("Provider readiness")
+        table.add_column("Provider")
+        table.add_column("Configured")
+        table.add_column("Installed")
+        table.add_column("Credential variables")
+        for row in provider_status():
+            table.add_row(
+                row["provider"],
+                "yes" if row["configured"] else "no",
+                "yes" if row["installed"] else "no",
+                ", ".join(row["credential_env"]) or "none",
+            )
+        console.print(table)
+        return 0
 
     handler = _SWARM_HANDLERS.get(cmd)
     if handler is not None:

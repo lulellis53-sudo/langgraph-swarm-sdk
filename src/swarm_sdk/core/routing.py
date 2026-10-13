@@ -85,7 +85,15 @@ class Router:
             if decision is not None:
                 return decision, tokens
         json_mode = sdk.settings.router_structured_output
-        if sdk._router_model is not None:
+        if sdk.settings.model:
+            raw, tokens = await offload(
+                complete_with_usage,
+                sdk._router_model_loader(),
+                ROUTER_SYSTEM,
+                user,
+                json_mode=json_mode,
+            )
+        elif sdk._router_model is not None:
             raw, tokens = await complete_with_usage(
                 sdk._router_model,
                 ROUTER_SYSTEM,

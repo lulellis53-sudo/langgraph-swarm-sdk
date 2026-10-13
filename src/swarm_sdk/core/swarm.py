@@ -366,13 +366,14 @@ class SwarmSDK:
     def _router_model_loader(self) -> BaseChatModel:
         """Return the router model, loading it on first use."""
         if self._router_model is None:
-            self._router_model = load_chat_model(self.settings.router_model)
+            self._router_model = load_chat_model(self.settings.model or self.settings.router_model)
         return self._router_model
 
     def _specialist(self) -> BaseChatModel:
         """Return the default specialist model, loading it on first use."""
         if self._specialist_model is None:
-            self._specialist_model = load_chat_model(self.settings.specialist_model)
+            model_name = self.settings.model or self.settings.specialist_model
+            self._specialist_model = load_chat_model(model_name)
         return self._specialist_model
 
     def _model_for_node(self, node: str) -> BaseChatModel:
