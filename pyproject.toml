@@ -218,7 +218,7 @@ dev = [
 ]
 
 [tool.hatch.build]
-dev-mode-dirs = [".", "src"]
+dev-mode-dirs = [".", "src", "Core/src"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/swarm_sdk", "WebSearch"]
@@ -230,6 +230,7 @@ packages = ["src/swarm_sdk", "WebSearch"]
 line-length = 100
 target-version = "py314"
 src = [
+    "Core/src",
     "src",
     "Agents/tests",
     "Agents/benchmark",
@@ -239,7 +240,7 @@ src = [
     "Main",
     "tests",
 ]
-extend-exclude = ["src/swarm_sdk/pb", "scratch"]
+extend-exclude = ["Core/src/swarm_sdk/pb", "src/swarm_sdk/pb", "scratch"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
@@ -255,9 +256,13 @@ python-version = "3.14"
 
 [tool.ty.src]
 exclude = [
+    "Core/src/swarm_sdk/pb/**",
     "src/swarm_sdk/pb/**",
+    "Core/src/swarm_sdk/memory/faiss_store.py",
     "src/swarm_sdk/memory/faiss_store.py",
+    "Core/src/swarm_sdk/memory/qdrant_store.py",
     "src/swarm_sdk/memory/qdrant_store.py",
+    "Core/src/swarm_sdk/gpu/opencl_math.py",
     "src/swarm_sdk/gpu/opencl_math.py",
 ]
 

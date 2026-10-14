@@ -9,7 +9,14 @@ from pydantic import BaseModel, Field
 
 from swarm_sdk.models.selection import ModelRoute, ModelSelectConfig, ThinkLevel
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
+def _find_repo_root(anchor: Path) -> Path:
+    for parent in (anchor, *anchor.parents):
+        if (parent / "pyproject.toml").is_file() or (parent / ".git").exists():
+            return parent
+    return anchor.parents[3]
+
+
+_REPO_ROOT = _find_repo_root(Path(__file__).resolve())
 DEFAULT_REGISTRY_PATH = _REPO_ROOT / "Main" / "config" / "model_registry.yaml"
 _PACKAGED_REGISTRY_PATH = (
     Path(__file__).resolve().parent.parent / "agents" / "config" / "model_registry.yaml"

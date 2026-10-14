@@ -69,9 +69,10 @@ For swarm coordination: start from `[Agents/SKILLS.md](Agents/SKILLS.md)` and `[
 
 | Path                                                         | Purpose                                                                                                  |
 | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| `[src/swarm_sdk/](src/swarm_sdk/)`                           | Library: swarm runtime, cache, memory, routing, API/gRPC                                                 |
-| `[src/swarm_sdk/orchestrator/](src/swarm_sdk/orchestrator/)` | Parallel plan engine: `spawn` (goal → structured plan) + `run_plan` (LangGraph dependency waves)          |
-| `[src/swarm_sdk/server/](src/swarm_sdk/server/)`             | LangGraph Server graph factories referenced by `[langgraph.json](langgraph.json)` (`swarm`, `plan`)       |
+| `[Core/](Core/)`                                             | Canonical Swarm SDK source container (`Core/src/swarm_sdk/`)                                             |
+| `[src/swarm_sdk/](src/swarm_sdk/)`                           | Backward-compatible symlink → `Core/src/swarm_sdk/` (import name is ALWAYS `swarm_sdk`)                 |
+| `[Core/src/swarm_sdk/orchestrator/](Core/src/swarm_sdk/orchestrator/)` | Parallel plan engine: `spawn` (goal → structured plan) + `run_plan` (LangGraph dependency waves)       |
+| `[Core/src/swarm_sdk/server/](Core/src/swarm_sdk/server/)`   | LangGraph Server graph factories referenced by `[langgraph.json](langgraph.json)` (`swarm`, `plan`)       |
 | `[src/swarm_sdk/serving/client.py](src/swarm_sdk/serving/client.py)` | `langgraph_sdk` client; `SWARM_SERVER_URL` delegates runs to a LangGraph Server                    |
 | `[langgraph.json](langgraph.json)`                           | LangGraph Server manifest mapping the `swarm` and `plan` graph ids to factory functions                   |
 | `[src/swarm_sdk/pb/](src/swarm_sdk/pb/)`                     | gRPC: `swarm.proto` + generated `swarm_pb2*` stubs                                                       |

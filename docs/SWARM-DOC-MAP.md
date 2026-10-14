@@ -31,6 +31,7 @@ Personal canonical bridge manual: **`~/Desktop/Documentos/SwarmSDK-Bridge.md`**.
 | [docs/Database.md](Database.md) | Canonical DB dossier (merged `DATABASE.md`, `DB.md`); pgvector, sqlite-vec, DuckDB, LangGraph persistence (`DATABASE.md` is same path on case-insensitive volumes) |
 | [docs/DB.md](DB.md) | Stub → `Database.md` |
 | [docs/DeepResearch.md](DeepResearch.md) | Multi-engine DeepResearch framework (#Context7, #Exa, #Brave, #ParallelSearch, #Jira, #BrightData) |
+| [docs/FREEMODELS.md](FREEMODELS.md) | Zero-Cost LLM Providers, Free API Keys & Free Models (Groq, SambaNova, Cerebras, AtlasCloud, OpenCode, NVIDIA NIM, Gemini Flash, Ollama) |
 | [Agents/TEMPLATE.md](../Agents/TEMPLATE.md) | Canonical Specialist Agent Persona & JSON Contract Template |
 | [Agents/AgentMethods.md](../Agents/AgentMethods.md) | Canonical 12 Agent Methods (DARS, ReAct, Reflection, SWE, etc.) |
 | [Agents/RAG/AGENTS.md](../Agents/RAG/AGENTS.md) | RAG specialist contract |

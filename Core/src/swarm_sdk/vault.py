@@ -21,7 +21,16 @@ logger = logging.getLogger(__name__)
 
 TIMEOUT_S = 5.0
 SERVICE_PREFIX = "swarm/"
-_PROJECT_ENV = Path(__file__).resolve().parents[2] / ".env"
+
+
+def _find_repo_root(anchor: Path) -> Path:
+    for parent in (anchor, *anchor.parents):
+        if (parent / "pyproject.toml").is_file() or (parent / ".git").exists():
+            return parent
+    return anchor.parents[2]
+
+
+_PROJECT_ENV = _find_repo_root(Path(__file__).resolve()) / ".env"
 KNOWN_NAMES = (
     "MEM0_API_KEY",
     "TAVILY_API_KEY",
