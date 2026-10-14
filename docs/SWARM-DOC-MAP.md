@@ -9,8 +9,9 @@ Personal canonical bridge manual: **`~/Desktop/Documentos/SwarmSDK-Bridge.md`**.
 | [Toolchain.md](Toolchain.md) | Host silicon + verification commands |
 | [CLI.md](../CLI.md) | `low-swarm`, `swarm-vault`, entrypoints |
 | [docs/LangSwarm.md](LangSwarm.md) | Canonical LangGraph Swarm manual (merged `LangGraphSwarm.md`, `LANGGRAPH_SWARM_ACCELERATION_RESEARCH.md`) |
-| [docs/LangGraphSwarm.md](LangGraphSwarm.md) | Stub → `LangSwarm.md` |
-| [docs/LANGGRAPH_SWARM_ACCELERATION_RESEARCH.md](LANGGRAPH_SWARM_ACCELERATION_RESEARCH.md) | Stub → `LangSwarm.md` Part 0 |
+| [docs/LangGraphSwarm.md](LangGraphSwarm.md) | LangGraph Swarm Architecture & Multi-Agent Orchestration Guide |
+| [docs/LANGGRAPH_SWARM_ACCELERATION_RESEARCH.md](LANGGRAPH_SWARM_ACCELERATION_RESEARCH.md) | Acceleration, Zero-Copy PyArrow & Intel i7-9750H optimization guide |
+| [docs/Swarm_Research_Dossier.md](Swarm_Research_Dossier.md) | Technical Swarm Research Dossier & Architecture Specifications |
 | [docs/LowResourceOptimization.md](LowResourceOptimization.md) | Low-resource systems, zero-copy PyArrow/Polars, NumPy 2.x, LangSmith |
 | [docs/RAGTECHNIQUES.MD](RAGTECHNIQUES.MD) | Canonical RAG dossier (merged `RAG.md`); Swarm SDK map + benchmarks |
 | [docs/RAG.md](RAG.md) | Stub → `RAGTECHNIQUES.MD` |

@@ -2,8 +2,9 @@
 
 > **Merged persona:** former **Benchmark Creator** (`benchmark-creator`) — workload
 > definition, measured baselines, suite authoring, and regression gates live here.
-> **Canonical methodology:** [`Benchmark.md`](Benchmark.md) (full protocol);
-> metrics index: [`docs/Benchmark.md`](../../docs/Benchmark.md).
+> **Canonical methodology:** [`docs/Benchmark.md`](docs/Benchmark.md) (consult this docs subfolder first);
+> metrics index: [`../../docs/Benchmark.md`](../../docs/Benchmark.md);
+> suite skill: [`skills/BenchSuite/Skills.md`](skills/BenchSuite/Skills.md).
 
 ## Persona
 
@@ -69,8 +70,8 @@ DISCOVER target + baseline history
    → SYNTHESIZE: compare to noise floor; gate on measured delta, not a fixed 5% myth
 ```
 
-Read [`Benchmark.md`](Benchmark.md) before choosing micro vs macro tools (pyperf,
-hyperfine, k6, etc.).
+Read [`docs/Benchmark.md`](docs/Benchmark.md) and [`skills/BenchSuite/Skills.md`](skills/BenchSuite/Skills.md)
+in the agent's subfolders before choosing micro vs macro tools (pyperf, hyperfine, k6, etc.).
 
 ## Responsibilities
 

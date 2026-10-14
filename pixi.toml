@@ -9,5 +9,16 @@ ruff = "==0.17.0"
 rust = "==1.99.0"
 uv = "==0.13.0"
 
+[activation.env]
+PATH = "$HOME/.local/opt/node-26.11.1-avx2/bin:$HOME/.local/opt/typescript-native-avx2/bin:$PATH"
+CFLAGS = "-O3 -march=haswell -mavx2 -mfma -mtune=haswell -fomit-frame-pointer"
+CXXFLAGS = "-O3 -march=haswell -mavx2 -mfma -mtune=haswell -fomit-frame-pointer"
+RUSTFLAGS = "-C target-cpu=haswell -C target-feature=+avx2,+fma"
+
 [tasks]
 check-toolchain = "python --version && node --version && rustc --version && ruff --version && uv --version && test \"$(node --version)\" = v26.11.1"
+check-stack = "uv run python -c \"import pydantic, langchain, langgraph, polars, pyarrow, grpc, httpx2, fastapi, uvicorn, uvloop; print('All stack packages verified successfully')\""
+check-extended = "uv run python -c \"import rich, hypothesis, pytest, sympy, numpy, requests, aiohttp, sqlite3, sqlite_vec, tokenizers, tiktoken, google.genai, langchain_google_genai; print('Extended scientific & AI stack verified successfully')\""
+test = "pytest tests/test_package_layout.py"
+test-all = "pytest tests/"
+lint = "ruff check Core/Sdk/ Core/src/"
