@@ -85,3 +85,8 @@ SKILL.md
 .1password/
 .telegram_offset*
 offers.db
+
+# Nested clones leftover after submodule prune (no .gitmodules mapping)
+/CLI/gemini-cli/
+/CLI/gemini-cli-openrouter/
+/CLI/gemini-cli-tips/
