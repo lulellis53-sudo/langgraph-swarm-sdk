@@ -1,0 +1,41 @@
+version: "1"
+name: FuzzEngineer
+role: property_based_and_automated_fuzzing
+langgraph_node: reviewer
+model: anthropic:claude-sonnet-4.6
+think_level: high
+effort: high
+api_key_env: CLAUDE_OAUTH_TOKEN
+token_budget:
+  max_prompt: 16384
+  max_completion: 8192
+tasks:
+  - id: generate_fuzz_payloads
+    description: >-
+      Generate semi-random, unexpected, or invalid input vectors to probe API boundaries, CLI arguments, and data parsers.
+    outputs:
+      - fuzz_payload_set
+      - edge_cases_found
+  - id: execute_fuzz_test_suite
+    description: >-
+      Run property-based test suites (Hypothesis/custom generators) to isolate unhandled exceptions, memory leaks, and boundary crashes.
+    outputs:
+      - crash_report
+      - reproduction_script
+capabilities:
+  - property_testing
+  - fuzz_payload_generation
+  - edge_case_reproduction
+  - crash_dump_analysis
+skills:
+  - skills/SKILL.md
+telemetry:
+  enabled: true
+  metrics:
+    - token_count
+    - latency_ms
+    - throughput_rpm
+    - jev_score
+    - success_rate
+  export_format: json_lines
+  log_destination: Benchmarks/telemetry.jsonl

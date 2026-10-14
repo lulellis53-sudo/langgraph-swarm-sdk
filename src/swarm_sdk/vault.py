@@ -89,7 +89,7 @@ def run_cli(argv: Sequence[str]) -> str | None:
         proc = subprocess.run(
             list(argv), capture_output=True, text=True, timeout=TIMEOUT_S, check=False
         )
-    except (OSError, subprocess.TimeoutExpired):
+    except OSError, subprocess.TimeoutExpired:
         return None
     if proc.returncode != 0:
         return None
@@ -221,6 +221,15 @@ def get_with_source(
             "secret %s read from ~/.env; migrate it with `swarm-vault set %s`", name, name
         )
         return value, "dotenv"
+    # 1Password CLI fallback lookup
+    op_title_map = {
+        "MEM0_API_KEY": "Mem0 API Key",
+    }
+    op_title = op_title_map.get(name, f"{name.replace('_', ' ').title()}")
+    op_fields = "label=api_key,label=credential,label=password,notesPlain"
+    op_args = ["op", "item", "get", op_title, "--fields", op_fields]
+    if value := run(op_args):
+        return value, "1password"
     return None
 
 
@@ -336,7 +345,7 @@ def set_secret(
             clear_cache()
             return True
         return False
-    except (OSError, subprocess.TimeoutExpired):
+    except OSError, subprocess.TimeoutExpired:
         return False
 
 

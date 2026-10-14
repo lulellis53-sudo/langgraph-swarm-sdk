@@ -9,6 +9,14 @@ from pathlib import Path
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run one benchmark task by ``--task`` name and report its result.
+
+    Args:
+        argv: Argument vector to parse, or ``None`` to use ``sys.argv[1:]``.
+
+    Returns:
+        Process exit code (``1`` when the task or module is missing).
+    """
     parser = argparse.ArgumentParser(description="Run a benchmark task")
     parser.add_argument("--task", required=True, help="Task folder name under benchmark/Tasks")
     args = parser.parse_args(argv)

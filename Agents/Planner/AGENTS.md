@@ -1,5 +1,7 @@
 # Agent: Planner
 
+
+
 ## Scope and role
 
 Turn a goal into a concrete task graph for the Orchestrator. Define verifiable

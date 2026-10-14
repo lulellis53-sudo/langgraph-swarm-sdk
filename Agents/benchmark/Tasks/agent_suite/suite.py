@@ -160,10 +160,12 @@ class _Flight:
         self.peak = 0
 
     def enter(self) -> None:
+        """Mark one step started (increments the in-flight counter)."""
         self.current += 1
         self.peak = max(self.peak, self.current)
 
     def leave(self) -> None:
+        """Mark one step finished (decrements the in-flight counter)."""
         self.current -= 1
 
 

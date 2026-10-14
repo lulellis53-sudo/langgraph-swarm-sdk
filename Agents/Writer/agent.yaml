@@ -1,0 +1,47 @@
+version: '1'
+name: Writer
+role: copywriting_and_humanizer_verification
+langgraph_node: reviewer
+model: anthropic:claude-sonnet-4.6
+think_level: high
+effort: high
+api_key_env: CLAUDE_OAUTH_TOKEN
+token_budget:
+  max_prompt: 16384
+  max_completion: 8192
+tasks:
+- id: humanize_and_audit_copy
+  description: Audit text for AI detection tells, perplexity, and burstiness variations.
+    Apply copywriting humanization techniques to eliminate robotic syntax while preserving
+    key messaging and conversion intent.
+  outputs:
+  - humanized_text
+  - perplexity_score
+  - burstiness_index
+  - ai_tell_words_removed
+- id: verify_copywriting_standards
+  description: Audit sales copy, marketing assets, and editorial pieces against core
+    persuasive frameworks (AIDA, PAS), ensuring tone consistency, high readability,
+    and anti-detection compliance.
+  outputs:
+  - copywriting_audit_report
+  - compliance_status
+capabilities:
+- copywriting_verification
+- humanization_rewriting
+- perplexity_tuning
+- burstiness_optimization
+- ai_detection_evasion
+- editorial_polishing
+skills:
+- skills/SKILL.md
+telemetry:
+  enabled: true
+  metrics:
+  - token_count
+  - latency_ms
+  - throughput_rpm
+  - jev_score
+  - success_rate
+  export_format: json_lines
+  log_destination: Benchmarks/telemetry.jsonl

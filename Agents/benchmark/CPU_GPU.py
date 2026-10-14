@@ -105,6 +105,14 @@ def _bench_one(
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Benchmark CPU vs CoreML GPU embedders and print a JSON report.
+
+    Args:
+        argv: Argument vector to parse, or ``None`` to use ``sys.argv[1:]``.
+
+    Returns:
+        Process exit code (``0`` on success).
+    """
     parser = argparse.ArgumentParser(description="Benchmark CPU vs CoreML GPU embedders")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="FastEmbed model name")
     parser.add_argument("--docs", type=int, default=200, help="Number of documents to embed")

@@ -272,8 +272,10 @@ class TokenBudget:
         # Chronological join of the turns selected so far (oldest first).
         turns_joined = ""
         for line in reversed(turns):
-            prior = f"{mem_joined}\n{turns_joined}" if mem_joined and turns_joined else (
-                mem_joined or turns_joined
+            prior = (
+                f"{mem_joined}\n{turns_joined}"
+                if mem_joined and turns_joined
+                else (mem_joined or turns_joined)
             )
             fitted = self._fit(system_text, prior, line, append=False)
             if fitted:

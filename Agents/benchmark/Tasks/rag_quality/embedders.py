@@ -17,6 +17,15 @@ class BagOfWordsEmbedder:
         self.dim = dim
 
     def embed(self, texts: list[str], *, query: bool = False) -> np.ndarray:
+        """Embed texts as normalized bag-of-words hash vectors.
+
+        Args:
+            texts: Strings to embed.
+            query: Ignored (kept for interface compatibility).
+
+        Returns:
+            Matrix of shape ``(len(texts), dim)`` with unit rows.
+        """
         del query
         rows = np.zeros((len(texts), self.dim), dtype=np.float32)
         for row, text in enumerate(texts):

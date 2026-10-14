@@ -193,6 +193,22 @@ async def bounded_gather[T](
     return [task.result() for task in tasks]
 
 
+def select_model_tier(task_complexity: str = "medium") -> tuple[str, ThinkLevel]:
+    """Dynamically select model and think level based on task complexity.
+
+    Args:
+        task_complexity: 'low', 'medium', or 'high'.
+
+    Returns:
+        Tuple of (model_name, think_level).
+    """
+    if task_complexity == "low":
+        return ("google_genai:gemini-2.5-flash", "low")
+    elif task_complexity == "high":
+        return ("anthropic:claude-sonnet-4.6", "high")
+    return ("anthropic:claude-sonnet-4.6", "medium")
+
+
 __all__ = [
     "FallbackChain",
     "ModelRoute",
@@ -201,4 +217,5 @@ __all__ = [
     "THINK_TOKEN_BUDGET",
     "ThinkLevel",
     "bounded_gather",
+    "select_model_tier",
 ]

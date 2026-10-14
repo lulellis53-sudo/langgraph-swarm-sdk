@@ -74,6 +74,20 @@ def _bm25_scores(query: str, corpus: list[str], *, k1: float = 1.2, b: float = 0
     return scores
 
 
+def rrf_merge_scores(rankings: list[list[int]], *, k: int = 60) -> dict[int, float]:
+    r"""Compute Reciprocal Rank Fusion scores across candidate rank lists.
+
+    .. math::
+        \operatorname{RRF}(i) = \sum_{r \in \text{rankings}}
+            \frac{1}{k + \operatorname{rank}_r(i) + 1}
+    """
+    fused: dict[int, float] = {}
+    for ranking in rankings:
+        for rank, idx in enumerate(ranking):
+            fused[idx] = fused.get(idx, 0.0) + 1.0 / (k + rank + 1)
+    return fused
+
+
 def rrf_merge(rankings: list[list[int]], *, k: int = 60) -> list[int]:
     r"""Reciprocal rank fusion over ranked candidate index lists.
 
@@ -93,10 +107,7 @@ def rrf_merge(rankings: list[list[int]], *, k: int = 60) -> list[int]:
     Returns:
         Candidate indices sorted by fused score descending.
     """
-    fused: dict[int, float] = {}
-    for ranking in rankings:
-        for rank, idx in enumerate(ranking):
-            fused[idx] = fused.get(idx, 0.0) + 1.0 / (k + rank + 1)
+    fused = rrf_merge_scores(rankings, k=k)
     return sorted(fused, key=lambda i: fused[i], reverse=True)
 
 

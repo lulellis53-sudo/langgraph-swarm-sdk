@@ -23,6 +23,15 @@ _REGISTRY = _ROOT / "src" / "swarm_sdk" / "agents" / "config" / "model_registry.
 
 @dataclass(frozen=True)
 class BenchmarkCase:
+    """One scored prompt/expected pair from ``task.yaml``.
+
+    Attributes:
+        id: Unique case identifier.
+        task_type: Category of the task (e.g. ``sql``, ``rag``).
+        prompt: Prompt sent to the model.
+        expected: Exact expected answer for scoring.
+    """
+
     id: str
     task_type: str
     prompt: str
@@ -31,6 +40,15 @@ class BenchmarkCase:
 
 @dataclass(frozen=True)
 class ModelReply:
+    """Provider reply plus optional token accounting.
+
+    Attributes:
+        text: Answer text.
+        input_tokens: Prompt tokens reported by the provider, if any.
+        output_tokens: Completion tokens reported by the provider, if any.
+        token_source: Where the counts came from (``provider``, ``codex``, ...).
+    """
+
     text: str
     input_tokens: int | None = None
     output_tokens: int | None = None
@@ -42,6 +60,14 @@ type Invoker = Callable[[str, str, str], ModelReply]
 
 @dataclass(frozen=True)
 class AutoRoute:
+    """An auto-selected model route for a benchmark run.
+
+    Attributes:
+        model: Registry model name.
+        effort: Effort level requested from the model.
+        mode: Selection mode that produced the route.
+    """
+
     model: str
     effort: str
     mode: str
@@ -151,11 +177,27 @@ def run_autonomous(
 
 
 def load_cases() -> list[BenchmarkCase]:
+    """Load the benchmark cases from ``task.yaml``.
+
+    Returns:
+        Parsed cases in file order.
+    """
     data = yaml.safe_load(_TASK.read_text(encoding="utf-8"))
     return [BenchmarkCase(**item) for item in data["cases"]]
 
 
 def load_routes(names: Iterable[str] | None = None) -> list[tuple[str, str]]:
+    """Load (model, effort) routes from the model registry.
+
+    Args:
+        names: Optional subset of registry names to keep; ``None`` keeps all.
+
+    Returns:
+        List of ``(name, effort)`` tuples.
+
+    Raises:
+        ValueError: If a requested name is absent from the registry.
+    """
     requested = set(names or ())
     data = yaml.safe_load(_REGISTRY.read_text(encoding="utf-8"))
     routes = [
@@ -211,10 +253,28 @@ def run_case(
 def run_suite(
     cases: Iterable[BenchmarkCase], routes: Iterable[tuple[str, str]], invoke: Invoker
 ) -> list[dict[str, Any]]:
+    """Run every case against every route and collect per-run rows.
+
+    Args:
+        cases: Benchmark cases to run.
+        routes: ``(model, effort)`` pairs to exercise.
+        invoke: Callable performing one model call.
+
+    Returns:
+        One result dict per (route, case) combination.
+    """
     return [run_case(case, model, effort, invoke) for model, effort in routes for case in cases]
 
 
 def aggregate(rows: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Aggregate per-run rows by (task_type, model, effort).
+
+    Args:
+        rows: Result dicts produced by :func:`run_case`.
+
+    Returns:
+        One summary dict per group with mean score and timing/token averages.
+    """
     groups: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
     for row in rows:
         key = (row["task_type"], row["model"], row["effort"])
@@ -334,6 +394,14 @@ def _codex(profile: str) -> Invoker:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the model-effort benchmark (scripted, live, auto, or codex routes).
+
+    Args:
+        argv: Argument vector to parse, or ``None`` to use ``sys.argv[1:]``.
+
+    Returns:
+        Process exit code (``0`` on success).
+    """
     parser = argparse.ArgumentParser(description="Benchmark task scores by model and effort")
     parser.add_argument("--model", action="append", default=[], help="registry model name")
     parser.add_argument("--live", action="store_true", help="call selected provider models")

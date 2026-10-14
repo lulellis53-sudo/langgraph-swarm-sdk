@@ -1,5 +1,7 @@
 # Agent: Worktree
 
+
+
 > Precedence: safety, user instruction, project files, these defaults.
 > Shared defaults: [`../_shared/COMMON.md`](../_shared/COMMON.md)
 

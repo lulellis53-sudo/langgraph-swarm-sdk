@@ -539,6 +539,17 @@ BENCH_CASES: list[CodeBenchCase] = [
 
 
 def get_case(case_id: str) -> CodeBenchCase:
+    """Look up a benchmark case by id.
+
+    Args:
+        case_id: Unique case identifier.
+
+    Returns:
+        The matching case.
+
+    Raises:
+        KeyError: If no case has the given id.
+    """
     for case in BENCH_CASES:
         if case.id == case_id:
             return case
@@ -546,4 +557,5 @@ def get_case(case_id: str) -> CodeBenchCase:
 
 
 def case_count() -> int:
+    """Return how many benchmark cases are defined."""
     return len(BENCH_CASES)

@@ -16,6 +16,18 @@ DEFAULT_SUITE = SUITE_ROOT / "suite.yaml"
 
 @dataclass
 class CaseResult:
+    """Outcome of one SQL Pro case.
+
+    Attributes:
+        case_id: Case identifier from ``suite.yaml``.
+        passed: Whether every expectation held.
+        latency_ms: Query wall time in milliseconds.
+        row_count: Number of rows returned.
+        explain_plan: SQLite query plan text (when captured).
+        notes: Human-readable diagnostics for failures.
+        error: Error message when the case raised.
+    """
+
     case_id: str
     passed: bool
     latency_ms: float = 0.0
@@ -25,6 +37,11 @@ class CaseResult:
     error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        """Flatten the result into a JSON-ready dict.
+
+        Returns:
+            Mapping of all result fields.
+        """
         return {
             "case_id": self.case_id,
             "passed": self.passed,
@@ -37,6 +54,14 @@ class CaseResult:
 
 
 def load_suite(path: Path | None = None) -> dict[str, Any]:
+    """Load a SQL Pro suite YAML document.
+
+    Args:
+        path: Explicit suite path; defaults to ``suite.yaml`` beside this module.
+
+    Returns:
+        Parsed suite mapping with a ``cases`` list.
+    """
     suite_path = path or DEFAULT_SUITE
     with suite_path.open(encoding="utf-8") as handle:
         return yaml.safe_load(handle)
@@ -95,6 +120,15 @@ def explain_plan(conn: sqlite3.Connection, query: str) -> str:
 
 
 def fetch_all(conn: sqlite3.Connection, query: str) -> list[tuple[Any, ...]]:
+    """Execute ``query`` and return every row.
+
+    Args:
+        conn: Open SQLite connection.
+        query: SQL statement to execute.
+
+    Returns:
+        All result rows as tuples.
+    """
     return conn.execute(query).fetchall()
 
 
@@ -136,6 +170,12 @@ def _check_plan_tokens(plan: str, must_contain: list[Any], notes: list[str], *, 
 
 
 class SqlProSuite:
+    """Runner for the SQL Pro benchmark suite against in-memory SQLite.
+
+    Args:
+        suite: Parsed suite document; defaults to ``load_suite()``.
+    """
+
     def __init__(self, suite: dict[str, Any] | None = None) -> None:
         self.suite = suite or load_suite()
         self.cases: list[dict[str, Any]] = list(self.suite.get("cases", []))
@@ -150,6 +190,14 @@ class SqlProSuite:
         return str(case.get("seed", "default"))
 
     def run_case(self, case: dict[str, Any]) -> CaseResult:
+        """Execute one suite case, choosing the matching runner by case shape.
+
+        Args:
+            case: Case mapping from ``suite.yaml``.
+
+        Returns:
+            The case result (failures are reported in the result, not raised).
+        """
         case_id = str(case["id"])
         try:
             if "query_slow" in case and "query_fast" in case:
@@ -283,4 +331,9 @@ class SqlProSuite:
         )
 
     def run_all(self) -> list[CaseResult]:
+        """Run every case in the suite.
+
+        Returns:
+            One :class:`CaseResult` per case, in suite order.
+        """
         return [self.run_case(case) for case in self.cases]

@@ -55,9 +55,7 @@ def tpl() -> Iterator[ModuleType]:
 def test_role_exports_are_exact(tpl: ModuleType) -> None:
     assert tuple(tpl.__all__) == ROLE_EXPORTS
     role_functions = tuple(
-        name
-        for name in tpl.__all__
-        if name.startswith(PREFIXES) and callable(getattr(tpl, name))
+        name for name in tpl.__all__ if name.startswith(PREFIXES) and callable(getattr(tpl, name))
     )
     assert sorted(role_functions) == sorted(
         name for name in ROLE_EXPORTS if name.startswith(PREFIXES)

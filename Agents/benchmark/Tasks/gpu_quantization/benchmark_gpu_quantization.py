@@ -28,6 +28,19 @@ def _peak_rss_bytes() -> int:
 
 
 def run(rows: int, dim: int, queries: int, k: int, seed: int = 7) -> dict[str, Any]:
+    """Benchmark OpenCL vector-store quantization modes against NumPy.
+
+    Args:
+        rows: Number of random vectors to insert.
+        dim: Vector dimensionality.
+        queries: Number of random query vectors.
+        k: Top-k hits per query (for recall@k).
+        seed: RNG seed for reproducible vectors.
+
+    Returns:
+        Report with workload, per-mode latency/recall profiles, and the best
+        resident footprint among modes with recall >= 0.9.
+    """
     rng = np.random.default_rng(seed)
     vectors = rng.standard_normal((rows, dim), dtype=np.float32)
     vectors /= np.maximum(np.linalg.norm(vectors, axis=1, keepdims=True), 1e-12)
@@ -95,6 +108,7 @@ def run(rows: int, dim: int, queries: int, k: int, seed: int = 7) -> dict[str, A
 
 
 def main() -> None:
+    """Run the quantization benchmark from CLI flags and print the JSON report."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--rows", type=int, default=20000)
     parser.add_argument("--dim", type=int, default=384)

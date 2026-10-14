@@ -1,5 +1,7 @@
 # Agent: Security
 
+
+
 ## Scope and role
 
 Review authorized code, diffs, secrets handling, dependency manifests, and

@@ -15,6 +15,7 @@ PATTERN = re.compile(
 
 
 def main() -> None:
+    """Strip the TEMPLATE map blockquote from every persona ``AGENTS.md``."""
     n = 0
     for path in sorted(ROOT.glob("*/AGENTS.md")):
         if path.parent.name in SKIP:

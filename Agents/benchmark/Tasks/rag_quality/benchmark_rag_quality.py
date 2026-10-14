@@ -153,6 +153,14 @@ def run(*, k: int = 3) -> dict[str, Any]:
 
 
 def format_table(report: dict[str, Any]) -> str:
+    """Render the variant metrics as a fixed-width text table.
+
+    Args:
+        report: Report mapping returned by :func:`run`.
+
+    Returns:
+        Multi-line table string (header plus one row per variant).
+    """
     lines = [f"{'variant':<22}{'recall@k':>10}{'mrr':>8}{'false_inject':>14}"]
     for name, row in report["variants"].items():
         lines.append(
@@ -163,6 +171,11 @@ def format_table(report: dict[str, Any]) -> str:
 
 
 def main() -> int:
+    """Evaluate the RAG variants, print the metric table, and optionally write JSON.
+
+    Returns:
+        Process exit code (``0`` on success).
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--k", type=int, default=3)
     parser.add_argument("--json", type=Path, help="also write the report here")

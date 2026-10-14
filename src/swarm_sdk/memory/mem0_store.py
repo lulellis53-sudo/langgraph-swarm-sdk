@@ -143,6 +143,24 @@ class Mem0Store:
         self._next_id += 1
         return self._next_id
 
+
+class AsyncMem0Store(Mem0Store):
+    """Async variant of Mem0Store supporting non-blocking concurrent operations."""
+
+    async def add_async(self, text: str, vector: np.ndarray) -> int:
+        """Asynchronously store a memory via asyncio executor offloading."""
+        import asyncio
+
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.add, text, vector)
+
+    async def search_text_async(self, query: str, k: int) -> list[MemoryHit]:
+        """Asynchronously search memories via asyncio executor offloading."""
+        import asyncio
+
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.search_text, query, k)
+
     def put(self, key: str, value: str) -> None:
         """Store ``value`` under ``key`` (header line, epoch seconds, then the value)."""
         body = f"{_CACHE_HEAD}:{key}\n{int(time.time())}\n{value}"

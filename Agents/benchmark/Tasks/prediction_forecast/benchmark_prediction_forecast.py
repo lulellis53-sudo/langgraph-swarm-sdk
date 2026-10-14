@@ -51,6 +51,7 @@ def run(*, quick: bool = False) -> dict[str, Any]:
 
 
 def main() -> None:
+    """Run the forecast benchmark and print its JSON report (optionally writing results)."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--write-results", action="store_true")
     parser.add_argument("--quick", action="store_true")

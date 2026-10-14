@@ -1,0 +1,44 @@
+version: '1'
+name: GuideCreator
+role: synthesize_agent_guidelines
+langgraph_node: researcher
+model: anthropic:claude-sonnet-4.6
+think_level: high
+effort: high
+api_key_env: CLAUDE_OAUTH_TOKEN
+token_budget:
+  max_prompt: 16384
+  max_completion: 8192
+tasks:
+- id: generate_agent_guidelines
+  description: Synthesize lean, production-grade AGENTS.md directives, agent.yaml
+    manifests, and decoupled docs/GUIDELINE.md reference manuals using the standard
+    10-topic structure and 1-to-1 function-to-method taxonomy.
+  outputs:
+  - agents_md_path
+  - manifest_yaml_path
+  - guideline_docs_path
+  - verification_status
+- id: audit_guideline_bloat
+  description: "Audit existing agent prompts and guidelines to eliminate context rot,\
+    \ remove redundant style rules, and enforce the < 4KB\u20138KB active prompt boundary."
+  outputs:
+  - bloat_report
+  - pruned_prompt_size
+capabilities:
+- guideline_synthesis
+- template_instantiation
+- taxonomy_mapping
+- context_rot_auditing
+skills:
+- skills/SKILL.md
+telemetry:
+  enabled: true
+  metrics:
+  - token_count
+  - latency_ms
+  - throughput_rpm
+  - jev_score
+  - success_rate
+  export_format: json_lines
+  log_destination: Benchmarks/telemetry.jsonl

@@ -54,6 +54,11 @@ class TaskMetrics:
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
+        """Flatten the metrics into a JSON-ready row dict.
+
+        Returns:
+            Mapping with case metadata, scores, and any recorded error.
+        """
         out: dict[str, Any] = {
             "case_id": self.case_id,
             "title": self.title,
@@ -127,6 +132,17 @@ class CodeAgentScorer:
         prompt_text: str,
         completion_text: str,
     ) -> TaskMetrics:
+        """Run the case's tests against ``generated_code`` and score the result.
+
+        Args:
+            case: Benchmark case to score.
+            generated_code: Solution code produced by the agent.
+            prompt_text: Prompt sent to the model (for token counting).
+            completion_text: Model completion (for token counting).
+
+        Returns:
+            Metrics with score, pass rate, tokens, and latency filled in.
+        """
         metrics = TaskMetrics(
             case_id=case.id,
             title=case.title,
@@ -165,6 +181,14 @@ class CodeAgentScorer:
         self,
         agent: Callable[[CodeBenchCase], tuple[str, str, str]],
     ) -> list[TaskMetrics]:
+        """Score every benchmark case by running ``agent`` on each one.
+
+        Args:
+            agent: Callable returning ``(prompt, completion, code)`` per case.
+
+        Returns:
+            One :class:`TaskMetrics` per case, in catalog order.
+        """
         results: list[TaskMetrics] = []
         for case in BENCH_CASES:
             prompt_text, completion_text, generated_code = agent(case)

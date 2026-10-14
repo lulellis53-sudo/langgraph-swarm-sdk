@@ -27,6 +27,19 @@ def _peak_rss_bytes() -> int:
 
 
 def run(rows: int, dim: int, queries: int, k: int, seed: int = 7) -> dict[str, object]:
+    """Benchmark OpenCL chunked retrieval against NumPy across chunk sizes.
+
+    Args:
+        rows: Number of random vectors to insert.
+        dim: Vector dimensionality.
+        queries: Number of random query vectors.
+        k: Top-k hits per query (for recall@k).
+        seed: RNG seed for reproducible vectors.
+
+    Returns:
+        Report with workload, per-chunk latency/recall profiles, and the
+        recommended backend/chunk size (lowest p95 with recall >= 0.999).
+    """
     rng = np.random.default_rng(seed)
     vectors = rng.standard_normal((rows, dim), dtype=np.float32)
     vectors /= np.maximum(np.linalg.norm(vectors, axis=1, keepdims=True), 1e-12)
@@ -87,6 +100,7 @@ def run(rows: int, dim: int, queries: int, k: int, seed: int = 7) -> dict[str, o
 
 
 def main() -> None:
+    """Run the retrieval benchmark from CLI flags and print the JSON report."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--rows", type=int, default=4096)
     parser.add_argument("--dim", type=int, default=1024)

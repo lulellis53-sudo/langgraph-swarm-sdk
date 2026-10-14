@@ -1,0 +1,41 @@
+version: '1'
+name: CodeBaser
+role: codebase_architecture_modularization
+model: moonshot:kimi-k2.7-code
+think_level: high
+effort: medium
+api_key_env: KIMI_API_KEY
+token_budget:
+  max_prompt: 8192
+  max_completion: 2048
+tasks:
+- id: restructure_codebase
+  description: Analyze dependency graph, modularize packages, eliminate circular imports,
+    and execute non-breaking directory and module restructures.
+  outputs:
+  - changed_files
+  - dependency_graph
+  - validation
+- id: audit_architecture
+  description: Audit package boundaries, circular imports, and layer violations, returning
+    actionable structural refactoring recommendations.
+  outputs:
+  - findings
+  - dependency_graph
+capabilities:
+- code_edit
+- ast_analysis
+- shell
+- diff
+telemetry:
+  enabled: true
+  metrics:
+  - token_count
+  - latency_ms
+  - throughput_rpm
+  - jev_score
+  - success_rate
+  export_format: json_lines
+  log_destination: Benchmarks/telemetry.jsonl
+skills:
+- skills/SKILL.md

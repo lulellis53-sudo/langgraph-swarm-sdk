@@ -14,6 +14,14 @@ RESULTS_DIR = Path(__file__).resolve().parent.parent / "results" / "sql_pro"
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the SQL Pro suite from CLI flags and print (or write) the results.
+
+    Args:
+        argv: Argument vector to parse, or ``None`` to use ``sys.argv[1:]``.
+
+    Returns:
+        Process exit code (``1`` when any case fails).
+    """
     parser = argparse.ArgumentParser(description="Run SQL Pro benchmarkable suite")
     parser.add_argument(
         "--suite",

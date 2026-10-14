@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import re
 
-__all__ = ["TurnPruner", "compress_handoff"]
+__all__ = ["TurnPruner", "compress_handoff", "compress_prompt_bloat"]
 
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 
@@ -148,3 +148,32 @@ def compress_handoff(
         else:
             hi = mid - 1
     return best
+
+
+def compress_prompt_bloat(
+    prompt: str, max_token_threshold: int = 2000, target_max_tokens: int = 1500
+) -> str:
+    """Compress prompts exceeding token threshold using AST/extractive rules.
+
+    Args:
+        prompt: Raw prompt text.
+        max_token_threshold: Token ceiling before compression triggers (~8KB context).
+        target_max_tokens: Target token size after compression.
+
+    Returns:
+        Compressed prompt text or original prompt if below threshold.
+    """
+    from swarm_sdk.prompting.budget import count_text
+
+    tokens = count_text(prompt)
+    if tokens <= max_token_threshold:
+        return prompt
+
+    lines = prompt.splitlines()
+    pruned_lines = [line for line in lines if not line.strip().startswith(("# ", "// ", "<!--"))]
+    pruned_text = "\n".join(pruned_lines)
+
+    if count_text(pruned_text) <= target_max_tokens:
+        return pruned_text
+
+    return compress_handoff(pruned_text, max_tokens=target_max_tokens, summary_sentences=5)
