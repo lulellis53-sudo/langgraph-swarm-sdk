@@ -1,6 +1,3 @@
 [submodule "CLI/gemini-cli-original"]
 	path = CLI/gemini-cli-original
 	url = https://github.com/google-gemini/gemini-cli.git
-[submodule "CLI/gemini-cli-tips"]
-	path = CLI/gemini-cli-tips
-	url = https://github.com/addyosmani/gemini-cli-tips.git

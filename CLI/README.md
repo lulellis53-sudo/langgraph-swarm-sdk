@@ -8,7 +8,6 @@ Governado pelo roadmap em [`gemini-cli/DeepResearch.md`](gemini-cli/DeepResearch
 ```
 CLI/
 ├── gemini-cli/            # Fork base (Google) + DeepResearch.md (documento-mestre, 15 Parts)
-├── gemini-cli-tips/       # Repo de dicas/snapshot do upstream
 ├── mcp-xeon-server/       # Diretriz B — MCP worker remoto (Node/TS) ✅ build ok
 ├── providers.yaml         # Config de providers LLM
 └── scratch/               # Experimentos soltos (adapter-src/)
