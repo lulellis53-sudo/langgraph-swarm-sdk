@@ -18,7 +18,7 @@ providers:
     description: Anthropic OAuth token from Claude Code / Cursor subscription routing.
     provider_url: https://docs.anthropic.com
     api_endpoint: https://api.anthropic.com/v1/messages
-    models: ["anthropic:claude-sonnet-4.6", "anthropic:claude-opus-5-5"]
+    models: ["anthropic:claude-sonnet-4.6", "anthropic:claude-opus-5-5", "anthropic:claude-sonnet-5-5"]
     api_key_env: CLAUDE_OAUTH_TOKEN
     priority: 15
   - name: zai
@@ -34,7 +34,7 @@ providers:
     description: MiniMax text generation API.
     provider_url: https://www.minimax.io/platform
     api_endpoint: https://api.minimax.io/v1/chat/completions
-    models: ["minimax:MiniMax-M2.7"]
+    models: ["minimax:MiniMax-M2.7", "minimax:MiniMax-M3"]
     api_key_env: MINIMAX_API_KEY
     priority: 17
   - name: xai
@@ -42,7 +42,7 @@ providers:
     description: Grok models via xAI API.
     provider_url: https://docs.x.ai
     api_endpoint: https://api.x.ai/v1/chat/completions
-    models: ["xai:grok-4.6"]
+    models: ["xai:grok-4.6", "xai:grok-4.7"]
     api_key_env: GROK_OAUTH_TOKEN
     priority: 18
   - name: anthropic
@@ -140,7 +140,7 @@ providers:
     description: Mimo models; base URL often from MIMO_BASE_URL env.
     provider_url: https://www.mi.com
     api_endpoint: "${MIMO_BASE_URL}/chat/completions"
-    models: ["xiaomi:mimo-v2.6-pro"]
+    models: ["xiaomi:mimo-v2.6-pro", "xiaomi:mimo-v2.6-flash"]
     api_key_env: MIMO_API_KEY
     priority: 54
   - name: opencode

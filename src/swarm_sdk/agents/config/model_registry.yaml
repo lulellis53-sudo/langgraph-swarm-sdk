@@ -10,8 +10,10 @@
 version: 1
 
 providers:
-  # Paidmodels. OAuth: Codex openai:gpt-6-luna, Grok xai:grok-4.6,
-  # Claude anthropic:claude-sonnet-4.6. API key: MiniMax, Z.ai, Kimi, Xiaomi MiMo.
+  # Paidmodels. OAuth: Codex openai:gpt-6-luna, Grok xai:grok-4.6 / grok-4.7,
+  # Claude anthropic:claude-sonnet-4.6 / claude-sonnet-5-5. API key: MiniMax, Z.ai, Kimi, Xiaomi MiMo.
+  # ``composer: true`` = Cursor Composer: Grok 4.6/4.7, Sonnet 5.5, Kimi 2.7,
+  # MiMo 2.6 Flash, GLM-5.2, MiniMax-M3.
   # Rows stay at their existing priorities. Detail is docs/MODELS.md.
   # ---- Paid: medium tier, medium effort ----
   - name: openai:gpt-4o-mini
@@ -38,7 +40,8 @@ providers:
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 5
-    evidence: user (Z.ai / Zhipu API key, not OAuth; glm-5.2 maps medium->high server-side)
+    composer: true
+    evidence: user (Z.ai / Zhipu API key, not OAuth; glm-5.2; Cursor Composer)
 
   - name: anthropic:claude-sonnet-4-5
     provider: anthropic
@@ -56,7 +59,8 @@ providers:
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
     priority: 10
-    evidence: user (Kimi, two vault keys; OpenAI-compatible host api.moonshot.ai/v1)
+    composer: true
+    evidence: user (Kimi 2.7 code; Cursor Composer; host api.moonshot.ai/v1)
 
   - name: moonshot:kimi-k2.7-code-b
     provider: moonshot
@@ -95,14 +99,35 @@ providers:
     priority: 15
     evidence: user (MiMo 2.5 Pro = Xiaomi medium tier)
 
+  - name: xiaomi:mimo-v2.6-flash
+    provider: xiaomi
+    api_key_env: MIMO_API_KEY
+    base_url_env: MIMO_BASE_URL
+    effort: low
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 16
+    composer: true
+    evidence: user (MiMo 2.6 Flash; Cursor Composer; confirm id against Xiaomi docs)
+
   - name: xai:grok-4.6
+    provider: xai
+    api_key_env: GROK_OAUTH_TOKEN
+    api_key_fallbacks: [XAI_API_KEY]
+    effort: low
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 18
+    composer: true
+    evidence: user (Grok OAuth, Grok 4.6, low effort; Cursor Composer)
+
+  - name: xai:grok-4.7
     provider: xai
     api_key_env: GROK_OAUTH_TOKEN
     api_key_fallbacks: [XAI_API_KEY]
     effort: medium
     think_levels: ["off", low, medium, high, xhigh]
-    priority: 18
-    evidence: user (Grok OAuth, Grok 4.6, medium effort)
+    priority: 19
+    composer: true
+    evidence: user (Grok OAuth, Grok 4.7 API id grok-4.7; Cursor Composer)
 
   - name: minimax:minimax-2.7-high-speed
     provider: minimax
@@ -114,6 +139,16 @@ providers:
     evidence: >-
       user (MINIMAX_API_KEY, not OAuth; 2.7 high speed); model ID assumed -
       verify in Minimax console
+
+  - name: minimax:MiniMax-M3
+    provider: minimax
+    api_key_env: MINIMAX_API_KEY
+    base_url_env: MINIMAX_BASE_URL   # https://api.minimax.io/v1
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 21
+    composer: true
+    evidence: user (MiniMax-M3; Cursor Composer; platform.minimax.io chat API)
 
   - name: openai:gpt-6-luna
     provider: codex
@@ -140,6 +175,16 @@ providers:
     think_levels: ["off", low, medium, high, xhigh]
     priority: 31
     evidence: user (Orchestrator, Claude Opus 5.5); id from platform.claude.com models overview
+
+  - name: anthropic:claude-sonnet-5-5
+    provider: claude-code
+    api_key_env: CLAUDE_OAUTH_TOKEN
+    api_key_fallbacks: [CLAUDE_CODE_API_KEY]
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 32
+    composer: true
+    evidence: user (Cursor Composer, Claude Sonnet 5.5)
 
   # ---- Free: low token usage, low effort ----
   # GET https://api.atlascloud.ai/v1/models on 2026-10-05: one $0 text model.

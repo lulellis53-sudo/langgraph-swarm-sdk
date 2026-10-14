@@ -212,6 +212,21 @@ def test_agent_models_use_registered_credential_names() -> None:
         )
 
 
+def test_composer_routes_are_grok_and_sonnet_5_5() -> None:
+    from swarm_sdk.models.registry import load_registry
+
+    names = [entry.name for entry in load_registry().composer_routes()]
+    assert names == [
+        "zai:glm-5.2",
+        "moonshot:kimi-k2.7-code",
+        "xiaomi:mimo-v2.6-flash",
+        "xai:grok-4.6",
+        "xai:grok-4.7",
+        "minimax:MiniMax-M3",
+        "anthropic:claude-sonnet-5-5",
+    ]
+
+
 def test_service_credentials_have_agents_and_are_primed() -> None:
     from swarm_sdk.vault import referenced_names
 
