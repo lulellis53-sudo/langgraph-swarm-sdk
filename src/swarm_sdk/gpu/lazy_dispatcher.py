@@ -12,10 +12,9 @@ from typing import Any
 
 import numpy as np
 
-logger = logging.getLogger(__name__)
+from swarm_sdk.gpu._opencl_utils import device_rank, workgroup_size
 
-_LOCAL_SIZE_CAP = 64
-_DISCRETE_HINTS = ("radeon", "amd", "nvidia", "geforce", "quadro", "arc")
+logger = logging.getLogger(__name__)
 
 _KERNEL_SOURCE = r"""
 __kernel void batch_dot_kernel(__global const float *a,
@@ -70,22 +69,6 @@ __kernel void batch_dot4_kernel(__global const float4 *a,
     if (l == 0) out[r] = partial[0];
 }
 """
-
-
-def _device_rank(device: Any) -> tuple[int, int]:
-    """Rank discrete GPUs first, then largest dedicated global memory."""
-    name = device.name.lower()
-    discrete = 0 if any(hint in name for hint in _DISCRETE_HINTS) else 1
-    return (discrete, -int(device.global_mem_size))
-
-
-def _wgs_for(width: int, max_wg: int) -> int:
-    """Largest power of two work-group width that fits the cap and the device."""
-    cap = max(1, min(_LOCAL_SIZE_CAP, max_wg))
-    wgs = 1
-    while wgs * 2 <= width and wgs * 2 <= cap:
-        wgs *= 2
-    return wgs
 
 
 class VectorComputeDispatcher:
@@ -153,7 +136,7 @@ class VectorComputeDispatcher:
                     None,
                 )
             if selected_device is None and gpu_devices:
-                selected_device = min(gpu_devices, key=_device_rank)
+                selected_device = min(gpu_devices, key=device_rank)
 
             if selected_device is not None:
                 self._ctx = cl.Context([selected_device])
@@ -248,7 +231,7 @@ class VectorComputeDispatcher:
 
         if cols % 4 == 0 and cols >= 4:
             vcols = cols // 4
-            wgs = _wgs_for(vcols, self._max_wg)
+            wgs = workgroup_size(vcols, self._max_wg)
             b_stride = 0 if is_broadcast_b else vcols
             kernel4(
                 queue,
@@ -262,7 +245,7 @@ class VectorComputeDispatcher:
                 np.uint32(b_stride),
             )
         else:
-            wgs = _wgs_for(cols, self._max_wg)
+            wgs = workgroup_size(cols, self._max_wg)
             b_stride = 0 if is_broadcast_b else cols
             kernel(
                 queue,
