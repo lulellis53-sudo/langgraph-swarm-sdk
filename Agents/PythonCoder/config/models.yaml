@@ -1,0 +1,31 @@
+version: 1
+agent: PythonCoder
+role: python_implementation
+models:
+  primary:
+    name: moonshot:kimi-k2.7-code
+    provider: moonshot
+    api_key_env: KIMI_API_KEY
+    base_url_env: MOONSHOT_BASE_URL
+    think_level: high
+    effort: medium
+    token_budget:
+      max_prompt: 8192
+      max_completion: 4096
+  fallback:
+    name: groq:llama-3.3-70b-versatile
+    provider: groq
+    api_key_env: GROQ_API_KEY
+    think_level: medium
+    effort: low
+    token_budget:
+      max_prompt: 4096
+      max_completion: 2048
+fallback_chain:
+  order:
+  - primary
+  - fallback
+  circuit_breaker:
+    failure_threshold: 3
+    recovery_time_sec: 60
+  timeout_ms: 30000

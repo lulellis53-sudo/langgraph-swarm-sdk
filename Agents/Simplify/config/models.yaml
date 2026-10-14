@@ -1,0 +1,30 @@
+version: 1
+agent: Simplify
+role: complexity_reduction
+models:
+  primary:
+    name: anthropic:claude-sonnet-4.6
+    provider: anthropic
+    api_key_env: ANTHROPIC_API_KEY
+    think_level: high
+    effort: high
+    token_budget:
+      max_prompt: 8192
+      max_completion: 4096
+  fallback:
+    name: groq:llama-3.3-70b-versatile
+    provider: groq
+    api_key_env: GROQ_API_KEY
+    think_level: medium
+    effort: low
+    token_budget:
+      max_prompt: 4096
+      max_completion: 2048
+fallback_chain:
+  order:
+  - primary
+  - fallback
+  circuit_breaker:
+    failure_threshold: 3
+    recovery_time_sec: 60
+  timeout_ms: 30000
