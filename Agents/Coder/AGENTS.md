@@ -28,6 +28,11 @@ unlimited.
 Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles).
 The file-ownership rules below are additional task-specific constraints.
 
+For database schema, migration, or query work, consult the Aivana skill map in
+[`../Databaser/SKILLS.md`](../Databaser/SKILLS.md) and coordinate with the
+Databaser role when the task requires schema or migration expertise. Coder
+retains implementation ownership only for its assigned files.
+
 ## Workflow
 
 1. **Resolve the task:** read its task ID, acceptance criteria, claimed files,
