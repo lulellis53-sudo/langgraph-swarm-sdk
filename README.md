@@ -2,6 +2,34 @@
 
 Parallel multi-LLM swarm on [LangGraph Swarm](https://github.com/langchain-ai/langgraph-swarm-py): specialist handoffs, asyncio fan-out, int8 memory, a cross-encoder reranker, a tokenizer budget, and a semantic cache. The point of the cache, reranker, and budget is to send fewer tokens and keep the tokens that remain relevant.
 
+```
+# (Dont modify)
+                      SDK
+                      . LangGraph
+                      . Project Configs
+                      . Share
+                      . src
+                      # Python 3.15
+                      # pyproject.toml
+                            |
+      +-----------+---------+----------+-----------+
+      |           |         |          |
+      v           v         v          v
+ +----------+ +----------+ +----------+ +----------+
+ | Modules  | |  Agents  | |  Tools   | |  Vector  |
+ +----------+ +----------+ +----------+ +----------+
+      |            |            |
+      +-- Newsletter +-- RAG      +-- Swarm
+      +-- BotDeal    +-- Memory   +-- Prediction
+      +-- TechNews                +-- WebSearch
+                                  +-- WebScraper
+
+ # Swarm       multi-orchestration agents
+ # Prediction  algorithms; each module has its own forecast
+ # WebSearch   WebSearch / WebFetch = agent tooling
+ # Make a copy of the branch if want to benchmark A/B test
+```
+
 ## Requirements
 
 - Python `3.14.8` (`uv python install 3.14.8`)
@@ -15,9 +43,14 @@ Optional **Jupyter Notebook + Jupyter AI** (uses prebuilt `cryptography` wheels;
 
 ```bash
 uv sync --extra jupyter --extra dev
-uv run python -m ipykernel install --user --name=swarm --display-name="Python (Swarm)"
-uv run jupyter lab    # or: uv run jupyter notebook
+./scripts/jupyter.sh
 ```
+
+The script binds JupyterLab to `127.0.0.1`, serves notebooks from `.Jupyter/`,
+keeps Jupyter's default token authentication enabled, and opens the local UI in
+your browser. The `jupyter` extra also includes the Ruff formatter, Python LSP,
+and JupyterLab Git. See [`.Jupyter/README.md`](.Jupyter/README.md) for setup
+and troubleshooting.
 
 FastEmbed is the default embedder and reranker. Its default model (`sentence-transformers/all-MiniLM-L6-v2`, MiniLM2) is ONNX INT8 on CPU. Token budgets use **tiktoken** (`cl100k_base`) by default, with optional Hugging Face `tokenizers.Tokenizer` packing. sqlite-vec stores int8 vectors; Qdrant can use scalar int8 when `vectorstore.quantization` is `int8`. Set `vectorstore.backend: mem0` (optional extra `mem0`) to use [Mem0](https://docs.mem0.ai/) Platform `MemoryClient` for long-term recall (`MEM0_API_KEY`; env var *name* only in YAML). FAISS GPU (`vectorstore.gpu: true`) needs a CUDA `faiss-gpu` build and falls back to CPU when that is missing.
 
@@ -95,10 +128,34 @@ Current `onnxruntime` wheels do not include macOS x86_64, so FastEmbed is skippe
 
 ## Run
 
+### Quickstart with one provider key
+
+Pin the router and every manifest agent to one registered model route. This makes
+the default chat path usable with one provider credential while keeping the
+per-agent multi-provider routes as the default when `SWARM_MODEL` is unset.
+
+```bash
+uv run swarm-vault set OPENAI_API_KEY
+SWARM_MODEL=openai:gpt-4o-mini uv run swarm-chat
+```
+
+Enter `exit` or `quit` to end the session. `SWARM_MODEL` may also be set in the
+owner-only `.env`; model-specific overrides remain available with
+`swarm-chat --model <provider:model>`.
+
 ```bash
 uv run swarm-api
 uv run swarm-grpc
+uv run websearch --prompt "query" --route semantic
+uv run agents
+uv run low-swarm providers
 ```
+
+`swarm-chat` is the interactive SDK entry point. `low-swarm providers` reports
+provider credential presence and adapter availability without printing secret
+values. `websearch` is the WebSearch CLI (`WebSearch.cli:main`; also
+`python -m WebSearch`). `agents` validates `Agents/*/agent.yaml` against
+`Agents/coordination.yaml` (`python -m swarm_sdk.agents`).
 
 `POST /v1/runs` with `{"text": "...", "thread_id": "t1"}`. `GET /v1/health`. gRPC `SwarmService.Run` and `SwarmService.Recall` call the same core.
 

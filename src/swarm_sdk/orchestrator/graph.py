@@ -5,7 +5,7 @@ frontier computed by :meth:`Plan.waves`). Steps inside a wave are dispatched wit
 :func:`swarm_sdk.models.selection.bounded_gather` so they run concurrently up to
 ``max_concurrency`` — under uvloop the I/O interleaves, and on free-threaded
 Python 3.14 the blocking provider SDK calls also parallelize across the widened
-runtime thread pool (see :mod:`swarm_sdk.runtime`).
+runtime thread pool (see :mod:`swarm_sdk.execution`).
 """
 
 from __future__ import annotations
@@ -44,26 +44,46 @@ class PlanState(TypedDict):
     usage: UsageTotals
 
 
-def _dep_outputs(step: PlanStep, state: PlanState) -> dict[str, str]:
-    """Collect the dependency outputs a step declared as its inputs.
+def _compress_deps(steps: list[PlanStep], state: PlanState) -> dict[str, str]:
+    """Compress each dependency output at most once for a whole wave.
+
+    Args:
+        steps: The wave's steps (their union of inputs is what will be read).
+        state: Current plan state with completed outputs.
+
+    Returns:
+        Mapping of step id → compressed output content for every successful
+        output that at least one step in the wave declared as an input.
+    """
+    from swarm_sdk.prompting.pruner import compress_handoff
+
+    wanted: set[str] = set()
+    for step in steps:
+        wanted.update(step.inputs or step.depends_on)
+    compressed: dict[str, str] = {}
+    for dep in wanted:
+        out = state["outputs"].get(dep)
+        if out is not None and out.status == "ok":
+            compressed[dep] = compress_handoff(out.content, max_tokens=500)
+    return compressed
+
+
+def _dep_outputs(step: PlanStep, compressed: dict[str, str]) -> dict[str, str]:
+    """Select the dependency outputs a step declared as its inputs.
 
     Falls back to ``depends_on`` when the step declared no explicit ``inputs``
     (a step receives everything it waited for, and nothing else — token saving).
 
     Args:
         step: The step about to run.
-        state: Current plan state with completed outputs.
+        compressed: Pre-compressed dependency outputs for this wave.
 
     Returns:
-        Mapping of step id → output content, only for declared inputs that
-        completed successfully.
+        Mapping of step id → compressed output content, only for declared inputs
+        present in ``compressed``.
     """
     wanted = step.inputs or step.depends_on
-    return {
-        dep: state["outputs"][dep].content
-        for dep in wanted
-        if dep in state["outputs"] and state["outputs"][dep].status == "ok"
-    }
+    return {dep: compressed[dep] for dep in wanted if dep in compressed}
 
 
 async def _run_wave(
@@ -84,6 +104,8 @@ async def _run_wave(
         max_concurrency: Cap on in-flight steps (``parallelism.max_concurrency``).
         jev: Router for per-step Jev routing, or ``None`` to run every step as before.
     """
+    # One compression per dependency for the whole wave, not per consumer step.
+    compressed_deps = _compress_deps(steps, state)
 
     def one_factory(step: PlanStep) -> Callable[[], Awaitable[StepOutput]]:
         """Build the per-step coroutine factory for this wave."""
@@ -103,7 +125,7 @@ async def _run_wave(
             out = await worker.run(
                 step.id,
                 step.description,
-                _dep_outputs(step, state),
+                _dep_outputs(step, compressed_deps),
                 files=step.files,
                 task=step.task,
             )

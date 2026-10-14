@@ -1,4 +1,4 @@
-"""Peer HTTP clients: httpx2 (HTTP/2), aiohttp, and requests."""
+"""Peer HTTP clients: httpx2 (HTTP/2) sync and aiohttp async."""
 
 from __future__ import annotations
 
@@ -6,7 +6,6 @@ from typing import Any
 
 import aiohttp
 import httpx2
-import requests
 
 from swarm_sdk.netguard import validate_http_url
 
@@ -23,7 +22,8 @@ def post_json(
     Args:
         url: Absolute peer URL (validated: http/https, non-private host).
         payload: JSON-serializable request body.
-        client: ``"httpx2"`` (default, HTTP/2) or ``"requests"``.
+        client: ``"httpx2"`` (default, HTTP/2). The legacy ``"requests"``
+            value is accepted for compatibility and routed to httpx2.
         transport: Optional httpx2 transport (tests / custom stacks).
 
     Returns:
@@ -33,18 +33,13 @@ def post_json(
         ValueError: If ``url`` is not an absolute http(s) URL.
         TypeError: If the response body is not a JSON object.
         ValueError: If ``url`` fails the SSRF guard.
-        requests.HTTPError | httpx2.HTTPError: On non-success status.
+        httpx2.HTTPError: On non-success status.
     """
     validate_http_url(url)
-    if client == "requests":
-        response = requests.post(url, json=payload, timeout=30)
+    with httpx2.Client(http2=True, timeout=30.0, transport=transport) as http:
+        response = http.post(url, json=payload)
         response.raise_for_status()
         body = response.json()
-    else:
-        with httpx2.Client(http2=True, timeout=30.0, transport=transport) as http:
-            response_http = http.post(url, json=payload)
-            response_http.raise_for_status()
-            body = response_http.json()
     if not isinstance(body, dict):
         raise TypeError("peer response must be a JSON object")
     return body

@@ -5,11 +5,11 @@
 ## Commands
 
 ```bash
-# From the repository root (one uv environment, one package):
-cd ~/Myworkspace/Swarm
-uv run --extra websearch python -m WebSearch --prompt "query" --route semantic   # CLI: search → dedupe → summarize
-uv run --extra websearch python -m WebSearch --doctor                             # health: crawlers, providers, model readiness
-uv run --extra websearch python -m WebSearch.api                                  # FastAPI on 127.0.0.1:8765
+# From the repository root (one uv environment, one pyproject.toml):
+uv run --extra websearch websearch --prompt "query" --route semantic   # CLI: search → dedupe → summarize
+uv run --extra websearch websearch --doctor                           # health: crawlers, providers, model readiness
+uv run --extra websearch python -m WebSearch.api                      # FastAPI on 127.0.0.1:8765
+uv run agents                                                         # validate Agents/*/agent.yaml
 
 # Tests (offline — fake backends, no network, no API keys)
 uv run pytest tests/test_websearch*.py tests/test_toolcalling.py -q

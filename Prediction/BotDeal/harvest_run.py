@@ -43,6 +43,7 @@ def _record(
     day: str,
     price_brl: float | None,
     query: str,
+    specs: str | None = None,
 ) -> dict[str, Any]:
     return {
         "unique_id": sku,
@@ -53,13 +54,22 @@ def _record(
         "price": price_brl,
         "currency": "BRL" if price_brl is not None else None,
         "condition": "used" if source == "olx" else "new",
+        "specs": specs,
         "snippet": snippet[:500] or None,
         "query": query,
         "confidence": None,
     }
 
 
-def _harvest_sku(conn, catalog, sku: str, *, window_days: int, limit: int) -> list[dict[str, Any]]:
+def _harvest_sku(
+    conn,
+    catalog,
+    sku: str,
+    *,
+    window_days: int,
+    limit: int,
+    fresh: bool = False,
+) -> list[dict[str, Any]]:
     """Run one dork for ``sku``, store observations, and return the records."""
     product = next(item for item in catalog.products if item.sku == sku)
     plausible = catalog.plausible.get(sku)
@@ -77,15 +87,19 @@ def _harvest_sku(conn, catalog, sku: str, *, window_days: int, limit: int) -> li
         }
     query = product_dork(product.terms[0], **dork_kwargs)
     try:
-        leads = harvest.leads_for(query)
+        leads = harvest.leads_for(query, fresh=fresh)
     except Exception as exc:
         print(f"{sku}: search failed {type(exc).__name__}: {exc}")
         return []
     records: list[dict[str, Any]] = []
-    for url, title, snippet in leads[:limit]:
-        source = harvest.source_for(url)
-        if source is None:
-            continue
+    # Resolve sources before cutting to ``limit``: otherwise unknown-host
+    # hits consume the budget and real catalog hits get dropped.
+    resolved = [
+        (url, title, snippet, source)
+        for url, title, snippet in leads
+        if (source := harvest.source_for(url)) is not None
+    ]
+    for url, title, snippet, source in resolved[:limit]:
         cents = next(
             (c for c in (harvest.parse_brl_cents(t) for t in (title, snippet)) if c is not None),
             None,
@@ -111,7 +125,9 @@ def _harvest_sku(conn, catalog, sku: str, *, window_days: int, limit: int) -> li
                 print(f"{sku}: observation skipped ({exc})")
                 continue
         if in_range or cents is None:
-            records.append(_record(sku, url, title, snippet, source, day, price_brl, query))
+            records.append(
+                _record(sku, url, title, snippet, source, day, price_brl, query, product.specs)
+            )
     return records
 
 
@@ -121,6 +137,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--days", type=int, default=7, help="after: window in days")
     parser.add_argument("--limit", type=int, default=10, help="max hits per SKU")
     parser.add_argument("--db", default="offers.db")
+    parser.add_argument(
+        "--fresh",
+        action="store_true",
+        help="bypass the search cache (fresh network hits)",
+    )
     args = parser.parse_args(argv)
 
     catalog = load_catalog()
@@ -134,7 +155,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         all_records: list[dict[str, Any]] = []
         for sku in wanted:
-            records = _harvest_sku(conn, catalog, sku, window_days=args.days, limit=args.limit)
+            records = _harvest_sku(
+                conn, catalog, sku, window_days=args.days, limit=args.limit, fresh=args.fresh
+            )
             all_records.extend(records)
             print(f"{sku}: {len(records)} stored hits")
         floors = rebuild_floors(conn)

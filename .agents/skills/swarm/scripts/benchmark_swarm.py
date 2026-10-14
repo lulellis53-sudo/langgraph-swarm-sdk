@@ -21,16 +21,13 @@ PROMETHEUS_AVAILABLE = False
 OPENTELEMETRY_AVAILABLE = False
 
 try:
-    import hypothesis
-    from hypothesis import given
-    from hypothesis import strategies as st
+    import hypothesis  # noqa: F401 — availability probe for optional dependency
 
     HYPOTHESIS_AVAILABLE = True
 except ImportError:
     HYPOTHESIS_AVAILABLE = False
 
 try:
-    import prometheus_client
     from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 
     PROMETHEUS_AVAILABLE = True
@@ -38,7 +35,6 @@ except ImportError:
     PROMETHEUS_AVAILABLE = False
 
 try:
-    import opentelemetry
     from opentelemetry import trace
     from opentelemetry.trace import Status, StatusCode
 
@@ -101,7 +97,8 @@ def run_benchmark_suite(suite_name: str, iterations: int) -> dict[str, Any]:
     results: list[float] = []
     print(f"Running Benchmark Suite '{suite_name}' ({iterations} iterations)...")
     print(
-        f"  Telemetry Stack -> Prometheus: {PROMETHEUS_AVAILABLE} | OpenTelemetry: {OPENTELEMETRY_AVAILABLE} | Hypothesis: {HYPOTHESIS_AVAILABLE}"
+        f"  Telemetry Stack -> Prometheus: {PROMETHEUS_AVAILABLE} | "
+        f"OpenTelemetry: {OPENTELEMETRY_AVAILABLE} | Hypothesis: {HYPOTHESIS_AVAILABLE}"
     )
 
     otel_tracer = telemetry.get("otel_tracer")

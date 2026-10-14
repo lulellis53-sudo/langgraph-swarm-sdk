@@ -1,6 +1,7 @@
 {
   "folders": [
     { "name": "SDK (integration)", "path": ".." },
+    { "name": "Jupyter", "path": "../.Jupyter" },
     { "name": "Agents", "path": "../Agents" },
     { "name": "Main", "path": "../Main" },
     { "name": "Benchmark", "path": "../Agents/benchmark" },
@@ -17,14 +18,14 @@
     "ty.diagnosticMode": "workspace",
     "ty.experimental.useUv": "on",
     "jupyter.notebookFileRoot": "${workspaceFolder:SDK (integration)}",
+    "jupyter.askForKernelRestart": false,
+    "jupyter.kernels.excludePythonEnvironments": [],
+    "jupyter.jupyterServerType": "local",
+    "notebook.formatOnSave.enabled": true,
+    "notebook.lineNumbers": "on",
+    "notebook.output.scrolling": true,
+    "notebook.output.textLineLimit": 80,
     "jupyter.allowUnauthorizedRemoteConnection": false,
-    "colab.logging.level": "info",
-    "colab.uploading": true,
-    "colab.activityBarContentView": true,
-    "colab.activityBarResourceView": true,
-    "colab.serverMounting": false,
-    "colab.terminal": true,
-    "colab.importNotebookFromUrl": true,
     "docker.composeFile": "${workspaceFolder:SDK (integration)}/docker/compose.yaml"
   }
 }

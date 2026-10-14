@@ -1,104 +1,201 @@
 # LLM provider wiring (API key env vars and default model ids).
-# Loaded by swarm_sdk.providers.ProviderCatalogLoader; merged into swarm runtime config.
+# Loaded by swarm_sdk.config.loader.ProviderCatalog; merged into swarm runtime config.
+# provider_name / description / provider_url are documentation; api_endpoint is the HTTP API base path.
 
 version: 1
 
 providers:
   - name: codex
+    provider_name: OpenAI Codex
+    description: Codex CLI OAuth token for OpenAI-compatible chat.
+    provider_url: https://platform.openai.com/docs
+    api_endpoint: https://api.openai.com/v1/chat/completions
     models: ["openai:gpt-6-luna"]
     api_key_env: CODEX_OAUTH_TOKEN
     priority: 10
   - name: claude-code
-    models: ["anthropic:claude-sonnet-4.6", "anthropic:claude-opus-5-5"]
+    provider_name: Claude Code
+    description: Anthropic OAuth token from Claude Code / Cursor subscription routing.
+    provider_url: https://docs.anthropic.com
+    api_endpoint: https://api.anthropic.com/v1/messages
+    models: ["anthropic:claude-sonnet-4.6", "anthropic:claude-opus-5-5", "anthropic:claude-sonnet-5-5"]
     api_key_env: CLAUDE_OAUTH_TOKEN
     priority: 15
   - name: zai
+    provider_name: Z.AI (Zhipu GLM)
+    description: Zhipu BigModel / GLM OpenAPI (PaaS v4).
+    provider_url: https://docs.z.ai
+    api_endpoint: https://api.z.ai/api/paas/v4/chat/completions
     models: ["zai:glm-5.2"]
     api_key_env: ZHIPU_API_KEY
     priority: 16
   - name: minimax
-    models: ["minimax:MiniMax-M2.7"]
+    provider_name: MiniMax
+    description: MiniMax text generation API.
+    provider_url: https://www.minimax.io/platform
+    api_endpoint: https://api.minimax.io/v1/chat/completions
+    models: ["minimax:MiniMax-M2.7", "minimax:MiniMax-M3"]
     api_key_env: MINIMAX_API_KEY
     priority: 17
   - name: xai
-    models: ["xai:grok-4.6"]
+    provider_name: xAI
+    description: Grok models via xAI API.
+    provider_url: https://docs.x.ai
+    api_endpoint: https://api.x.ai/v1/chat/completions
+    models: ["xai:grok-4.6", "xai:grok-4.7"]
     api_key_env: GROK_OAUTH_TOKEN
     priority: 18
   - name: anthropic
+    provider_name: Anthropic
+    description: Claude API (API key billing).
+    provider_url: https://docs.anthropic.com
+    api_endpoint: https://api.anthropic.com/v1/messages
     models: ["anthropic:claude-sonnet-4-5", "anthropic:claude-haiku-4-5"]
     api_key_env: ANTHROPIC_API_KEY
     priority: 20
   - name: groq
+    provider_name: Groq
+    description: Groq LPU inference (OpenAI-compatible).
+    provider_url: https://console.groq.com/docs
+    api_endpoint: https://api.groq.com/openai/v1/chat/completions
     models: ["groq:llama-3.3-70b-versatile"]
     api_key_env: GROQ_API_KEY
     priority: 30
   - name: atlascloud
+    provider_name: Atlas Cloud
+    description: Atlas Cloud hosted models (OpenAI-compatible).
+    provider_url: https://www.atlascloud.ai
+    api_endpoint: https://api.atlascloud.ai/v1/chat/completions
     models: ["atlascloud:dots-studio/dots-3-note-prev-free"]
     api_key_env: ATLASCLOUD_API_KEY
     priority: 45
   - name: poolside
+    provider_name: Poolside
+    description: Poolside Laguna coding models.
+    provider_url: https://poolside.ai
+    api_endpoint: https://api.poolside.ai/v1/chat/completions
     models: ["poolside:poolside/laguna-s-2.1"]
     api_key_env: POOLSIDE_API_KEY
     priority: 46
   # Added 2026-10-08. Model ids come from each vendor's docs/catalog; an empty
   # list means the key is registered but no verified default model id yet.
   - name: google
+    provider_name: Google AI (Gemini)
+    description: Gemini via Google AI API / GenAI SDK.
+    provider_url: https://ai.google.dev/gemini-api/docs
+    api_endpoint: https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
     models: ["google:gemini-3.8-flash"]
     api_key_env: GOOGLE_API_KEY
     priority: 47
   - name: openrouter
+    provider_name: OpenRouter
+    description: Multi-provider router (OpenAI-compatible).
+    provider_url: https://openrouter.ai/docs
+    api_endpoint: https://openrouter.ai/api/v1/chat/completions
     models: ["openrouter:poolside/laguna-s-2.1:free"]
     api_key_env: OPENROUTER_API_KEY
     priority: 48
   - name: zenmux
+    provider_name: ZenMux
+    description: ZenMux model gateway; set model id after catalog verification.
+    provider_url: https://zenmux.ai
+    api_endpoint: https://zenmux.ai/api/v1/chat/completions
     models: []
     api_key_env: ZENMUX_API_KEY
     priority: 49
   - name: mistral
+    provider_name: Mistral AI
+    description: Mistral chat completions API.
+    provider_url: https://docs.mistral.ai
+    api_endpoint: https://api.mistral.ai/v1/chat/completions
     models: []
     api_key_env: MISTRAL_API_KEY
     priority: 50
   - name: nvidia
+    provider_name: NVIDIA NIM
+    description: NVIDIA inference microservices (OpenAI-compatible).
+    provider_url: https://build.nvidia.com
+    api_endpoint: https://integrate.api.nvidia.com/v1/chat/completions
     models: ["nvidia:nvidia/nemotron-3-ultra-550b-a55b"]
     api_key_env: NVIDIA_NIM_API_KEY
     priority: 51
   - name: sambanova
+    provider_name: SambaNova
+    description: SambaNova Cloud fast inference.
+    provider_url: https://docs.sambanova.ai
+    api_endpoint: https://api.sambanova.ai/v1/chat/completions
     models: ["sambanova:gpt-oss-120b"]
     api_key_env: SAMBANOVA_API_KEY
     priority: 52
   - name: kimi
+    provider_name: Moonshot (Kimi)
+    description: Moonshot Kimi API.
+    provider_url: https://platform.moonshot.ai/docs
+    api_endpoint: https://api.moonshot.ai/v1/chat/completions
     models: ["kimi:kimi-k3"]
     api_key_env: KIMI_API_KEY
     priority: 53
   - name: xiaomi
-    models: ["xiaomi:mimo-v2.6-pro"]
+    provider_name: Xiaomi Mimo
+    description: Mimo models; base URL often from MIMO_BASE_URL env.
+    provider_url: https://www.mi.com
+    api_endpoint: "${MIMO_BASE_URL}/chat/completions"
+    models: ["xiaomi:mimo-v2.6-pro", "xiaomi:mimo-v2.6-flash"]
     api_key_env: MIMO_API_KEY
     priority: 54
   - name: opencode
+    provider_name: OpenCode Zen
+    description: OpenCode Zen free-tier model routing.
+    provider_url: https://opencode.ai
+    api_endpoint: https://opencode.ai/zen/v1/chat/completions
     models: ["opencode:nemotron-3-ultra-free"]
     api_key_env: OPENCODE_API_KEY
     priority: 55
   - name: meta
+    provider_name: Meta
+    description: Meta generative APIs (e.g. Muse); confirm model id in vendor catalog.
+    provider_url: https://ai.meta.com
+    api_endpoint: https://api.meta.ai/v1/chat/completions
     models: ["meta:muse-spark-1.3"]
     api_key_env: META_API_KEY
     priority: 56
   - name: cohere
+    provider_name: Cohere
+    description: Cohere chat API v2.
+    provider_url: https://docs.cohere.com
+    api_endpoint: https://api.cohere.com/v2/chat
     models: []
     api_key_env: COHERE_API_KEY
     priority: 57
   - name: fireworks
+    provider_name: Fireworks AI
+    description: Fireworks serverless inference.
+    provider_url: https://docs.fireworks.ai
+    api_endpoint: https://api.fireworks.ai/inference/v1/chat/completions
     models: []
     api_key_env: FIREWORKS_API_KEY
     priority: 58
   - name: novita
+    provider_name: Novita AI
+    description: Novita GPU cloud (OpenAI-compatible).
+    provider_url: https://novita.ai/docs
+    api_endpoint: https://api.novita.ai/v3/openai/chat/completions
     models: []
     api_key_env: NOVITA_API_KEY
     priority: 59
   - name: huggingface
+    provider_name: Hugging Face Inference
+    description: HF inference router (OpenAI-compatible).
+    provider_url: https://huggingface.co/docs/inference-providers
+    api_endpoint: https://router.huggingface.co/v1/chat/completions
     models: []
     api_key_env: HUGGINGFACE_API_KEY
     priority: 60
   - name: ollama
+    provider_name: Ollama Cloud
+    description: Ollama cloud API (local/cloud hybrid).
+    provider_url: https://ollama.com
+    api_endpoint: https://ollama.com/api/chat
     models: []
     api_key_env: OLLAMA_CLOUD_API_KEY
     priority: 61

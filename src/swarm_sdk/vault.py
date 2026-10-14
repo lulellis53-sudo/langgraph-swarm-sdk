@@ -46,21 +46,8 @@ _NAME = re.compile(r"^[A-Z][A-Z0-9_]{0,63}$")
 type Runner = Callable[[Sequence[str]], str | None]
 type InputRunner = Callable[[Sequence[str], str], str | bool | None]
 
-
-def _api_keychain_args() -> list[str]:
-    """Path of APIKEYCHAIN when that file exists, else nothing.
-
-    Swarm items use ``swarm/<NAME>``. The user key store uses
-    ``APIKEYCHAIN/<NAME>`` in ``~/Library/Keychains/APIKEYCHAIN.keychain-db``
-    (override with ``KEYS_KEYCHAIN``). A missing file skips the lookup.
-    """
-    raw = os.environ.get("KEYS_KEYCHAIN")
-    path = (
-        Path(raw).expanduser()
-        if raw
-        else Path.home() / "Library" / "Keychains" / "APIKEYCHAIN.keychain-db"
-    )
-    return [str(path)] if path.is_file() else []
+# Successful lookups only; missing names stay uncached so a later `keys set` is visible.
+_SECRET_CACHE: dict[str, str] = {}
 
 
 def _keychain_args() -> list[str]:
@@ -237,6 +224,11 @@ def get_with_source(
     return None
 
 
+def clear_cache() -> None:
+    """Drop memoized secret values (call after rotating keys)."""
+    _SECRET_CACHE.clear()
+
+
 def get(
     name: str,
     *,
@@ -244,9 +236,26 @@ def get(
     dotenv: Path | None = None,
     environ: MutableMapping[str, str] | None = None,
 ) -> str | None:
-    """Return the secret value for ``name`` or None."""
+    """Return the secret value for ``name`` or None.
+
+    Default lookups (no ``runner``/``dotenv``/``environ``) memoize successful
+    values for the life of the process; call :func:`clear_cache` after rotation.
+    Environment variables still win over the memo.
+    """
+    _check(name)
+    env = os.environ if environ is None else environ
+    if value := env.get(name):
+        return value
+    use_cache = runner is None and dotenv is None and environ is None
+    if use_cache:
+        cached = _SECRET_CACHE.get(name)
+        if cached is not None:
+            return cached
     found = get_with_source(name, runner=runner, dotenv=dotenv, environ=environ)
-    return found[0] if found else None
+    value = found[0] if found else None
+    if use_cache and value:
+        _SECRET_CACHE[name] = value
+    return value
 
 
 def resolve(
@@ -306,9 +315,10 @@ def set_secret(
 
     if runner is not None:
         result = runner(cmd, command)
-        if isinstance(result, bool):
-            return result
-        return result is not None
+        ok = result if isinstance(result, bool) else result is not None
+        if ok:
+            clear_cache()
+        return ok
 
     if sys.platform != "darwin":
         return False
@@ -322,7 +332,10 @@ def set_secret(
             timeout=TIMEOUT_S,
             check=False,
         )
-        return proc.returncode == 0
+        if proc.returncode == 0:
+            clear_cache()
+            return True
+        return False
     except (OSError, subprocess.TimeoutExpired):
         return False
 
@@ -419,65 +432,18 @@ def prime_runtime_secrets(
     return load_into_env(referenced_names(), runner=runner, dotenv=dotenv, environ=environ)
 
 
-def main(argv: Sequence[str] | None = None, *, runner: Runner | None = None) -> int:
-    """Run ``swarm-vault set NAME`` or ``swarm-vault status [NAME ...]``."""
-    args = list(sys.argv[1:] if argv is None else argv)
-    if not args or args[0] not in {"set", "status", "import"}:
-        print("usage: swarm-vault set NAME | import FILE | status [NAME ...]", file=sys.stderr)
-        return 2
-    cmd, names = args[0], args[1:]
-    try:
-        if cmd == "import":
-            if len(names) != 1:
-                print("usage: swarm-vault import FILE", file=sys.stderr)
-                return 2
-            stored, skipped = import_file(Path(names[0]).expanduser())
-            print(f"stored: {', '.join(stored) or '-'}")
-            print(f"skipped: {', '.join(skipped) or '-'}")
-            return 1 if skipped or not stored else 0
-        if cmd == "set":
-            if len(names) != 1:
-                print("usage: swarm-vault set NAME", file=sys.stderr)
-                return 2
-            name = _check(names[0])
-            if _keychain_args():
-                # `security` stops option parsing at the Keychain positional, so a trailing
-                # `-w` prompt would be ignored: prompt here and send the value on stdin.
-                value = getpass.getpass(f"Value for {name}: ")
-                if not value.strip():
-                    print("empty value", file=sys.stderr)
-                    return 2
-                return 0 if set_secret(name, value) else 1
-            # No value on argv: `security` prompts for it on the terminal.
-            proc = subprocess.run(
-                [
-                    "security",
-                    "add-generic-password",
-                    "-a",
-                    getpass.getuser(),
-                    "-s",
-                    f"{SERVICE_PREFIX}{name}",
-                    "-U",
-                    "-w",
-                ],
-                check=False,
-            )
-            return proc.returncode
-        missing = False
-        for name in names or KNOWN_NAMES:
-            found = get_with_source(name, runner=runner)
-            print(f"{name}: {found[1] if found else 'missing'}")
-            missing = missing or found is None
-        return 1 if missing else 0
-    except VaultError as exc:
-        print(str(exc), file=sys.stderr)
-        return 2
-
+# Thin backwards-compatible shim: the ``swarm-vault`` console script entry point
+# (``swarm_sdk.vault:main`` in pyproject) imports from this module. The
+# implementation lives in :mod:`swarm_sdk.commands.vault_cli`; importing it here
+# (after every definition above) avoids a circular import. CLI output belongs in
+# that module; library code must not print.
+from swarm_sdk.commands.vault_cli import main  # noqa: E402
 
 __all__ = [
     "KNOWN_NAMES",
     "Runner",
     "VaultError",
+    "clear_cache",
     "get",
     "get_jev_key",
     "get_openai_key",

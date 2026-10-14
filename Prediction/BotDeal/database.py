@@ -134,14 +134,18 @@ def read_day(month: str, day: int, *, root: Path | None = None) -> pl.DataFrame:
     path = day_dir(month, day, root=root) / _PRODUCT_FILE
     if not path.exists():
         return pl.DataFrame()
-    return pl.read_parquet(path)
+    return pl.read_parquet(path, missing_columns="insert")
 
 
 def read_month(month: str, *, root: Path | None = None) -> pl.DataFrame:
     """Scan every ``DAY*/products.parquet`` of the month into one frame."""
-    pattern = str(month_dir(month, root=root) / "DAY*" / _PRODUCT_FILE)
-    scans = pl.scan_parquet(pattern)
-    return scans.collect()
+    month_path = month_dir(month, root=root)
+    if not month_path.is_dir() or not list(month_path.glob(f"DAY*/{_PRODUCT_FILE}")):
+        return pl.DataFrame()
+    pattern = str(month_path / "DAY*" / _PRODUCT_FILE)
+    # Older day files predate later schema columns (e.g. specs); insert them
+    # as nulls instead of failing the month scan.
+    return pl.scan_parquet(pattern, missing_columns="insert").collect()
 
 
 def pct_drop(new: float, old: float) -> float:

@@ -62,7 +62,7 @@ BASELINES = {
     "ddr5-64gb": None,
 }
 
-_PRICE = re.compile(r"R\$\s?(\d{1,3}(?:\.\d{3})*(?:,\d{2})?|\d+(?:,\d{2})?)")
+_PRICE = re.compile(r"R\$\s?(\d{1,3}(?:\.\d{3})+(?:,\d{2})?|\d+(?:,\d{2})?)")
 
 
 def parse_brl_cents(text: str) -> int | None:
@@ -88,13 +88,31 @@ def source_for(url: str) -> str | None:
     return None
 
 
-def leads_for(query: str) -> list[tuple[str, str, str]]:
-    """Run one query through the WebSearch lane with the live backends."""
+def leads_for(query: str, *, fresh: bool = False) -> list[tuple[str, str, str]]:
+    """Run one query through the WebSearch lane with the live backends.
+
+    Args:
+        query: Dork string, passed to the searchers as-is.
+        fresh: Skip the search cache so repeated loop cycles hit the
+            network again instead of replaying the same hits.
+    """
     from WebSearch import builtin_searchers, load_providers
-    from WebSearch.agent_tools import search_hits
+    from WebSearch.frontend.websearchers import parallel_search
 
     table = {k: v for k, v in builtin_searchers().items() if k in BACKENDS}
-    hits = search_hits(query, backends=table, limit=10, config=load_providers())
+    if fresh:
+        # parallel_search accepts cache_ttl_s=0 (bypass); search_hits does not.
+        hits = parallel_search(
+            query,
+            backends=table,
+            limit=10,
+            config=load_providers(),
+            cache_ttl_s=0.0,
+        )
+    else:
+        from WebSearch.agent_tools import search_hits
+
+        hits = search_hits(query, backends=table, limit=10, config=load_providers())
     return [(h.url, h.title, h.snippet) for h in hits]
 
 

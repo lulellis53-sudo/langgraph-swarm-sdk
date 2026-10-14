@@ -70,7 +70,7 @@ def classify_math_task(
         The dispatch decision; empty or zero-sized shapes always stay on the CPU.
     """
     if problem.task_type in {"matrix", "vector"}:
-        from swarm_sdk.gpu.opencl_math import _gpu_threshold
+        from swarm_sdk.gpu.opencl_math import gpu_threshold
 
         rows = _rows(problem.shape)
         elements = _element_count(problem.shape)
@@ -78,7 +78,7 @@ def classify_math_task(
         # Cubic/complex operations win on the GPU sooner than simple matmul.
         cubic_ops = {"solve", "eig", "svd", "inv", "det"}
         is_cubic = problem.operation in cubic_ops
-        effective_threshold = _gpu_threshold() // 4 if is_cubic else _gpu_threshold()
+        effective_threshold = gpu_threshold() // 4 if is_cubic else gpu_threshold()
         # Float64 doubles PCIe traffic and compute; raise the bar.
         if problem.dtype == "float64":
             effective_threshold = int(effective_threshold * 1.5)

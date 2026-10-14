@@ -8,9 +8,8 @@ import sqlite3
 from pathlib import Path
 
 import pytest
-from Prediction.br_hardware import connect, import_observation, rebuild_alerts, rebuild_floors
-
 from Prediction import mcp_server as srv
+from Prediction.br_hardware import connect, import_observation, rebuild_alerts, rebuild_floors
 
 
 @pytest.fixture()
@@ -79,6 +78,10 @@ def test_alerts_core_needs_history(conn_over: sqlite3.Connection) -> None:
         assert alert["baseline_days"] >= 5
 
 
+@pytest.mark.skipif(
+    not hasattr(sqlite3.connect(":memory:"), "enable_load_extension"),
+    reason="sqlite3 built without extension loading (macOS default)",
+)
 def test_nearest_core_ranks_query_sku(conn_over: sqlite3.Connection) -> None:
     hits = srv.nearest_core(conn_over, "RTX 5060 barata oferta", k=5)
     assert hits, "KNN returned no hits"
@@ -87,6 +90,10 @@ def test_nearest_core_ranks_query_sku(conn_over: sqlite3.Connection) -> None:
     assert hits[0]["distance"] <= min(h["distance"] for h in hits)
 
 
+@pytest.mark.skipif(
+    not hasattr(sqlite3.connect(":memory:"), "enable_load_extension"),
+    reason="sqlite3 built without extension loading (macOS default)",
+)
 def test_nearest_core_condition_filter(conn_over: sqlite3.Connection) -> None:
     hits = srv.nearest_core(conn_over, "placa de video", k=10, condition="new")
     assert all(h["condition"] == "new" for h in hits)

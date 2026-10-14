@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+
 from Prediction.engine import ForecastConfig, ForecastEngine, ForecastError
 from Prediction.web_evidence import WebEvidenceError, web_forecast
 

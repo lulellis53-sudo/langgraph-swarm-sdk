@@ -35,6 +35,9 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="SWARM_", extra="ignore")
 
+    # Optional single-route mode for a simple install; when set, it takes precedence
+    # over model routes in agent manifests and the swarm YAML.
+    model: str | None = None
     router_model: str = "openai:gpt-6-luna"
     specialist_model: str = "anthropic:claude-sonnet-4.6"
     max_tokens: int = Field(default=2048, ge=1)

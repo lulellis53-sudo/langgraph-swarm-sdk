@@ -1,5 +1,7 @@
 """Stop a LangGraph handoff trail that loops or runs past its depth cap."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 __all__ = ["HandoffCycleError", "HandoffTrail", "advance_handoff"]

@@ -40,7 +40,8 @@ from Prediction.br_hardware import PRODUCTS  # noqa: E402
 mcp = MCPServer("promodeals_mcp")
 
 DEFAULT_DB = Path(__file__).resolve().parent / "offers.db"
-SEMANTIC_PATH = Path.home() / "Swarm" / "WebSearch" / "backend" / "semantic.py"
+_DEFAULT_SEMANTIC = Path(__file__).resolve().parents[1] / "WebSearch" / "backend" / "semantic.py"
+SEMANTIC_PATH = Path(os.environ.get("PROMODEALS_SEMANTIC_PATH", _DEFAULT_SEMANTIC))
 SKU_NAMES = {p.sku: p.name for p in PRODUCTS}
 _BASELINES_FALLBACK: dict[str, float | None] = {
     "rtx-5060": 2400.0,

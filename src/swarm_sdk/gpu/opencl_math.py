@@ -720,7 +720,7 @@ def topk_ip(
     return idx.astype(np.int64), scores[idx]
 
 
-def _gpu_threshold() -> int:
+def gpu_threshold() -> int:
     """Minimum row count before GPU offload is worth the transfer overhead."""
     try:
         # One-shot calls re-upload the matrix every time, which stays slower
@@ -734,4 +734,8 @@ def _gpu_threshold() -> int:
 
 
 def _use_gpu(n_rows: int) -> bool:
-    return _ENABLED and _STATE.available and n_rows >= _gpu_threshold()
+    return _ENABLED and _STATE.available and n_rows >= gpu_threshold()
+
+
+# Backwards-compatible alias for the former private name.
+_gpu_threshold = gpu_threshold

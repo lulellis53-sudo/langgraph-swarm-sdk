@@ -165,6 +165,22 @@ Mean measured improvement across the token metrics: **48.5% fewer tokens**; the
 two 0→100 metrics (delegation recovery, cache integrity) are percentage-point
 wins rather than ratios.
 
+### Observability wrapper overhead (`Tasks/observability_overhead/`)
+
+```bash
+PYTHONPATH=Agents:. uv run python -m benchmark.Tasks.observability_overhead.benchmark_observability_overhead --write-results
+uv run --extra dev --extra observability pytest Agents/benchmark/Tasks/observability_overhead -q
+uv run python -m benchmark.run --task observability_overhead
+```
+
+Measures per-call overhead of the shipped observability wrappers against an empty
+floor with the paired ABBA protocol: Prometheus counter/histogram updates, OTel
+no-op spans and real SDK spans into a local in-memory exporter, `UsageLog.add`,
+and stdlib logging on both the disabled (level-filtered) and NullHandler paths.
+Instrumentation is verified before timing (counter deltas, span validity, usage
+rollup); `ns/call` is reported, never gated on machine-dependent thresholds.
+Optional packages missing → the row is reported as `available: false`.
+
 ### Cold import vs eager-import stack (`Tasks/cold_import/`)
 
 ```bash

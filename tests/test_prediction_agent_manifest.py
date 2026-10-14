@@ -5,18 +5,24 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 import yaml
 
 from swarm_sdk.agents.manifest import load_agent_manifest
 
-AGENTS_ROOT = Path(__file__).parent.parent / "Agents"
+AGENTS_ROOT = Path(__file__).resolve().parents[1] / "Agents"
+
+pytestmark = pytest.mark.skipif(
+    not (AGENTS_ROOT / "coordination.yaml").is_file(),
+    reason="Agents/ is not in this checkout",
+)
 
 
 def test_prediction_manifest_loads() -> None:
     manifest = load_agent_manifest(AGENTS_ROOT / "Prediction" / "agent.yaml")
     assert manifest.name == "Prediction"
-    assert manifest.role == "time_series_forecasting"
-    assert {task.id for task in manifest.tasks} == {"forecast", "backtest", "feature_engineering"}
+    assert manifest.role == "forecast_engine"
+    assert {task.id for task in manifest.tasks} == {"forecast_series"}
 
 
 def test_prediction_handoff_schema_is_valid_json_schema() -> None:

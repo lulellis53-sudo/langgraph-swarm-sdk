@@ -6,6 +6,7 @@ Default counting uses **tiktoken** (``cl100k_base``). Pass a Hugging Face
 
 from __future__ import annotations
 
+import hashlib
 import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol
@@ -15,7 +16,7 @@ from swarm_sdk.observability import metrics
 _DEFAULT_TIKTOKEN = "cl100k_base"
 _ENCODING_CACHE: dict[str, Any] = {}
 _ENCODING_MISSING: set[str] = set()
-_COUNT_CACHE: dict[tuple[int, str], int] = {}
+_COUNT_CACHE: dict[tuple[int, bytes, int], int] = {}
 _COUNT_CACHE_MAX = 512
 _COUNT_LOCK = threading.Lock()
 _whitespace_pre: Any | None = None
@@ -63,7 +64,8 @@ def _tiktoken_encoding(name: str = _DEFAULT_TIKTOKEN) -> Any | None:
     try:
         encoding = tiktoken.get_encoding(name)
     except Exception:
-        # Offline / first-download failure → whitespace fallback (retry next call).
+        # Offline / first-download failure → whitespace fallback; do not retry.
+        _ENCODING_MISSING.add(name)
         return None
     _ENCODING_CACHE[name] = encoding
     return encoding
@@ -101,11 +103,10 @@ def count_text(text: str, tokenizer: _HasEncode | None = None) -> int:
     """
     if not text:
         return 0
-    # Use the tokenizer identity and the text itself as the cache key. Hash
-    # collisions on ``hash(text)`` could silently return the wrong count, and
-    # the cache is small enough (512 entries) that storing the string is cheap.
+    # Fixed-size key: sha256 digest + length. Full-text keys pinned whole prompts
+    # as dict keys; hash() alone could collide and return the wrong count.
     tokenizer_id = id(tokenizer) if tokenizer is not None else 0
-    key = (tokenizer_id, text)
+    key = (tokenizer_id, hashlib.sha256(text.encode()).digest(), len(text))
     cached = _COUNT_CACHE.get(key)
     if cached is not None:
         metrics.record_cache_hit("token_count")
@@ -256,30 +257,46 @@ class TokenBudget:
     def _take(self, system_text: str, prior: list[str], lines: list[str]) -> list[str]:
         """Append each line in order, keeping only those that still fit the budget."""
         chosen = list(prior)
+        joined = "\n".join(prior)
         for line in lines:
-            fitted = self._fit(system_text, chosen, line, append=True)
+            fitted = self._fit(system_text, joined, line, append=True)
             if fitted:
                 chosen.append(fitted)
+                joined = f"{joined}\n{fitted}" if joined else fitted
         return chosen
 
     def _take_newest(self, system_text: str, memories: list[str], turns: list[str]) -> list[str]:
         """Keep the newest turns that fit, preserving chronological order in the result."""
-        chosen: list[str] = []
-        # Walk newest to oldest so the most recent turns survive when space is tight.
+        chosen_rev: list[str] = []
+        mem_joined = "\n".join(memories)
+        # Chronological join of the turns selected so far (oldest first).
+        turns_joined = ""
         for line in reversed(turns):
-            fitted = self._fit(system_text, memories + chosen, line, append=False)
+            prior = f"{mem_joined}\n{turns_joined}" if mem_joined and turns_joined else (
+                mem_joined or turns_joined
+            )
+            fitted = self._fit(system_text, prior, line, append=False)
             if fitted:
-                # Re-insert at the front to restore chronological order.
-                chosen.insert(0, fitted)
-        return chosen
+                chosen_rev.append(fitted)
+                turns_joined = f"{fitted}\n{turns_joined}" if turns_joined else fitted
+        chosen_rev.reverse()
+        return chosen_rev
 
-    def _fit(self, system_text: str, parts: list[str], line: str, *, append: bool) -> str | None:
-        """Return ``line`` (or a truncated form) if the assembled prompt stays within budget."""
+    def _fit(self, system_text: str, prior_joined: str, line: str, *, append: bool) -> str | None:
+        """Return ``line`` (or a truncated form) if the assembled prompt stays within budget.
+
+        ``prior_joined`` is the already-joined user text that must be kept; each
+        probe then only prepends/appends the candidate piece instead of re-joining
+        the full parts list.
+        """
 
         def assembled(piece: str) -> str:
             """The packed prompt text after assembly."""
-            ordered = [*parts, piece] if append else [piece, *parts]
-            return PackedPrompt(system=system_text, user="\n".join(ordered)).text
+            if append:
+                user = f"{prior_joined}\n{piece}" if prior_joined else piece
+            else:
+                user = f"{piece}\n{prior_joined}" if prior_joined else piece
+            return PackedPrompt(system=system_text, user=user).text
 
         if self.count(assembled(line)) <= self.max_tokens:
             return line
@@ -316,13 +333,23 @@ class TokenBudget:
             return ""
         if self.count(text) <= limit:
             return text
-        best = ""
-        lo = 0
-        hi = len(text)
+        # Typical English is ~4 chars/token; start from that estimate and only
+        # binary-search when it is wrong (saves log2(n) full tokenizations).
+        guess = min(len(text), max(0, limit * 4))
+        piece = text[:guess].rstrip()
+        if piece and self.count(piece) <= limit:
+            # Estimate fits: search only the remaining upper half.
+            best = piece
+            lo = guess + 1
+            hi = len(text)
+        else:
+            best = ""
+            lo = 0
+            hi = guess - 1 if guess > 0 else -1
         while lo <= hi:
             mid = (lo + hi) // 2
             piece = text[:mid].rstrip()
-            if self.count(piece) <= limit:
+            if piece and self.count(piece) <= limit:
                 best = piece
                 lo = mid + 1
             else:

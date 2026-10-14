@@ -28,6 +28,10 @@ class ProviderEntry(BaseModel):
     """One provider row from ``providers.yaml``."""
 
     name: str
+    provider_name: str = ""
+    description: str = ""
+    provider_url: str = ""
+    api_endpoint: str = ""
     models: list[str] = Field(default_factory=list)
     api_key_env: str = ""
     priority: int = 100

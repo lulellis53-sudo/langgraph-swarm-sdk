@@ -236,7 +236,10 @@ class TestLowSwarmCLI:
         assert exit_code == 2
 
     def test_cli_pyproject_scripts_entry(self) -> None:
-        """Verify pyproject.toml defines low-swarm script entrypoint."""
-        pyproject_path = Path("/Users/usuario/Swarm/pyproject.toml")
+        """Verify pyproject.toml defines the CLI entry points."""
+        pyproject_path = Path(__file__).resolve().parents[1] / "pyproject.toml"
         content = pyproject_path.read_text(encoding="utf-8")
         assert 'low-swarm = "swarm_sdk.cli:main"' in content
+        assert 'websearch = "WebSearch.cli:main"' in content
+        assert 'agents = "swarm_sdk.agents.validate:main"' in content
+        assert '"WebSearch"' in content.split("[tool.hatch.build.targets.wheel]", 1)[1]

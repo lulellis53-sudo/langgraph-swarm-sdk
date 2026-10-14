@@ -15,6 +15,9 @@ ms-toolsai.jupyter-renderers
 ms-toolsai.vscode-jupyter-cell-tags
 ms-toolsai.vscode-jupyter-slideshow
 google.colab
+GitHub.copilot
+GitHub.copilot-chat
+Continue.continue
 biomejs.biome
 charliermarsh.ruff
 astral-sh.ty

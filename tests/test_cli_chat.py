@@ -12,12 +12,13 @@ import pytest
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
 from WebSearch.browser_agent import browse
+from WebSearch.frontend import providers as ws_providers
+from WebSearch.frontend import websearchers as ws
 from WebSearch.frontend.websearchers import SearcherSpec
 
 from swarm_sdk.models import cli_chat
 from swarm_sdk.models.chat import load_chat_model
 from swarm_sdk.models.cli_chat import CliChatModel, CliError, load_cli_model, parse_reply
-from WebSearch.frontend import websearchers as ws
 
 # ---------------------------------------------------------------- reply parsing
 
@@ -226,8 +227,9 @@ def test_openrouter_web_parses_citations_dedupes_and_reports_usage(
         seen.update(url=url, body=kwargs["json_body"], headers=kwargs["headers"])
         return NESTED
 
-    monkeypatch.setattr(ws, "_resolve_secret", lambda name: "or-key" if name == "K" else "")
-    monkeypatch.setattr(ws, "_httpx_json", fake)
+    # The implementation lives in providers.py; patch its module globals.
+    monkeypatch.setattr(ws_providers, "env_keys", lambda spec: ["or-key"])
+    monkeypatch.setattr(ws_providers, "call_json", fake)
     hits = ws.search_openrouter_web("lightgbm", _spec())
     assert [h.url for h in hits] == ["https://a.example/1", "https://b.example/2"]
     assert hits[0].title == "A" and hits[0].snippet == "about a" and hits[0].api_tokens == 321
@@ -238,8 +240,10 @@ def test_openrouter_web_parses_citations_dedupes_and_reports_usage(
 
 def test_openrouter_web_translates_site_operators(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: dict[str, Any] = {}
-    monkeypatch.setattr(ws, "_resolve_secret", lambda name: "k")
-    monkeypatch.setattr(ws, "_httpx_json", lambda *a, **k: seen.update(body=k["json_body"]) or {})
+    monkeypatch.setattr(ws_providers, "env_keys", lambda spec: ["k"])
+    monkeypatch.setattr(
+        ws_providers, "call_json", lambda *a, **k: seen.update(body=k["json_body"]) or {}
+    )
     ws.search_openrouter_web("lightgbm site:github.com -site:x.com", _spec(dork="translate"))
     plugin = seen["body"]["plugins"][0]
     assert plugin["include_domains"] == ["github.com"] and plugin["exclude_domains"] == ["x.com"]
@@ -250,10 +254,10 @@ def test_openrouter_web_translates_site_operators(monkeypatch: pytest.MonkeyPatc
 def test_openrouter_web_without_key_or_on_failure_returns_nothing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(ws, "_resolve_secret", lambda name: "")
+    monkeypatch.setattr(ws_providers, "env_keys", lambda spec: [])
     assert ws.search_openrouter_web("q", _spec()) == []
-    monkeypatch.setattr(ws, "_resolve_secret", lambda name: "k")
-    monkeypatch.setattr(ws, "_httpx_json", lambda *a, **k: None)
+    monkeypatch.setattr(ws_providers, "env_keys", lambda spec: ["k"])
+    monkeypatch.setattr(ws_providers, "call_json", lambda *a, **k: None)
     assert ws.search_openrouter_web("q", _spec()) == []
 
 

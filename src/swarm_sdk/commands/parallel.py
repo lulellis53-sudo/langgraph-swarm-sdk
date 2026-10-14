@@ -11,10 +11,10 @@ from typing import Any
 from swarm_sdk.agents.manifest import load_all_agent_manifests
 from swarm_sdk.cli import create_panel, create_table
 from swarm_sdk.commands import Handler, markup_safe
+from swarm_sdk.execution import parallel_cap
 from swarm_sdk.orchestrator.graph import run_plan
 from swarm_sdk.orchestrator.plan import Plan
 from swarm_sdk.orchestrator.spawn import make_factory, spawn
-from swarm_sdk.runtime import parallel_cap
 
 
 def _positive_int(text: str) -> int:
@@ -28,6 +28,7 @@ def _positive_int(text: str) -> int:
 
 
 def register(subparsers: Any) -> tuple[str, Handler]:
+    """Register the ``parallel`` command group; return ``(name, handler)``."""
     parser = subparsers.add_parser(
         "parallel", help="Execute a plan in dependency waves with bounded parallelism"
     )

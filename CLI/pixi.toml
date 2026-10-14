@@ -1,0 +1,17 @@
+[workspace]
+name = "gemini-cli-swarm"
+channels = ["conda-forge"]
+platforms = ["osx-64"]
+
+[dependencies]
+python = "==3.14.9"
+rust = "==1.99.0"
+
+[activation.env]
+PATH = "$HOME/.local/opt/node-26.11.1-avx2/bin:$HOME/.local/opt/typescript-native-avx2/bin:$PATH"
+
+[tasks]
+check-node = "test \"$(node --version)\" = v26.11.1 && node -p 'process.arch'"
+check-tsgo = "tsgo --version"
+test-py = "python -m pytest -q --tb=short"
+test-js = "npm test"

@@ -12,7 +12,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SKIP_DIRS = {".venv", "docs", "scripts"}
-SKIP_FILES = {"conftest.py"}
+# Generated protobuf stubs; AGENTS.md forbids hand-editing ``swarm_pb2*`` files.
+SKIP_FILES = {"conftest.py", "swarm_pb2.py", "swarm_pb2_grpc.py"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,7 +27,9 @@ class Issue:
 def _py_files() -> list[Path]:
     out: list[Path] = []
     for path in sorted(ROOT.rglob("*.py")):
-        if any(part in SKIP_DIRS for part in path.parts):
+        rel_parts = path.relative_to(ROOT).parts
+        # Skip hidden tool/backup dirs (``.venv``, ``.cursor``, ``.docfix-backup-*``, ...).
+        if any(part in SKIP_DIRS or part.startswith(".") for part in rel_parts[:-1]):
             continue
         if path.name in SKIP_FILES:
             continue
@@ -61,7 +64,8 @@ def _annotation_ok(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> list[str]:
 
 def _check_file(path: Path) -> list[Issue]:
     rel = path.relative_to(ROOT)
-    in_tests = "tests" in rel.parts
+    # Tests (``tests/`` dirs or ``test_*.py`` files) are exempt from docstring checks.
+    in_tests = "tests" in rel.parts or path.name.startswith("test_")
     source = path.read_text(encoding="utf-8")
     try:
         tree = ast.parse(source, filename=str(path))

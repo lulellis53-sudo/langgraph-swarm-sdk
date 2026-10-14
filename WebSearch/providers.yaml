@@ -27,6 +27,13 @@ searchers:
     api_key_env: TAVILY_API_KEY_1  # TAVILY_API_KEY answers 401 (2026-10-08); _1 and _2 answer 200
     api_key_env_fallbacks: [TAVILY_API_KEY_2, TAVILY_API_KEY]
     description: Tavily Search API.
+  - id: openrouter_web
+    kind: websearcher
+    enabled: true
+    dork: translate  # site:/-site: become plugin include/exclude domains
+    api_key_env: OPENROUTER_API_KEY
+    engine: openai/gpt-oss-20b:free
+    description: OpenRouter web-search plugin (cheap model cites sources).
   - id: parallel
     kind: websearcher
     enabled: true

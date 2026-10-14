@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
+
 if TYPE_CHECKING:
     import pandas as pd
     from mlforecast import MLForecast
@@ -47,11 +49,11 @@ def _validate(df: pd.DataFrame, *, min_rows_per_series: int) -> None:
     missing = [col for col in REQUIRED_COLUMNS if col not in df.columns]
     if missing:
         raise ForecastError(f"missing columns: {missing}")
-    if df["y"].isna().any():
+    if df["y"].hasnans:
         raise ForecastError("column 'y' contains NaN")
     if df.duplicated(["unique_id", "ds"]).any():
         raise ForecastError("duplicate (unique_id, ds) rows")
-    shortest = int(df.groupby("unique_id").size().min())
+    shortest = int(df["unique_id"].value_counts(sort=False).min())
     if shortest < min_rows_per_series:
         raise ForecastError(f"need >= {min_rows_per_series} rows per series, got {shortest}")
 
@@ -155,13 +157,22 @@ class ForecastEngine:
             n_windows=n_windows,
             step_size=stride,
         )
-        err = (cv["y"] - cv["lgbm"]).abs()
+
+        y_arr = cv["y"].to_numpy()
+        lgbm_arr = cv["lgbm"].to_numpy()
+        err = np.abs(y_arr - lgbm_arr)
+
+        denom = np.abs(y_arr) + np.abs(lgbm_arr)
+        np.clip(denom, 1e-9, None, out=denom)
+
         cv = cv.assign(
             abs_err=err,
-            sq_err=err**2,
-            smape=2 * err / (cv["y"].abs() + cv["lgbm"].abs()).clip(lower=1e-9),
+            sq_err=err ** 2,
+            smape=(2.0 * err) / denom,
         )
-        grouped = cv.groupby("unique_id")
+
+        cv["unique_id"] = cv["unique_id"].astype("category", copy=False)
+        grouped = cv.groupby("unique_id", observed=True)
         return (
             grouped.agg(mae=("abs_err", "mean"), mse=("sq_err", "mean"), smape=("smape", "mean"))
             .assign(rmse=lambda f: f["mse"] ** 0.5)

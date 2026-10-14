@@ -6,6 +6,8 @@ existing confidence gate into proceed, mixed, or web-fallback. Self-RAG turns
 that same gate into retrieve, irrelevant, or supported.
 """
 
+from __future__ import annotations
+
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum

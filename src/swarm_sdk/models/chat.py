@@ -8,11 +8,11 @@ import threading
 from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple
-
-import yaml
+from weakref import WeakKeyDictionary
 
 from swarm_sdk import vault
 from swarm_sdk.execution import offload
+from swarm_sdk.models.cli_chat import CLI_PROVIDERS, load_cli_model
 from swarm_sdk.observability import metrics
 from swarm_sdk.prompting.budget import count_text
 
@@ -68,6 +68,8 @@ def _name_list(value: object) -> tuple[str, ...]:
 def _route_index() -> dict[str, Route]:
     """Model name -> route from the packaged registry."""
     path = Path(__file__).resolve().parent.parent / "agents" / "config" / "model_registry.yaml"
+    import yaml
+
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     except OSError:
@@ -242,7 +244,27 @@ _MODEL_CACHE_MAX = 32
 # Which registry key built the cached client. The value is an index into the
 # present keys, so a 401 can advance to the next fallback without logging it.
 _KEY_INDEX: dict[str, int] = {}
-_ROUTE_FOR: dict[int, str] = {}
+# Model instance → route name. Weak keys so a dropped model is not pinned by the
+# route table (id()-keyed dicts leak and go stale after GC).
+_ROUTE_FOR: WeakKeyDictionary[BaseChatModel, str] = WeakKeyDictionary()
+# Fallback for unhashable / non-weakref-able test doubles; pruned on cache clear.
+_ROUTE_FOR_BY_ID: dict[int, str] = {}
+
+
+def _remember_route(model: BaseChatModel, model_name: str) -> None:
+    """Record which registry route built ``model``."""
+    try:
+        _ROUTE_FOR[model] = model_name
+    except TypeError:
+        _ROUTE_FOR_BY_ID[id(model)] = model_name
+
+
+def _route_of(model: BaseChatModel) -> str | None:
+    """Return the registry route that built ``model``, if known."""
+    try:
+        return _ROUTE_FOR.get(model)
+    except TypeError:
+        return _ROUTE_FOR_BY_ID.get(id(model))
 
 
 def load_chat_model(model_name: str) -> BaseChatModel:
@@ -278,7 +300,8 @@ def load_chat_model(model_name: str) -> BaseChatModel:
     with _MODEL_CACHE_LOCK:
         if len(_MODEL_CACHE) >= _MODEL_CACHE_MAX:
             # Dicts keep insertion order, so this evicts the oldest entry (FIFO, not LRU).
-            _MODEL_CACHE.pop(next(iter(_MODEL_CACHE)))
+            evicted_name, _ = _MODEL_CACHE.pop(next(iter(_MODEL_CACHE)))
+            _KEY_INDEX.pop(evicted_name, None)
         _MODEL_CACHE[model_name] = chat_model
     return chat_model
 
@@ -289,6 +312,7 @@ def load_chat_model_cache_clear() -> None:
         _MODEL_CACHE.clear()
         _KEY_INDEX.clear()
         _ROUTE_FOR.clear()
+        _ROUTE_FOR_BY_ID.clear()
 
 
 # Expose the same ``cache_clear`` attribute tests and callers expect from ``lru_cache``.
@@ -312,6 +336,10 @@ def _build_chat_model(model_name: str, *, key_index: int) -> BaseChatModel:
     key_name = selected[0] if selected is not None else ""
     key_value = selected[1] if selected is not None else ""
     used_index = key_index if selected is not None else 0
+    if provider in CLI_PROVIDERS:
+        # CLI-backed providers (claude-cli, codex-cli, grok-cli) run the local
+        # binary via OAuth; they must never see or inherit an API key.
+        return load_cli_model(provider, model)
     if provider == "google":
         kwargs = {"google_api_key": key_value} if key_value else {}
         chat_model = init_chat_model(f"google_genai:{model}", **kwargs)
@@ -341,7 +369,7 @@ def _build_chat_model(model_name: str, *, key_index: int) -> BaseChatModel:
         chat_model = init_chat_model(model_name, **kwargs)  # ty: ignore[no-matching-overload]
     if not isinstance(chat_model, BaseChatModel):
         raise TypeError(f"expected a chat model, got {type(chat_model).__name__}")
-    _ROUTE_FOR[id(chat_model)] = model_name
+    _remember_route(chat_model, model_name)
     _KEY_INDEX[model_name] = used_index
     if key_name:
         logger.info("route %s is using %s", model_name, key_name)
@@ -365,7 +393,7 @@ def _invoke(model: BaseChatModel, messages: list[object], *, json_mode: bool) ->
 
 def _model_with_next_key(model: BaseChatModel) -> BaseChatModel | None:
     """Rebuild ``model``'s route with its next fallback key after a 401."""
-    route_name = _ROUTE_FOR.get(id(model))
+    route_name = _route_of(model)
     if route_name is None:
         return None
     route = _route_index().get(route_name)

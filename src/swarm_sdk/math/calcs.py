@@ -153,6 +153,7 @@ class ArrowCalcs:
                 min_val = pc.min(arr).as_py() or 0.0
                 max_val = pc.max(arr).as_py() or 0.0
                 var_val = pc.variance(arr).as_py() or 0.0
+                median_val = pc.quantile(arr, q=0.5, interpolation="linear")[0].as_py() or 0.0
 
                 return {
                     "count": float(count),
@@ -162,6 +163,7 @@ class ArrowCalcs:
                     "min": round(float(min_val), 6),
                     "max": round(float(max_val), 6),
                     "variance": round(float(var_val), 6),
+                    "median": round(float(median_val), 6),
                 }
             except Exception:
                 pass
@@ -172,6 +174,9 @@ class ArrowCalcs:
         m = s / n
         var = sum((x - m) ** 2 for x in nums) / n
         std = math.sqrt(var)
+        ordered = sorted(nums)
+        mid = n // 2
+        median = ordered[mid] if n % 2 else (ordered[mid - 1] + ordered[mid]) / 2
         return {
             "count": float(n),
             "mean": round(m, 6),
@@ -180,6 +185,7 @@ class ArrowCalcs:
             "min": round(min(nums), 6),
             "max": round(max(nums), 6),
             "variance": round(var, 6),
+            "median": round(median, 6),
         }
 
     @classmethod

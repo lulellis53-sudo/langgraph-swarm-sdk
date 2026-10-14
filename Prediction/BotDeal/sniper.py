@@ -21,6 +21,7 @@ import re
 from typing import Any
 
 import httpx
+
 from Prediction import harvest
 from Prediction.BotDeal.database import append_products
 from Prediction.BotDeal.hardware import load_catalog, merged_floor_targets
@@ -107,12 +108,19 @@ def _post(
     """Call one Bot API method over HTTPS; the host is pinned, no user URLs."""
     if not token or not re.fullmatch(r"\d+:[A-Za-z0-9_\-]+", token):
         raise ValueError("TELEGRAM_BOT_TOKEN missing or malformed")
-    response = httpx.post(
-        API_BASE.format(token=token, method=method),
-        json=payload,
-        timeout=timeout_s,
-    )
-    response.raise_for_status()
+    try:
+        response = httpx.post(
+            API_BASE.format(token=token, method=method),
+            json=payload,
+            timeout=timeout_s,
+        )
+        response.raise_for_status()
+    except httpx.HTTPError as err:
+        # httpx error messages embed the request URL, which carries the bot
+        # token: re-raise a sanitized error so the token never leaks.
+        status = getattr(err, "response", None)
+        detail = f" HTTP {status.status_code}" if status is not None else ""
+        raise httpx.HTTPError(f"Telegram {method} failed:{detail}") from None
     return response.json()
 
 
@@ -170,6 +178,7 @@ def _next_offset(result: dict[str, Any]) -> int:
 def telegram_settings() -> dict[str, Any]:
     """Read the ``telegram:`` block from ``hardware.yaml`` (defaults when absent)."""
     import yaml as _yaml
+
     from Prediction.BotDeal.hardware import HARDWARE_YAML
 
     data = _yaml.safe_load(HARDWARE_YAML.read_text()).get("telegram", {})

@@ -2,14 +2,17 @@
 
 Python source is parsed with tree-sitter. Node kinds are reported with the
 names the agent contracts use (``FunctionDef``, ``Call``, ``Import``).
+Heavy native imports (tree-sitter) are deferred to first use.
 """
 
 from __future__ import annotations
 
-import tree_sitter_python as tspython
-from tree_sitter import Language, Node, Parser
+from typing import TYPE_CHECKING
 
 __all__ = ["outline_source", "syntax_tools"]
+
+if TYPE_CHECKING:
+    from tree_sitter import Node
 
 _LIMIT = 40
 _KINDS = {
@@ -19,7 +22,18 @@ _KINDS = {
     "import_statement": "Import",
     "import_from_statement": "ImportFrom",
 }
-_PARSER = Parser(Language(tspython.language()))
+_PARSER: object | None = None
+
+
+def _get_parser():
+    """Load and cache the tree-sitter Python parser on first use."""
+    global _PARSER
+    if _PARSER is None:
+        import tree_sitter_python as tspython
+        from tree_sitter import Language, Parser
+
+        _PARSER = Parser(Language(tspython.language()))
+    return _PARSER
 
 
 def _label(node: Node) -> str:
@@ -63,7 +77,8 @@ def outline_source(source: str, language: str = "python") -> str:
         return f"no grammar loaded for {language}; python is available"
     if not source.strip():
         return "empty source"
-    tree = _PARSER.parse(source.encode("utf-8"))
+    parser = _get_parser()
+    tree = parser.parse(source.encode("utf-8"))
     if tree.root_node.has_error:
         return "parse error"
     found: list[str] = []

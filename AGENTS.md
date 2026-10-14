@@ -8,7 +8,7 @@ Instructions for humans and AI assistants working in this repository. Read this 
 | --------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | [Project overview](#topic-project-overview)               | What LangGraph Swarm SDK is; coding assistant vs swarm specialists               |
 | [Repository layout](#topic-repository-layout)             | Path map; protobuf note; quick links                                             |
-| [Development environment](#topic-development-environment) | Python/uv, services, quality gate, Colab, extensions                       |
+| [Development environment](#topic-development-environment) | Python/uv, services, quality gate, Jupyter, extensions                       |
 | [CLI tooling](#topic-cli-tooling)                          | Prefer installed CLIs; Git and worktree inspection workflow                 |
 | [Workflow](#topic-workflow)                               | How to change code; when stuck                                                   |
 | [Benchmarks](#topic-benchmarks)                           | Task layout; SQL Pro suite                                                       |
@@ -37,6 +37,34 @@ For swarm coordination: start from `[Agents/SKILLS.md](Agents/SKILLS.md)` and `[
 
 ## Topic: Repository layout
 
+```
+# (Dont modify)
+                      SDK
+                      . LangGraph
+                      . Project Configs
+                      . Share
+                      . src
+                      # Python 3.15
+                      # pyproject.toml
+                            |
+      +-----------+---------+----------+-----------+
+      |           |         |          |
+      v           v         v          v
+ +----------+ +----------+ +----------+ +----------+
+ | Modules  | |  Agents  | |  Tools   | |  Vector  |
+ +----------+ +----------+ +----------+ +----------+
+      |            |            |
+      +-- Newsletter +-- RAG      +-- Swarm
+      +-- BotDeal    +-- Memory   +-- Prediction
+      +-- TechNews                +-- WebSearch
+                                  +-- WebScraper
+
+ # Swarm       multi-orchestration agents
+ # Prediction  algorithms; each module has its own forecast
+ # WebSearch   WebSearch / WebFetch = agent tooling
+ # Make a copy of the branch if want to benchmark A/B test
+```
+
 ### Subtopic: Repository map
 
 | Path                                                         | Purpose                                                                                                  |
@@ -50,8 +78,8 @@ For swarm coordination: start from `[Agents/SKILLS.md](Agents/SKILLS.md)` and `[
 | `[Main/config/swarm.yaml](Main/config/swarm.yaml)`           | Provider registry, routes, defaults (`SWARM_*` env overrides)                                            |
 | `[Main/](Main/)`                                             | Embeddings/vectorstore re-exports, YAML, Essentials                                                      |
 | `[WebSearch/](WebSearch/)`                                   | Websearch feature the swarm agents call: `frontend/` providers + fan-out, `midend/` crawl, `backend/` extract/store; registry `[WebSearch/providers.yaml](WebSearch/providers.yaml)`; rules in `[WebSearch/AGENTS.md](WebSearch/AGENTS.md)` |
-| `[Prediction/](Prediction/)`                                 | Forecast engine (mlforecast). `Prediction/BotDeal/` is the prediction lane that trains the forecast (worktree `~/Myworkspace/BotDeal`, branch `feat/botdeal`) |
-| `[Newsletter/](Newsletter/)`                                 | Offline digest MVP (lane worktree `feat/newsletter` at `~/Myworkspace/Modules/Newsletter`)                |
+| `[Prediction/](Prediction/)`                                 | Forecast engine (mlforecast). `Prediction/BotDeal/` is the prediction lane that trains the forecast (worktree `~/Myworkspace/BotDeal`, branch `BotDeal`) |
+| `[Newsletter/](Newsletter/)`                                 | Offline digest MVP (lane worktree `newsletter` at `~/Myworkspace/Modules/Newsletter`)                |
 | `[Agents/](Agents/)`                                         | Specialist **swarm personas** (`AGENTS.md` + `agent.yaml` per role)                                      |
 | `[Agents/coordination.yaml](Agents/coordination.yaml)`       | Task graph for multi-agent workflows                                                                     |
 | `[Agents/SKILLS.md](Agents/SKILLS.md)`                       | Specialist catalog: persona → handoff node/plan-worker wiring, how to add a specialist                    |
@@ -126,9 +154,15 @@ uv run --extra dev --extra observability --extra opencl --extra faiss --extra me
 uv run python -m swarm_sdk.agents.validate
 ```
 
-### Subtopic: Colab
+### Subtopic: Jupyter
 
-- **Colab** (`google.colab`): open a `.ipynb` → **Select Kernel** → **Colab** → sign in with Google. Requires `uv sync --extra jupyter` for local kernels; Colab runs remotely.
+- **Local JupyterLab:** install with `uv sync --extra jupyter --extra dev`, then run `./scripts/jupyter.sh` to open a token-authenticated browser session bound to `127.0.0.1`, rooted at `.Jupyter/`.
+- **VS Code:** open a `.ipynb`, select the project `.venv` interpreter/kernel, or launch the local browser UI with the same script. Setup and Jupyter AI notes: `[.Jupyter/README.md](.Jupyter/README.md)`.
+- **JupyterLab extensions:** the `jupyter` extra includes the Ruff-compatible code formatter, Python LSP, and JupyterLab Git; configure the formatter to use Ruff as described in `[.Jupyter/README.md](.Jupyter/README.md)`.
+- **Jupyter AI:** the `jupyter` extra installs the Jupyter AI host; install a supported ACP agent and adapter separately to enable chat. Do not place provider credentials in notebooks or source-controlled config.
+
+### Subtopic: LangChain Codex routes
+
 - **LangChain Codex routes:** set `CODEX_OAUTH_TOKEN` in `.env` (see `[Main/config/model_registry.yaml](Main/config/model_registry.yaml)`).
 
 ### Subtopic: Editor extensions
@@ -199,27 +233,23 @@ Open **Agent** mode, `@`-attach the review or files, then `/code-fixer`. Fixes *
 
 ### Subtopic: Commits
 
-- **Commits:** only when the user asks; do not force-push `main` or any protected branch.
-- **Commits must be on feature branches only.** Never commit to `main`, `integration/myworkspace-2026-10`, or `lane/*` without explicit user approval.
+- **Commits:** only when the user asks; do not force-push `swarm_sdk` / `main` or any protected branch.
+- **Lane work happens on the named mainline for that worktree** (`swarm_sdk`, `Agents`, `Websearch`, `Prediction`, `BotDeal`, `newsletter`). Temporary `feat/*` / `fix/*` branches still need an explicit ask.
 
-### Subtopic: Branch creation (authorization required)
+### Subtopic: Mainline branches (worktrees)
 
-**Only the following branches may exist:**
-
-| Branch type | Purpose | Create? |
+| Branch | Worktree | Owns |
 | --- | --- | --- |
-| `main` | Stable release | No (exists; never create) |
-| `integration/myworkspace-2026-10` | Merge all lanes, pre-release testing | No (exists; never create) |
-| `lane/sdk` | SDK + tests + `pyproject.toml` | No (exists; never create) |
-| `lane/agents` | `Agents/` specialist work | No (exists; never create) |
-| `lane/websearch` | `WebSearch/` search pipeline | No (exists; never create) |
-| `lane/prediction` | `Prediction/` forecast engine | No (exists; never create) |
-| `feat/*`, `feature/*`, `fix/*` | Temporary feature work (user-requested only) | Ask first, then only for the user's stated task |
-| Any other branch | Unauthorized | **CI will reject** |
+| `swarm_sdk` (also `main`) | `~/Myworkspace/Swarm` | SDK (`src/swarm_sdk/`), tests, `pyproject.toml` |
+| `Agents` | `~/Myworkspace/Agents` (synced from `swarm_sdk`) | Specialist personas and coordination |
+| `Websearch` | `~/Myworkspace/Websearch` | `WebSearch/` pipeline |
+| `Prediction` | `~/Myworkspace/Prediction` | Forecast engine |
+| `BotDeal` | `~/Myworkspace/BotDeal` | PromoDeals / BotDeal lane |
+| `newsletter` | `~/Myworkspace/Modules/Newsletter` | Newsletter digest |
 
-**Hard rule:** Do not create branches. Ever. Ask the user first. If the user names a branch in their request, that is explicit authorization and you create it only for that named task, on that exact branch.
+**Hard rule:** Do not create extra branches unless the user names them. Old `feat/*`, `feature/*`, and `lane/*` names remain as pointers; do not delete them unless asked.
 
-**Check before committing:** `git symbolic-ref --short HEAD` must return `feat/...`, `feature/...`, or `fix/...`. If it returns `main`, `integration/...`, or `lane/...`, stop and ask before proceeding.
+**Check before committing:** `git symbolic-ref --short HEAD` should be the worktree’s mainline above, or a user-named `feat/*` / `fix/*`.
 
 ### Subtopic: Documentation
 

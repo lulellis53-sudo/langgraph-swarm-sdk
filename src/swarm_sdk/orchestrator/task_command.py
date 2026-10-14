@@ -9,6 +9,8 @@ The command line names a folder under ``Agents/`` (or that folder's manifest
 ``--MaxTry`` bound each attempt; they are not fields of ``agent.yaml``.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import re

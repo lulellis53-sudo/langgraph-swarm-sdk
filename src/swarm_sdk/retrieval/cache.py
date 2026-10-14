@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 import sqlite3
 import threading
 import time
-from collections import OrderedDict
+from collections import OrderedDict, deque
 
 import numpy as np
 
@@ -20,6 +21,9 @@ _SPACE = re.compile(r"\s+")
 _INDEX_ROWS = 256
 _QUERY_EMBEDDING_ROWS = 256
 _DEFAULT_SEMANTIC_ROWS = 10_000
+_PENDING_TOUCH_ROWS = 1024
+
+logger = logging.getLogger(__name__)
 
 
 def normalize(text: str) -> str:
@@ -70,13 +74,20 @@ class SemanticCache:
         self._lock = threading.Lock()
         self._embedding_lock = threading.Lock()
         self._query_embeddings: OrderedDict[str, np.ndarray] = OrderedDict()
+        self._writes_since_evict = 0
         self._semantic_matrix: np.ndarray | None = None
         self._semantic_rows: list[tuple[int, str]] = []
         self._semantic_data_version = -1
         self._semantic_write_version = 0
         self._semantic_matrix_write_version = -1
+        self._pending_query_touches: deque[tuple[str, str]] = deque()
+        self._pending_row_touches: deque[int] = deque()
+        self._pending_response_touches: deque[str] = deque()
         self._conn = sqlite3.connect(path, check_same_thread=False)
         self._conn.execute("PRAGMA journal_mode=WAL")
+        # WAL + NORMAL: commits do not fsync (a cache may lose the last commits on
+        # power loss without corrupting the database).
+        self._conn.execute("PRAGMA synchronous=NORMAL")
         self._conn.execute(
             """
             CREATE TABLE IF NOT EXISTS exact_cache (
@@ -116,6 +127,16 @@ class SemanticCache:
             self._conn.execute("ALTER TABLE semantic_cache ADD COLUMN accessed_at REAL")
         if "query_text" not in semantic_columns:
             self._conn.execute("ALTER TABLE semantic_cache ADD COLUMN query_text TEXT")
+        # Deferred LRU touches resolve row ids by query_text / response; without
+        # these indexes every flush would scan the semantic table.
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_semantic_tenant_query "
+            "ON semantic_cache(tenant_id, query_text)"
+        )
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_semantic_tenant_response "
+            "ON semantic_cache(tenant_id, response)"
+        )
         if ttl_days is not None:
             cutoff = time.time() - ttl_days * 86400
             for table in ("exact_cache", "semantic_cache"):
@@ -150,23 +171,85 @@ class SemanticCache:
         return index
 
     def _touch_semantic(self, query_text: str, tenant_id: str) -> None:
-        """Update accessed_at for the semantic row matching this query, if any."""
-        normalized = normalize(query_text)
+        """Queue a deferred recency bump for rows matching this query.
+
+        Lookups never write (pinned contract): the touch is flushed in a single
+        batched UPDATE on the next ``store()`` / eviction, so exact hits pay no
+        SELECT-UPDATE-commit cost. Resolution is by ``query_text IN (...)``, so
+        every matching row is touched, not just the newest.
+        """
         with self._lock:
-            row = self._conn.execute(
-                """
-                SELECT id FROM semantic_cache
-                WHERE tenant_id = ? AND query_text = ?
-                ORDER BY id DESC LIMIT 1
-                """,
-                (tenant_id, normalized),
-            ).fetchone()
-            if row is not None:
-                self._conn.execute(
-                    "UPDATE semantic_cache SET accessed_at = ? WHERE id = ?",
-                    (time.time(), row[0]),
-                )
+            self._pending_query_touches.append((tenant_id, normalize(query_text)))
+            if len(self._pending_query_touches) > _PENDING_TOUCH_ROWS:
+                self._pending_query_touches.popleft()
+
+    def _touch_row(self, row_id: int) -> None:
+        """Queue a deferred recency bump for a known semantic row id."""
+        with self._lock:
+            self._pending_row_touches.append(row_id)
+            if len(self._pending_row_touches) > _PENDING_TOUCH_ROWS:
+                self._pending_row_touches.popleft()
+
+    def _queue_response_touch(self, response: str) -> None:
+        """Queue a deferred recency bump for rows with this response.
+
+        Resolution is by ``response IN (...)``, so every matching row is
+        touched; response duplicates within a tenant are rare and over-touching
+        only skews LRU order, never correctness.
+        """
+        with self._lock:
+            self._pending_response_touches.append(response)
+            if len(self._pending_response_touches) > _PENDING_TOUCH_ROWS:
+                self._pending_response_touches.popleft()
+
+    def _flush_touches(self) -> None:
+        """Apply all queued recency bumps in one transaction (or drop them).
+
+        Best-effort: resolution failures leave rows untouched, which only skews
+        LRU order; it can never return a wrong cached response.
+        """
+        with self._lock:
+            if not (
+                self._pending_query_touches
+                or self._pending_row_touches
+                or self._pending_response_touches
+            ):
+                return
+            now = time.time()
+            ids: list[int] = list(self._pending_row_touches)
+            self._pending_row_touches.clear()
+            query_texts = list(self._pending_query_touches)
+            self._pending_query_touches.clear()
+            response_texts = list(self._pending_response_touches)
+            self._pending_response_touches.clear()
+
+            def resolve(column: str, values: list[tuple[str, str]]) -> None:
+                by_tenant: dict[str, list[str]] = {}
+                for tenant, text in values:
+                    by_tenant.setdefault(tenant, []).append(text)
+                for tenant, texts in by_tenant.items():
+                    placeholders = ",".join("?" * len(texts))
+                    found = self._conn.execute(
+                        f"SELECT id FROM semantic_cache WHERE tenant_id = ? "
+                        f"AND {column} IN ({placeholders})",
+                        [tenant, *texts],
+                    ).fetchall()
+                    ids.extend(int(row[0]) for row in found)
+
+            try:
+                if query_texts:
+                    resolve("query_text", query_texts)
+                if response_texts:
+                    resolve("response", [("", text) for text in response_texts])
+                if ids:
+                    placeholders = ",".join("?" * len(ids))
+                    self._conn.execute(
+                        f"UPDATE semantic_cache SET accessed_at = ? WHERE id IN ({placeholders})",
+                        [now, *ids],
+                    )
                 self._conn.commit()
+            except sqlite3.Error:
+                logger.exception("deferred cache touch flush failed; touches dropped")
 
     def _candidate_matrix(self, tenant_id: str) -> tuple[np.ndarray, list[tuple[int, str]]]:
         """Load and cache normalized semantic vectors for one tenant."""
@@ -232,6 +315,15 @@ class SemanticCache:
 
     def _evict_if_needed(self) -> None:
         """Enforce ``max_entries`` on the semantic cache, evicting LRU rows."""
+        # Pending touches must land before the LRU select or recent rows look old.
+        with self._lock:
+            has_pending = bool(
+                self._pending_query_touches
+                or self._pending_row_touches
+                or self._pending_response_touches
+            )
+        if has_pending:
+            self._flush_touches()
         with self._lock:
             count_row = self._conn.execute(
                 "SELECT COUNT(*) FROM semantic_cache WHERE tenant_id = 'default'"
@@ -279,6 +371,7 @@ class SemanticCache:
             response = self._redis_cache.get(f"{tenant_id}:{normalized}")
             if response is not None:
                 self._exact_hits += 1
+                self._touch_semantic(text, tenant_id)
                 return response
         with self._lock:
             row = self._conn.execute(
@@ -288,6 +381,7 @@ class SemanticCache:
         if row is not None:
             self._exact_hits += 1
             response = str(row[0])
+            self._touch_semantic(text, tenant_id)
             if self._redis_cache is not None:
                 self._redis_cache.set(f"{tenant_id}:{normalized}", response)
             return response
@@ -296,22 +390,8 @@ class SemanticCache:
             hits = self._index.search(vector, 1)
             if hits and hits[0].score >= self.threshold:
                 self._semantic_hits += 1
-                # Best-effort LRU touch: update accessed_at for the newest matching row.
-                with self._lock:
-                    row = self._conn.execute(
-                        """
-                        SELECT id FROM semantic_cache
-                        WHERE tenant_id = 'default' AND response = ?
-                        ORDER BY id DESC LIMIT 1
-                        """,
-                        (hits[0].text,),
-                    ).fetchone()
-                    if row is not None:
-                        self._conn.execute(
-                            "UPDATE semantic_cache SET accessed_at = ? WHERE id = ?",
-                            (time.time(), row[0]),
-                        )
-                        self._conn.commit()
+                # Deferred LRU touch: resolved and batched on the next flush.
+                self._queue_response_touch(hits[0].text)
                 response = hits[0].text
                 if self._redis_cache is not None:
                     self._redis_cache.set(f"{tenant_id}:{normalized}", response)
@@ -327,12 +407,7 @@ class SemanticCache:
         if float(scores[best_idx]) >= self.threshold:
             self._semantic_hits += 1
             row_id, response = candidate_rows[best_idx]
-            with self._lock:
-                self._conn.execute(
-                    "UPDATE semantic_cache SET accessed_at = ? WHERE id = ?",
-                    (time.time(), row_id),
-                )
-                self._conn.commit()
+            self._touch_row(row_id)
             if self._redis_cache is not None:
                 self._redis_cache.set(f"{tenant_id}:{normalized}", response)
             return response
@@ -356,19 +431,29 @@ class SemanticCache:
         scored against the semantic layer in a single matrix operation.
         """
         results: list[str | None] = [None] * len(texts)
+        if not texts:
+            return results
         pending: list[tuple[int, str]] = []
+        # One exact-cache query for the whole batch instead of one per text.
+        keys: list[tuple[int, str]] = []
         for i, text in enumerate(texts):
             key = hashlib.sha256(normalize(text).encode()).hexdigest()
-            with self._lock:
-                row = self._conn.execute(
-                    "SELECT response FROM exact_cache WHERE key = ? AND tenant_id = ?",
-                    (key, tenant_id),
-                ).fetchone()
-            if row is not None:
-                results[i] = str(row[0])
+            keys.append((i, key))
+        placeholders = ",".join("?" * len(keys))
+        with self._lock:
+            rows = self._conn.execute(
+                f"SELECT key, response FROM exact_cache WHERE key IN ({placeholders}) "
+                "AND tenant_id = ?",
+                [key for _, key in keys] + [tenant_id],
+            ).fetchall()
+        found = {str(row[0]): str(row[1]) for row in rows}
+        for i, key in keys:
+            hit = found.get(key)
+            if hit is not None:
+                results[i] = hit
                 self._exact_hits += 1
             else:
-                pending.append((i, text))
+                pending.append((i, texts[i]))
 
         if not pending:
             return results
@@ -416,6 +501,8 @@ class SemanticCache:
 
     def store(self, text: str, response: str, *, tenant_id: str = "default") -> None:
         """Insert a response under both the exact key and its embedding."""
+        # Flush queued lookups first so their writes share one commit with the insert.
+        self._flush_touches()
         normalized = normalize(text)
         key = hashlib.sha256(normalized.encode()).hexdigest()
         vector = self._query_vector(text)
@@ -441,7 +528,12 @@ class SemanticCache:
             self._conn.commit()
             self._semantic_write_version += 1
         if tenant_id == "default":
-            self._evict_if_needed()
+            # Amortize eviction: full sweep only after ~10% more writes, not on
+            # every insert (COUNT + LRU select + multi-row delete under lock).
+            self._writes_since_evict += 1
+            if self._writes_since_evict >= max(1, self.max_entries // 10):
+                self._writes_since_evict = 0
+                self._evict_if_needed()
         if self._redis_cache is not None:
             self._redis_cache.set(f"{tenant_id}:{normalized}", response)
         if self._index is not None and tenant_id == "default":

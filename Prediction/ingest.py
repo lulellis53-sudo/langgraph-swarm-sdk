@@ -124,6 +124,7 @@ def _embed(text: str, embedder) -> bytes:
 def vector_stage(conn: sqlite3.Connection) -> int:
     """Upsert deduped observations into a sqlite-vec table (semantic lookup)."""
     import sqlite_vec
+
     from Prediction.mcp_server import load_lexical_embedder
 
     conn.enable_load_extension(True)
@@ -196,7 +197,7 @@ def nearest_prices(conn: sqlite3.Connection, query: str, k: int = 5) -> list[dic
         (vector, k),
     ).fetchall()
     keys = ("sku", "source", "day", "condition", "amount_cents", "url", "distance")
-    return [dict(zip(keys, row)) for row in rows]
+    return [dict(zip(keys, row, strict=False)) for row in rows]
 
 
 def graph_stage(series: dict[str, dict[str, np.ndarray]], out_dir: Path) -> Path:

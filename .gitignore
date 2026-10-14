@@ -22,11 +22,15 @@ htmlcov/
 .remember/
 .superpowers/
 .idea/
+.DS_Store
+**/.DS_Store
+.mimosa/
 
 # --- Secrets & Vaults ---------------------------------------------------------
 .env
 .env.*
 !.env.example
+dotenv/
 .vault/
 .vaults/
 vault/
@@ -75,3 +79,9 @@ SKILL.md
 
 # Swarm skill CLI state (langgraph_swarm.py)
 .swarm-skill-state/
+
+# Logs, credentials and local databases
+*.log
+.1password/
+.telegram_offset*
+offers.db

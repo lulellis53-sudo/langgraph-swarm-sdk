@@ -77,6 +77,8 @@ class WorkerAgent:
         self._model = model_override
         # The TokenBudget enforces the manifest's max_prompt cap on packing.
         self.tokens = TokenBudget(max_tokens=manifest.token_budget.max_prompt)
+        # Cache the system prompt: it is deterministic per manifest + agents_root.
+        self._system_cache: str | None = None
 
     @property
     def name(self) -> str:
@@ -86,13 +88,19 @@ class WorkerAgent:
     def _system_prompt(self) -> str:
         """Build the system prompt: role contract packed under the token cap.
 
+        The result is cached per instance — the role contract is deterministic
+        for a given (manifest, agents_root) pair.
+
         Returns:
             The role contract text, truncated so it alone fits the budget.
             Falls back to the manifest's ``role`` string when the agent has no
             AGENTS.md contract file.
         """
+        if self._system_cache is not None:
+            return self._system_cache
         contract = role_contract(self.agents_root, self.manifest.name)
         packed = self.tokens.pack(system=contract or self.manifest.role, memories=[], turns=[])
+        self._system_cache = packed.system
         return packed.system
 
     def _user_prompt(
@@ -115,6 +123,8 @@ class WorkerAgent:
             The packed user prompt, truncated so ``system + user`` fits the
             manifest's ``max_prompt`` budget.
         """
+        from swarm_sdk.prompting.pruner import TurnPruner
+
         parts = [description.strip()]
         if task:
             parts.append(f"task: {task}")
@@ -122,6 +132,13 @@ class WorkerAgent:
             parts.append("files:")
             parts.extend(f"- {path}" for path in files)
         if dep_outputs:
+            # Compress dependency outputs to reduce prompt tokens.
+            pruner = TurnPruner(keep_turns=len(dep_outputs), max_tokens=2000)
+            compressed = pruner.prune(list(dep_outputs.values()))
+            # Rebuild the mapping with compressed values.
+            keys = list(dep_outputs.keys())
+            if len(compressed) == len(keys):
+                dep_outputs = dict(zip(keys, compressed))
             parts.append("inputs:")
             parts.extend(f"- {k}: {v}" for k, v in dep_outputs.items())
         user = "\n".join(parts)

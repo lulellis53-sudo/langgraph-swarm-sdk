@@ -19,10 +19,9 @@ from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Self
+from typing import TYPE_CHECKING, Self
 
 import numpy as np
-from langchain_core.language_models.chat_models import BaseChatModel
 
 from swarm_sdk.core.jev_router import JevRouter
 from swarm_sdk.memory import MemoryStore, SqliteVecStore
@@ -30,6 +29,9 @@ from swarm_sdk.models.chat import complete
 from swarm_sdk.redact import redact_secrets
 from swarm_sdk.retrieval.embeddings import Embedder, unit
 from swarm_sdk.retrieval.rag_ingest import RAGIngestionPipeline
+
+if TYPE_CHECKING:
+    from langchain_core.language_models.chat_models import BaseChatModel
 
 __all__ = [
     "AgentHit",

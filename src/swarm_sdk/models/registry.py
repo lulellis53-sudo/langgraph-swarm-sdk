@@ -28,6 +28,7 @@ class RegistryEntry(BaseModel):
     think_levels: tuple[ThinkLevel, ...] = ("off", "low", "medium", "high", "xhigh")
     priority: int = 100
     evidence: str = ""
+    composer: bool = False
 
 
 class Registry(BaseModel):
@@ -47,6 +48,10 @@ class Registry(BaseModel):
             )
             for entry in self.providers
         ]
+
+    def composer_routes(self) -> list[RegistryEntry]:
+        """Routes marked ``composer: true`` for Cursor Composer / Agent chat."""
+        return sorted((e for e in self.providers if e.composer), key=lambda e: e.priority)
 
     def ranked(self, think_level: ThinkLevel) -> list[RegistryEntry]:
         """All entries supporting ``think_level``, best (lowest priority) first."""

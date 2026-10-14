@@ -75,6 +75,32 @@ def test_np_float32_rows_are_finite_and_unit_norm() -> None:
     np.testing.assert_allclose(np.linalg.norm(rows, axis=1), 1.0, atol=1e-5)
 
 
+def test_compare_ab_reports_deltas_and_combined_verdict() -> None:
+    """compare_sessions pairs reports by size and combines verdict labels across sessions."""
+    from benchmark.Tasks.cache_lookup_latency.compare_ab import compare_sessions
+
+    base = run_report(sizes=(100,), warmup=1, samples=3, blocks=1, batch_size=4)
+    cand_a = run_report(sizes=(100,), warmup=1, samples=3, blocks=1, batch_size=4)
+    cand_b = run_report(sizes=(100,), warmup=1, samples=3, blocks=1, batch_size=4)
+
+    rows = compare_sessions(base, [cand_a, cand_b])
+    paths = {row["path"] for row in rows}
+    assert {"exact_hit_us", "semantic_hit_us", "miss_us", "batch_vs_single_verdict"} <= paths
+    for row in rows:
+        if row["path"] == "batch_vs_single_verdict":
+            assert row["combined_label"] in {
+                "B_faster",
+                "B_slower",
+                "no_detectable_difference",
+                "inconclusive",
+            }
+        else:
+            assert row["sessions"] == 2
+            assert len(row["candidate_session_medians_us"]) == 2
+            assert row["baseline_median_us"] > 0
+            assert row["candidate_median_us"] > 0
+
+
 def run() -> None:
     """Entry point for ``python -m benchmark.run --task cache_lookup_latency``."""
     from benchmark.Tasks.cache_lookup_latency.benchmark_cache_lookup_latency import main

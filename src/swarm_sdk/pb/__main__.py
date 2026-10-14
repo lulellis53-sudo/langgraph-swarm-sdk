@@ -19,6 +19,12 @@ _PACKAGE_PREFIX = "swarm_sdk/pb"
 
 
 def regenerate() -> None:
+    """Run ``grpc_tools.protoc`` on ``swarm.proto`` to refresh the package stubs.
+
+    Raises:
+        FileNotFoundError: If ``swarm.proto`` is missing from this package.
+        subprocess.CalledProcessError: If protoc exits non-zero.
+    """
     if not _PROTO.is_file():
         raise FileNotFoundError(f"missing {_PROTO}")
 
@@ -37,6 +43,11 @@ def regenerate() -> None:
 
 
 def main() -> int:
+    """Regenerate the gRPC stubs and return a process exit code.
+
+    Returns:
+        Always ``0`` on success (protoc failures raise instead).
+    """
     regenerate()
     return 0
 

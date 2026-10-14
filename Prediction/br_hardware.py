@@ -105,6 +105,8 @@ class Product:
     name: str
     category: str
     terms: tuple[str, ...]
+    #: Branch/series spec stored with every observation, e.g. "B650", "B850".
+    specs: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -173,6 +175,7 @@ SOURCES: tuple[Source, ...] = (
     Source("pichau", "pichau.com.br", "retailer"),
     Source("amazon-br", "amazon.com.br", "retailer"),
     Source("mercadolivre", "mercadolivre.com.br", "marketplace"),
+    Source("shopee", "shopee.com.br", "marketplace"),
     Source("casasbahia", "casasbahia.com.br", "retailer"),
     Source("x", "x.com", "social"),
     Source("telegram", "t.me", "social"),
@@ -246,18 +249,27 @@ def build_queries(
     source: Source,
     *,
     on: date,
+    lookback_days: int = 1,
 ) -> tuple[str, str]:
     """Return the broad query and the coupon query for one product and site.
 
-    ``before`` is the next calendar day, so the window is ``on``.
+    The window ends on ``on`` (today's market date) and reaches back
+    ``lookback_days`` days, so consecutive runs overlap and a product can
+    accumulate the multi-day history the forecast needs. A single day can
+    never satisfy :data:`FORECAST_MIN_DAYS`.
 
     Args:
         product: Catalog product.
         source: Discovery site.
-        on: Market date used as the ``after:`` bound.
+        on: Market date marking the end of the window.
+        lookback_days: Window length in days; ``1`` reproduces the original
+            same-day window.
     """
+    if lookback_days < 1:
+        raise ValueError("lookback_days must be at least 1")
     product_clause = " OR ".join(f'"{term}"' for term in product.terms)
-    window = f"after:{on.isoformat()} before:{(on + timedelta(days=1)).isoformat()}"
+    start = on - timedelta(days=lookback_days)
+    window = f"after:{start.isoformat()} before:{(on + timedelta(days=1)).isoformat()}"
     site = f"site:{source.domain}"
     broad = f"({product_clause}) (preco OR oferta) {site} {window}"
     coupon = f"({product_clause}) (cupom OR codigo OR promo OR desconto) {site} {window}"

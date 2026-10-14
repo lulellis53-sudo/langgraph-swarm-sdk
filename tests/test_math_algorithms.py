@@ -19,8 +19,10 @@ from algorithms import (
 def test_catalog_covers_every_pillar_once() -> None:
     """Every registered id is unique and each pillar has at least one algorithm."""
     records = catalog()
-    assert len(records) == 80
-    assert len({item.id for item in records.values()}) == 80
+    # The catalog grows as algorithms register; pin the count so additions or
+    # removals stay deliberate and reviewed.
+    assert len(records) == 93
+    assert len({item.id for item in records.values()}) == 93
     assert get("factorial").source.endswith("maths/factorial.py")
     assert get("arrow_mean").source.endswith("maths/average_mean.py")
     for pillar in Pillar:

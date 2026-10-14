@@ -55,6 +55,7 @@ SECRET_SHAPE = re.compile(r"(sk-[A-Za-z0-9]{16,}|AIza[0-9A-Za-z_-]{20,}|[A-Za-z0
 EAGER_HEAVY_ALLOWED = frozenset(
     {
         "src/swarm_sdk/core/checkpoint.py",
+        "src/swarm_sdk/models/cli_chat.py",  # subclasses BaseChatModel at class-definition time
         "src/swarm_sdk/orchestrator/graph.py",
         "src/swarm_sdk/orchestrator/low_swarm.py",
         "src/swarm_sdk/server/graphs.py",

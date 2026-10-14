@@ -44,27 +44,26 @@ if TYPE_CHECKING:
 _JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
 
 # The decomposition prompt. The JSON example is escaped ({{ }}) because the
-# template is rendered with str.format.
+# template is rendered with str.format. Kept deliberately short: every token
+# here is paid on every spawn call.
 PLAN_PROMPT = """Decompose the goal into a JSON plan for the available agents.
 
 Goal: {goal}
 
-Available agents (name — role):
+Agents (name — role):
 {agents}
 
-Reply with JSON only, shaped like:
+Reply with JSON only:
 {{"steps": [{{"id": "S1", "title": "...", "description": "...", "agent": "<AgentName>",
 "task": "", "files": [], "depends_on": [], "inputs": []}}]}}
 
-Rules: small parallel steps; declare only real dependencies in depends_on; inputs lists
-the step ids whose outputs this step needs; use only the agent names above.
-task is an agent.yaml task id for that agent (empty if any). files are exclusive
-relative write-paths. Split Coder work into sibling steps with disjoint files so
-they share a wave; never claim the same write-path in parallel; keep a module's
-tests in the same Coder step as its production files.
+Rules: small parallel steps; declare only real dependencies; inputs lists step ids
+whose outputs this step needs (omit to receive none); use only the agent names above.
+task is an agent.yaml task id (empty if any). files are exclusive relative write-paths.
+Split Coder work into sibling steps with disjoint files so they share a wave; never
+claim the same write-path in parallel; keep a module's tests with its production files.
 
-The JEV brief after this prompt is a hint from hosted System One, or an
-abstention. It does not block a step and it does not authorize a write."""
+The JEV brief after this prompt is a hint, not a block and not an authorization."""
 
 
 def _safety_block(goal: str, manifests: dict[str, AgentManifest]) -> Plan | None:
