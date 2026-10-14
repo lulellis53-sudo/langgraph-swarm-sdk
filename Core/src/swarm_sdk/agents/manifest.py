@@ -20,7 +20,7 @@ from swarm_sdk.models.selection import ThinkLevel
 
 #: Nodes of the handoff swarm in swarm_sdk.core.swarm; ``None`` means the agent
 #: participates only through the orchestration engine, not the handoff graph.
-LangGraphNode = Literal["researcher", "coder", "reviewer"] | None
+LangGraphNode = str | None
 
 
 @lru_cache(maxsize=32)

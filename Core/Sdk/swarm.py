@@ -127,6 +127,86 @@ class Swarm:
         self._compiled_app = workflow.compile(checkpointer=self.checkpointer)
         return self._compiled_app
 
+    @classmethod
+    def from_manifests(
+        cls,
+        agent_names: Sequence[str] | None = None,
+        *,
+        agents_dir: str | Path | None = None,
+        default_active_agent: str | None = None,
+        checkpointer: BaseCheckpointSaver | None = None,
+        model_override: str | None = None,
+        enable_middleware: bool = True,
+    ) -> Swarm:
+        """Construct a Swarm using the canonical personas from Swarm/Agents/.
+
+        Args:
+            agent_names: List of agent persona directory names under Agents/
+                (e.g. ['Orchestrator', 'Coder', 'Reviewer']). If None, defaults
+                to the core coordination agents from coordination.yaml.
+            agents_dir: Path to the Agents/ tree. Auto-resolved if None.
+            default_active_agent: Initial active agent. Defaults to Orchestrator or first agent.
+            checkpointer: Checkpointer persistence engine. Defaults to InMemorySaver.
+            model_override: Optional model name to override manifests (e.g. for testing/mocking).
+            enable_middleware: Attach context-editing middleware.
+
+        Returns:
+            Configured Swarm instance ready for compilation and turn execution.
+        """
+        from pathlib import Path
+        from swarm_sdk.agents.manifest import (
+            agents_root,
+            load_all_agent_manifests,
+            role_contract,
+        )
+
+        root_path = Path(agents_dir) if agents_dir else agents_root()
+        all_manifests = load_all_agent_manifests(root_path)
+
+        if not agent_names:
+            agent_names = [
+                "Orchestrator",
+                "Coder",
+                "Reviewer",
+                "Tester",
+                "Debugger",
+                "Documenter",
+                "Architect",
+                "Planner",
+            ]
+
+        swarm_agents: list[SwarmAgent] = []
+        for name in agent_names:
+            if name not in all_manifests:
+                logger.warning("Agent '%s' not found under %s; skipping", name, root_path)
+                continue
+
+            manifest = all_manifests[name]
+            prompt = role_contract(str(root_path), name)
+            if not prompt:
+                prompt = f"You are the {name} agent. Role: {manifest.role}."
+
+            selected_model = model_override or manifest.model or "gpt-4o"
+            swarm_agents.append(
+                SwarmAgent(
+                    name=name,
+                    system_prompt=prompt,
+                    model=selected_model,
+                    enable_middleware=enable_middleware,
+                )
+            )
+
+        if not swarm_agents:
+            raise ValueError(f"No valid agents could be loaded from {root_path} for {agent_names}")
+
+        default_agent = default_active_agent or ("Orchestrator" if "Orchestrator" in [a.name for a in swarm_agents] else swarm_agents[0].name)
+        return cls(
+            agents=swarm_agents,
+            default_active_agent=default_agent,
+            checkpointer=checkpointer,
+        )
+
+
     @property
     def app(self) -> Any:
         """Return the compiled swarm app, compiling automatically if needed."""

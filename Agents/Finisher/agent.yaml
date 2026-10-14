@@ -1,0 +1,26 @@
+version: "1"
+name: Finisher
+role: response_finalizer_and_polisher
+langgraph_node: finisher
+
+model: openai:gpt-4o-mini
+think_level: low
+effort: low
+api_key_env: OPENAI_API_KEY
+
+token_budget:
+  max_prompt: 4096
+  max_completion: 2048
+
+tasks:
+  - id: finalize_response
+    description: >-
+      Format the final output, collapse redundant whitespace, polish Markdown,
+      and ensure all user acceptance criteria are satisfied before presentation.
+    outputs:
+      - polished_response
+      - criteria_verification
+
+capabilities:
+  - format_answer
+  - markdown_polishing

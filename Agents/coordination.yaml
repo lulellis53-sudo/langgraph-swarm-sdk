@@ -4,10 +4,31 @@
 version: "1"
 
 agents:
+  - name: Router
+    role: swarm traffic director
+    contract: Agents/Router/AGENTS.md
+    manifest: Agents/Router/agent.yaml
+
+  - name: MemoryKeeper
+    role: persistent memory storage
+    contract: Agents/MemoryKeeper/AGENTS.md
+    manifest: Agents/MemoryKeeper/agent.yaml
+
+  - name: Historian
+    role: long term memory recall
+    contract: Agents/Historian/AGENTS.md
+    manifest: Agents/Historian/agent.yaml
+
+  - name: Finisher
+    role: response finalizer and polisher
+    contract: Agents/Finisher/AGENTS.md
+    manifest: Agents/Finisher/agent.yaml
+
   - name: Orchestrator
     role: coordinate the swarm
     contract: Agents/Orchestrator/AGENTS.md
     manifest: Agents/Orchestrator/agent.yaml
+
 
   - name: ModelDelegate
     role: model_delegation

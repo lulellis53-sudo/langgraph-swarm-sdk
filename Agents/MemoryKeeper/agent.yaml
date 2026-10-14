@@ -1,0 +1,26 @@
+version: "1"
+name: MemoryKeeper
+role: persistent_memory_storage
+langgraph_node: memorykeeper
+
+model: openai:gpt-4o-mini
+think_level: low
+effort: low
+api_key_env: OPENAI_API_KEY
+
+token_budget:
+  max_prompt: 4096
+  max_completion: 1024
+
+tasks:
+  - id: persist_fact
+    description: >-
+      Extract durable user preferences, architectural invariants, decisions,
+      and facts from the conversation turn and store them into persistent memory (Mem0/SQLite).
+    outputs:
+      - stored_memory_id
+      - extracted_entities
+
+capabilities:
+  - mem0_storage
+  - entity_extraction

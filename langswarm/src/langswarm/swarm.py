@@ -52,3 +52,25 @@ def build_from_blueprint(blueprint: SwarmBlueprint):
             checkpointer=blueprint.checkpointer,
         )
     )
+
+
+compile_swarm_from_blueprint = build_from_blueprint
+
+
+def build_from_agents_catalog(
+    agents_dir: str | None = None,
+    agent_names: list[str] | None = None,
+    default_active_agent: str = "Orchestrator",
+    checkpointer: str = "memory",
+):
+    """Build a compiled LangGraph swarm directly from Swarm/Agents/ personas."""
+    from langswarm.blueprint import load_from_agents_catalog
+
+    blueprint = load_from_agents_catalog(
+        agents_dir=agents_dir,
+        agent_names=agent_names,
+        default_active_agent=default_active_agent,
+        checkpointer=checkpointer,
+    )
+    return build_from_blueprint(blueprint)
+

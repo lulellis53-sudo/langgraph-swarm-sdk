@@ -1,0 +1,27 @@
+version: "1"
+name: Router
+role: swarm_traffic_director
+langgraph_node: router
+
+model: openai:gpt-4o-mini
+think_level: low
+effort: low
+api_key_env: OPENAI_API_KEY
+
+token_budget:
+  max_prompt: 4096
+  max_completion: 1024
+
+tasks:
+  - id: route_turn
+    description: >-
+      Evaluate incoming user intent or prior agent reports, match against specialist
+      handoff descriptions, and transfer control directly to the single best specialist
+      agent. Never answer domain questions directly.
+    outputs:
+      - handoff_target
+      - routing_rationale
+
+capabilities:
+  - dynamic_routing
+  - supervisor_handoffs
