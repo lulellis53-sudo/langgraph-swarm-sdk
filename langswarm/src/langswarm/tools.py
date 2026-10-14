@@ -106,6 +106,14 @@ def _run_benchmark():
     return bench_tool()
 
 
+def _websearch():
+    # WebSearch is a separate package (Tools/WebSearch); import it lazily so a
+    # missing install surfaces as a tool error, not an import-time failure.
+    from WebSearch.Webengine import Websearch
+
+    return Websearch()
+
+
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
@@ -123,6 +131,7 @@ REGISTRY: dict[str, Callable[[], Callable]] = {
     "inspect_dataset": _inspect_dataset,
     "validate_dataset": _validate_dataset,
     "fetch_url": _fetch_url,
+    "websearch": _websearch,
     "run_benchmark": _run_benchmark,
 }
 

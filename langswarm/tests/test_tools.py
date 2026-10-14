@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import sys
+import types
+
+import pytest
+
 from langswarm.tools import get_tool
 
 
@@ -51,4 +56,35 @@ def test_inspect_dataset_tool() -> None:
     result = inspect_tool.invoke({"path": "data/sample.csv"})
     res_str = str(result).lower()
     assert "columns" in res_str or "shape" in res_str or "id" in res_str
+
+
+def test_websearch_tool_resolves_from_webengine(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The websearch entry builds Websearch() from WebSearch.Webengine, with no network."""
+    sentinel = object()
+    calls: list[dict[str, object]] = []
+
+    def fake_websearch(**kwargs: object) -> object:
+        calls.append(kwargs)
+        return sentinel
+
+    pkg = types.ModuleType("WebSearch")
+    engine = types.ModuleType("WebSearch.Webengine")
+    monkeypatch.setattr(engine, "Websearch", fake_websearch, raising=False)
+    monkeypatch.setattr(pkg, "Webengine", engine, raising=False)
+    monkeypatch.setitem(sys.modules, "WebSearch", pkg)
+    monkeypatch.setitem(sys.modules, "WebSearch.Webengine", engine)
+
+    assert get_tool("websearch") is sentinel
+    assert calls == [{}]
+
+
+def test_websearch_tool_missing_package_raises_import_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Without the WebSearch package installed, resolving the tool fails with ImportError."""
+    monkeypatch.setitem(sys.modules, "WebSearch", None)
+    monkeypatch.setitem(sys.modules, "WebSearch.Webengine", None)
+
+    with pytest.raises(ImportError):
+        get_tool("websearch")
 
