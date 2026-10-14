@@ -103,9 +103,7 @@ def _fetch_url():
 def _run_benchmark():
     from langswarm.bench import bench_tool
 
-    return bench_tool()
-
-
+    return bench_too
 def _websearch():
     # WebSearch is a separate package (Tools/WebSearch); import it lazily so a
     # missing install surfaces as a tool error, not an import-time failure.

@@ -83,7 +83,11 @@ def handle_run(args: argparse.Namespace, console: Any) -> int:
 
     start_time = time.perf_counter()
     start_cpu = time.process_time()
-    state = engine.run(task=task, target_files=files, profile=profile)
+    try:
+        state = engine.run(task=task, target_files=files, profile=profile)
+    except Exception as exc:
+        console.print(f"[bold red]Engine execution failed:[/bold red] {exc}")
+        return 1
     elapsed_ms = (time.perf_counter() - start_time) * 1000.0
     cpu_ms = (time.process_time() - start_cpu) * 1000.0
 
@@ -144,14 +148,20 @@ def handle_run(args: argparse.Namespace, console: Any) -> int:
     # If execution succeeded, write synthesized code to target files if existing or --apply
     if is_success:
         synthesized_code = state.get("synthesized_code") or {}
+        cwd = Path.cwd().resolve()
         for fname, code in synthesized_code.items():
-            fpath = Path(fname)
+            fpath = Path(fname).resolve()
+            if not fpath.is_relative_to(cwd):
+                console.print(
+                    f"[bold red]Security Error:[/bold red] Write blocked outside workspace: {fname}"
+                )
+                continue
             if fpath.exists() or getattr(args, "apply", False):
                 try:
                     fpath.parent.mkdir(parents=True, exist_ok=True)
                     fpath.write_text(code, encoding="utf-8")
-                except OSError:
-                    pass
+                except OSError as err:
+                    console.print(f"[yellow]Warning: Could not write {fname}: {err}[/yellow]")
 
     # Render diff patches if synthesized
     diff_patches = state.get("diff_patches") or []
@@ -203,7 +213,13 @@ def handle_vault(args: argparse.Namespace, console: Any) -> int:
         norm_name = normalize_service(service)
         val = get_secret(norm_name, fallback_env=True)
         if val is not None:
-            console.print(val)
+            if hasattr(console, "print"):
+                try:
+                    console.print(val, markup=False)
+                except TypeError:
+                    console.print(val)
+            else:
+                print(val)
             return 0
         console.print(f"[red]Secret not found for service '{service}' ({norm_name}).[/red]")
         return 1
@@ -357,7 +373,7 @@ def build_parser() -> argparse.ArgumentParser:
     # Subcommand: agentic (alias of run; keeps dest command == "agentic" so
     # handlers can tell which spelling the user invoked)
     p_agentic = subparsers.add_parser(
-        "agentic", aliases=["agentic"], help="Alias of `run` (autonomous code synthesis)"
+        "agentic", help="Alias of `run` (autonomous code synthesis)"
     )
     p_agentic.add_argument("task", help="Description of synthesis task to execute")
     p_agentic.add_argument("--files", nargs="*", default=None)
