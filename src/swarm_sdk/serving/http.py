@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import RunResult, SwarmSDK
 from swarm_sdk.execution import install_uvloop
+from swarm_sdk.serving.gateway import build_router
 from swarm_sdk.vault import prime_runtime_secrets
 
 if TYPE_CHECKING:
@@ -67,6 +68,7 @@ def create_app(sdk: SwarmSDK | None = None) -> FastAPI:
         payload = {"hits": [hit.model_dump() for hit in hits]}
         return Response(content=orjson.dumps(payload), media_type="application/json")
 
+    application.include_router(build_router())
     return application
 
 
