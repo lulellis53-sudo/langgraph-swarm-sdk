@@ -16,9 +16,13 @@ the ``(agent, system, user)`` triple: a hit skips the LLM call entirely.
 
 from __future__ import annotations
 
+import logging
 import os
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+logger = logging.getLogger(__name__)
 
 from swarm_sdk.agents.handoff import handoff_errors
 from swarm_sdk.agents.manifest import AgentManifest, role_contract
@@ -161,7 +165,7 @@ class WorkerAgent:
             raise RuntimeError(f"agent {self.name} has no model in its manifest")
         return name
 
-    def _resolve_api_key(self) -> None:
+    def _resolve_api_key(self, model_name: str | None = None, api_key_env: str | None = None) -> None:
         """Expose the provider API key to the SDK, named by ``api_key_env``.
 
         The manifest stores only the *name* of the environment variable that
@@ -169,30 +173,66 @@ class WorkerAgent:
         value is copied to the provider-specific variable (e.g.
         ``OPENAI_API_KEY``) that LangChain's ``init_chat_model`` reads, using
         ``setdefault`` so an explicitly configured environment wins.
-
-        Raises:
-            RuntimeError: When the named env var, its registry fallbacks, and the
-                provider's own key (``<PROVIDER>_API_KEY``) are all unset.
         """
-        env = self.manifest.api_key_env
-        if not env:
-            return
-        provider_env = f"{self._model_name().split(':', 1)[0].upper()}_API_KEY"
+        target_model = model_name or self._model_name()
+        env = api_key_env or self.manifest.api_key_env
+        provider_env = f"{target_model.split(':', 1)[0].upper()}_API_KEY"
         from swarm_sdk import vault
 
-        names = ordered_key_names(self._model_name(), env)
+        names = ordered_key_names(target_model, env)
         value = ""
         for name in names:
             value = os.environ.get(name) or vault.get(name) or ""
             if value:
                 break
         if not value:
-            # Per-agent override unset: the provider's own key (e.g. primed from the
-            # Keychain by prime_runtime_secrets) is enough.
-            if os.environ.get(provider_env):
+            val = os.environ.get(provider_env) or vault.get(provider_env)
+            if val:
+                os.environ.setdefault(provider_env, val)
                 return
-            raise RuntimeError(f"api key env var {env} is not set for agent {self.name}")
+            return
         os.environ.setdefault(provider_env, value)
+
+    def _candidate_models(self) -> list[tuple[str, str | None]]:
+        """Return list of (model_name, api_key_env) in fallback order."""
+        candidates: list[tuple[str, str | None]] = []
+        if self._model is not None:
+            return [(self.manifest.model or "custom", None)]
+
+        # Check <agents_root>/<name>/config/models.yaml
+        models_yaml_path = Path(self.agents_root) / self.name / "config" / "models.yaml"
+        if models_yaml_path.is_file():
+            import yaml
+
+            try:
+                data = yaml.safe_load(models_yaml_path.read_text(encoding="utf-8")) or {}
+                models_dict = data.get("models") or {}
+                chain_order = data.get("fallback_chain", {}).get("order", ["primary", "fallback"])
+                for key in chain_order:
+                    if key in models_dict and isinstance(models_dict[key], dict):
+                        m_name = models_dict[key].get("name")
+                        m_env = models_dict[key].get("api_key_env")
+                        if m_name and not any(c[0] == m_name for c in candidates):
+                            candidates.append((m_name, m_env))
+            except Exception as e:
+                logger.warning("failed to load %s: %s", models_yaml_path, e)
+
+        # Fallback to manifest model
+        manifest_model = self.manifest.model
+        if manifest_model and not any(c[0] == manifest_model for c in candidates):
+            candidates.insert(0, (manifest_model, self.manifest.api_key_env))
+
+        # Always ensure verified high-speed free fallbacks exist in reserve
+        free_fallbacks = [
+            ("cerebras:gpt-oss-120b", "CEREBRAS_API_KEY"),
+            ("cerebras:qwen-3.8-27b", "CEREBRAS_API_KEY"),
+            ("mistral:codestral-latest", "MISTRAL_API_KEY"),
+        ]
+        for fb_model, fb_env in free_fallbacks:
+            if not any(c[0] == fb_model for c in candidates):
+                candidates.append((fb_model, fb_env))
+
+        return candidates
 
     async def run(
         self,
@@ -239,12 +279,38 @@ class WorkerAgent:
                     wall_s=time.perf_counter() - started,
                 )
 
-        self._resolve_api_key()
-        model = self._model if self._model is not None else load_chat_model(self._model_name())
-        if "ast" in self.manifest.capabilities:
-            content = await self._complete_with_syntax(model, system, user)
-        else:
-            content = await complete(model, system, user)
+        content = ""
+        last_error: Exception | None = None
+        candidates = self._candidate_models() if self._model is None else [(self.manifest.model or "custom", None)]
+
+        for model_name, key_env in candidates:
+            try:
+                if self._model is not None:
+                    model = self._model
+                else:
+                    self._resolve_api_key(model_name, key_env)
+                    model = load_chat_model(model_name)
+
+                if "ast" in self.manifest.capabilities:
+                    content = await self._complete_with_syntax(model, system, user)
+                else:
+                    content = await complete(model, system, user)
+                if content:
+                    break
+            except Exception as exc:
+                last_error = exc
+                logger.warning(
+                    "candidate model %s failed for %s (%s: %s); trying fallback",
+                    model_name,
+                    self.name,
+                    type(exc).__name__,
+                    exc,
+                )
+                continue
+
+        if not content and last_error is not None:
+            raise last_error
+
         wall = time.perf_counter() - started
 
         errors = handoff_errors(self.agents_root, self.name, content)

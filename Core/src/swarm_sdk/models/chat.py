@@ -100,6 +100,8 @@ _COMPAT_PROVIDERS = frozenset(
         "fireworks",
         "atlascloud",
         "poolside",
+        "cerebras",
+        "novita",
     }
 )
 # Public OpenAI-compatible hosts. A vault or env base URL still wins.
@@ -112,6 +114,8 @@ _DEFAULT_BASE_URLS = {
     "moonshot": "https://api.moonshot.ai/v1",
     "atlascloud": "https://api.atlascloud.ai/v1",
     "poolside": "https://inference.poolside.ai/v1",
+    "cerebras": "https://api.cerebras.ai/v1",
+    "novita": "https://api.novita.ai/v3/openai",
 }
 
 _KEY_KWARG = {
@@ -122,6 +126,7 @@ _KEY_KWARG = {
     "mistral": "mistral_api_key",
     "google_genai": "google_api_key",
     "xai": "xai_api_key",
+    "cerebras": "api_key",
 }
 
 
@@ -336,6 +341,37 @@ def _build_chat_model(model_name: str, *, key_index: int) -> BaseChatModel:
     key_name = selected[0] if selected is not None else ""
     key_value = selected[1] if selected is not None else ""
     used_index = key_index if selected is not None else 0
+
+    if not key_value:
+        provider_defaults = {
+            "cerebras": ("CEREBRAS_API_KEY",),
+            "mistral": ("MISTRAL_API_KEY", "MISTRAL_API_KEY_1", "MISTRAL_API_KEY_D"),
+            "groq": ("GROQ_API_KEY", "GROQ_API_KEY_D", "GROQ_API_KEY_1"),
+            "sambanova": ("SAMBANOVA_API_KEY", "SAMBANOVA_API_KEY_D"),
+            "nvidia": ("NVIDIA_API_KEY", "NVIDIA_NIM_API_KEY", "NVIDIA_NIM_API_KEY_1"),
+            "google": ("GOOGLE_API_KEY", "GOOGLE_API_KEY_1", "GEMINI_API_KEY"),
+            "openrouter": ("OPENROUTER_API_KEY",),
+            "anthropic": ("ANTHROPIC_API_KEY",),
+            "openai": ("OPENAI_API_KEY",),
+            "novita": ("NOVITA_API_KEY", "NOVITA_API_KEY_2", "NOVITA_API_KEY_1"),
+            "zai": ("ZHIPU_API_KEY", "ZAI_API_KEY"),
+            "minimax": ("MINIMAX_API_KEY", "MINIMAX_KEY"),
+            "moonshot": ("KIMI_API_KEY", "KIMI_API_KEY_1"),
+            "atlascloud": ("ATLASCLOUD_API_KEY", "ATLASCLOUD_API_KEY_1"),
+            "opencode": ("OPENCODE_API_KEY", "OPENCODE_API_KEY_1"),
+            "cohere": ("COHERE_API_KEY", "COHERE_API_KEY_1"),
+        }
+        candidates = provider_defaults.get(provider, (f"{provider.upper()}_API_KEY",))
+        for cand in candidates:
+            val = _value(cand)
+            if val:
+                key_name = cand
+                key_value = val
+                break
+
+    if key_name and key_value:
+        os.environ.setdefault(key_name, key_value)
+
     if provider in CLI_PROVIDERS:
         # CLI-backed providers (claude-cli, codex-cli, grok-cli) run the local
         # binary via OAuth; they must never see or inherit an API key.
@@ -346,6 +382,9 @@ def _build_chat_model(model_name: str, *, key_index: int) -> BaseChatModel:
     elif provider == "groq":
         kwargs = {"groq_api_key": key_value} if key_value else {}
         chat_model = init_chat_model(model, model_provider="groq", **kwargs)
+    elif provider == "mistral":
+        kwargs = {"mistral_api_key": key_value} if key_value else {}
+        chat_model = init_chat_model(model, model_provider="mistralai", **kwargs)
     elif provider in _COMPAT_PROVIDERS:
         base_url = _base_url(provider, route)
         if not base_url:
