@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+uv.lock
+dist/
+.pytest_cache/
+*.db
+data/faiss_index/
+src/langswarm/proto/langswarm_pb2*.py
