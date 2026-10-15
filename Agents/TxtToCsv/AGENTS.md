@@ -1,6 +1,7 @@
 # Agent: TxtToCsv
 
-
+> [!NOTE]
+> **Unified Agent Consolidation**: `TxtToCsv` has been merged into [`FileManager`](../Extra/FileManager/AGENTS.md) as a single unified extraction, reverse engineering, and format conversion specialist.
 
 ## Scope and role
 

@@ -1,6 +1,6 @@
 version: '1'
 name: Writer
-role: copywriting_and_humanizer_verification
+role: technical_writing_and_humanizer_verification
 langgraph_node: reviewer
 model: anthropic:claude-sonnet-4.6
 think_level: high
@@ -10,31 +10,42 @@ token_budget:
   max_prompt: 16384
   max_completion: 8192
 tasks:
+- id: write_technical_spec
+  description: Author publication-grade technical specifications, hardware profiles (e.g. Xeon99), and systems compilation plans (e.g. Xeon99KernelCompilationPlan).
+  outputs:
+  - document_path
+  - semantic_score
+  - verification_status
+- id: validate_semantic_criteria
+  description: Audit documents against strict semantic criteria, ensuring zero AI fluff, verified hardware parameters, concrete code/flag examples, and quantitative benchmarks.
+  outputs:
+  - semantic_audit_report
+  - compliance_status
 - id: humanize_and_audit_copy
-  description: Audit text for AI detection tells, perplexity, and burstiness variations.
-    Apply copywriting humanization techniques to eliminate robotic syntax while preserving
-    key messaging and conversion intent.
+  description: Audit text for AI detection tells, perplexity, and burstiness variations. Apply copywriting humanization techniques to eliminate robotic syntax while preserving key messaging.
   outputs:
   - humanized_text
   - perplexity_score
   - burstiness_index
   - ai_tell_words_removed
-- id: verify_copywriting_standards
-  description: Audit sales copy, marketing assets, and editorial pieces against core
-    persuasive frameworks (AIDA, PAS), ensuring tone consistency, high readability,
-    and anti-detection compliance.
-  outputs:
-  - copywriting_audit_report
-  - compliance_status
 capabilities:
+- technical_writing
+- kernel_compilation_planning
+- semantic_validation
+- hardware_optimization_profiling
 - copywriting_verification
 - humanization_rewriting
 - perplexity_tuning
 - burstiness_optimization
-- ai_detection_evasion
-- editorial_polishing
 skills:
 - skills/SKILL.md
+- skills/artifact-template-design-report/SKILL.md
+- skills/artifact-template-experiment-analysis/SKILL.md
+- skills/artifact-template-investment-committee-memo/SKILL.md
+- skills/artifact-template-legal-memorandum/SKILL.md
+- skills/artifact-template-minimal-letterhead/SKILL.md
+- skills/artifact-template-strategy-memorandum/SKILL.md
+- skills/artifact-template-system-design/SKILL.md
 telemetry:
   enabled: true
   metrics:

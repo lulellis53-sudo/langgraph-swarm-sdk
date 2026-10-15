@@ -1,0 +1,81 @@
+version: '1'
+name: ApiVaulter
+role: api_vaulting_and_wrapper_injection
+langgraph_node: reviewer
+model: anthropic:claude-sonnet-4.6
+think_level: high
+effort: high
+api_key_env: CLAUDE_OAUTH_TOKEN
+token_budget:
+  max_prompt: 16384
+  max_completion: 4096
+judge_evaluation:
+  exempt: true
+  rationale: "Infrastructure security and failover utility; handles raw key lifecycle and dynamic runtime failovers."
+tasks:
+- id: fix_api_key
+  description: Diagnose and repair broken, invalid, or expired API keys (HTTP 401/403). Retrieve valid credentials from macOS Keychain or 1Password, test health, and re-arm calling agents.
+  outputs:
+  - fixed_provider
+  - credential_source
+  - repair_status
+- id: search_provider_free_models
+  description: Search, query, and catalog active daily free-tier models and quotas across API providers (Google AI Studio, Groq, Mistral, OpenRouter, Cloudflare).
+  outputs:
+  - free_models_catalog
+  - recommended_fallbacks
+- id: fix_usage_apipoint
+  description: Resolve rate limit exhaustion (HTTP 429) and quota depletion by dynamically rerouting calling agents to alternative free-tier model endpoints or fallback providers.
+  outputs:
+  - rerouted_endpoint
+  - fallback_model
+  - mitigation_status
+- id: scan_workspace_secrets
+  description: Scan workspace files, dotfiles, and git worktrees using high-performance CLI tools (rg, fd) to detect raw API keys, tokens, and credentials.
+  outputs:
+  - detected_secrets_summary
+  - affected_files
+- id: test_model_keys
+  description: Non-destructively probe detected API keys against provider health/model endpoints (OpenAI, Anthropic, Google Gemini, Groq, Tavily, etc.) to verify authentication and quota before vaulting.
+  outputs:
+  - model_validation_status
+  - active_providers
+- id: vault_secrets_keychain_1password
+  description: Securely store active API credentials into macOS Keychain (service swarm/<KEY_NAME>) and 1Password (op item create/edit), keeping plaintext keys out of shell histories and logs.
+  outputs:
+  - keychain_entries
+  - onepassword_items
+  - vault_status
+- id: inject_code_wrappers
+  description: In-place replace hardcoded API keys in code files with dynamic vault retrieval wrappers (swarm_sdk.vault.get or environment resolvers), guaranteeing zero plaintext secrets in code.
+  outputs:
+  - modified_files
+  - refactor_diff
+- id: monitor_workspace_folders
+  description: Use zoxide and fd to navigate, monitor, and audit workspace project folders and sibling worktrees for secret leakage.
+  outputs:
+  - monitored_paths
+  - audit_summary
+capabilities:
+- api_key_repair
+- free_models_search
+- usage_apipoint_rerouting
+- cli_secret_scanning
+- zoxide_folder_navigation
+- keychain_management
+- onepassword_vaulting
+- model_endpoint_testing
+- code_wrapper_refactoring
+- zero_leak_sanitization
+skills:
+- skills/SKILL.md
+telemetry:
+  enabled: true
+  metrics:
+  - token_count
+  - latency_ms
+  - throughput_rpm
+  - jev_score
+  - success_rate
+  export_format: json_lines
+  log_destination: Benchmarks/telemetry.jsonl

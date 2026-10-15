@@ -1,0 +1,252 @@
+# Helper-LLM providers for llm_ask / ask_with_sources (read by llm.py; override the path with
+# WEBSCRAPER_PROVIDERS). Providers are tried in this order; one that is disabled, has no key, is
+# rejected (401/402/403/404) or keeps failing is skipped. LLM_FIRST=<name> moves one provider to the
+# front, and <NAME>_MODEL (for example TOKENHARBOR_MODEL) overrides a model.
+#
+# effort      answer budget (max output tokens): low 300, medium 800, high 1500, xhigh 3000.
+#             Reasoning models spend part of it thinking, so give them more.
+# maxretry    extra attempts per key on a transient failure (429, 5xx, timeout); never on 401/402/403/404
+# maxms       per-request timeout in milliseconds
+# keys        environment variable names, tried in order; the values come from the Keychain (see README)
+# enabled     false keeps the entry but skips it
+# extra_body  fields merged into every request (not model/messages)
+#
+# Free models below were each called successfully on 2026-10-08/09 unless a comment says otherwise.
+version: 1
+
+defaults:
+  effort: medium
+  maxretry: 1
+  maxms: 60000
+  enabled: true
+
+providers:
+  # ---- free tiers that answer today, fastest first (measured: ~0.6s, ~0.6s, ~0.7s, ~1.6s, ~3.6s, ~7.7s, ~9s) ----
+  - name: mistral                # Experiment plan: free but rate limited
+    base_url: https://api.mistral.ai/v1
+    keys: [MISTRAL_API_KEY, MISTRAL_API_KEY_1]
+    model: open-mistral-nemo      # mistral-small-latest answered 429 (rate limit) in the same test
+    effort: medium
+    maxretry: 2
+    maxms: 30000
+
+  - name: cohere                 # trial key: free, non-production, about 20 requests/minute, 1,000/month
+    base_url: https://api.cohere.ai/compatibility/v1
+    keys: [COHERE_API_KEY, COHERE_API_KEY_1]
+    model: command-r7b-12-2024
+    effort: medium
+    maxretry: 2
+    maxms: 30000
+
+  - name: nvidia                 # build.nvidia.com serverless endpoint; thinking is switched off so the
+    base_url: https://integrate.api.nvidia.com/v1   # answer is not buried in a chain of thought
+    keys: [NVIDIA_NIM_API_KEY, NVIDIA_NIM_API_KEY_1]   # the older Keychain NVIDIA_API_KEY answers 403
+    model: nvidia/nemotron-3.5-lightning-30b-a3b
+    effort: medium
+    maxretry: 1
+    maxms: 60000
+    extra_body:
+      chat_template_kwargs: {enable_thinking: false}
+
+  - name: ollama                 # Ollama Cloud; gpt-oss:20b is a reasoning model, hence the larger budget
+    base_url: https://ollama.com/v1
+    keys: [OLLAMA_CLOUD_API_KEY]
+    model: gpt-oss:20b
+    effort: high
+    maxretry: 1
+    maxms: 90000
+
+  - name: openrouter             # free models rotate and are rate limited upstream (429): hence the retries
+    base_url: https://openrouter.ai/api/v1
+    keys: [OPENROUTER_API_KEY, OPENROUTER_API_KEY_1]
+    model: nvidia/nemotron-3-ultra-550b-a55b:free   # measured 3.6s, clean answer (2026-10-09)
+    effort: high                  # reasoning model: part of the budget goes to thinking
+    maxretry: 2
+    maxms: 60000
+
+  - name: laguna                 # Poolside Laguna, free on OpenRouter (262k context); laguna-xs-2.1:free
+    base_url: https://openrouter.ai/api/v1       # was rate limited (429) at test time
+    keys: [OPENROUTER_API_KEY, OPENROUTER_API_KEY_1]
+    model: poolside/laguna-s-2.1:free   # measured 7.7s, clean answer (2026-10-09)
+    effort: high
+    maxretry: 2
+    maxms: 60000
+
+  - name: tokenharbor            # free routes need an opt-in in the dashboard and a verified email.
+    base_url: https://tokenharbor.ai/v1          # TOKEN_HARBOR_API_KEY (the account you paid on) answers 403
+    keys: [TOKEN_HARBOR_API_KEY, TOKEN_HARBOR_API_KEY_1]   # "Verify your email address" until you confirm it
+    model: claude-haiku-5.5:free  # live list 2026-10-09, all answered: this one 1.8s and no reasoning; also
+                                  # deepseek-v4.1-flash:free 4.7s, deepseek-v4-flash:free 3.0s,
+                                  # mimo-v2.6-flash:free 3.3s, mimo-v2.5:free 3.8s
+    effort: medium
+    maxretry: 1
+    maxms: 60000
+
+  # ---- paid APIs that answered (tried only when every free provider above failed) --------------
+  - name: kimi                   # Kimi Code plan (OpenAI-compatible; overseas host api.kimi.ai/coding/v1 also works).
+    base_url: https://api.kimi.com/coding/v1     # KIMI_API_KEY answers; KIMI_API_KEY_1 is valid but hit its weekly
+    keys: [KIMI_API_KEY, KIMI_API_KEY_1]         # 7-day limit (403); KIMI_API_KEY_2 and the old code-plan key: 401.
+    model: kimi-for-coding        # also: k3, k3-256k, kimi-for-coding-highspeed (all listed); k3 answered too
+    effort: high
+    maxretry: 0                   # a 403 here is the weekly quota: not worth retrying
+    maxms: 90000
+
+  - name: fireworks              # gpt-oss-120b: 1.1s, clean answer (2026-10-09). Billed per token.
+    base_url: https://api.fireworks.ai/inference/v1
+    keys: [FIREWORKS_API_KEY]
+    model: accounts/fireworks/models/gpt-oss-120b
+    effort: medium
+    maxretry: 1
+    maxms: 40000
+
+  - name: poolside               # Poolside's own API, both keys answered (4-12s). Billed; on OpenRouter the
+    base_url: https://inference.poolside.ai/v1   # same model lists at $0.09 / $0.18 per million tokens.
+    keys: [POOLSIDE_API_KEY, POOLSIDE_API_KEY_1]
+    model: poolside/laguna-s-2.1
+    effort: high
+    maxretry: 1
+    maxms: 60000
+
+  - name: minimax-m31            # Token plan M3.1 (intl endpoint); subscription key in MINIMAX_API_KEY
+    base_url: https://api.minimax.io/v1
+    keys: [MINIMAX_API_KEY]
+    model: MiniMax-M3.1-Flash-Preview
+    effort: high
+    maxretry: 0
+    maxms: 60000
+    enabled: false
+
+  - name: minimax                # MiniMax-M3 answered in 2.9s; its <think> block is stripped by llm.py
+    base_url: https://api.minimax.io/v1
+    keys: [MINIMAX_API_KEY]
+    model: MiniMax-M3
+    effort: high
+    maxretry: 1
+    maxms: 60000
+
+  # ---- OAuth subscriptions through the official CLIs (kind: cli) ---------------------------------
+  # The CLI must already be logged in. The prompt goes in on stdin; the process runs in an empty temp
+  # directory with a short allow-list of environment variables (llm.CLI_ENV_ALLOWLIST: none of your API
+  # keys), and is killed at maxms. Tools are off (Claude: --tools ""; Codex: read-only sandbox, no
+  # session saved), because retrieved web text could carry a prompt injection. effort does not apply.
+  # They use your subscription's allowance, so they sit last. Verified 2026-10-09: ~6-7s per answer.
+  - name: codex                  # model: the account default (reported as gpt-6.1-sol in the test)
+    kind: cli                    # OFF: its read-only sandbox blocks writes, not reads. In a canary test a prompt
+                                 # injection made it print a file from outside its directory, and
+                                 # -c sandbox_permissions=[] did not stop that. Enable only for prompts you trust.
+    command: [codex, exec, -s, read-only, --ephemeral, --skip-git-repo-check, --ignore-user-config, --color, never, "-"]
+    model: account-default
+    maxretry: 1
+    maxms: 120000
+    enabled: false
+
+  - name: claude                 # Claude Code, `claude -p`. --safe-mode turns off MCP servers, hooks, plugins and
+    kind: cli                    # CLAUDE.md (without it the child loaded your 1Password/GitKraken MCP servers) but
+    command: [claude, -p, --safe-mode, --model, "{model}", --tools, "", --no-session-persistence, --output-format, text]
+    # keeps the OAuth login. Do not use --bare: it skips the Keychain read and loses the login.
+    model: sonnet
+    maxretry: 1
+    maxms: 120000
+
+  # ---- configured, but rejected with the current keys/accounts ----------------------------------
+  - name: groq                   # both keys answered 401 (invalid) on 2026-10-09
+    base_url: https://api.groq.com/openai/v1
+    keys: [GROQ_API_KEY, GROQ_API_KEY_1]
+    model: llama-3.3-70b-versatile
+    effort: low
+    maxretry: 1
+    maxms: 20000
+
+  - name: zenmux                 # Pay-As-You-Go keys: chat answers 403 until the account has a balance
+    base_url: https://zenmux.ai/api/v1
+    keys: [ZENMUX_API_KEY, ZENMUX_API_KEY_1]
+    model: z-ai/glm-4.7-flash-free   # also free: z-ai/glm-4.6v-flash-free (vision)
+    effort: medium
+    maxretry: 1
+    maxms: 60000
+
+  - name: novita                 # keys valid, no balance (403)
+    base_url: https://api.novita.ai/v3/openai
+    keys: [NOVITA_API_KEY, NOVITA_API_KEY_1, NOVITA_API_KEY_2, NOVITA_API_KEY_3]
+    model: qwen/qwen3.8-flash
+    effort: medium
+    maxretry: 1
+    maxms: 40000
+
+  - name: atlas                  # 401 / 402
+    base_url: https://api.atlascloud.ai/v1
+    keys: [ATLASCLOUD_API_KEY, ATLASCLOUD_API_KEY_1]
+    model: google/gemini-2.5-flash-lite
+    effort: medium
+    maxretry: 1
+    maxms: 40000
+
+  - name: zai                    # GLM Coding Plan endpoint: glm-5.3, glm-4.7 and glm-4.5-air all answered (the
+    base_url: https://api.z.ai/api/coding/paas/v4   # general api.z.ai/api/paas/v4 says "no resource package").
+    keys: [ZAI_API_KEY]          # OFF: Z.ai's FAQ says Coding Plan subscribers "can only make calls via the plan's
+    model: glm-5.3               # quota in supported tools. API calls outside the plan are not available." This
+    effort: medium               # chain is not a supported tool, so using it risks the plan. Your call.
+    maxretry: 0
+    maxms: 40000
+    enabled: false
+
+  - name: mimo                   # token-plan endpoint answered 401 "Invalid API Key"
+    base_url: https://token-plan-ams.xiaomimimo.com/v1
+    keys: [MIMO_API_KEY]
+    model: mimo-v2.6-flash
+    effort: medium
+    maxretry: 0
+    maxms: 40000
+    enabled: false
+
+  - name: sonnet                 # Claude Sonnet 5.5 on Token Harbor: the second key answers 402 "balance is $0";
+                                 # the first key (the one you paid on) is blocked until its email is verified.
+    base_url: https://tokenharbor.ai/v1
+    keys: [TOKEN_HARBOR_API_KEY, TOKEN_HARBOR_API_KEY_1]
+    model: claude-sonnet-5.5
+    effort: high
+    maxretry: 0
+    maxms: 60000
+    enabled: false
+
+  # ---- cheap, not free: off by default ----------------------------------------------------------
+  - name: stepflash              # StepFun Step 3.5 Flash through OpenRouter: about $0.10 per million input
+    base_url: https://openrouter.ai/api/v1       # and $0.30 per million output tokens. A reasoning
+    keys: [OPENROUTER_API_KEY, OPENROUTER_API_KEY_1]   # model, so it needs a larger budget.
+    model: stepfun/step-3.5-flash   # also: stepfun/step-3.7-flash ($0.20 / $1.15 per million)
+    effort: high
+    maxretry: 1
+    maxms: 90000
+    enabled: false
+
+  - name: stepfun                # StepFun's own platform (pay as you go; no free tier for this model; individual
+    base_url: https://api.stepfun.ai/v1          # accounts need identity verification; rate limits depend on
+    keys: [STEPFUN_API_KEY]                      # cumulative top-up). Same price as above: $0.10 / $0.30 per M.
+    model: step-3.5-flash
+    effort: high
+    maxretry: 1
+    maxms: 90000
+    enabled: false
+
+  # ---- avoided on purpose -----------------------------------------------------------------------
+  - name: gemini                 # set enabled: true to bring it back into the chain
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai
+    keys: [GOOGLE_API_KEY, GOOGLE_API_KEY_1, GOOGLE_API_KEY_2]
+    model: gemini-3.5-flash
+    effort: medium
+    maxretry: 1
+    maxms: 60000
+    enabled: false
+
+# Tested and left out (2026-10-09):
+#   opencode     free models only work from inside OpenCode (403 FreeTierError over the API)
+#   sambanova    402 PAYMENT_METHOD_REQUIRED
+#   chutes       402, account balance $0
+#   huggingface  402, no remaining credits
+#   github       models.github.ai answered a bare "OK", not an inference reply (unverified)
+#   poolside     its docs state no free tier (its direct API is the paid `poolside` entry above)
+#   stepfun      no free tier: StepFun's pricing page lists step-3.5-flash at $0.10 / $0.02 cached / $0.30 per
+#                million tokens (only its audio and music previews are free, for a limited time). OpenRouter,
+#                ZenMux and Novita resell it. Free copies elsewhere (Puter.js, NagaAI) are other services.
+# xAI (Grok) chat API: 403, the team has used all its credits (the `x_search` MCP tool uses it, see README). Grok OAuth, Kimi Code and MiMo Code have their own
+# CLIs on this machine (~/.grok, ~/.kimi-code, ~/.mimocode); they are not wired in.

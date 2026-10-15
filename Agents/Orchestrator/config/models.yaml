@@ -1,0 +1,30 @@
+version: 1
+agent: Orchestrator
+role: coordinate_swarm
+models:
+  primary:
+    name: openai:gpt-4o
+    provider: openai
+    api_key_env: OPENAI_API_KEY
+    think_level: high
+    effort: high
+    token_budget:
+      max_prompt: 8192
+      max_completion: 4096
+  fallback:
+    name: sambanova:Meta-Llama-3.1-70B-Instruct
+    provider: sambanova
+    api_key_env: SAMBANOVA_API_KEY
+    think_level: medium
+    effort: medium
+    token_budget:
+      max_prompt: 4096
+      max_completion: 2048
+fallback_chain:
+  order:
+  - primary
+  - fallback
+  circuit_breaker:
+    failure_threshold: 3
+    recovery_time_sec: 60
+  timeout_ms: 30000

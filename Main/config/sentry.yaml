@@ -1,13 +1,14 @@
-# Sentry MCP + SDK defaults for this GitHub org (env-var names only — never commit secrets).
-# Token: Keychain swarm/SENTRY_ACCESS_TOKEN or SENTRY_ACCESS_TOKEN → @sentry/mcp-server
+# Sentry MCP + SDK defaults for this repo (env-var names only — never commit secrets).
+# MCP: Cursor/Claude `.mcp.json` → https://mcp.sentry.dev/mcp/eudorax/python (OAuth via /mcp).
+# SDK DSN: Keychain or SENTRY_DSN in the environment.
 # Install GitHub in Sentry before repo-linked projects: Settings → Integrations → GitHub
 
 version: 1
 
 organization:
-  slug: dsadsadsa
+  slug: eudorax
   region_url: https://us.sentry.io
-  web_url: https://dsadsadsa.sentry.io
+  web_url: https://eudorax.sentry.io
 
 mcp:
   access_token_env: SENTRY_ACCESS_TOKEN
@@ -15,22 +16,15 @@ mcp:
   project_slug_env: SENTRY_PROJECT
   region_url_env: SENTRY_REGION_URL
 
-# Map each GitHub repository to Sentry project slug(s). MCP: find_projects / create_project(repository=…).
 github_repositories:
   - repository: lulellis53-sudo/langgraph-swarm-sdk
     default_project: swarm-sdk
     projects:
+      python: python
       swarm-sdk: swarm-sdk
       botdeal-harvest: botdeal-harvest
     worktree_defaults:
-      Swarm: swarm-sdk
-      Websearch: swarm-sdk
-      Prediction: swarm-sdk
-      Agents: swarm-sdk
-      WebScraper: swarm-sdk
-      BotDeal: botdeal-harvest
-      Modules/Newsletter: swarm-sdk
-      Modules/TechNews: swarm-sdk
+      Workspace: python
   - repository: lulellis53-sudo/farm
     default_project: farm
     projects:

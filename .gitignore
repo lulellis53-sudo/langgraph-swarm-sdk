@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 .venv/
+.pixi/
 .runtime/
 *.egg-info/
 dist/
@@ -30,6 +31,7 @@ htmlcov/
 .env
 .env.*
 !.env.example
+config.env
 dotenv/
 .vault/
 .vaults/
@@ -70,9 +72,9 @@ notebooks/.ipynb_checkpoints/
 # --- JSON (untracked only; already-tracked *.json stay in the index until removed) ---
 *.json
 
-# Agent instruction files (local only)
-AGENTS.md
-SKILL.md
+# Root agent instruction files (local only); Agents/**/AGENTS.md stay trackable
+/AGENTS.md
+/SKILL.md
 
 # Local editor/agent config
 .cursor/

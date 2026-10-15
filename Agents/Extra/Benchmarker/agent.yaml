@@ -1,0 +1,76 @@
+version: '1'
+name: Benchmarker
+role: measured_baselines_and_suite_authoring
+model: openai:gpt-6-luna
+api_key_env: CODEX_OAUTH_TOKEN
+think_level: medium
+effort: medium
+token_budget:
+  max_prompt: 4096
+  max_completion: 1024
+tools:
+- run_command
+- view_file
+- write_to_file
+- replace_file_content
+- search_web
+tasks:
+- id: define_workload
+  description: 'Define a fixed workload: inputs, repetitions, environment, and the
+    metrics to record. Do not optimize the code.'
+  outputs:
+  - workload
+  - metrics
+- id: measure_baseline
+  description: Run the defined workload and record the baseline. Label any number
+    that was not measured.
+  outputs:
+  - baseline
+  - environment
+- id: compare_candidates
+  description: Run the same workload on two or more candidates and report the delta
+    against the baseline.
+  outputs:
+  - comparison
+  - delta
+- id: author_suite
+  description: Author or extend a reproducible benchmark harness under Agents/benchmark/
+    with observability hooks; do not claim speedups without paired runs.
+  outputs:
+  - harness_paths
+  - workload_spec
+- id: regression_gate
+  description: Execute a suite, compare against baseline or noise floor, and emit
+    pass/fail with measured deltas only.
+  outputs:
+  - gate_status
+  - metrics_summary
+- id: instrument_observability
+  description: Design and instrument distributed tracing, metrics, and structured
+    log pipelines across swarm agents. Configure OpenTelemetry spans, metrics exporters
+    (Prometheus, Jaeger, Logfire), and correlate task IDs with execution traces.
+  outputs:
+  - otel_config
+  - metrics_pipeline
+  - trace_correlation_report
+capabilities:
+- benchmarking
+- measurement
+- suite_authoring
+- opentelemetry_instrumentation
+- trace_correlation
+- metric_pipeline_design
+- dashboard_generation
+telemetry:
+  enabled: true
+  metrics:
+  - token_count
+  - latency_ms
+  - throughput_rpm
+  - jev_score
+  - success_rate
+  export_format: json_lines
+  log_destination: Benchmarks/telemetry.jsonl
+skills:
+- skills/SKILL.md
+- skills/test-driven-development/SKILL.md

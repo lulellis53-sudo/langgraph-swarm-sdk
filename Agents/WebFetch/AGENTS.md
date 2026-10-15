@@ -1,7 +1,7 @@
 # WebFetch
 
-
-
+> [!NOTE]
+> **Unified Agent Consolidation**: `WebFetch` has been merged into [`Websearcher`](../Websearcher/AGENTS.md) as a single unified web retrieval and fetching persona. `WebFetch` is retained for backwards-compatible pipeline routing.
 
 Deterministic cowork agent in the three-stage web pipeline:
 **WebFetch (Playwright) -> Normalizer (normalize + dedupe) -> Persister (SQLite)**.

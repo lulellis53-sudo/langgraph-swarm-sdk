@@ -1,0 +1,4 @@
+#!/bin/zsh
+set -e
+export PATH="/Users/usuario/.local/opt/node-v26-avx2/bin:$PATH"
+exec /Users/usuario/.local/opt/node-v26-avx2/bin/npx -y mcp-remote https://mcp-for-docs.appwrite.io "$@"

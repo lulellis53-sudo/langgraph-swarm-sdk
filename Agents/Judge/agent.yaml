@@ -1,0 +1,55 @@
+version: '1'
+name: Judge
+role: authoritative_quality_evaluation
+langgraph_node: reviewer
+model: anthropic:claude-sonnet-4.6
+think_level: high
+effort: high
+api_key_env: CLAUDE_OAUTH_TOKEN
+token_budget:
+  max_prompt: 8192
+  max_completion: 4096
+tasks:
+- id: evaluate_implementation
+  description: Evaluate code, research dossiers, or benchmarks using 100-point rubric and JEV System One gates.
+  outputs:
+  - verdict
+  - score
+  - scorecard
+  - claim_ledger
+- id: audit_benchmark
+  description: Quantitative hardware baseline and delta percentage audit.
+  outputs:
+  - verified_metrics
+  - delta_percentage
+- id: route_improvement
+  description: Autonomous AST routing of improvements to Refactor, CreatorAgent, or Benchmarket when score < 85.
+  outputs:
+  - delegated_task
+  - specialist_agent
+  - improvement_plan
+capabilities:
+- quality_evaluation
+- jev_system_one_gating
+- claim_verification
+- benchmark_auditing
+- diff_audit
+- read_only_invariant
+- arxiv_document_verification
+- context7_code_fidelity
+- deepwiki_conceptual_audit
+- pypi_package_validation
+- github_source_verification
+skills:
+- skills/SKILL.md
+- skills/Benchmarkallagents/SKILL.md
+- SKILLS.md
+- Tools.md
+telemetry:
+  enabled: true
+  metrics:
+  - jev_score
+  - latency_ms
+  - token_count
+  export_format: json_lines
+  log_destination: Benchmark/telemetry.jsonl

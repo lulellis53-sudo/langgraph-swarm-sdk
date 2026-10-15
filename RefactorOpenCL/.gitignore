@@ -1,0 +1,80 @@
+# --- Python -------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+.runtime/
+*.egg-info/
+dist/
+
+# --- Test and coverage caches -------------------------------------------------
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+.coverage
+htmlcov/
+*.profraw
+*.profdata
+
+# --- Local tool and assistant state (never commit scratch space) --------------
+.claude/
+.crush/
+.remember/
+.superpowers/
+.idea/
+.DS_Store
+**/.DS_Store
+.mimosa/
+
+# --- Secrets & Vaults ---------------------------------------------------------
+.env
+.env.*
+!.env.example
+.vault/
+.vaults/
+vault/
+vaults/
+*.vault
+*.vaults
+.keychain_backup/
+
+# --- Rust build artifacts (prevent large binary commits) ----------------------
+target/
+**/target/
+*.rlib
+
+# --- Databases ----------------------------------------------------------------
+*.db
+*.sqlite
+
+# --- Build and benchmark results ----------------------------------------------
+Agents/benchmark/results/
+Main/Essentials/
+
+# --- Docs: keep curated docs; scratch only under docs/superpowers -------------
+docs/*
+!docs/MemoryAllocators.md
+!docs/Molten.md
+!docs/superpowers/
+docs/superpowers/*
+!docs/superpowers/specs/
+!docs/superpowers/plans/
+
+# --- Jupyter scratch ----------------------------------------------------------
+notebooks/.ipynb_checkpoints/
+
+# Playwright MCP page snapshots (server-side artifacts)
+.playwright-mcp/
+
+# --- JSON (untracked only; already-tracked *.json stay in the index until removed) ---
+*.json
+
+# Agent instruction files (local only)
+AGENTS.md
+SKILL.md
+
+# Local editor/agent config
+.cursor/
+
+# Swarm skill CLI state (langgraph_swarm.py)
+.swarm-skill-state/

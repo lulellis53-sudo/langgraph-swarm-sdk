@@ -1,0 +1,33 @@
+#!/bin/zsh
+set -e
+export PATH="/Users/usuario/.local/opt/node-v26-avx2/bin:$PATH"
+
+_load() {
+  local env_name="$1"; shift
+  local svc val=""
+  [[ -n "${(P)env_name:-}" ]] && return 0
+  for f in "$HOME/Desktop/swarm-keys.txt" "$HOME/Desktop/secret.env"; do
+    if [ -f "$f" ]; then
+      val=$(awk -F= -v k="$env_name" '$1 == k { sub(/^[^=]*=/, ""); gsub(/^["'\'']+|[\"'\'']+$/, ""); gsub(/^[[:space:]]+|[[:space:]]+$/, ""); print; exit }' "$f")
+      if [ -n "$val" ]; then
+        export "$env_name=$val"
+        return 0
+      fi
+    fi
+  done
+  for svc in "$@"; do
+    val=$(/usr/bin/security find-generic-password -s "$svc" -w 2>/dev/null || true)
+    if [ -n "$val" ]; then
+      export "$env_name=$val"
+      return 0
+    fi
+  done
+  return 1
+}
+
+_load APPWRITE_API_KEY swarm/APPWRITE_API_KEY APPWRITE_API_KEY || true
+_load APPWRITE_PROJECT_ID swarm/APPWRITE_PROJECT_ID APPWRITE_PROJECT_ID || true
+_load APPWRITE_ENDPOINT swarm/APPWRITE_ENDPOINT APPWRITE_ENDPOINT || true
+: "${APPWRITE_ENDPOINT:=https://cloud.appwrite.io/v1}"
+
+exec uvx mcp-server-appwrite --users "$@"

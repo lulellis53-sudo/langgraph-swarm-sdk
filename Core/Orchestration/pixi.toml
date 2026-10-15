@@ -1,0 +1,19 @@
+[workspace]
+authors = ["Eudora <dantenho@gmail.com>"]
+channels = ["conda-forge"]
+name = "Orchestration"
+platforms = ["osx-64"]
+version = "0.1.0"
+
+[tasks]
+test = "python -m pytest -q --tb=short"
+
+[dependencies]
+python = "3.15.*"
+
+[pypi-dependencies]
+langgraph = ">=1.2.15, <2"
+langchain-core = ">=1.6.10, <2"
+langsmith = ">=0.14.9, <0.15"
+pytest = ">=9.1.1, <10"
+ormsgpack = { path = "../../wheels/ormsgpack-1.12.2-cp315-cp315-macosx_10_12_x86_64.whl" }

@@ -1,0 +1,15 @@
+[workspace]
+name = "py315"
+version = "0.1.0"
+channels = ["conda-forge"]
+platforms = ["osx-64"]
+
+[dependencies]
+python = "3.15.*"
+rust = "1.99.*"
+
+# AVX2 Node.js v26.11.1 built on this machine.
+# process.config node_prefix: /Users/usuario/.local/opt/node-v26.11.1-avx2
+# Installed tree: /Users/usuario/.local/opt/node-26.11.1-avx2
+[target.unix.activation.env]
+PATH = "/Users/usuario/.local/opt/node-26.11.1-avx2/bin:$PATH"

@@ -1,0 +1,47 @@
+version: '1'
+name: Caching
+role: cache_engineering_and_redis
+model: inherit
+think_level: medium
+effort: medium
+token_budget:
+  max_prompt: 8192
+  max_completion: 2048
+tasks:
+- id: design_cache
+  description: Design cache data models, keys, expiry, consistency, and rollout tradeoffs for the assigned workload.
+  outputs:
+  - cache_design
+  - tradeoffs
+- id: implement_cache
+  description: Implement a scoped cache or Redis change, with focused regression coverage and verification.
+  outputs:
+  - changed_files
+  - verification
+- id: diagnose_cache
+  description: Diagnose cache or Redis behavior from supplied source, metrics, logs, and version details; return evidence-based findings.
+  outputs:
+  - findings
+  - recommended_actions
+capabilities:
+- cache_design
+- redis_data_modeling
+- redis_connections
+- redis_clustering
+- redis_search
+- redis_observability
+- redis_security
+- redis_semantic_cache
+- redis_iris
+- cache_performance
+skills:
+- skills/SKILL.md
+- skills/iris-development/SKILL.md
+- skills/redis-core/SKILL.md
+- skills/redis-connections/SKILL.md
+- skills/redis-clustering/SKILL.md
+- skills/redis-search/SKILL.md
+- skills/redis-observability/SKILL.md
+- skills/redis-security/SKILL.md
+- skills/redis-semantic-cache/SKILL.md
+- TOOLS.md

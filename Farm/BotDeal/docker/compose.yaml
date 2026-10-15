@@ -1,0 +1,10 @@
+services:
+  searxng:
+    build: .
+    image: websearch-searxng:local
+    container_name: websearch-searxng
+    restart: unless-stopped
+    environment:
+      SEARXNG_SECRET: "${SEARXNG_SECRET:?create docker/.env with SEARXNG_SECRET}"
+    ports:
+      - "127.0.0.1:8888:8080"

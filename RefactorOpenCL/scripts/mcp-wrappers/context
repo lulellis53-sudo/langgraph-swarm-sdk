@@ -1,0 +1,27 @@
+#!/bin/zsh
+set -e
+export PATH="/Users/usuario/.local/opt/node-v26-avx2/bin:$PATH"
+
+if [ -z "$CONTEXT_DEV_API_KEY" ]; then
+  for f in "$HOME/Desktop/swarm-keys.txt" "$HOME/Desktop/secret.env"; do
+    if [ -f "$f" ]; then
+      val=$(awk -F= '$1 == "CONTEXT_DEV_API_KEY" { sub(/^[^=]*=/, ""); gsub(/^["'\'']+|[\"'\'']+$/, ""); gsub(/^[[:space:]]+|[[:space:]]+$/, ""); print; exit }' "$f")
+      if [ -n "$val" ]; then
+        export CONTEXT_DEV_API_KEY="$val"
+        break
+      fi
+    fi
+  done
+  if [ -z "$CONTEXT_DEV_API_KEY" ]; then
+    KEY=$(/usr/bin/security find-generic-password -s swarm/CONTEXT_DEV_API_KEY -w 2>/dev/null || true)
+    if [ -n "$KEY" ]; then
+      export CONTEXT_DEV_API_KEY="$KEY"
+    fi
+  fi
+fi
+
+if [ -n "$CONTEXT_DEV_API_KEY" ]; then
+  exec /Users/usuario/.local/opt/node-v26-avx2/bin/npx -y mcp-remote https://mcp.context.dev/mcp \
+    --header "Authorization: Bearer ${CONTEXT_DEV_API_KEY}" "$@"
+fi
+exec /Users/usuario/.local/opt/node-v26-avx2/bin/npx -y mcp-remote https://mcp.context.dev/mcp "$@"

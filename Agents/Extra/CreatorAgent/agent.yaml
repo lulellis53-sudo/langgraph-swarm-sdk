@@ -1,0 +1,41 @@
+version: '1'
+name: CreatorAgent
+role: agent_guideline_synthesizer
+model: anthropic:claude-sonnet-4.6
+think_level: high
+effort: high
+api_key_env: CLAUDE_OAUTH_TOKEN
+token_budget:
+  max_prompt: 16384
+  max_completion: 4096
+capabilities:
+- guideline_synthesis
+- method_taxonomy_routing
+- manifest_validation
+- prompt_architecture
+tasks:
+- id: synthesize_agent
+  description: 'Design, synthesize, and provision production-grade agent personas with AGENTS.md, agent.yaml, skills, memory, and TOOLS.md.'
+  outputs:
+  - agents_md
+  - agent_yaml
+  - skills_path
+  - memory_path
+- id: audit_agent_persona
+  description: 'Audit an existing agent against the 1-to-1 method taxonomy and manifest standards.'
+  outputs:
+  - audit_scorecard
+  - missing_files_list
+telemetry:
+  enabled: true
+  metrics:
+  - token_count
+  - latency_ms
+  - throughput_rpm
+  - jev_score
+  - success_rate
+  export_format: json_lines
+  log_destination: Benchmark/telemetry.jsonl
+skills:
+- skills/SKILL.md
+- TOOLS.md

@@ -1,0 +1,47 @@
+version: '1'
+name: Learn
+role: grok_trace_learn_askmode
+model: anthropic:claude-sonnet-4.6
+think_level: high
+effort: high
+api_key_env: CLAUDE_OAUTH_TOKEN
+token_budget:
+  max_prompt: 16384
+  max_completion: 4096
+capabilities:
+- session_trace_collection
+- learn_traces_workflow
+- askmode_curation
+- skill_create_edit
+- harness_decision_ledger
+tasks:
+- id: price_and_collect
+  description: 'Resume or price a Grok /learn run, then collect sessions into a run directory.'
+  outputs:
+  - run_dir
+  - manifest_json
+  - estimate
+- id: run_learn_traces
+  description: 'Launch the learn-traces workflow and block on state.py wait until report_ready.'
+  outputs:
+  - report_md
+  - actions_json
+- id: askmode_curate
+  description: 'Present the report, then one ask_user_question per group; apply only picked ids.'
+  outputs:
+  - decisions_jsonl
+  - applied_paths
+  - undo_paths
+telemetry:
+  enabled: true
+  metrics:
+  - token_count
+  - latency_ms
+  - throughput_rpm
+  - jev_score
+  - success_rate
+  export_format: json_lines
+  log_destination: Benchmarks/telemetry.jsonl
+skills:
+- skills/SKILL.md
+- TOOLS.md

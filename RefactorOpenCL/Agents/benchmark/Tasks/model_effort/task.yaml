@@ -1,0 +1,39 @@
+name: model_effort
+sdk_entry: swarm_sdk.models.chat.load_chat_model
+models: predefined
+metrics:
+  - score
+  - input_tokens
+  - output_tokens
+  - total_tokens
+  - wall_ms
+  - model_ms
+  - overhead_ms
+groups: [task_type, model, effort]
+auto:
+  codex_profile: Comand
+cases:
+  - id: classify_positive
+    task_type: classification
+    prompt: 'Reply with only positive or negative: "The test passed."'
+    expected: positive
+  - id: classify_negative
+    task_type: classification
+    prompt: 'Reply with only positive or negative: "The deployment failed."'
+    expected: negative
+  - id: extract_number
+    task_type: extraction
+    prompt: 'Reply with only the order number: "Order 42 was shipped."'
+    expected: '42'
+  - id: extract_name
+    task_type: extraction
+    prompt: 'Reply with only the name: "Customer: Ada; status: active."'
+    expected: Ada
+  - id: arithmetic_sum
+    task_type: arithmetic
+    prompt: 'Reply with only the integer result: 17 + 25.'
+    expected: '42'
+  - id: arithmetic_product
+    task_type: arithmetic
+    prompt: 'Reply with only the integer result: 9 * 7.'
+    expected: '63'

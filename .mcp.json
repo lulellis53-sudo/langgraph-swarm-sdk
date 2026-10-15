@@ -1,166 +1,19 @@
-// Hashtag routing: #git → GitKraken | #secrets → 1password | #web_search → duckduckgo | #jina → jina | #docs → context7 | #deepwiki → deepwiki | #appwrite → Appwrite*
-// P{ } = MCP tool arguments. directory = absolute worktree (e.g. /Users/usuario/Myworkspace/Swarm).
 {
   "mcpServers": {
-    "GitKraken": {
-      // spawn: gk mcp --host=cursor | namespace: user-GitKraken
-      // #git
-      // #git_status                    P{ directory }
-      // #git_log_or_diff               P{ directory, action: log|diff, commit?, old_commit?, new_commit?, revision_range?, since?, until? }
-      // #git_add                       P{ directory, files?[] }
-      // #git_commit                    P{ directory, message, description?, files?[] }
-      // #git_branch                    P{ directory, action: list|create, branch_name? }
-      // #git_checkout                  P{ directory, branch }
-      // #git_fetch                     P{ directory }
-      // #git_pull                      P{ directory }
-      // #git_push                      P{ directory }
-      // #git_stash                     P{ directory, name?, include_untracked?, staged_only? }
-      // #git_blame                     P{ directory, file }
-      // #git_worktree                  P{ directory, action: list|add, path?, branch? }
-      // #git_graph                     P{ directory }
-      // #git_commit_composer           P{ directory, direction?: auto|area|type|custom, custom_instructions? }
-      // #git_resolve                   P{ directory, instructions? }
-      // #gitkraken_workspace_list      P{}
-      // #gitlens_launchpad             P{ directory }
-      // #gitlens_start_review          P{ directory, pr_url, instructions? }
-      // #gitlens_start_work            P{ directory, issue_url, instructions? }
-      // #pull_request_create           P{ provider, repository_organization, repository_name, title, source_branch, target_branch, body?, is_draft?, assign_to_me? }
-      // #pull_request_get_detail       P{ provider, repository_organization, repository_name, pull_request_id, pull_request_files? }
-      // #pull_request_get_comments     P{ provider, repository_organization, repository_name, pull_request_id }
-      // #pull_request_create_review    P{ provider, repository_organization, repository_name, pull_request_id, review, approve? }
-      // #pull_request_assigned_to_me   P{ provider, reviewer?, is_closed?, page?, fields?, with_branches? }
-      // #issues_create                 P{ provider, title, body?, repository_organization?, repository_name?, labels?, assignees?, issue_type? }
-      // #issues_get_detail             P{ provider, issue_id, repository_organization?, repository_name? }
-      // #issues_assigned_to_me         P{ provider, assigned_to_me?, assigned_to?, unassigned?, is_closed?, page?, fields?, repository_organization?, repository_name? }
-      // #issues_add_comment            P{ provider, issue_id, comment, repository_organization?, repository_name? }
-      // #repository_get_file_content   P{ provider, repository_organization, repository_name, ref, file_path }
-      // #mcp_auth                      P{}
-      "command": "/usr/local/bin/gk",
-      "args": ["mcp", "--host=cursor"],
-      "type": "stdio"
-    },
-    "1password": {
-      // spawn: 1password-mcp | namespace: plugin-1password-1password
-      // #secrets — 1Password Environments (desktop app auth)
-      // #list_environments           P{ accountId }
-      // #list_variables              P{ accountId, environmentId }
-      // #append_variables            P{ accountId, environmentId, variables[] }
-      // #create_local_env_file       P{ accountId, environmentId, environmentName, mountPath }
-      // #list_local_env_files        P{ accountId, environmentId }
-      // #create_environment          P{ accountId, environmentName }
-      // #rename_environment          P{ accountId, environmentId, environmentName }
-      // #authenticate                P{}
-      // #mcp_auth                    P{}
-      "command": "1password-mcp",
-      "args": [],
-      "type": "stdio"
-    },
-    "duckduckgo": {
-      // spawn: npx duckduckgo-mcp-server | namespace: user-duckduckgo
-      // #web_search — free; prefer before paid SERP when sufficient
-      // #duckduckgo_web_search         P{ query, count?, safeSearch? }
-      // #mcp_auth                      P{}
-      "command": "npx",
-      "args": ["-y", "duckduckgo-mcp-server"],
-      "type": "stdio"
-    },
-    "jina": {
-      // spawn: ~/.gemini/mcp/jina → npx jina-mcp-tools | namespace: user-jina
-      // env: JINA_API_KEY (Keychain swarm/JINA_API_KEY; resolved by launcher)
-      // #jina
-      // #search_web                  P{ query }
-      // #read_url                    P{ url }
-      // #mcp_auth                    P{}
-      "command": "/Users/usuario/.gemini/mcp/jina",
-      "args": [],
-      "type": "stdio"
-    },
-    "context7": {
-      // spawn: https://mcp.context7.com/mcp | alt: npx @upstash/context7-mcp | namespace: user-context7
-      // env: CONTEXT7_API_KEY (Bearer)
-      // #docs — library/framework docs only (not general web search)
-      // #resolve-library-id            P{ libraryName, query }
-      // #query-docs                    P{ libraryId, query } — resolve-library-id first unless user gave /org/project
-      // #mcp_auth                      P{}
-      "type": "http",
-      "url": "https://mcp.context7.com/mcp",
-      "headers": {
-        "Authorization": "Bearer ${CONTEXT7_API_KEY}"
-      }
-    },
-    "deepwiki": {
-      // spawn: npx deepwiki-mcp | fetches https://deepwiki.com/{owner}/{repo}
-      // #deepwiki — OSS repo walkthrough docs (not a substitute for Context7 API docs)
-      // #get-deepwiki-index          P{ owner, repo } — call before get-deepwiki-page
-      // #get-deepwiki-page           P{ path } — path from index output
-      // #mcp_auth                    P{}
-      "command": "npx",
-      "args": ["-y", "deepwiki-mcp"],
-      "type": "stdio"
-    },
-    "Appwrite": {
-      // spawn: npx mcp-remote https://mcp.appwrite.io/ | OAuth via console
-      // namespace: user-Appwrite (same surface as appwrite-api when authenticated)
-      // #appwrite
-      // #appwrite_get_context          P{ project_id?, organization_id?, include_services?, service_detail?, sample_limit? }
-      // #appwrite_search_tools         P{ query, service_hints?, argument_hints?, include_mutating?, limit? }
-      // #appwrite_call_tool            P{ tool_name, arguments?, confirm_write?, project_id?, organization_id? }
-      // #appwrite_search_docs          P{ query, limit? }
-      // #mcp_auth                      P{}
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "https://mcp.appwrite.io/"],
-      "type": "stdio"
-    },
-    "appwrite-api": {
-      // spawn: scripts/mcp-wrappers/appwrite-api | env: APPWRITE_API_KEY, APPWRITE_PROJECT_ID, APPWRITE_ENDPOINT
-      // #appwrite
-      // #appwrite_get_context          P{ project_id?, organization_id?, include_services?, service_detail?, sample_limit? }
-      // #appwrite_search_tools         P{ query, service_hints?, argument_hints?, include_mutating?, limit? }
-      // #appwrite_call_tool            P{ tool_name, arguments?, confirm_write?, project_id?, organization_id? }
-      // #appwrite_search_docs          P{ query, limit? }
-      // #mcp_auth                      P{}
-      "type": "stdio",
-      "command": "scripts/mcp-wrappers/appwrite-api",
-      "args": []
-    },
-    "appwrite-docs": {
-      // spawn: scripts/mcp-wrappers/appwrite-docs | namespace: plugin-appwrite-plugin-appwrite-docs
-      // #docs (Appwrite)
-      // #search                        P{ query }
-      // #getDocsPage                   P{ path }
-      // #listFeatures                  P{}
-      // #getFeatureExamples            P{ feature }
-      // #getTableOfContents            P{ path? }
-      // #mcp_auth                      P{}
-      "type": "stdio",
-      "command": "scripts/mcp-wrappers/appwrite-docs",
-      "args": []
-    },
-    "context": {
-      "type": "stdio",
-      "command": "scripts/mcp-wrappers/context",
-      "args": []
-    },
-    "apify": {
-      "type": "http",
-      "url": "https://mcp.apify.com",
-      "headers": {
-        "Authorization": "Bearer ${APIFY_TOKEN}"
-      }
-    },
-    "bright-data": {
-      "type": "stdio",
-      "command": "scripts/mcp-wrappers/brightdata",
-      "args": []
-    },
     "sentry": {
+      "type": "http",
+      "url": "https://mcp.sentry.dev/mcp/eudorax/python"
+    },
+    "ddg-search": {
       "type": "stdio",
-      "command": "/Users/usuario/.gemini/mcp/sentry",
-      "args": [],
-      "env": {
-        "SENTRY_ORG": "dsadsadsa",
-        "SENTRY_REGION_URL": "https://us.sentry.io"
-      }
+      "command": "uvx",
+      "args": [
+        "duckduckgo-mcp-server@0.7.0"
+      ]
+    },
+    "atlassian-jira": {
+      "type": "http",
+      "url": "https://mcp.atlassian.com/v2/mcp"
     }
   }
 }

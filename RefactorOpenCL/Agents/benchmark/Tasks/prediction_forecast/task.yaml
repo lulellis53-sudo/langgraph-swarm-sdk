@@ -1,0 +1,8 @@
+name: prediction_forecast
+sdk_entry: benchmark.Tasks.prediction_forecast.benchmark_prediction_forecast.run
+metrics:
+  - mae
+  - rmse
+models: none
+pass:
+  mae_max: 2.0

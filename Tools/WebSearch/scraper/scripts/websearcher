@@ -1,0 +1,10 @@
+#!/bin/zsh
+# WebSearcherMCP launcher: secrets from the macOS Keychain, settings from config.env.
+set -e
+here="${0:A:h}"
+root="${here:h:h}"
+source "$here/_secrets.zsh"
+load_config "$here/../config.env"
+load_secrets "${WEBSCRAPER_SECRETS[@]}"
+cd "$root"
+exec "$root/WebScraper/.venv/bin/python" -m WebScraper "$@"

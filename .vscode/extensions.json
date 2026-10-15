@@ -1,35 +1,12 @@
 {
   "recommendations": [
-    "ms-python.python",
-    "ms-python.debugpy",
-    "ms-vscode-remote.remote-containers",
-    "ms-toolsai.jupyter",
-    "ms-toolsai.jupyter-renderers",
-    "ms-toolsai.vscode-jupyter-cell-tags",
-    "ms-toolsai.vscode-jupyter-slideshow",
-    "openai.chatgpt",
-    "GitHub.copilot",
-    "GitHub.copilot-chat",
-    "Continue.continue",
-    "biomejs.biome",
+    "anysphere.remote-containers",
     "charliermarsh.ruff",
-    "astral-sh.ty",
-    "meta.pyrefly",
-    "njqdev.vscode-python-typehint",
-    "redhat.vscode-yaml",
-    "tamasfe.even-better-toml",
     "davidanson.vscode-markdownlint",
     "eamodio.gitlens",
-    "ms-azuretools.vscode-docker",
-    "ms-azuretools.vscode-containers"
-  ],
-  "unwantedRecommendations": [
-    "anysphere.cursorpyright",
-    "ms-python.black-formatter",
-    "ms-python.flake8",
-    "ms-python.pylint",
-    "ms-python.isort",
-    "esbenp.prettier-vscode",
-    "dbaeumer.vscode-eslint"
+    "meta.pyrefly",
+    "ms-python.python",
+    "ms-python.vscode-python-envs",
+    "saoudrizwan.claude-dev"
   ]
 }

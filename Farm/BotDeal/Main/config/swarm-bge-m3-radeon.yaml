@@ -1,0 +1,38 @@
+# Local profile for BGE-M3 embeddings on the Intel Mac + Radeon Pro 5300M.
+# Activate with SWARM_CONFIG_PATH=Main/config/swarm-bge-m3-radeon.yaml.
+version: 1
+
+embedding:
+  model: BAAI/bge-m3
+  backend: llama-cpp
+  llama_model: /Users/usuario/.spawnagent/models/bge-m3-q8_0.gguf
+  llama_gpu_layers: 99
+  llama_n_ctx: 2048
+  llama_n_batch: 8
+  dim: 1024
+  batch_size: 8
+  normalize: true
+  # GGUF weights are Q8_0; emitted embeddings are float32 until SQLite quantizes them to INT8.
+
+vectorstore:
+  backend: sqlite-vec
+  path: Main/Essentials/llama/bge-m3-int8.sqlite
+  retrieve_k: 20
+  final_k: 10
+  quantization: int8
+  opencl_enabled: true
+
+hybrid_search:
+  enabled: true
+  dense_weight: 1.0
+  keyword_weight: 1.0
+  rrf_k: 60
+  final_k: 10
+
+rerank:
+  top_k: 4
+
+router:
+  think_level: low
+  max_tokens: 2048
+  tool_cap: 128

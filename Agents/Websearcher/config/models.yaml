@@ -1,0 +1,31 @@
+version: 1
+agent: Websearcher
+role: web_search_and_fetch
+models:
+  primary:
+    name: google:gemini-3.8-flash
+    provider: google
+    api_key_env: GEMINI_API_KEY
+    think_level: high
+    effort: medium
+    token_budget:
+      max_prompt: 16384
+      max_completion: 4096
+  fallback:
+    name: atlascloud:dots-studio/dots-3-note-prev-free
+    provider: atlascloud
+    api_key_env: ATLASCLOUD_API_KEY
+    base_url_env: ATLASCLOUD_BASE_URL
+    think_level: low
+    effort: low
+    token_budget:
+      max_prompt: 16384
+      max_completion: 2048
+fallback_chain:
+  order:
+  - primary
+  - fallback
+  circuit_breaker:
+    failure_threshold: 3
+    recovery_time_sec: 60
+  timeout_ms: 30000

@@ -1,0 +1,43 @@
+{
+  "folders": [
+    { "name": "SDK (integration)", "path": ".." },
+    { "name": "Agents", "path": "../Agents" },
+    { "name": "Main", "path": "../Main" },
+    { "name": "Benchmark", "path": "../Agents/benchmark" },
+    { "name": "WebSearch", "path": "../WebSearch" },
+    { "name": "Prediction", "path": "../../Swarm-Prediction" },
+    { "name": "Newsletter", "path": "../../Newsletter" }
+  ],
+  "settings": {
+    "python.defaultInterpreterPath": "${workspaceFolder:SDK (integration)}/.venv/bin/python",
+    "python.languageServer": "None",
+    "python.analysis.typeCheckingMode": "off",
+    "[python]": {
+      "editor.defaultFormatter": "charliermarsh.ruff",
+      "editor.formatOnSave": true,
+      "editor.codeActionsOnSave": {
+        "source.organizeImports.ruff": "explicit",
+        "source.fixAll.ruff": "explicit"
+      }
+    },
+    "ruff.enable": true,
+    "ruff.nativeServer": "on",
+    "ruff.configuration": "pyproject.toml",
+    "ruff.configurationPreference": "filesystemFirst",
+    "ruff.importStrategy": "fromEnvironment",
+    "ruff.interpreter": ["${workspaceFolder:SDK (integration)}/.venv/bin/python"],
+    "ty.importStrategy": "fromEnvironment",
+    "ty.interpreter": "${workspaceFolder:SDK (integration)}/.venv/bin/python",
+    "ty.diagnosticMode": "workspace",
+    "ty.experimental.useUv": "on",
+    "terminal.integrated.defaultProfile.osx": "zsh",
+    "terminal.integrated.profiles.osx": {
+      "zsh": {
+        "path": "/Users/usuario/.local/bin/zsh",
+        "args": ["-l"]
+      }
+    },
+    "terminal.integrated.cwd": "${workspaceFolder:SDK (integration)}",
+    "terminal.external.osxExec": "/Applications/Ghostty.app"
+  }
+}

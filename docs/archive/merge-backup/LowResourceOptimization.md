@@ -1,1 +1,0 @@
-/Users/usuario/Swarm/docs/LowResourceOptimization.md

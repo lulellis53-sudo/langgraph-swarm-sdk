@@ -1,0 +1,42 @@
+version: '1'
+name: Websearcher
+role: web_search_and_fetch
+model: atlascloud:dots-studio/dots-3-note-prev-free
+api_key_env: ATLASCLOUD_API_KEY
+effort: low
+token_budget:
+  max_prompt: 16384
+  max_completion: 1024
+capabilities:
+- web_search
+- playwright_fetch
+- http_fetch
+- read_url_content
+- citation
+tasks:
+- id: lookup_fact
+  description: 'Look up a specific public fact, verify citations against primary documentation, and return cited snippet.'
+  outputs:
+  - fact_answer
+  - citation
+- id: collect_sources
+  description: 'Collect, deduplicate, and verify canonical sources and primary URLs for a given topic.'
+  outputs:
+  - sources_list
+- id: fetch_render
+  description: 'Deterministic pipeline step: run the WebFetch capability on scratchpad URLs/payloads, render via Playwright/HTTP, and return clean extracted content.'
+  outputs:
+  - summary
+  - extracted_content
+telemetry:
+  enabled: true
+  metrics:
+  - token_count
+  - latency_ms
+  - throughput_rpm
+  - jev_score
+  - success_rate
+  export_format: json_lines
+  log_destination: Benchmark/telemetry.jsonl
+skills:
+- skills/SKILL.md

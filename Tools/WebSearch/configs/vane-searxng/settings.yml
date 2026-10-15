@@ -1,0 +1,31 @@
+# SearXNG settings for Vane (ex-Perplexica) compatibility.
+# Vendored from https://github.com/ItzCrazyKns/Vane/blob/master/searxng/settings.yml
+# Integration stamp: WebSearch<->Vane config compatibility 0.3.0 (2026-10-13).
+# Upstream has no v0.3.0 tag (checked: tags are v1.x); 0.3.0 versions THIS
+# vendored config/schema, not the Vane app.
+#
+# Official references:
+# - SearXNG settings.yml: https://docs.searxng.org/admin/settings/index.html
+#   (use_default_settings, search:, server:, engines: sections)
+# - SearXNG Search API: https://docs.searxng.org/dev/search_api.html
+#   "Supported formats are defined in settings.yml, under the search: section.
+#    Requesting an unset format will return a 403 Forbidden error." Both
+#   Vane's search client and WebSearch's search_searxng() call format=json,
+#   so `json` MUST stay in search.formats below.
+# - Vane install (non-Docker): https://github.com/ItzCrazyKns/Vane#non-docker-installation
+#   "Install SearXNG and allow JSON format ... Make sure Wolfram Alpha search
+#    engine is also enabled" — hence engines.wolframalpha.disabled: false.
+use_default_settings: true
+general:
+  instance_name: "searxng"
+search:
+  autocomplete: "google"
+  formats:
+    - html
+    - json
+server:
+  # Override with the SEARXNG_SECRET environment variable; never commit a real secret.
+  secret_key: "changeme"
+engines:
+  - name: wolframalpha
+    disabled: false

@@ -1,0 +1,74 @@
+"""Peer HTTP clients: httpx2 (HTTP/2) sync and aiohttp async."""
+
+from __future__ import annotations
+
+from typing import Any
+
+import aiohttp
+import httpx2
+
+from swarm_sdk.netguard import validate_http_url
+
+
+def post_json(
+    url: str,
+    payload: dict[str, Any],
+    *,
+    client: str = "httpx2",
+    transport: httpx2.BaseTransport | None = None,
+) -> dict[str, Any]:
+    """POST JSON synchronously and return the decoded object body.
+
+    Args:
+        url: Absolute peer URL (validated: http/https, non-private host).
+        payload: JSON-serializable request body.
+        client: ``"httpx2"`` (default, HTTP/2). The legacy ``"requests"``
+            value is accepted for compatibility and routed to httpx2.
+        transport: Optional httpx2 transport (tests / custom stacks).
+
+    Returns:
+        Response JSON object.
+
+    Raises:
+        ValueError: If ``url`` is not an absolute http(s) URL.
+        TypeError: If the response body is not a JSON object.
+        ValueError: If ``url`` fails the SSRF guard.
+        httpx2.HTTPError: On non-success status.
+    """
+    validate_http_url(url)
+    with httpx2.Client(http2=True, timeout=30.0, transport=transport) as http:
+        response = http.post(url, json=payload)
+        response.raise_for_status()
+        body = response.json()
+    if not isinstance(body, dict):
+        raise TypeError("peer response must be a JSON object")
+    return body
+
+
+async def async_post_json(url: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """POST JSON asynchronously with aiohttp.
+
+    Args:
+        url: Absolute peer URL.
+        payload: JSON-serializable request body.
+
+    Returns:
+        Response JSON object.
+
+    Raises:
+        ValueError: If ``url`` is not an absolute http(s) URL.
+        TypeError: If the response body is not a JSON object.
+        aiohttp.ClientResponseError: On non-success status.
+    """
+    validate_http_url(url)
+    timeout = aiohttp.ClientTimeout(total=30)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        async with session.post(url, json=payload) as response:
+            response.raise_for_status()
+            body = await response.json()
+    if not isinstance(body, dict):
+        raise TypeError("peer response must be a JSON object")
+    return body
+
+
+__all__ = ["async_post_json", "post_json", "validate_http_url"]

@@ -1,6 +1,0 @@
-{
-  "setup-worktree-unix": "setup-worktree-unix.sh",
-  "setup-worktree": [
-    "uv sync --extra dev"
-  ]
-}

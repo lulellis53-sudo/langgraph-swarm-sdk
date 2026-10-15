@@ -1,13 +1,78 @@
 [workspace]
-name = "swarm"
+name = "workspace"
+description = "Agent workspace: LangGraph orchestration with Python tooling."
 channels = ["conda-forge"]
 platforms = ["osx-64"]
+version = "0.1.0"
+requires-pixi = ">=0.81"
 
 [dependencies]
-python = "==3.15.0"
-ruff = "==0.17.0"
-rust = "==1.99.0"
-uv = "==0.13.0"
+python = "3.15.*"
+ruff = "*"
+ty = "*"
+biome = "*"
+oxlint = "*"
+python-duckdb = ">=1.5.6,<2"
+jq = ">=1.8.2,<2"
+xh = ">=0.26.2,<0.27"
+curl = ">=8.23.0,<9"
+swig = ">=4.5.1,<5"
+setuptools = ">=84.0.0,<85"
+wheel = ">=0.48.0,<0.49"
+rust = "1.99.*"
+
+[pypi-dependencies]
+langgraph = ">=1.2.15, <2"
+langgraph-supervisor = ">=0.0.31"
+langgraph-swarm = ">=0.1"
+langchain = ">=1.4, <2"
+langextract = ">=1.7"
+# ormsgpack 1.12.2 has no cp315 wheel upstream. This wheel is a local PyO3 0.28 patch
+# built with maturin from ~/Tools/Stage/ormsgpack-315 into ./wheels. Remove it once upstream ships cp315.
+ormsgpack = { path = "./wheels/ormsgpack-1.12.2-cp315-cp315-macosx_10_12_x86_64.whl" }
+# Built from source: Faiss 1.15.1, clang 23.1.1, AVX2 + ThinLTO + Polly (see ~/Tools/Stage/faiss-py315-avx2-lto-polly).
+# Links Homebrew libomp at runtime.
+faiss = { path = "./wheels/faiss-1.15.1-cp315-cp315-macosx_26_0_x86_64.whl" }
+pydantic = ">=2.14.1, <3"
+fastapi = ">=0.143.2, <0.144"
+uvloop = ">=0.23.0, <0.24"
+sqlalchemy = ">=2.1.4, <3"
+pgvector = ">=0.5.1, <0.6"
+grpcio = ">=1.84.0, <2"
+grpcio-tools = ">=1.84.0, <2"
+httpx2 = ">=2.13.1, <3"
+requests = ">=2.34.2, <3"
+sympy = ">=1.14.0, <2"
+polars = ">=2.0.0, <3"
+numpy = ">=2.5.4, <3"
+tokenizers = ">=0.23.3, <0.24"
+tiktoken = ">=0.14.0, <0.15"
+lifeguard-lazy-imports = ">=0.5.0, <0.6"
+hypothesis = ">=6.170.0, <7"
+loguru = ">=0.7.3, <0.8"
+rich = ">=15.0.0, <16"
+pytest = ">=9.1.1, <10"
+prometheus-client = ">=0.26.0, <0.27"
+opentelemetry-api = ">=1.45.1, <2"
+opentelemetry-sdk = ">=1.45.1, <2"
+opentelemetry-exporter-otlp = ">=1.45.1, <2"
+logfire = ">=5.2.0, <6"
+
+[activation]
+env = { PATH = "/Users/usuario/.local/opt/node-26.11.1-avx2/bin:$PATH" }
 
 [tasks]
-check-toolchain = "python --version && node --version && rustc --version && ruff --version && uv --version && test \"$(node --version)\" = v26.11.1"
+node-version = "node --version"
+lint = "ruff check ."
+format-check = "ruff format --check ."
+types = """ty check \
+  --python ./.pixi/envs/default \
+  --python-version 3.15 \
+  --exclude '.pixi/**' \
+  --exclude 'src/swarm_sdk/pb/**' \
+  --exclude src/swarm_sdk/memory/faiss_store.py \
+  --exclude src/swarm_sdk/memory/qdrant_store.py \
+  --exclude src/swarm_sdk/gpu/opencl_math.py"""
+biome-check = "biome check ."
+oxlint-check = "oxlint ."
+check = { depends-on = ["lint", "format-check", "types", "biome-check", "oxlint-check"] }

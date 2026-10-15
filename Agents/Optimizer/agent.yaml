@@ -42,6 +42,7 @@ capabilities:
 
 skills:
 - skills/SKILL.md
+- SKILLS.md
 telemetry:
   enabled: true
   metrics:

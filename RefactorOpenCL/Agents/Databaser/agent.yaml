@@ -1,0 +1,37 @@
+version: "1"
+name: Databaser
+role: schema_migrations_queries
+
+model: moonshot:kimi-k2.7-code
+# api_endpoint: https://api.moonshot.ai/v1/chat/completions
+think_level: high
+effort: medium
+api_key_env: KIMI_API_KEY
+
+token_budget:
+  max_prompt: 8192
+  max_completion: 2048
+
+tasks:
+  - id: evolve_schema
+    description: >-
+      Design an ordered up/down migration with row-compatibility notes and
+      validate it on a disposable copy with representative data.
+    outputs:
+      - changed_files
+      - validation
+      - rollback
+
+  - id: tune_query
+    description: >-
+      Diagnose a slow query from its plan, apply the minimal fix, and record
+      before/after plan evidence on representative data.
+    outputs:
+      - changed_files
+      - plan_evidence
+
+capabilities:
+  - code_edit
+  - sql
+  - shell
+  - diff

@@ -1,0 +1,345 @@
+# Model registry: provider routes for the swarm.
+# Predefined models and credential env names; priority is the fallback order.
+# Free providers use low-token models at low effort; paid providers use
+# medium-tier models at medium effort. Every route covers all think levels.
+# `effort`: provider-side reasoning effort hint (low/medium/high).
+# `evidence`: user (user-specified), web (searched Sep 2026), assumed (verify),
+#             verified live 2026-10-01 (probe against the provider).
+# Provider routes are available to ModelDelegate; specialist assignments live
+# in Agents/*/agent.yaml. Services below use credentials without a chat model.
+version: 1
+
+providers:
+  # ---- Paid: medium tier, medium effort ----
+  - name: openai:gpt-4o-mini
+    provider: openai
+    api_key_env: OPENAI_API_KEY
+    effort: low
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 73
+    evidence: existing agent manifests and provider catalog
+
+  - name: openai:gpt-4o
+    provider: openai
+    api_key_env: OPENAI_API_KEY
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 74
+    evidence: existing agent manifests and provider catalog
+
+  - name: zai:glm-5.2
+    provider: zai
+    api_key_env: ZAI_API_KEY
+    api_key_fallbacks: [ZHIPU_API_KEY]
+    base_url_env: ZAI_BASE_URL   # https://api.z.ai/api/coding/paas/v4
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 5
+    evidence: user (z.ai medium tier; glm-5.2 maps medium->high server-side)
+
+  - name: zai:glm-5.3
+    provider: zai
+    model_id: glm-5.3
+    api_key_env: ZAI_API_KEY
+    api_key_fallbacks: [ZHIPU_API_KEY]
+    base_url_env: ZAI_BASE_URL
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 6
+    evidence: user (Z.ai GLM 5.3 coding plan)
+
+  - name: zai:glm-5p3-flash
+    provider: zai
+    model_id: glm-5p3-flash
+    api_key_env: ZAI_API_KEY
+    api_key_fallbacks: [ZHIPU_API_KEY]
+    base_url_env: ZAI_BASE_URL
+    effort: low
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 7
+    evidence: user (Z.ai GLM 5.3 Flash); aligns with Cursor catalog glm-5p3-flash
+
+  - name: anthropic:claude-sonnet-4-5
+    provider: anthropic
+    api_key_env: ANTHROPIC_API_KEY
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 7
+    evidence: user (ANTHROPIC_API_KEY; Sonnet 4.5 = Anthropic medium tier)
+
+  - name: moonshot:kimi-k2.7-code
+    provider: moonshot
+    api_key_env: KIMI_API_KEY
+    api_key_fallbacks: [KIMI_API_KEY_DUPLICATE_1, KIMI_CODE_PLAN_API_KEY]
+    base_url_env: MOONSHOT_BASE_URL   # https://api.moonshot.ai/v1
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 10
+    evidence: user (Kimi, two vault keys; OpenAI-compatible host api.moonshot.ai/v1)
+
+  - name: moonshot:kimi-k2.7-code-b
+    provider: moonshot
+    model_id: kimi-k2.7-code
+    api_key_env: KIMI_API_KEY_DUPLICATE_1
+    base_url_env: MOONSHOT_BASE_URL   # https://api.moonshot.ai/v1
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 11
+    evidence: user (second Kimi key, same model id)
+
+  - name: moonshot:kimi-k2.7-code-highspeed
+    provider: moonshot
+    model_id: kimi-for-coding-highspeed
+    api_key_env: KIMI_API_KEY
+    api_key_fallbacks: [KIMI_CODE_PLAN_API_KEY, KIMI_API_KEY_1, KIMI_API_KEY_2]
+    base_url_env: KIMI_CODE_BASE_URL   # https://api.kimi.com/coding/v1
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 12
+    evidence: user (Kimi K2.7 Code highspeed); Kimi Code plan endpoint
+
+  - name: google:gemini-3.8-flash
+    provider: google
+    api_key_env: GEMINI_API_KEY
+    api_key_fallbacks: [GEMINI_API_KEY_DUPLICATE_1]
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 12
+    evidence: user (Gemini 3.8 Flash = Google medium tier)
+
+  - name: google:gemini-3.8-flash-b
+    provider: google
+    model_id: gemini-3.8-flash
+    api_key_env: GEMINI_API_KEY_DUPLICATE_1
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 13
+    evidence: user (second Gemini key, same model id)
+
+  - name: xiaomi:mimo-v2.5-pro
+    provider: xiaomi
+    api_key_env: MIMO_API_KEY
+    base_url_env: MIMO_BASE_URL   # OpenAI-compatible endpoint (verify with Xiaomi docs)
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 15
+    evidence: user (MiMo 2.5 Pro = Xiaomi medium tier)
+
+  - name: xiaomi:mimo-v2.6-flash
+    provider: xiaomi
+    model_id: mimo-v2.6-flash
+    api_key_env: MIMO_API_KEY
+    base_url_env: MIMO_BASE_URL   # https://token-plan-ams.xiaomimimo.com/v1 (coding plan)
+    effort: low
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 16
+    evidence: user (MiMo 2.6 Flash); WebSearch scraper probe 2026-10-09
+
+  - name: xai:grok-4.6
+    provider: xai
+    api_key_env: XAI_API_KEY
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 18
+    evidence: user (Grok 4.6, medium effort)
+
+  - name: minimax:minimax-2.7-high-speed
+    provider: minimax
+    api_key_env: MINIMAX_API_KEY
+    base_url_env: MINIMAX_BASE_URL   # https://api.minimax.io/v1
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 20
+    evidence: user (2.7 high speed); model ID assumed - verify in Minimax console
+
+  - name: minimax:MiniMax-M3.1-Flash-Preview
+    provider: minimax
+    model_id: MiniMax-M3.1-Flash-Preview
+    api_key_env: MINIMAX_API_KEY
+    base_url_env: MINIMAX_TOKEN_PLAN_BASE_URL   # https://api.minimax.io/v1 (intl / EU token plan; CN: api.minimaxi.com/v1)
+    effort: high
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 21
+    evidence: user (MiniMax M3.1 token plan); platform.minimax.io/docs/token-plan/cursor 2026-03
+
+  - name: minimax:MiniMax-M3
+    provider: minimax
+    model_id: MiniMax-M3
+    api_key_env: MINIMAX_API_KEY
+    base_url_env: MINIMAX_BASE_URL   # pay-as-you-go or legacy coding plan on api.minimax.io/v1
+    effort: high
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 22
+    evidence: WebSearch scraper probe 2026-10-09 (MiniMax-M3)
+
+  - name: openai:gpt-6-luna
+    provider: codex
+    api_key_env: CODEX_OAUTH_TOKEN
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 25
+    evidence: user (Codex OAuth, GPT 6 Luna)
+
+  - name: openai:gpt-5.3-codex
+    provider: codex
+    model_id: gpt-5.3-codex
+    api_key_env: CODEX_OAUTH_TOKEN
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 26
+    evidence: user (Codex OAuth); Cursor catalog gpt-5.3-codex
+
+  - name: anthropic:claude-sonnet-4.6
+    provider: claude-code
+    api_key_env: CLAUDE_CODE_API_KEY
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 30
+    evidence: user (Claude Code API, Sonnet 4.6); inactive until CLAUDE_CODE_API_KEY is stored
+
+  # ---- Free: low token usage, low effort ----
+  - name: nvidia:nemotron-3.5-lightning-30b-a3b
+    provider: nvidia
+    api_key_env: NVIDIA_API_KEY
+    base_url_env: NVIDIA_BASE_URL
+    effort: low
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 35
+    evidence: verified live 2026-10-01 (smallest verified NIM reasoner; free tier 40 rpm/10k day)
+
+  - name: ollama-cloud:llama-3.3
+    provider: ollama-cloud
+    api_key_env: OLLAMA_CLOUD_API_KEY
+    base_url_env: OLLAMA_CLOUD_BASE_URL    # https://ollama.com/v1
+    effort: low
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 52
+    evidence: assumed (Ollama Cloud hosted endpoint)
+
+  # ---- Paid value pool: medium tier, medium effort ----
+  - name: openrouter:z-ai/glm-5.3-flash
+    provider: openrouter
+    api_key_env: OPENROUTER_API_KEY
+    base_url_env: OPENROUTER_BASE_URL
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 40
+    evidence: web (#2 OpenRouter by usage, best coding value)
+
+  - name: alibaba:qwen-3.8
+    provider: alibaba
+    api_key_env: ALIBABA_API_KEY
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 58
+    evidence: assumed (Alibaba Cloud Qwen 3.8 direct API)
+
+  - name: cohere:command-a
+    provider: cohere-1
+    api_key_env: COHERE_API_KEY_1
+    api_key_fallbacks: [COHERE_API_KEY]
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 60
+    evidence: assumed (Cohere primary key instance)
+
+  - name: cohere:command-r7b
+    provider: cohere-2
+    api_key_env: COHERE_API_KEY_2
+    effort: low
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 62
+    evidence: assumed (Cohere fallback key instance)
+
+  - name: mistral:mistral-large-latest
+    provider: mistral-1
+    api_key_env: MISTRAL_API_KEY_1
+    api_key_fallbacks: [MISTRAL_API_KEY]
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 65
+    evidence: assumed (Mistral primary key instance)
+
+  - name: mistral:ministral-3-8b-latest
+    provider: mistral-2
+    api_key_env: MISTRAL_API_KEY_2
+    api_key_fallbacks: [MISTRAL_API_KEY_DUPLICATE_1]
+    effort: low
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 67
+    evidence: assumed (Mistral fallback key instance; Ministral 3 8B 2512)
+
+  - name: groq:openai/gpt-oss-120b
+    provider: groq-1
+    api_key_env: GROQ_API_KEY
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 70
+    evidence: user (Groq gpt-oss 120b thinking; primary key instance)
+
+  - name: groq:openai/gpt-oss-20b
+    provider: groq-2
+    api_key_env: GROQ_API_KEY_2
+    api_key_fallbacks: [GROQ_API_KEY_DUPLICATE_1]
+    effort: low
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 72
+    evidence: user (Groq gpt-oss 20b; fallback key instance, pending key)
+
+  - name: sambanova:Meta-Llama-3.3-70B-Instruct
+    provider: sambanova
+    api_key_env: SAMBANOVA_API_KEY
+    base_url_env: SAMBANOVA_BASE_URL
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 80
+    evidence: assumed (fallback)
+
+  - name: fireworks:accounts/fireworks/models/kimi-k2.7
+    provider: fireworks
+    api_key_env: FIREWORKS_API_KEY
+    base_url_env: FIREWORKS_BASE_URL
+    effort: medium
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 85
+    evidence: assumed (fallback)
+
+  # ---- Free/local: low effort ----
+  - name: ollama:glm5.3
+    provider: ollama
+    base_url_env: OLLAMA_BASE_URL          # e.g. http://127.0.0.1:11434
+    effort: low
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 90
+    evidence: assumed (local Ollama)
+
+  - name: ollama-cloud:qwen3.8
+    provider: ollama-2
+    base_url_env: OLLAMA_2_BASE_URL        # e.g. http://127.0.0.1:11435
+    effort: low
+    think_levels: ["off", low, medium, high, xhigh]
+    priority: 92
+    evidence: assumed (local Ollama instance #2)
+
+services:
+  - name: bright_data
+    api_key_env: BRIGHTDATA_MCP_TOKEN
+    agents: [Researcher, WebFetch]
+  - name: tavily
+    api_key_env: TAVILY_API_KEY
+    agents: [WebFetch]
+  - name: brave
+    api_key_env: BRAVE_API_KEY
+    agents: [WebFetch]
+  - name: exa
+    api_key_env: EXA_API_KEY
+    agents: [WebFetch]
+  - name: apify
+    api_key_env: APIFY_API_KEY
+    agents: [WebFetch]
+  - name: mem0
+    api_key_env: MEM0_API_KEY
+    agents: [Persister]          # memory provider
+  - name: jev
+    api_key_env: JEV_API_KEY
+    agents: [Orchestrator]       # decision maker

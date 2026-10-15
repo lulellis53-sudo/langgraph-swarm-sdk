@@ -1,0 +1,36 @@
+use_default_settings: true
+server:
+  port: 8080
+  bind_address: "0.0.0.0"
+  base_url: "http://localhost:8080/"
+  image_proxy: true
+search:
+  formats:
+    - html
+    - json
+engines:
+  - name: ahmia
+    disabled: true
+  - name: torch
+    disabled: true
+  - name: qwant
+    engine: qwant
+    disabled: false
+  - name: yahoo
+    engine: yahoo
+    disabled: false
+  - name: startpage
+    engine: startpage
+    disabled: false
+  - name: mojeek
+    engine: mojeek
+    disabled: false
+  - name: ecosia
+    engine: ecosia
+    disabled: false
+  - name: presearch
+    engine: presearch
+    disabled: false
+  - name: yandex
+    engine: yandex
+    disabled: false

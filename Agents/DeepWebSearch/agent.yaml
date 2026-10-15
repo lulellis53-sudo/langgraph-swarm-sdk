@@ -1,0 +1,30 @@
+version: "1"
+name: DeepWebSearch
+role: deepwebsearch
+model: google:gemini-3.8-flash
+think_level: high
+effort: medium
+api_key_env: GEMINI_API_KEY
+token_budget:
+  max_prompt: 16384
+  max_completion: 4096
+tasks:
+  - id: deep_web_search
+    description: >-
+      Execute deep web research using strict extraction hierarchy (Context7 -> Tavily/Exa -> Google fallback)
+      with adaptive time budgeting (Tier A/B/C) and live URL validation.
+    outputs:
+      - research_dossier
+      - evidence_ledger
+capabilities:
+  - web_search
+  - read_url_content
+  - citation
+  - synthesis
+  - file_writer
+  - context7_lookup
+  - tavily_search
+  - playwright_inspection
+  - url_liveness_check
+skills:
+  - skills/SKILL.md

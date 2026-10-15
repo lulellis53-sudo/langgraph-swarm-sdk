@@ -1,221 +1,40 @@
 {
-  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
-  "python.terminal.activateEnvironment": true,
-  "cursorpyright.disableLanguageServices": false,
-  "cursorpyright.analysis.typeCheckingMode": "basic",
-  "cursorpyright.analysis.extraPaths": ["src"],
-  "cursorpyright.analysis.diagnosticMode": "workspace",
-  "python.pyrefly.disableLanguageServices": false,
-  "python.pyrefly.disableTypeErrors": false,
-  "python.pyrefly.typeCheckingMode": "basic",
-  "python.pyrefly.diagnosticMode": "workspace",
-  "python.envFile": "${workspaceFolder}/.env",
-  "python.createEnvironment.trigger": "off",
-  "python.testing.pytestEnabled": true,
-  "python.testing.unittestEnabled": false,
-  "python.testing.cwd": "${workspaceFolder}",
-  "python.testing.pytestArgs": ["Agents/benchmark", "-q"],
-  "debugpy.debugJustMyCode": true,
-
+  "markdownlint.run": "onType",
+  "markdownlint.config": {
+    "MD013": false,
+    "MD033": false,
+    "MD041": false
+  },
+  "[markdown]": {
+    "editor.wordWrap": "on",
+    "files.trimTrailingWhitespace": true
+  },
+  "gitlens.codeLens.enabled": false,
+  "gitlens.currentLine.enabled": true,
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.ruff_cache": true,
+    "**/.pytest_cache": true
+  },
+  "gitlens.currentLine.pullRequests.enabled": false,
+  "gitlens.statusBar.enabled": true,
+  "gitlens.hovers.currentLine.over": "annotation",
+  "gitlens.defaultDateStyle": "relative",
+  "gitlens.blame.heatmap.enabled": false,
+  "gitlens.launchpad.indicator.enabled": false,
+  "python.defaultInterpreterPath": "${workspaceFolder}/.pixi/envs/default/bin/python",
+  "python-envs.workspaceSearchPaths": [
+    ".pixi/envs/*"
+  ],
+  "python-envs.alwaysUseUv": true,
+  "pyrefly.pyreflyExecutable": "bundled",
+  "python.pyrefly.diagnosticMode": "openFilesOnly",
+  "python.pyrefly.displayTypeErrors": "default",
   "[python]": {
     "editor.defaultFormatter": "charliermarsh.ruff",
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {
-      "source.organizeImports.ruff": "explicit",
-      "source.fixAll.ruff": "explicit"
-    },
-    "editor.defaultFoldingRangeProvider": "charliermarsh.ruff"
-  },
-  "[javascript]": {
-    "editor.defaultFormatter": "biomejs.biome",
-    "editor.formatOnSave": true,
-    "editor.codeActionsOnSave": {
-      "source.fixAll.biome": "explicit",
-      "source.organizeImports.biome": "explicit"
+      "source.organizeImports": "explicit"
     }
-  },
-  "[typescript]": {
-    "editor.defaultFormatter": "biomejs.biome",
-    "editor.formatOnSave": true,
-    "editor.codeActionsOnSave": {
-      "source.fixAll.biome": "explicit",
-      "source.organizeImports.biome": "explicit"
-    }
-  },
-  "[json]": {
-    "editor.defaultFormatter": "biomejs.biome",
-    "editor.formatOnSave": true
-  },
-  "[jsonc]": {
-    "editor.defaultFormatter": "biomejs.biome",
-    "editor.formatOnSave": true
-  },
-  "[markdown]": {
-    "editor.formatOnSave": false,
-    "editor.wordWrap": "bounded",
-    "editor.wordWrapColumn": 100,
-    "editor.codeActionsOnSave": {
-      "source.fixAll.markdownlint": "explicit"
-    },
-    "gitlens.codeLens.enabled": false,
-    "gitlens.currentLine.enabled": false
-  },
-  "[yaml]": {
-    "editor.defaultFormatter": "redhat.vscode-yaml",
-    "editor.formatOnSave": true
-  },
-  "[toml]": {
-    "editor.defaultFormatter": "tamasfe.even-better-toml",
-    "editor.formatOnSave": true
-  },
-  "[ipynb]": {
-    "editor.formatOnSave": true,
-    "gitlens.codeLens.enabled": false
-  },
-
-  "biome.enabled": true,
-  "biome.requireConfiguration": true,
-  "biome.suggestInstallingGlobally": false,
-
-  "ruff.enable": true,
-  "ruff.nativeServer": "on",
-  "ruff.configuration": "pyproject.toml",
-  "ruff.configurationPreference": "filesystemFirst",
-  "ruff.importStrategy": "fromEnvironment",
-  "ruff.interpreter": ["${workspaceFolder}/.venv/bin/python"],
-  "ruff.organizeImports": true,
-  "ruff.fixAll": true,
-  "ruff.lint.run": "onSave",
-  "ruff.showNotifications": "onError",
-  "ruff.path": ["${workspaceFolder}/.venv/bin/ruff"],
-
-  "ty.importStrategy": "fromEnvironment",
-  "ty.interpreter": "${workspaceFolder}/.venv/bin/python",
-  "ty.diagnosticMode": "workspace",
-  "ty.experimental.useUv": "on",
-  "ty.disableLanguageServices": false,
-  "ty.showSyntaxErrors": true,
-  "ty.completions.autoImport": true,
-  "ty.completions.completeFunctionParentheses": true,
-  "ty.inlayHints.variableTypes": true,
-  "ty.inlayHints.callArgumentNames": true,
-
-  "markdownlint.configFile": ".markdownlint.json",
-  "markdownlint.run": "onSave",
-  "markdownlint.focusMode": false,
-
-  "editor.suggestOnTriggerCharacters": true,
-  "editor.quickSuggestions": {
-    "other": "on",
-    "comments": "off",
-    "strings": "on"
-  },
-  "editor.inlineSuggest.enabled": true,
-  "editor.parameterHints.enabled": true,
-  "editor.wordBasedSuggestions": "off",
-
-  "jupyter.askForKernelRestart": false,
-  "jupyter.allowUnauthorizedRemoteConnection": false,
-  "jupyter.notebookFileRoot": "${workspaceFolder}",
-  "jupyter.interactiveWindow.creationMode": "perFile",
-  "jupyter.widgetScriptSources": ["jsdelivr.com", "unpkg.com"],
-  "jupyter.kernels.excludePythonEnvironments": [],
-  "jupyter.jupyterServerType": "local",
-  "notebook.formatOnSave.enabled": true,
-  "notebook.lineNumbers": "on",
-  "notebook.output.scrolling": true,
-  "notebook.output.textLineLimit": 80,
-  "notebook.consolidatedOutputView": true,
-  "notebook.cellToolbarLocation": {
-    "default": "right",
-    "jupyter-notebook": "left"
-  },
-  "notebook.codeActionsOnSave": {
-    "notebook.source.organizeImports": "explicit"
-  },
-
-  "colab.logging.level": "info",
-  "colab.uploading": true,
-  "colab.activityBarContentView": true,
-  "colab.activityBarResourceView": true,
-  "colab.serverMounting": false,
-  "colab.terminal": true,
-  "colab.importNotebookFromUrl": true,
-
-  "docker.showStartPage": false,
-  "docker.composeBuild": true,
-  "docker.composeDetached": true,
-  "docker.composeFile": "${workspaceFolder}/docker/compose.yaml",
-  "docker.commands.composeUp": [
-    {
-      "label": "Compose Up: docker/compose.yaml",
-      "template": "docker compose -f ${workspaceFolder}/docker/compose.yaml up -d --build"
-    }
-  ],
-  "docker.commands.composeDown": [
-    {
-      "label": "Compose Down: docker/compose.yaml",
-      "template": "docker compose -f ${workspaceFolder}/docker/compose.yaml down"
-    }
-  ],
-  "containers.context": "default",
-  "containers.composeCommand": "docker",
-  "containers.containers.groupBy": "Compose Project Name",
-  "containers.images.groupBy": "Repository",
-
-  "dev.containers.copyGitConfig": true,
-  "dev.containers.executeInWSL": false,
-  "dev.containers.dockerPath": "docker",
-  "dev.containers.dockerComposePath": "docker compose",
-  "remote.containers.workspaceMountConsistency": "cached",
-
-  "git.autofetch": true,
-  "git.autofetchPeriod": 180,
-  "git.confirmSync": false,
-  "git.enableSmartCommit": true,
-  "git.fetchOnPull": true,
-  "git.openRepositoryInParentFolders": "always",
-  "git.showPushSuccessNotification": true,
-  "scm.defaultViewMode": "tree",
-
-  "chatgpt.openOnStartup": false,
-  "chatgpt.followUpQueueMode": "queue",
-  "chatgpt.composerEnterBehavior": "cmdIfMultiline",
-  "chatgpt.reviewDelivery": "inline",
-  "chatgpt.commentCodeLensEnabled": true,
-
-  "cursor.general.gitGraphIndexing": "enabled",
-
-  "evenBetterToml.formatter.alignEntries": false,
-  "yaml.disableSchemaDetection": [],
-  "redhat.telemetry.enabled": false,
-
-  "files.associations": {
-    "AGENTS.md": "markdown",
-    "agent.yaml": "yaml",
-    "coordination.yaml": "yaml",
-    "swarm.yaml": "yaml"
-  },
-  "files.exclude": {
-    "**/.venv": true,
-    "**/__pycache__": true,
-    "**/.pytest_cache": true,
-    "**/.ruff_cache": true,
-    "**/.hypothesis": true,
-    "**/target": true
-  },
-  "files.watcherExclude": {
-    "**/.venv/**": true,
-    "**/__pycache__/**": true,
-    "**/target/**": true,
-    "**/.git/objects/**": true
-  },
-  "search.exclude": {
-    "**/.venv": true,
-    "**/benchmark/results": true,
-    "**/.remember": true
-  },
-  "workbench.editor.autoLockGroups": {
-    "jupyter-notebook": true
   }
 }

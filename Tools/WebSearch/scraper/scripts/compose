@@ -1,0 +1,10 @@
+#!/bin/zsh
+# docker compose for a bundled service with secrets from the Keychain:
+#   WebScraper/scripts/compose searxng up -d      (also: pgvector, crawl4ai; any compose args)
+set -e
+here="${0:A:h}"
+svc="${1:?usage: compose <searxng|pgvector|crawl4ai> <docker compose args>}"
+shift
+source "$here/_secrets.zsh"
+load_secrets "${WEBSCRAPER_SECRETS[@]}"
+exec docker compose -f "$here/../$svc/compose.yaml" "$@"

@@ -1,0 +1,24 @@
+{"id": "p01", "text": "The episodic memory store keeps int8 quantized vectors in a sqlite-vec table."}
+{"id": "p02", "text": "Memory rows are written with their text and an embedding vector so recall can search by similarity."}
+{"id": "p03", "text": "sqlite-vec also provides an FTS5 keyword index that runs next to the vector table."}
+{"id": "p04", "text": "Hybrid search fuses dense similarity ranking with BM25 keyword ranking."}
+{"id": "p05", "text": "Reciprocal rank fusion adds one over k plus rank for each ranking source."}
+{"id": "p06", "text": "The fusion constant k defaults to sixty and each source has its own weight."}
+{"id": "p07", "text": "The semantic cache returns a stored answer when a new prompt is nearly identical to an earlier one."}
+{"id": "p08", "text": "Cache entries expire after a configurable number of days to avoid stale answers."}
+{"id": "p09", "text": "Empty answers are never cached because they would poison future lookups."}
+{"id": "p10", "text": "The token budget packs the system prompt, recalled memories and turns under a hard limit."}
+{"id": "p11", "text": "Think level low medium or high selects how many tokens a request may use."}
+{"id": "p12", "text": "When the prompt is too long the oldest turns are dropped before memories."}
+{"id": "p13", "text": "The circuit breaker opens a provider after repeated failures."}
+{"id": "p14", "text": "A half open breaker allows one probe call before closing again."}
+{"id": "p15", "text": "Fallback models take over while the primary provider breaker is open."}
+{"id": "p16", "text": "Checkpoints persist graph state so a swarm run can resume after a crash."}
+{"id": "p17", "text": "The checkpoint saver writes to SQLite in write ahead log mode."}
+{"id": "p18", "text": "Each conversation thread has its own thread id and checkpoint history."}
+{"id": "p19", "text": "OpenCL kernels compute batch cosine similarity on the Radeon GPU."}
+{"id": "p20", "text": "Without a GPU the same math falls back to NumPy on the CPU."}
+{"id": "p21", "text": "The GPU vector store does brute force top k search and not an approximate index."}
+{"id": "p22", "text": "API keys are stored in the macOS Keychain and never in YAML files."}
+{"id": "p23", "text": "The vault command sets and reads secrets by name."}
+{"id": "p24", "text": "Configuration files only hold environment variable names for credentials."}

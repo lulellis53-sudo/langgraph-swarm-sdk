@@ -1,0 +1,30 @@
+version: 1
+agent: DataEngineer
+role: data_pipeline_and_storage
+models:
+  primary:
+    name: groq:llama-3.3-70b-versatile
+    provider: groq
+    api_key_env: GROQ_API_KEY
+    think_level: medium
+    effort: low
+    token_budget:
+      max_prompt: 4096
+      max_completion: 2048
+  fallback:
+    name: cerebras:llama3.1-8b
+    provider: cerebras
+    api_key_env: CEREBRAS_API_KEY
+    think_level: low
+    effort: low
+    token_budget:
+      max_prompt: 4096
+      max_completion: 1024
+fallback_chain:
+  order:
+  - primary
+  - fallback
+  circuit_breaker:
+    failure_threshold: 3
+    recovery_time_sec: 60
+  timeout_ms: 30000

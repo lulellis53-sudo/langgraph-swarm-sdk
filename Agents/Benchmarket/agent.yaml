@@ -1,0 +1,86 @@
+version: '1'
+name: Benchmarket
+role: test_engineering_and_performance_benchmarking
+model: openai:gpt-6-luna
+think_level: medium
+effort: medium
+api_key_env: CODEX_OAUTH_TOKEN
+token_budget:
+  max_prompt: 8192
+  max_completion: 2048
+tasks:
+- id: write_tests
+  description: 'Write unit, integration, or property-based tests for a given module or behavior.'
+  outputs:
+  - test_files
+  - coverage_delta
+- id: run_gate
+  description: 'Execute the full test suite, report failures, and classify each as flaky, regression, or newly introduced.'
+  outputs:
+  - gate_result
+  - failure_classification
+- id: define_workload
+  description: 'Define a fixed workload: inputs, repetitions, environment, and the metrics to record. Do not optimize the code.'
+  outputs:
+  - workload
+  - metrics
+- id: measure_baseline
+  description: 'Run the defined workload and record the baseline. Label any number that was not measured.'
+  outputs:
+  - baseline
+  - environment
+- id: compare_candidates
+  description: 'Run the same workload on two or more candidates and report the delta against the baseline.'
+  outputs:
+  - comparison
+  - delta
+- id: author_suite
+  description: 'Author or extend a reproducible benchmark harness under Agents/benchmark/ with observability hooks; do not claim speedups without paired runs.'
+  outputs:
+  - harness_paths
+  - workload_spec
+- id: regression_gate
+  description: 'Execute a suite, compare against baseline or noise floor, and emit pass/fail with measured deltas only.'
+  outputs:
+  - gate_status
+  - metrics_summary
+- id: instrument_observability
+  description: 'Design and instrument distributed tracing, metrics, and structured log pipelines across swarm agents. Configure OpenTelemetry spans, metrics exporters (Prometheus, Jaeger, Logfire), and correlate task IDs with execution traces.'
+  outputs:
+  - otel_config
+  - metrics_pipeline
+  - trace_correlation_report
+- id: provision_cli_tools
+  description: 'Task Compilator or ShellMaster to provision or compile required CLI benchmarking and profiling tools (hyperfine, oha, wrk, vegeta, py-spy, memray, samply) when missing from PATH or requiring host-specific native optimizations.'
+  outputs:
+  - tool_name
+  - delegated_agent
+  - installation_status
+  - binary_path
+capabilities:
+- ast
+- pytest
+- hypothesis
+- coverage
+- test_runner
+- benchmarking
+- measurement
+- suite_authoring
+- cli_tool_provisioning
+- opentelemetry_instrumentation
+- trace_correlation
+- metric_pipeline_design
+- dashboard_generation
+telemetry:
+  enabled: true
+  metrics:
+  - token_count
+  - latency_ms
+  - throughput_rpm
+  - jev_score
+  - success_rate
+  export_format: json_lines
+  log_destination: Benchmarks/telemetry.jsonl
+skills:
+- skills/SKILL.md
+- TOOLS.md

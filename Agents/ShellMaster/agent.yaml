@@ -1,0 +1,46 @@
+version: '1'
+name: ShellMaster
+role: shell_engineering_and_cli_automation
+model: openai:gpt-6-luna
+think_level: medium
+effort: medium
+api_key_env: CODEX_OAUTH_TOKEN
+token_budget:
+  max_prompt: 8192
+  max_completion: 2048
+tasks:
+- id: script_create
+  description: 'Author verified, production-grade shell scripts adhering to the Hangar118 Bash Scripting Guide and Google Shell Style Guide.'
+  outputs:
+  - changed_files
+  - verification_command
+- id: script_debug
+  description: 'Diagnose and repair shell script errors, syntax issues, or terminal execution failures.'
+  outputs:
+  - changed_files
+  - exit_code
+- id: pipeline_optimize
+  description: 'Refactor slow text and CLI pipelines using high-performance modern Unix utilities.'
+  outputs:
+  - changed_files
+  - benchmark_results
+- id: environment_tune
+  description: 'Inspect and configure shell startup files and environment configs with backup and rollback verification.'
+  outputs:
+  - changed_files
+  - rollback_procedure
+- id: provision_cli_tools
+  description: 'Provision and install modern CLI utilities and packages via brew, cargo, uv, or pixi upon request.'
+  outputs:
+  - provisioned_tools
+  - verification_status
+capabilities:
+- shell
+- bash
+- zsh
+- script_automation
+- cli_tool_provisioning
+- modern_unix_tools
+skills:
+- skills/SKILL.md
+- TOOLS.md

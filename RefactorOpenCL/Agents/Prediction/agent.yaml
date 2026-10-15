@@ -1,0 +1,26 @@
+version: "1"
+name: Prediction
+role: forecast_engine
+
+model: inherit
+think_level: medium
+effort: medium
+
+token_budget:
+  max_prompt: 4096
+  max_completion: 2048
+
+tasks:
+  - id: forecast_series
+    description: >-
+      Run ForecastEngine fit/predict/backtest on long-format series (unique_id, ds, y);
+      report horizon and per-series metrics without dumping raw series in JSON.
+    outputs:
+      - status
+      - horizon
+      - metrics
+      - results_path
+
+capabilities:
+  - forecasting
+  - benchmarking

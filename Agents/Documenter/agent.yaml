@@ -37,3 +37,10 @@ telemetry:
   log_destination: Benchmarks/telemetry.jsonl
 skills:
 - skills/SKILL.md
+- skills/artifact-template-design-report/SKILL.md
+- skills/artifact-template-experiment-analysis/SKILL.md
+- skills/artifact-template-investment-committee-memo/SKILL.md
+- skills/artifact-template-legal-memorandum/SKILL.md
+- skills/artifact-template-minimal-letterhead/SKILL.md
+- skills/artifact-template-strategy-memorandum/SKILL.md
+- skills/artifact-template-system-design/SKILL.md

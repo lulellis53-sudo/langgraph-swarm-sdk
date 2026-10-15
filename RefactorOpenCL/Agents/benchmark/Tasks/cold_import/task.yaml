@@ -1,0 +1,7 @@
+name: cold_import
+sdk_entry: benchmark.Tasks.cold_import.benchmark_cold_import.run
+metrics:
+  - cold_import_ms
+models: scripted (no network, no API keys)
+pass:
+  improvement_pct_min: 25.0

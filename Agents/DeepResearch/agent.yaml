@@ -24,6 +24,11 @@ tasks:
   outputs:
   - verification_report
   - citation_list
+- id: adaptive_web_search
+  description: 'Execute deep web research using strict extraction hierarchy (Context7 -> Tavily/Exa -> Google fallback) with adaptive time budgeting (Tier A/B/C) and live URL validation.'
+  outputs:
+  - research_dossier
+  - evidence_ledger
 capabilities:
 - web_search
 - read_url_content
@@ -31,6 +36,10 @@ capabilities:
 - synthesis
 - file_writer
 - argus_evidence_graph
+- context7_lookup
+- tavily_search
+- playwright_inspection
+- url_liveness_check
 skills:
 - skills/SKILL.md
 telemetry:
