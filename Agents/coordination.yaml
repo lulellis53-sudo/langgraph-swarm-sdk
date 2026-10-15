@@ -323,3 +323,12 @@ tasks:
       - src/swarm_sdk/retrieval/rag_ingest.py
     depends_on: [CR01]
     status: todo
+
+  - id: DB01
+    title: "Test: SQLite vector fallback resumes IDs after reopening"
+    assigned: [Coder]
+    task: add_tests
+    files:
+      - Agents/benchmark/tests/test_memory.py
+    depends_on: []
+    status: done

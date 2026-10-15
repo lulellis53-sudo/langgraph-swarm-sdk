@@ -78,6 +78,29 @@ def test_sqlite_int8_fallback_when_extension_loading_is_disabled(
     reopened.close()
 
 
+def test_sqlite_int8_fallback_add_after_reopen_preserves_ids_and_search(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setitem(sys.modules, "sqlite_vec", None)
+    from swarm_sdk.memory.sqlite_vec import SqliteVecStore
+
+    path = str(tmp_path / "fallback-resume.db")
+    store = SqliteVecStore(path, dim=8)
+    first_id = store.add("first persisted row", _one_hot(8, 0))
+    store.close()
+
+    reopened = SqliteVecStore(path, dim=8)
+    second_id = reopened.add("second row after reopening", _one_hot(8, 1))
+
+    assert first_id == 1
+    assert second_id == first_id + 1
+    first_hit = reopened.search(_one_hot(8, 0), 2)[0]
+    second_hit = reopened.search(_one_hot(8, 1), 2)[0]
+    assert (first_hit.id, first_hit.text) == (first_id, "first persisted row")
+    assert (second_hit.id, second_hit.text) == (second_id, "second row after reopening")
+    reopened.close()
+
+
 def test_opencl_store_roundtrip_and_guards() -> None:
     store = OpenClVecStore(dim=8)
     assert store.search(_one_hot(8, 0), 5) == []
