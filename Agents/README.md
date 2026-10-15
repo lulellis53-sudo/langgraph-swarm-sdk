@@ -3,38 +3,39 @@
 | Agent | Role | Model | Think level | Manifest |
 |-------|------|-------|-------------|----------|
 | [Orchestrator](Orchestrator/AGENTS.md) | coordinate the swarm | gpt-4o-mini | low | [agent.yaml](Orchestrator/agent.yaml) |
-| [ModelDelegate](ModelDelegate/AGENTS.md) | pick provider/model routes and GPU dispatch | openrouter:z-ai/glm-5.3-flash | low | [agent.yaml](ModelDelegate/agent.yaml) |
+| [ModelDelegate](Extra/ModelDelegate/AGENTS.md) | pick provider/model routes and GPU dispatch | openrouter:z-ai/glm-5.3-flash | low | [agent.yaml](Extra/ModelDelegate/agent.yaml) |
 | [Planner](Planner/AGENTS.md) | decompose goals into task graphs | gpt-4o-mini | high | [agent.yaml](Planner/agent.yaml) |
-| [Researcher](Researcher/AGENTS.md) | read-only research and synthesis | gpt-4o-mini | medium | [agent.yaml](Researcher/agent.yaml) |
+| [Researcher](Extra/Researcher/AGENTS.md) | read-only research and synthesis | gpt-4o-mini | medium | [agent.yaml](Extra/Researcher/agent.yaml) |
 | [Coder](Coder/AGENTS.md) | implement code changes | gpt-4o | high | [agent.yaml](Coder/agent.yaml) |
 | [Reviewer](Reviewer/AGENTS.md) | review diffs and PRs | gpt-4o | high | [agent.yaml](Reviewer/agent.yaml) |
 | [Tester](Tester/AGENTS.md) | write and run tests | gpt-4o-mini | medium | [agent.yaml](Tester/agent.yaml) |
 | [Debugger](Debugger/AGENTS.md) | root-cause failures | gpt-4o-mini | high | [agent.yaml](Debugger/agent.yaml) |
 | [Documenter](Documenter/AGENTS.md) | maintain documentation | gpt-4o-mini | low | [agent.yaml](Documenter/agent.yaml) |
-| [DevOps](DevOps/AGENTS.md) | CI/CD and environments | gpt-4o-mini | medium | [agent.yaml](DevOps/agent.yaml) |
-| [Worktree](Worktree/AGENTS.md) | multi-lane git worktrees | gpt-6-luna | medium | [agent.yaml](Worktree/agent.yaml) |
-| [Security](Security/AGENTS.md) | security review and auditing | gpt-4o | high | [agent.yaml](Security/agent.yaml) |
-| [DataEngineer](DataEngineer/AGENTS.md) | data pipelines and storage | gpt-4o-mini | medium | [agent.yaml](DataEngineer/agent.yaml) |
-| [MLSpecialist](MLSpecialist/AGENTS.md) | model evaluation and integration | gpt-4o | high | [agent.yaml](MLSpecialist/agent.yaml) |
-| [Optimizer](Optimizer/AGENTS.md) | performance tuning | gpt-4o-mini | medium | [agent.yaml](Optimizer/agent.yaml) |
-| [Benchmarker](Benchmarker/AGENTS.md) | workloads, baselines, suites & regression gates | gpt-6-luna | medium | [agent.yaml](Benchmarker/agent.yaml) |
-| [Refactor](Refactor/AGENTS.md) | safe incremental refactors | gpt-4o | high | [agent.yaml](Refactor/agent.yaml) |
-| [TxtToCsv](TxtToCsv/AGENTS.md) | convert text files to CSV | gpt-4o-mini | low | [agent.yaml](TxtToCsv/agent.yaml) |
-| [RAG](RAG/AGENTS.md) | semantic caching, hybrid search, reranking & grounding | inherit | high | [agent.yaml](RAG/agent.yaml) |
-| [DeepResearch](DeepResearch/AGENTS.md) | deep technical research & evidence graphs | inherit | high | [agent.yaml](DeepResearch/agent.yaml) |
-| [math](math/AGENTS.md) | symbolic/numerical solving and verification | moonshot:kimi-k2.7-code | high | [agent.yaml](math/agent.yaml) |
-| [WebFetch](WebFetch/AGENTS.md) | deterministic pipeline stage: fetch/render | none (no LLM) | - | [agent.yaml](WebFetch/agent.yaml) |
-| [Normalizer](Normalizer/AGENTS.md) | deterministic pipeline stage: normalize + dedupe | none (no LLM) | - | [agent.yaml](Normalizer/agent.yaml) |
-| [Persister](Persister/AGENTS.md) | deterministic pipeline stage: SQLite store | none (no LLM) | - | [agent.yaml](Persister/agent.yaml) |
-| [Prediction](Prediction/AGENTS.md) | mlforecast lane (`ForecastEngine`) | inherit | medium | [agent.yaml](Prediction/agent.yaml) |
-| [Newsletter](Newsletter/AGENTS.md) | offline digest MVP | gpt-4o-mini | low | [agent.yaml](Newsletter/agent.yaml) |
+| [DevOps](Extra/DevOps/AGENTS.md) | CI/CD and environments | gpt-6-luna | medium | [agent.yaml](Extra/DevOps/agent.yaml) |
+| [Watchtower](Extra/Watchtower/AGENTS.md) | signed Sentry event triage and safe escalation | gpt-6-luna | high | [agent.yaml](Extra/Watchtower/agent.yaml) |
+| [Worktree](Extra/Worktree/AGENTS.md) | multi-lane git worktrees | gpt-6-luna | medium | [agent.yaml](Extra/Worktree/agent.yaml) |
+| [Security](Extra/Security/AGENTS.md) | security review and auditing | gpt-4o | high | [agent.yaml](Extra/Security/agent.yaml) |
+| [DataEngineer](Extra/DataEngineer/AGENTS.md) | data pipelines and storage | gpt-4o-mini | medium | [agent.yaml](Extra/DataEngineer/agent.yaml) |
+| [MLSpecialist](Extra/MLSpecialist/AGENTS.md) | model evaluation and integration | gpt-4o | high | [agent.yaml](Extra/MLSpecialist/agent.yaml) |
+| [Optimizer](Extra/Optimizer/AGENTS.md) | performance tuning | gpt-4o-mini | medium | [agent.yaml](Extra/Optimizer/agent.yaml) |
+| [Benchmarker](Extra/Benchmarker/AGENTS.md) | workloads, baselines, suites & regression gates | gpt-6-luna | medium | [agent.yaml](Extra/Benchmarker/agent.yaml) |
+| [Refactor](Extra/Refactor/AGENTS.md) | safe incremental refactors | gpt-4o | high | [agent.yaml](Extra/Refactor/agent.yaml) |
+| [TxtToCsv](Extra/TxtToCsv/AGENTS.md) | convert text files to CSV | gpt-4o-mini | low | [agent.yaml](Extra/TxtToCsv/agent.yaml) |
+| [RAG](Extra/RAG/AGENTS.md) | semantic caching, hybrid search, reranking & grounding | inherit | high | [agent.yaml](Extra/RAG/agent.yaml) |
+| [DeepResearch](Extra/DeepResearch/AGENTS.md) | deep technical research & evidence graphs | inherit | high | [agent.yaml](Extra/DeepResearch/agent.yaml) |
+| [math](Extra/math/AGENTS.md) | symbolic/numerical solving and verification | moonshot:kimi-k2.7-code | high | [agent.yaml](Extra/math/agent.yaml) |
+| [WebFetch](Extra/WebFetch/AGENTS.md) | deterministic pipeline stage: fetch/render | none (no LLM) | - | [agent.yaml](Extra/WebFetch/agent.yaml) |
+| [Normalizer](Extra/Normalizer/AGENTS.md) | deterministic pipeline stage: normalize + dedupe | none (no LLM) | - | [agent.yaml](Extra/Normalizer/agent.yaml) |
+| [Persister](Extra/Persister/AGENTS.md) | deterministic pipeline stage: SQLite store | none (no LLM) | - | [agent.yaml](Extra/Persister/agent.yaml) |
+| [Prediction](Extra/Prediction/AGENTS.md) | mlforecast lane (`ForecastEngine`) | inherit | medium | [agent.yaml](Extra/Prediction/agent.yaml) |
+| [Newsletter](Extra/Newsletter/AGENTS.md) | offline digest MVP | gpt-4o-mini | low | [agent.yaml](Extra/Newsletter/agent.yaml) |
 
 Imported reference catalog: [`antigravity-imported/`](antigravity-imported/) holds 21 Antigravity personas
 (`AGENTS.md` + `agent.md`, frontmatter contracts) — reference material for prompt design, **not** active
 swarm manifests; they are not loaded by `swarm_sdk.agents` and are excluded from the table above.
 
 **Actuation:** [`_shared/ACTUATION.md`](_shared/ACTUATION.md) · [`AgentMethods.md`](AgentMethods.md).  
-Canonical research/review personas: [DeepResearch](DeepResearch/AGENTS.md), [Reviewer](Reviewer/AGENTS.md) (duplicate `code-review/` / `deep-research/` folders removed).
+Canonical research/review personas: [DeepResearch](Extra/DeepResearch/AGENTS.md), [Reviewer](Reviewer/AGENTS.md) (duplicate `code-review/` / `deep-research/` folders removed).
 
 ## How to use this swarm
 

@@ -4,18 +4,19 @@
 |-------|------|-------|-------------|----------|
 | [Orchestrator](Orchestrator/AGENTS.md) | coordinate the swarm | gpt-4o-mini | low | [agent.yaml](Orchestrator/agent.yaml) |
 | [Planner](Planner/AGENTS.md) | decompose goals into task graphs | gpt-4o-mini | high | [agent.yaml](Planner/agent.yaml) |
-| [Researcher](Researcher/AGENTS.md) | read-only research and synthesis | gpt-4o-mini | medium | [agent.yaml](Researcher/agent.yaml) |
+| [Researcher](Extra/Researcher/AGENTS.md) | read-only research and synthesis | gpt-4o-mini | medium | [agent.yaml](Extra/Researcher/agent.yaml) |
 | [Coder](Coder/AGENTS.md) | implement code changes | gpt-4o | high | [agent.yaml](Coder/agent.yaml) |
 | [Reviewer](Reviewer/AGENTS.md) | review diffs and PRs | gpt-4o | high | [agent.yaml](Reviewer/agent.yaml) |
 | [Tester](Tester/AGENTS.md) | write and run tests | gpt-4o-mini | medium | [agent.yaml](Tester/agent.yaml) |
 | [Debugger](Debugger/AGENTS.md) | root-cause failures | gpt-4o-mini | high | [agent.yaml](Debugger/agent.yaml) |
 | [Documenter](Documenter/AGENTS.md) | maintain documentation | gpt-4o-mini | low | [agent.yaml](Documenter/agent.yaml) |
-| [DevOps](DevOps/AGENTS.md) | CI/CD and environments | gpt-4o-mini | medium | [agent.yaml](DevOps/agent.yaml) |
-| [Security](Security/AGENTS.md) | security review and auditing | gpt-4o | high | [agent.yaml](Security/agent.yaml) |
-| [DataEngineer](DataEngineer/AGENTS.md) | data pipelines and storage | gpt-4o-mini | medium | [agent.yaml](DataEngineer/agent.yaml) |
-| [Databaser](Databaser/AGENTS.md) | schema migrations and query quality; Aivana skill map: [SKILLS.md](Databaser/SKILLS.md) | kimi-k2.7-code | high | [agent.yaml](Databaser/agent.yaml) |
-| [MLSpecialist](MLSpecialist/AGENTS.md) | model evaluation and integration | gpt-4o | high | [agent.yaml](MLSpecialist/agent.yaml) |
-| [Optimizer](Optimizer/AGENTS.md) | performance tuning | gpt-4o-mini | medium | [agent.yaml](Optimizer/agent.yaml) |
+| [DevOps](Extra/DevOps/AGENTS.md) | CI/CD and environments | gpt-6-luna | medium | [agent.yaml](Extra/DevOps/agent.yaml) |
+| [Watchtower](Extra/Watchtower/AGENTS.md) | signed Sentry event triage and safe escalation | gpt-6-luna | high | [agent.yaml](Extra/Watchtower/agent.yaml) |
+| [Security](Extra/Security/AGENTS.md) | security review and auditing | gpt-4o | high | [agent.yaml](Extra/Security/agent.yaml) |
+| [DataEngineer](Extra/DataEngineer/AGENTS.md) | data pipelines and storage | gpt-4o-mini | medium | [agent.yaml](Extra/DataEngineer/agent.yaml) |
+| [Databaser](Extra/Databaser/AGENTS.md) | schema migrations and query quality; Aivana skill map: [SKILLS.md](Extra/Databaser/SKILLS.md) | kimi-k2.7-code | high | [agent.yaml](Extra/Databaser/agent.yaml) |
+| [MLSpecialist](Extra/MLSpecialist/AGENTS.md) | model evaluation and integration | gpt-4o | high | [agent.yaml](Extra/MLSpecialist/agent.yaml) |
+| [Optimizer](Extra/Optimizer/AGENTS.md) | performance tuning | gpt-4o-mini | medium | [agent.yaml](Extra/Optimizer/agent.yaml) |
 
 ## How to use this swarm
 

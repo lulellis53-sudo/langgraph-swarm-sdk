@@ -258,10 +258,9 @@ def model_key_ready(model_name: str) -> bool:
     provider, _, _ = model_name.partition(":")
     if provider in _CLI_PROVIDERS:
         return True
-    from swarm_sdk.models.chat import _route_index
+    from swarm_sdk.models.chat import route_is_ready
 
-    key_env, _ = _route_index().get(model_name, ("", ""))
-    return bool(key_env) and _secret_present(key_env)
+    return route_is_ready(model_name)
 
 
 def _secret_present(name: str) -> bool:

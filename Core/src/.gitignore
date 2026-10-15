@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+uv.lock
+dist/
+.pytest_cache/
+*.db
+data/faiss_index/
+data/artifacts/
+models/
+src/langswarm/proto/langswarm_pb2*.py
+# pixi environments
+.pixi/*
+!.pixi/config.toml

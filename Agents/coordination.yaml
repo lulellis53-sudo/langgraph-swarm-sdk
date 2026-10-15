@@ -6,23 +6,23 @@ version: "1"
 agents:
   - name: Router
     role: swarm traffic director
-    contract: Agents/Router/AGENTS.md
-    manifest: Agents/Router/agent.yaml
+    contract: Agents/Extra/Router/AGENTS.md
+    manifest: Agents/Extra/Router/agent.yaml
 
   - name: MemoryKeeper
     role: persistent memory storage
-    contract: Agents/MemoryKeeper/AGENTS.md
-    manifest: Agents/MemoryKeeper/agent.yaml
+    contract: Agents/Extra/MemoryKeeper/AGENTS.md
+    manifest: Agents/Extra/MemoryKeeper/agent.yaml
 
   - name: Historian
     role: long term memory recall
-    contract: Agents/Historian/AGENTS.md
-    manifest: Agents/Historian/agent.yaml
+    contract: Agents/Extra/Historian/AGENTS.md
+    manifest: Agents/Extra/Historian/agent.yaml
 
   - name: Finisher
     role: response finalizer and polisher
-    contract: Agents/Finisher/AGENTS.md
-    manifest: Agents/Finisher/agent.yaml
+    contract: Agents/Extra/Finisher/AGENTS.md
+    manifest: Agents/Extra/Finisher/agent.yaml
 
   - name: Orchestrator
     role: coordinate the swarm
@@ -32,8 +32,8 @@ agents:
 
   - name: ModelDelegate
     role: model_delegation
-    contract: Agents/ModelDelegate/AGENTS.md
-    manifest: Agents/ModelDelegate/agent.yaml
+    contract: Agents/Extra/ModelDelegate/AGENTS.md
+    manifest: Agents/Extra/ModelDelegate/agent.yaml
 
   - name: Planner
     role: decompose goals into task graphs
@@ -47,8 +47,8 @@ agents:
 
   - name: CodeFixer
     role: apply review fixes
-    contract: Agents/CodeFixer/AGENTS.md
-    manifest: Agents/CodeFixer/agent.yaml
+    contract: Agents/Extra/CodeFixer/AGENTS.md
+    manifest: Agents/Extra/CodeFixer/agent.yaml
 
   - name: Reviewer
     role: review diffs and PRs
@@ -72,133 +72,133 @@ agents:
 
   - name: DevOps
     role: CI/CD and environments
-    contract: Agents/DevOps/AGENTS.md
-    manifest: Agents/DevOps/agent.yaml
+    contract: Agents/Extra/DevOps/AGENTS.md
+    manifest: Agents/Extra/DevOps/agent.yaml
+
+  - name: Watchtower
+    role: signed Sentry event triage and safe escalation
+    contract: Agents/Extra/Watchtower/AGENTS.md
+    manifest: Agents/Extra/Watchtower/agent.yaml
 
   - name: Worktree
     role: multi-lane git worktrees
-    contract: Agents/Worktree/AGENTS.md
-    manifest: Agents/Worktree/agent.yaml
+    contract: Agents/Extra/Worktree/AGENTS.md
+    manifest: Agents/Extra/Worktree/agent.yaml
 
   - name: Security
     role: security review and auditing
-    contract: Agents/Security/AGENTS.md
-    manifest: Agents/Security/agent.yaml
+    contract: Agents/Extra/Security/AGENTS.md
+    manifest: Agents/Extra/Security/agent.yaml
 
   - name: DataEngineer
     role: data pipelines and storage
-    contract: Agents/DataEngineer/AGENTS.md
-    manifest: Agents/DataEngineer/agent.yaml
+    contract: Agents/Extra/DataEngineer/AGENTS.md
+    manifest: Agents/Extra/DataEngineer/agent.yaml
 
   - name: MLSpecialist
     role: model evaluation and integration
-    contract: Agents/MLSpecialist/AGENTS.md
-    manifest: Agents/MLSpecialist/agent.yaml
+    contract: Agents/Extra/MLSpecialist/AGENTS.md
+    manifest: Agents/Extra/MLSpecialist/agent.yaml
 
   - name: Optimizer
     role: performance tuning
-    contract: Agents/Optimizer/AGENTS.md
-    manifest: Agents/Optimizer/agent.yaml
+    contract: Agents/Extra/Optimizer/AGENTS.md
+    manifest: Agents/Extra/Optimizer/agent.yaml
 
   - name: Refactor
     role: safe incremental refactors
-    contract: Agents/Refactor/AGENTS.md
-    manifest: Agents/Refactor/agent.yaml
+    contract: Agents/Extra/Refactor/AGENTS.md
+    manifest: Agents/Extra/Refactor/agent.yaml
 
   - name: TxtToCsv
     role: convert text files to CSV
-    contract: Agents/TxtToCsv/AGENTS.md
-    manifest: Agents/TxtToCsv/agent.yaml
+    contract: Agents/Extra/TxtToCsv/AGENTS.md
+    manifest: Agents/Extra/TxtToCsv/agent.yaml
 
   - name: Newsletter
     role: digest_generation
-    contract: Agents/Newsletter/AGENTS.md
-    manifest: Agents/Newsletter/agent.yaml
+    contract: Agents/Extra/Newsletter/AGENTS.md
+    manifest: Agents/Extra/Newsletter/agent.yaml
 
   - name: Prediction
     role: forecast_engine
-    contract: Agents/Prediction/AGENTS.md
-    manifest: Agents/Prediction/agent.yaml
+    contract: Agents/Extra/Prediction/AGENTS.md
+    manifest: Agents/Extra/Prediction/agent.yaml
 
   - name: DeepResearch
     role: deep_technical_research
-    contract: Agents/DeepResearch/AGENTS.md
-    manifest: Agents/DeepResearch/agent.yaml
+    contract: Agents/Extra/DeepResearch/AGENTS.md
+    manifest: Agents/Extra/DeepResearch/agent.yaml
 
   - name: Normalizer
     role: normalize_dedupe
-    contract: Agents/Normalizer/AGENTS.md
-    manifest: Agents/Normalizer/agent.yaml
+    contract: Agents/Extra/Normalizer/AGENTS.md
+    manifest: Agents/Extra/Normalizer/agent.yaml
 
   - name: Persister
     role: store_documents
-    contract: Agents/Persister/AGENTS.md
-    manifest: Agents/Persister/agent.yaml
+    contract: Agents/Extra/Persister/AGENTS.md
+    manifest: Agents/Extra/Persister/agent.yaml
 
   - name: RAG
     role: knowledge_retrieval
-    contract: Agents/RAG/AGENTS.md
-    manifest: Agents/RAG/agent.yaml
+    contract: Agents/Extra/RAG/AGENTS.md
+    manifest: Agents/Extra/RAG/agent.yaml
 
   - name: WebFetch
     role: fetch_render
-    contract: Agents/WebFetch/AGENTS.md
-    manifest: Agents/WebFetch/agent.yaml
+    contract: Agents/Extra/WebFetch/AGENTS.md
+    manifest: Agents/Extra/WebFetch/agent.yaml
 
   - name: math
     role: mathematical_modeling
-    contract: Agents/math/AGENTS.md
-    manifest: Agents/math/agent.yaml
+    contract: Agents/Extra/math/AGENTS.md
+    manifest: Agents/Extra/math/agent.yaml
 
   - name: Tuner
     role: offline parameter tuning
-    contract: Agents/Tuner/AGENTS.md
-    manifest: Agents/Tuner/agent.yaml
+    contract: Agents/Extra/Tuner/AGENTS.md
+    manifest: Agents/Extra/Tuner/agent.yaml
 
   - name: PythonCoder
     role: python implementation
-    contract: Agents/PythonCoder/AGENTS.md
-    manifest: Agents/PythonCoder/agent.yaml
+    contract: Agents/Extra/PythonCoder/AGENTS.md
+    manifest: Agents/Extra/PythonCoder/agent.yaml
 
   - name: JSCoder
     role: js_ts implementation
-    contract: Agents/JSCoder/AGENTS.md
-    manifest: Agents/JSCoder/agent.yaml
+    contract: Agents/Extra/JSCoder/AGENTS.md
+    manifest: Agents/Extra/JSCoder/agent.yaml
 
   - name: RustCoder
     role: rust implementation
-    contract: Agents/RustCoder/AGENTS.md
-    manifest: Agents/RustCoder/agent.yaml
+    contract: Agents/Extra/RustCoder/AGENTS.md
+    manifest: Agents/Extra/RustCoder/agent.yaml
 
   - name: Simplify
     role: complexity reduction
-    contract: Agents/Simplify/AGENTS.md
-    manifest: Agents/Simplify/agent.yaml
-
-  - name: Infra
-    role: ci_cd and environments
-    contract: Agents/Infra/AGENTS.md
-    manifest: Agents/Infra/agent.yaml
+    contract: Agents/Extra/Simplify/AGENTS.md
+    manifest: Agents/Extra/Simplify/agent.yaml
 
   - name: Caching
     role: cache_layer_specialist
-    contract: Agents/Caching/AGENTS.md
-    manifest: Agents/Caching/agent.yaml
+    contract: Agents/Extra/Caching/AGENTS.md
+    manifest: Agents/Extra/Caching/agent.yaml
 
   - name: Databaser
     role: schema_migrations_queries
-    contract: Agents/Databaser/AGENTS.md
-    manifest: Agents/Databaser/agent.yaml
+    contract: Agents/Extra/Databaser/AGENTS.md
+    manifest: Agents/Extra/Databaser/agent.yaml
 
   - name: CCoder
     role: c_cpp_implementation
-    contract: Agents/CCoder/AGENTS.md
-    manifest: Agents/CCoder/agent.yaml
+    contract: Agents/Extra/CCoder/AGENTS.md
+    manifest: Agents/Extra/CCoder/agent.yaml
 
   - name: ApiDesigner
     role: api_contracts
-    contract: Agents/ApiDesigner/AGENTS.md
-    manifest: Agents/ApiDesigner/agent.yaml
+    contract: Agents/Extra/ApiDesigner/AGENTS.md
+    manifest: Agents/Extra/ApiDesigner/agent.yaml
 
   - name: Architect
     role: structure_and_boundaries
@@ -207,23 +207,23 @@ agents:
 
   - name: Benchmarker
     role: measured_baselines_and_suite_authoring
-    contract: Agents/Benchmarker/AGENTS.md
-    manifest: Agents/Benchmarker/agent.yaml
+    contract: Agents/Extra/Benchmarker/AGENTS.md
+    manifest: Agents/Extra/Benchmarker/agent.yaml
 
   - name: Compilator
     role: build_toolchain
-    contract: Agents/Compilator/AGENTS.md
-    manifest: Agents/Compilator/agent.yaml
+    contract: Agents/Extra/Compilator/AGENTS.md
+    manifest: Agents/Extra/Compilator/agent.yaml
 
   - name: Researcher
     role: read_only_research
-    contract: Agents/Researcher/AGENTS.md
-    manifest: Agents/Researcher/agent.yaml
+    contract: Agents/Extra/Researcher/AGENTS.md
+    manifest: Agents/Extra/Researcher/agent.yaml
 
   - name: WebResearcher
     role: cited_web_lookup
-    contract: Agents/WebResearcher/AGENTS.md
-    manifest: Agents/WebResearcher/agent.yaml
+    contract: Agents/Extra/WebResearcher/AGENTS.md
+    manifest: Agents/Extra/WebResearcher/agent.yaml
 
 # Task board — replace with tasks for the active project.
 # Each task must have: id, title, assigned agent(s), depends_on, and status.

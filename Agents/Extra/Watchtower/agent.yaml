@@ -1,0 +1,30 @@
+version: "1"
+name: Watchtower
+role: signed Sentry event triage and safe escalation
+langgraph_node: Watchtower
+
+model: openai:gpt-6-luna
+api_key_env: CODEX_OAUTH_TOKEN
+effort: medium
+think_level: high
+
+token_budget:
+  max_prompt: 6144
+  max_completion: 1536
+
+tasks:
+  - id: triage_sentry_event
+    description: >-
+      Triage a signed Sentry project service-hook event from its minimized
+      metadata, identify severity and missing evidence, and recommend a safe
+      next step.
+    outputs:
+      - event_summary
+      - severity
+      - evidence
+      - recommended_next_step
+      - approval_required
+
+capabilities:
+  - sentry_event_triage
+  - web_search

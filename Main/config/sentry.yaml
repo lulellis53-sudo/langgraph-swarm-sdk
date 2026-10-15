@@ -42,3 +42,13 @@ sdk:
   environment_env: SENTRY_ENVIRONMENT
   traces_sample_rate: 0.1
   send_default_pii: false
+
+# Incoming Sentry project service hooks. Store the returned hook secret in the
+# configured environment variable; never place its value in this file.
+watchtower:
+  enabled: true
+  webhook_secret_env: SENTRY_WATCHTOWER_WEBHOOK_SECRET
+  allowed_events:
+    - event.created
+    - event.alert
+  max_body_bytes: 1048576
