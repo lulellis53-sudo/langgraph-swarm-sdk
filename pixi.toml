@@ -1,0 +1,13 @@
+[workspace]
+name = "swarm"
+channels = ["conda-forge"]
+platforms = ["osx-64"]
+
+[dependencies]
+python = "==3.15.0"
+ruff = "==0.17.0"
+rust = "==1.99.0"
+uv = "==0.13.0"
+
+[tasks]
+check-toolchain = "python --version && node --version && rustc --version && ruff --version && uv --version && test \"$(node --version)\" = v26.11.1"

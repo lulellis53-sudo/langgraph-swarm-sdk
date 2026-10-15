@@ -69,6 +69,7 @@ dependencies = [
     # ## Web search / extraction (WebSearch.backend extractors, MCP server)
     "selectolax>=0.3",
     "trafilatura>=2.0",
+    "lxml>=5.0",
     "beautifulsoup4>=4.12",
     "mcp>=2,<3",
     "pyarrow>=18.0",
@@ -161,6 +162,7 @@ jupyter = [
 websearch = [
     "selectolax>=0.3",
     "trafilatura>=2.0",
+    "lxml>=5.0",
     "beautifulsoup4>=4.12",
     "mcp>=2,<3",
     "google-genai>=2.28",
