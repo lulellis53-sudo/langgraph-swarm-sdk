@@ -1,0 +1,135 @@
+[project]
+name = "langswarm"
+version = "0.8.0"
+description = "Lazy-import LangGraph swarm SDK with RAG, memory, metasearch, and pixel art."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.15"
+dependencies = [
+    # Agents and orchestration
+    "langchain>=1.0,<2.0",
+    "langchain-openai>=1.0,<2.0",
+    "langchain-community>=0.4",
+    "langgraph>=1.0,<2.0",
+    "langgraph-swarm>=0.4",
+    "langsmith>=0.3",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.7",
+    # Serving
+    "fastapi>=0.115",
+    "uvicorn>=0.34",
+    "uvloop>=0.21; sys_platform != 'win32'",
+    # Logging and terminal
+    "loguru>=0.7",
+    "rich>=13.9",
+    # Serialization and validation
+    "orjson>=3.10",
+    "msgspec>=0.19",
+    "pyyaml>=6.0",
+    # HTTP
+    "httpx2>=2.0",
+    "requests>=2.32",
+    # Data and math
+    "polars>=1.20",
+    "pyarrow>=18.0",
+    "numpy>=2.1",
+    "scipy>=1.15",
+    "sympy>=1.13",
+    # Local embeddings (CPU; onnxruntime uses AVX-512 VNNI automatically)
+    "fastembed>=0.4",
+    "onnxruntime>=1.20",
+    "tokenizers>=0.21",
+    # Local vector backend (default)
+    "faiss-cpu>=1.9",
+    # Telemetry
+    "opentelemetry-api>=1.28",
+    "opentelemetry-sdk>=1.28",
+]
+
+[project.optional-dependencies]
+sqlite = ["langgraph-checkpoint-sqlite>=2.0"]
+redis = ["langgraph-checkpoint-redis>=2.0", "redis>=5.0"]
+postgres = ["langchain-postgres>=0.0.12", "psycopg[binary]>=3.2", "pgvector>=0.3"]
+supabase = ["psycopg[binary]>=3.2", "supabase>=2.15"]
+openvino = ["onnxruntime-openvino>=1.20"]
+mem0 = ["mem0ai>=0.1"]
+rpc = ["grpcio>=1.70", "grpcio-tools>=1.70"]
+render = ["pillow>=11.0"]
+websearch = ["tavily-python>=0.5", "ddgs>=9.0", "apify-client>=1.10", "fastmcp>=2.0"]
+providers = [
+    "anthropic>=0.49",
+    "langchain-anthropic>=1.0",
+    "langchain-google-genai>=2.1",
+    "langchain-groq>=1.0",
+    "langchain-mistralai>=1.5",
+    "langchain-cohere>=1.0",
+    "cohere>=5.13",
+]
+
+[project.scripts]
+langswarm = "langswarm.cli:main"
+langswarm-api = "langswarm.api:main"
+langswarm-bench = "langswarm.bench:main"
+langswarm-grpc = "langswarm.rpc:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "httpx>=0.27",      # starlette TestClient dependency
+    "ruff>=0.9",
+    "ty>=0.1",          # Astral type checker
+    "lifeguard>=0.1",   # Meta's PEP 810 lazy-import static analyzer
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/langswarm"]
+
+[tool.uv]
+package = true
+
+[tool.ruff]
+target-version = "py315"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ty.src]
+include = ["src", "tests", "examples"]
+
+[tool.ty.environment]
+python-version = "3.15"
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["osx-64"]
+
+[tool.pixi.pypi-dependencies]
+langswarm = { path = ".", editable = true }
+
+[tool.pixi.environments]
+default = { solve-group = "default" }
+dev = { features = ["dev"], solve-group = "default" }
+mem0 = { features = ["mem0"], solve-group = "default" }
+openvino = { features = ["openvino"], solve-group = "default" }
+postgres = { features = ["postgres"], solve-group = "default" }
+providers = { features = ["providers"], solve-group = "default" }
+redis = { features = ["redis"], solve-group = "default" }
+render = { features = ["render"], solve-group = "default" }
+rpc = { features = ["rpc"], solve-group = "default" }
+sqlite = { features = ["sqlite"], solve-group = "default" }
+supabase = { features = ["supabase"], solve-group = "default" }
+websearch = { features = ["websearch"], solve-group = "default" }
+
+[tool.pixi.tasks]
+sync = "uv sync"
+sync-dev = "uv sync --group dev"
+test = "uv run pytest"
+lint = "uv run ruff check ."
+typecheck = "uv run ty check src tests examples"
+bench = "uv run langswarm-bench"
+api = "uv run langswarm-api"

@@ -1,0 +1,22 @@
+{
+  "folders": [
+    {
+      "name": "Core SDK",
+      "path": "."
+    },
+    {
+      "name": "langswarm (pixi + uv)",
+      "path": "src"
+    }
+  ],
+  "settings": {
+    "python.defaultInterpreterPath": "${workspaceFolder:langswarm (pixi + uv)}/.venv/bin/python",
+    "python.terminal.activateEnvironment": true,
+    "python.analysis.pythonVersion": "3.15",
+    "python.pyrefly.interpreter": ["${workspaceFolder:langswarm (pixi + uv)}/.venv/bin/python"],
+    "python.pyrefly.pythonPath": "${workspaceFolder:langswarm (pixi + uv)}/.venv/bin/python",
+    "ty.interpreter": "${workspaceFolder:langswarm (pixi + uv)}/.venv/bin/python",
+    "ruff.interpreter": ["${workspaceFolder:langswarm (pixi + uv)}/.venv/bin/python"],
+    "ruff.configuration": "${workspaceFolder:langswarm (pixi + uv)}/pyproject.toml"
+  }
+}
