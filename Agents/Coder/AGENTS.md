@@ -58,6 +58,7 @@
                       [ Handoff ] [ Reflection ]
 ```
 
+
 ---
 
 ## 3. Operating Protocol & Methodological Framework
@@ -78,6 +79,11 @@ $$\text{JEV}(a) = P(\text{Success} \mid a) \cdot V(\text{Outcome}) - \lambda \cd
 - Create or edit files ONLY within the task's declared `files` manifest.
 - Keep module implementation and its corresponding tests in the same Coder step.
 - Sibling Coder steps running concurrently MUST claim disjoint write paths.
+
+### 4. Cross-Role Coordination (Databaser)
+- For database schema, migration, or query work, consult the Aivana skill map in [`../Databaser/SKILLS.md`](../Databaser/SKILLS.md).
+- Coordinate with the Databaser role when the task requires schema or migration expertise.
+- Coder retains implementation ownership only for its assigned files.
 
 ---
 
