@@ -17,6 +17,12 @@
 | [MLSpecialist](MLSpecialist/AGENTS.md) | model evaluation and integration | gpt-4o | high | [agent.yaml](MLSpecialist/agent.yaml) |
 | [Optimizer](Optimizer/AGENTS.md) | performance tuning | gpt-4o-mini | medium | [agent.yaml](Optimizer/agent.yaml) |
 
+## Jev multirouter
+
+All personas share the same **Noul → Choice → Score → model registry → DARS** flow.
+Diagram, thresholds, and CI golden cases: [`Agents/_shared/JEV_MULTIROUTER.md`](Agents/_shared/JEV_MULTIROUTER.md).  
+Reflect, backward paths, autolearn: [`Agents/_shared/JEV_REFLECT_AUTOLEARN.md`](Agents/_shared/JEV_REFLECT_AUTOLEARN.md).
+
 ## How to use this swarm
 
 1. **Start with Orchestrator** — give it a goal; it loads `coordination.yaml` and routes to Planner.

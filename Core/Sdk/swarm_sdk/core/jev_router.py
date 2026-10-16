@@ -196,6 +196,19 @@ _RE_LOW_LOOKUP = re.compile(
 )
 
 # Candidate Semantic Associations for Choice Routing
+def _keyword_matches(text: str, keyword: str) -> bool:
+    """Return whether ``keyword`` appears in ``text`` without naive substring traps.
+
+    Short tokens and abbreviations (for example ``pr`` inside ``profile``) require
+    word boundaries. Multi-word phrases use a simple contiguous substring match.
+    """
+    if not keyword:
+        return False
+    if " " in keyword or len(keyword) <= 3:
+        return re.search(rf"\b{re.escape(keyword)}\b", text) is not None
+    return keyword in text
+
+
 _CANDIDATE_KEYWORDS: dict[str, list[str]] = {
     "coder": [
         "implement",
@@ -210,6 +223,96 @@ _CANDIDATE_KEYWORDS: dict[str, list[str]] = {
         "module",
         "write function",
         "develop",
+        "refactor",
+        "opencl",
+        "lazy",
+        "dispatch",
+        "gpu",
+        "kernel",
+        "fix failing",
+    ],
+    "planner": [
+        "decompose",
+        "task graph",
+        "coordinate",
+        "orchestrate",
+        "break down",
+        "milestones",
+        "dependencies",
+    ],
+    "researcher": [
+        "research",
+        "investigate",
+        "synthesize",
+        "read-only",
+        "evidence",
+        "compare options",
+        "literature",
+    ],
+    "debugger": [
+        "debug",
+        "traceback",
+        "root cause",
+        "diagnose",
+        "reproduce failure",
+        "stack trace",
+    ],
+    "optimizer": [
+        "profile",
+        "profiling",
+        "benchmark",
+        "tune",
+        "tuning",
+        "throughput",
+        "latency",
+        "performance",
+        "matmul",
+        "batch size",
+        "batch sizes",
+        "vs cpu",
+    ],
+    "mlspecialist": [
+        "embedding",
+        "faiss",
+        "inference",
+        "model evaluation",
+        "rag",
+        "vector",
+    ],
+    "security": [
+        "security audit",
+        "cve",
+        "vulnerability",
+        "exploit",
+        "credential leak",
+        "secrets scan",
+    ],
+    "documenter": [
+        "documentation",
+        "docstring",
+        "readme",
+        "changelog",
+    ],
+    "devops": [
+        "ci/cd",
+        "github actions",
+        "deploy",
+        "docker",
+        "pixi",
+        "workflow yaml",
+    ],
+    "dataengineer": [
+        "pipeline",
+        "etl",
+        "qdrant",
+        "sqlite",
+        "ingest",
+    ],
+    "caching": [
+        "redis",
+        "semantic cache",
+        "cache invalidation",
+        "ttl",
     ],
     "tester": [
         "test",
@@ -570,7 +673,7 @@ class JevRouter:
             # Match semantic keywords associated with candidate
             keywords = _CANDIDATE_KEYWORDS.get(cand_key, [])
             for kw in keywords:
-                if kw in full_text:
+                if _keyword_matches(full_text, kw):
                     score += 2.0
 
             scores.append(score)

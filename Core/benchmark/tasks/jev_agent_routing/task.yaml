@@ -1,0 +1,3 @@
+name: jev_agent_routing
+description: Golden agent-task goals routed via JevRouter Choice (local fallback); accuracy and latency gates.
+offline: true
