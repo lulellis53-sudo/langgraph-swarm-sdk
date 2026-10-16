@@ -234,7 +234,7 @@ class PerplexitySearchEngine:
                     try:
                         self.storage_state_path.parent.mkdir(parents=True, exist_ok=True)
                         await context.storage_state(path=str(self.storage_state_path))
-                    except (OSError, PlaywrightError):
+                    except OSError, PlaywrightError:
                         logger.warning(
                             "Could not save session state to %s",
                             self.storage_state_path,

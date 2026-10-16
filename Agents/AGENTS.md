@@ -46,12 +46,6 @@ Source: [`/AgentMethods.md`](/AgentMethods.md) · [`/TEMPLATE.md`](/TEMPLATE.md)
 
 **Backward / reflection:** failed check → classify (missing evidence | wrong plan | wrong route) → rewind to earliest wrong stage → one bounded fix → rerun the **same** check. Max **2** rewinds, then `blocked` / `needs_input` with evidence.
 
-# Agents (swarm personas)
-
-Specialist contracts: `Agents/<Name>/AGENTS.md`. Index: [`../SKILLS.md`](../SKILLS.md).
-
-**Methods:** [`AgentMethods.md`](AgentMethods.md) (DARS, ReAct, Reflection, SWE) · **Skeleton:** [`TEMPLATE.md`](TEMPLATE.md) · **Shared defaults:** [`_shared/COMMON.md`](_shared/COMMON.md)
-
 ## Master agentic workflow (all personas)
 
 Each `AGENTS.md` embeds this ASCII gate from `TEMPLATE.md` / `AgentMethods.md`:

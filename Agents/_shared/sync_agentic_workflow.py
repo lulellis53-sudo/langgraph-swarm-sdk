@@ -33,6 +33,8 @@ ROLE_METHOD: dict[str, str] = {
     "Benchmarket": "Primary: **SWE** (harness leg) — measured benchmarks only.",
     "Refactor": "Primary: **SWE** — behavior-preserving refactors + regression proof.",
     "Investigator": "Primary: **ReAct** — acquire → reverse-engineer → substantiate; read-only.",
+    "ShellMaster": "Primary: **SWE** + **HITL** — script specify → lint → run; destructive ops need approval.",
+    "AgentCompacting": "Primary: **Self-Refine** — distill transcript → memory schema → persist.",
     "ModelDelegate": "Primary: **DARS Router** (model lane) — registry route, no task execution.",
     "Router": "Primary: **DARS Router** — `route_task` from registry only.",
     "FallbackResolver": "Primary: **DARS Router** — next route after breaker.",
@@ -112,6 +114,12 @@ Source: [`{prefix}/AgentMethods.md`]({prefix}/AgentMethods.md) · [`{prefix}/TEM
 def inject(content: str, agent_name: str, agent_dir: Path) -> str:
     block = workflow_section(agent_name, _doc_prefix(agent_dir))
     for header in OLD_HEADERS:
+        if content.startswith(header):
+            pattern = re.compile(
+                rf"^{re.escape(header)}\n.*?(?=\n# Agent:|\n## [^#]|\Z)",
+                re.DOTALL | re.MULTILINE,
+            )
+            content = pattern.sub("", content, count=1).lstrip("\n")
         if header in content:
             pattern = re.compile(
                 rf"\n{re.escape(header)}\n.*?(?=\n## |\Z)",

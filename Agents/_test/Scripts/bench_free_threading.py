@@ -48,9 +48,7 @@ def run_free_threading_benchmark(workers: int, tasks_per_worker: int) -> dict[st
 
     t0 = time.perf_counter()
     with ThreadPoolExecutor(max_workers=workers) as executor:
-        futures = [
-            executor.submit(cpu_intensive_work, 100_000) for _ in range(total_tasks)
-        ]
+        futures = [executor.submit(cpu_intensive_work, 100_000) for _ in range(total_tasks)]
         # Block until every task finishes so elapsed time includes tail latency.
         _ = [future.result() for future in futures]
 

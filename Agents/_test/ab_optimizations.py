@@ -239,8 +239,7 @@ def _run_arm(arm_root: Path, label: str, repeats: int = 3) -> dict[str, object]:
         for key in runs[0]
         if key != "arm"
         and all(
-            isinstance(r.get(key), (int, float)) and not isinstance(r.get(key), bool)
-            for r in runs
+            isinstance(r.get(key), (int, float)) and not isinstance(r.get(key), bool) for r in runs
         )
     ]
     for key in numeric:

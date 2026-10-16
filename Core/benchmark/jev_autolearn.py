@@ -42,9 +42,7 @@ class RoutingExperienceRecord:
     suggested_rewind: str
 
 
-def classify(
-    expected: str, selected: str, confidence: float
-) -> tuple[MisrouteCause, str]:
+def classify(expected: str, selected: str, confidence: float) -> tuple[MisrouteCause, str]:
     """Return misroute cause and multirouter rewind tag (MR2 when agent wrong)."""
     wrong = selected != expected
     low = confidence < REVIEW_CONFIDENCE_BELOW

@@ -195,6 +195,7 @@ _RE_LOW_LOOKUP = re.compile(
     r"(?i)\b(?:lookup|find\s+symbol|find\s+usages|search\s+symbol|definition\s+in\s+index|symbol\s+definition)\b"
 )
 
+
 # Candidate Semantic Associations for Choice Routing
 def _keyword_matches(text: str, keyword: str) -> bool:
     """Return whether ``keyword`` appears in ``text`` without naive substring traps.
