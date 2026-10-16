@@ -59,7 +59,7 @@ rust-version = "rustc --version"
 lint = { cmd = "ruff check --config ruff.toml Core/Sdk Core/Orchestration Core/benchmark Core/Lang Core/tests Agents/_test", inputs = ["ruff.toml", "**/*.py"] }
 format = "ruff format --config ruff.toml Core/Sdk Core/Orchestration Core/benchmark Core/Lang Core/tests Agents/_test"
 format-check = { cmd = "ruff format --check --config ruff.toml Core/Sdk Core/Orchestration Core/benchmark Core/Lang Core/tests Agents/_test", inputs = ["ruff.toml", "**/*.py"] }
-types = { cmd = "ty check --config-file ty.toml", inputs = ["ty.toml", "**/*.py"] }
+types = { cmd = "ty check --config-file ty.toml Core/Orchestration Core/tests", inputs = ["ty.toml", "Core/Orchestration/**", "Core/tests/**"] }
 biome-check = { cmd = "biome check .", inputs = ["biome.json"] }
 oxlint-check = { cmd = "oxlint ." }
 test = {

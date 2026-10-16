@@ -1,0 +1,2 @@
+{"timestamp": 1792112015.895173, "goal": "Investigate OpenCL lazy-dispatch options and synthesize evidence from docs only.", "expected_agent": "Researcher", "selected_agent": "Researcher", "confidence": 0.4935, "cause": "low_confidence", "suggested_rewind": "MR2"}
+{"timestamp": 1792112015.8962612, "goal": "Root-cause the CI traceback: spawn returns empty steps intermittently.", "expected_agent": "Debugger", "selected_agent": "Debugger", "confidence": 0.3808, "cause": "low_confidence", "suggested_rewind": "MR2"}

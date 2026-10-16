@@ -199,6 +199,5 @@ exclude = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-import_mode = "importlib"
 testpaths = ["Core/Orchestration", "Core/tests", "Core/benchmark"]
 pythonpath = [".", "Core/Sdk", "Core/Orchestration", "Agents"]
