@@ -193,5 +193,3 @@ autonomous:
     - groq:openai/gpt-oss-20b
   memory:
     - mem0
-  decision:
-    - jev

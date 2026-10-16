@@ -22,6 +22,11 @@ logger = logging.getLogger(__name__)
 TIMEOUT_S = 5.0
 SERVICE_PREFIX = "swarm/"
 _PROJECT_ENV = Path(__file__).resolve().parents[2] / ".env"
+# 1Password Document holding a whole dotenv file; read in memory only, never written to disk.
+OP_DOCUMENT = os.environ.get("SWARM_OP_DOCUMENT", ".env")
+OP_DOCUMENT_VAULT = os.environ.get("SWARM_OP_DOCUMENT_VAULT", "2")
+# Hidden, gitignored folder at the workspace root; holds `op://` references, never values.
+_OP_ENV = Path(__file__).resolve().parents[3] / ".env" / "swarm.op.env"
 KNOWN_NAMES = (
     "MEM0_API_KEY",
     "TAVILY_API_KEY",
@@ -40,6 +45,11 @@ KNOWN_NAMES = (
     "APPWRITE_API_KEY",
     "APPWRITE_PROJECT_ID",
     "APPWRITE_ENDPOINT",
+    "ATLASCLOUD_API_KEY",
+    "CONTEXT_API_KEY",
+    "JINA_API_KEY",
+    "MINIMAX_API_KEY",
+    "SAMBANOVA_API_KEY",
 )
 _NAME = re.compile(r"^[A-Z][A-Z0-9_]{0,63}$")
 
@@ -106,10 +116,15 @@ def _check(name: str) -> str:
 def _from_dotenv(name: str, path: Path) -> str | None:
     """Read ``name`` from a dotenv file; ``None`` when the file or key is missing."""
     try:
-        lines = path.read_text().splitlines()
+        text = path.read_text()
     except OSError:
         return None
-    for raw in lines:
+    return _parse_dotenv(name, text)
+
+
+def _parse_dotenv(name: str, text: str) -> str | None:
+    """Return the value of ``name`` in dotenv ``text``, or ``None``."""
+    for raw in text.splitlines():
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
@@ -174,12 +189,33 @@ def import_file(path: Path) -> tuple[list[str], list[str]]:
     return stored, skipped
 
 
+def op_reference(name: str, path: Path | None = None) -> str | None:
+    """Return the ``op://`` reference for ``name`` from the op env file, or ``None``.
+
+    The file holds references only (``NAME=op://vault/item/field``), never secret values.
+    """
+    try:
+        lines = (path or _OP_ENV).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return None
+    for raw in lines:
+        line = raw.strip().removeprefix("export ").lstrip()
+        if not line or line.startswith("#"):
+            continue
+        key, sep, value = line.partition("=")
+        if sep and key.strip() == name:
+            value = value.strip().strip("\"'")
+            return value if value.startswith("op://") else None
+    return None
+
+
 def get_with_source(
     name: str,
     *,
     runner: Runner | None = None,
     dotenv: Path | None = None,
     environ: MutableMapping[str, str] | None = None,
+    op_env: Path | None = None,
 ) -> tuple[str, str] | None:
     """Return ``(value, source)`` for ``name``; first provider hit wins.
 
@@ -221,7 +257,12 @@ def get_with_source(
             "secret %s read from ~/.env; migrate it with `swarm-vault set %s`", name, name
         )
         return value, "dotenv"
-    # 1Password CLI fallback lookup
+    # 1Password CLI: an explicit `op://` reference wins over the document and title guesses
+    if (ref := op_reference(name, op_env)) and (value := run(["op", "read", ref])):
+        return value, "1password"
+    document = run(["op", "document", "get", OP_DOCUMENT, "--vault", OP_DOCUMENT_VAULT])
+    if document and (value := _parse_dotenv(name, document)):
+        return value, "1password-document"
     op_title_map = {
         "MEM0_API_KEY": "Mem0 API Key",
     }

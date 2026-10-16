@@ -182,12 +182,12 @@ def create_panel(content: Any, title: str = "") -> Any:
 
 
 def normalize_service(service: str) -> str:
-    """Maps colloquial service names (e.g. 'openai', 'jev') to standard environment keys."""
+    """Maps colloquial service names (e.g. 'openai', 'typesafe') to standard environment keys."""
     s = service.strip()
     if s.lower() in ("openai", "openai_api_key"):
         return "OPENAI_API_KEY"
-    if s.lower() in ("jev", "jev_api_key"):
-        return "JEV_API_KEY"
+    if s.lower() in ("typesafe", "typesafe_api_key"):
+        return "TYPESAFE_API_KEY"
     upper = s.upper()
     if upper.endswith("_API_KEY"):
         return upper

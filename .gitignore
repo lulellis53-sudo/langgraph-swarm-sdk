@@ -29,6 +29,7 @@ htmlcov/
 
 # --- Secrets & Vaults ---------------------------------------------------------
 .env
+.env/
 .env.*
 !.env.example
 config.env

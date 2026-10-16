@@ -57,7 +57,7 @@ DEFAULT_AUTONOMOUS_SUMMARIZE: tuple[str, ...] = (
     "groq:openai/gpt-oss-20b",
 )
 DEFAULT_AUTONOMOUS_MEMORY: tuple[str, ...] = ("mem0",)
-DEFAULT_AUTONOMOUS_DECISION: tuple[str, ...] = ("jev",)
+DEFAULT_AUTONOMOUS_DECISION: tuple[str, ...] = ()
 
 _PROVIDERS_CACHE: dict[tuple[str, int, int], ProvidersConfig] = {}
 

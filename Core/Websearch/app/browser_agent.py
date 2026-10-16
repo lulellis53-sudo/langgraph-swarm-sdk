@@ -1,7 +1,7 @@
 """Browser agent: LLM browse, two-role autonomous run, and cowork fetch pipeline.
 
 ``browse`` — chat model with ``web_search`` / ``open_page`` (Playwright).
-``run_autonomous`` — one model browses, final models dedupe/summarize; optional Jev/Mem0.
+``run_autonomous`` — one model browses, final models dedupe/summarize; optional Mem0.
 ``run_cowork_pipeline`` — WebFetch → Normalizer → Persister waves (no LLM).
 """
 
@@ -47,7 +47,7 @@ Resolver = Callable[[str], list[str]]
 _CLI_PROVIDERS = frozenset({"claude-cli", "codex-cli", "grok-cli"})
 _DEDUPE_CHARS = 500
 _MEMORY_MAX_AGE_S = 86_400
-_SERVICE_KEYS = {"mem0": "MEM0_API_KEY", "jev": "JEV_API_KEY"}
+_SERVICE_KEYS = {"mem0": "MEM0_API_KEY"}
 
 
 class BrowseError(RuntimeError):
@@ -235,7 +235,7 @@ class AutonomousResult:
         kept: URLs still in the set after exact and model dedupe.
         dropped: Opened URLs that were not kept.
         browse: The browser agent's own result.
-        decision_maker: ``jev`` when Jev Choice picked the Playwright model.
+        decision_maker: ``choice`` when ``decide`` picked the Playwright model.
         memory_provider: ``mem0`` when a brief was read or stored.
     """
 
@@ -290,35 +290,20 @@ def _memory_key(query: str) -> str:
     return hashlib.blake2s(folded.encode(), digest_size=8).hexdigest()
 
 
-def _jev_choice(query: str, candidates: Sequence[str]) -> str:
-    """Jev Choice over ``candidates``.
-
-    A stored ``JEV_API_KEY`` calls TypeSafe ``/v1/systemone``. ``JEV_ENDPOINT``
-    still selects the older evaluate service. Otherwise the local classifier runs.
-    """
-    from swarm_sdk.core.jev_router import JevRouter
-
-    endpoint = os.environ.get("JEV_ENDPOINT")
-    router = JevRouter(endpoint=endpoint) if endpoint else JevRouter(api_key="", endpoint=None)
-    return router.evaluate_choice(query, list(candidates)).selected_choice
-
-
 def choose_playwright(
     query: str,
     names: Sequence[str],
     *,
     ready: ReadyFn,
-    use_jev: bool,
     decide: DecideFn | None = None,
 ) -> str:
-    """First ready Playwright name, or the Jev choice among those names."""
+    """First ready Playwright name, or ``decide``'s pick among those names."""
     candidates = [name for name in names if name and ready(name)]
     if not candidates:
         return ""
-    if use_jev or decide is not None:
-        picker = decide or _jev_choice
+    if decide is not None:
         try:
-            picked = picker(query, candidates)
+            picked = decide(query, candidates)
         except OSError, RuntimeError, ValueError:
             picked = ""
         if picked in candidates:
@@ -424,7 +409,6 @@ def run_autonomous(
 ) -> AutonomousResult:
     """Browse, normalize and dedupe pages, then synthesize from kept sources.
 
-    Jev, when it is the ready decision maker, chooses the Playwright model.
     Mem0, when it is the ready memory provider, returns a brief stored under
     this query in the last day, and stores the new answer after a miss.
 
@@ -433,7 +417,6 @@ def run_autonomous(
     """
     cfg = config or load_providers()
     is_ready = ready or model_key_ready
-    use_jev = select_ready(cfg.autonomous_decision, ready=is_ready) == "jev"
     store = memory if memory is not None else _open_memory(cfg, is_ready)
     if store is not None:
         cached = _recall(store, query)
@@ -450,13 +433,12 @@ def run_autonomous(
             )
     decision_maker = ""
     if playwright_model is None:
-        if not playwright_name and (use_jev or decide is not None):
-            decision_maker = "jev"
+        if not playwright_name and decide is not None:
+            decision_maker = "choice"
         pw_name = playwright_name or choose_playwright(
             query,
             cfg.autonomous_playwright,
             ready=is_ready,
-            use_jev=use_jev,
             decide=decide,
         )
         if not pw_name:
