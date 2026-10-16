@@ -15,7 +15,8 @@
 
 ## Layout
 
-- `Core/`: orchestration code (`Orchestration`, `Websearch`, `Sdk`), `Core/benchmark`, optional `Core/Lang` facade, and `Core/tests`.
+- `Core/`: orchestration code (`Orchestration`, `Sdk`), `Core/benchmark`, optional `Core/Lang` facade, and `Core/tests`.
+- `Tools/WebSearch/`: web search package (`import WebSearch`); lane branch `feature/websearch`, worktree `../Workspace-WebSearch` (see `worktrees.yml`).
 - `Core/Sdk/swarm_sdk/`: canonical SDK; OpenCL lives in `swarm_sdk/opencl/` (`gpu/` paths re-export for compatibility).
 - `Agents/`: agent personas and manifests, with `Agents/tests` for manifest checks and `Agents/benchmark` for suites.
 - `scratch/`: temporary files and archives.

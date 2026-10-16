@@ -48,7 +48,7 @@ pyyaml = ">=6.0"
 [activation]
 env = {
   PATH = "/Users/usuario/.local/opt/node-26.11.1-avx2/bin:$PATH",
-  PYTHONPATH = "Core/Sdk:Core/Orchestration:Agents:.",
+  PYTHONPATH = "Core/Sdk:Core/Orchestration:Agents:Tools:.",
   PYTHONUNBUFFERED = "1",
   TY_CONFIG_FILE = "ty.toml",
 }
@@ -56,15 +56,19 @@ env = {
 [tasks]
 node-version = { cmd = "python -c \"import subprocess, sys; v=subprocess.check_output(['node', '--version'], text=True); sys.exit(0 if '26.11.1' in v else 1)\"" }
 rust-version = "rustc --version"
-lint = { cmd = "ruff check --config ruff.toml Core/Sdk Core/Orchestration Core/benchmark Core/Lang Core/tests Agents/_test", inputs = ["ruff.toml", "**/*.py"] }
-format = "ruff format --config ruff.toml Core/Sdk Core/Orchestration Core/benchmark Core/Lang Core/tests Agents/_test"
-format-check = { cmd = "ruff format --check --config ruff.toml Core/Sdk Core/Orchestration Core/benchmark Core/Lang Core/tests Agents/_test", inputs = ["ruff.toml", "**/*.py"] }
+lint = { cmd = "ruff check --config ruff.toml Core/Sdk Core/Orchestration Core/benchmark Core/Lang Core/tests Agents/_test Tools/WebSearch", inputs = ["ruff.toml", "**/*.py"] }
+format = "ruff format --config ruff.toml Core/Sdk Core/Orchestration Core/benchmark Core/Lang Core/tests Agents/_test Tools/WebSearch"
+format-check = { cmd = "ruff format --check --config ruff.toml Core/Sdk Core/Orchestration Core/benchmark Core/Lang Core/tests Agents/_test Tools/WebSearch", inputs = ["ruff.toml", "**/*.py"] }
 types = { cmd = "ty check --config-file ty.toml Core/Orchestration Core/tests", inputs = ["ty.toml", "Core/Orchestration/**", "Core/tests/**"] }
 biome-check = { cmd = "biome check .", inputs = ["biome.json"] }
 oxlint-check = { cmd = "oxlint ." }
 test = {
   cmd = "python -m pytest --import-mode=importlib Core/Orchestration Core/tests Core/benchmark -q --tb=short",
   inputs = ["pyproject.toml", "pixi.toml", "ruff.toml", "ty.toml", "Core/**"],
+}
+test-websearch = {
+  cmd = "python -m pytest --import-mode=importlib Tools/WebSearch/tests Tools/WebSearch/scraper -q --tb=short",
+  inputs = ["pixi.toml", "Tools/WebSearch/**"],
 }
 benchmark = "python -m Core.benchmark.run --task all"
 check = { depends-on = ["lint", "format-check", "types", "biome-check", "oxlint-check"] }
