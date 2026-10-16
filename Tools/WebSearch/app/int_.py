@@ -11,42 +11,42 @@ lazy from importlib import import_module
 lazy from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from WebSearch.Core.backend import ExtractedDoc
-    from WebSearch.Core.frontend.dorks import DorkError
-    from WebSearch.Core.frontend.websearchers import (
+    from WebSearch.backend import ExtractedDoc
+    from WebSearch.frontend.dorks import DorkError
+    from WebSearch.frontend.websearchers import (
         ProvidersConfig,
         SearchFn,
         SearchHit,
     )
-    from WebSearch.Core.midend import FetchFn, ScrapedPage
+    from WebSearch.midend import FetchFn, ScrapedPage
 
 _EXPORTS: dict[str, tuple[str, str]] = {
-    "DorkError": ("WebSearch.Core.frontend.dorks", "DorkError"),
-    "ExtractedDoc": ("WebSearch.Core.backend", "ExtractedDoc"),
-    "FetchFn": ("WebSearch.Core.midend", "FetchFn"),
-    "ProvidersConfig": ("WebSearch.Core.frontend.websearchers", "ProvidersConfig"),
-    "ScrapedPage": ("WebSearch.Core.midend", "ScrapedPage"),
-    "SearchFn": ("WebSearch.Core.frontend.websearchers", "SearchFn"),
-    "SearchHit": ("WebSearch.Core.frontend.websearchers", "SearchHit"),
-    "any_of": ("WebSearch.Core.frontend.dorks", "any_of"),
-    "crawl_then_scrape": ("WebSearch.Core.midend", "crawl_then_scrape"),
-    "dedupe_docs": ("WebSearch.Core.backend", "dedupe_docs"),
-    "dork": ("WebSearch.Core.frontend.dorks", "dork"),
-    "extract_and_normalize": ("WebSearch.Core.backend", "extract_and_normalize"),
-    "load_providers": ("WebSearch.Core.frontend.websearchers", "load_providers"),
-    "builtin_searchers": ("WebSearch.Core.frontend.websearchers", "builtin_searchers"),
-    "parallel_search": ("WebSearch.Core.frontend.websearchers", "parallel_search"),
-    "registry_search": ("WebSearch.Core.frontend.websearchers", "registry_search"),
-    "render_brief": ("WebSearch.Core.agents.agent_tools", "render_brief"),
-    "search_brief": ("WebSearch.Core.agents.agent_tools", "search_brief"),
-    "search_hits": ("WebSearch.Core.agents.agent_tools", "search_hits"),
-    "dedupe_documents": ("WebSearch.Core.agents.agent_tools", "dedupe_documents"),
-    "summarize_documents": ("WebSearch.Core.agents.agent_tools", "summarize_documents"),
-    "websearch_langchain_tools": ("WebSearch.Core.agents.langchain_tools", "websearch_langchain_tools"),
-    "websearch_swarm_tools": ("WebSearch.Core.agents.swarm_tools", "websearch_swarm_tools"),
-    "swarm_tool_manifests": ("WebSearch.Core.agents.swarm_tools", "swarm_tool_manifests"),
-    "swarm_dispatch": ("WebSearch.Core.agents.swarm_tools", "swarm_dispatch"),
-    "run_cowork_pipeline": ("WebSearch.Core.app.browser_agent", "run_cowork_pipeline"),
+    "DorkError": ("WebSearch.frontend.dorks", "DorkError"),
+    "ExtractedDoc": ("WebSearch.backend", "ExtractedDoc"),
+    "FetchFn": ("WebSearch.midend", "FetchFn"),
+    "ProvidersConfig": ("WebSearch.frontend.websearchers", "ProvidersConfig"),
+    "ScrapedPage": ("WebSearch.midend", "ScrapedPage"),
+    "SearchFn": ("WebSearch.frontend.websearchers", "SearchFn"),
+    "SearchHit": ("WebSearch.frontend.websearchers", "SearchHit"),
+    "any_of": ("WebSearch.frontend.dorks", "any_of"),
+    "crawl_then_scrape": ("WebSearch.midend", "crawl_then_scrape"),
+    "dedupe_docs": ("WebSearch.backend", "dedupe_docs"),
+    "dork": ("WebSearch.frontend.dorks", "dork"),
+    "extract_and_normalize": ("WebSearch.backend", "extract_and_normalize"),
+    "load_providers": ("WebSearch.frontend.websearchers", "load_providers"),
+    "builtin_searchers": ("WebSearch.frontend.websearchers", "builtin_searchers"),
+    "parallel_search": ("WebSearch.frontend.websearchers", "parallel_search"),
+    "registry_search": ("WebSearch.frontend.websearchers", "registry_search"),
+    "render_brief": ("WebSearch.agents.agent_tools", "render_brief"),
+    "search_brief": ("WebSearch.agents.agent_tools", "search_brief"),
+    "search_hits": ("WebSearch.agents.agent_tools", "search_hits"),
+    "dedupe_documents": ("WebSearch.agents.agent_tools", "dedupe_documents"),
+    "summarize_documents": ("WebSearch.agents.agent_tools", "summarize_documents"),
+    "websearch_langchain_tools": ("WebSearch.agents.langchain_tools", "websearch_langchain_tools"),
+    "websearch_swarm_tools": ("WebSearch.agents.swarm_tools", "websearch_swarm_tools"),
+    "swarm_tool_manifests": ("WebSearch.agents.swarm_tools", "swarm_tool_manifests"),
+    "swarm_dispatch": ("WebSearch.agents.swarm_tools", "swarm_dispatch"),
+    "run_cowork_pipeline": ("WebSearch.app.browser_agent", "run_cowork_pipeline"),
 }
 
 
@@ -73,15 +73,15 @@ def run_pipeline(
     Returns:
         tuple[list[SearchHit], list[ScrapedPage], list[ExtractedDoc]]: Pipeline stages.
     """
-    from WebSearch.Core.backend import extract_and_normalize
-    from WebSearch.Core.frontend.websearchers import (
+    from WebSearch.backend import extract_and_normalize
+    from WebSearch.frontend.websearchers import (
         _SEARCH_CACHE_TTL_S,
         builtin_searchers,
         load_providers,
         parallel_search,
         registry_search,
     )
-    from WebSearch.Core.midend import crawl_then_scrape
+    from WebSearch.midend import crawl_then_scrape
 
     cfg = config or load_providers()
     table = backends if backends is not None else builtin_searchers()
@@ -106,7 +106,7 @@ def run_pipeline(
 
 def main() -> int:
     """CLI entry for ``python -m WebSearch``."""
-    from WebSearch.Core.app.cli import main as cli_main
+    from WebSearch.app.cli import main as cli_main
 
     return cli_main()
 
@@ -114,7 +114,7 @@ def main() -> int:
 def __getattr__(name: str) -> Any:
     """Load public names on first access so ``import WebSearch`` stays light."""
     if name == "agent_tools":
-        mod = import_module("WebSearch.Core.agents.agent_tools")
+        mod = import_module("WebSearch.agents.agent_tools")
         globals()["agent_tools"] = mod
         return mod
     spec = _EXPORTS.get(name)

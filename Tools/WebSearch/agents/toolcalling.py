@@ -23,10 +23,10 @@ lazy import json
 lazy from collections.abc import Callable, Mapping, Sequence
 lazy from typing import TYPE_CHECKING, Any
 
-lazy from WebSearch.Core.agents.agent_tools import search_hits
+lazy from WebSearch.agents.agent_tools import search_hits
 
 if TYPE_CHECKING:
-    from WebSearch.Core.frontend.websearchers import ProvidersConfig, SearchFn
+    from WebSearch.frontend.websearchers import ProvidersConfig, SearchFn
 
 __all__ = [
     "TOOL_NAMES",
@@ -206,7 +206,7 @@ def _resolve_config(
     """
     if config is not None or not backends:
         return config
-    from WebSearch.Core.frontend.websearchers import ProvidersConfig, SearcherSpec
+    from WebSearch.frontend.websearchers import ProvidersConfig, SearcherSpec
 
     return ProvidersConfig(
         version=1,
@@ -254,7 +254,7 @@ def dispatch_tool_call(
         return {"hits": [hit.as_agent_dict() for hit in hits]}
 
     if name == "web_open_page":
-        from WebSearch.Core.backend.docs import extract_and_normalize
+        from WebSearch.backend.docs import extract_and_normalize
 
         url = str(arguments["url"])
         max_chars = int(arguments.get("max_chars", 4000))
@@ -278,7 +278,7 @@ def dispatch_tool_call(
         return {"url": doc.url, "extractor": doc.extractor, "text": doc.text[:max_chars]}
 
     # web_dedupe
-    from WebSearch.Core.backend.docs import ExtractedDoc, dedupe_docs
+    from WebSearch.backend.docs import ExtractedDoc, dedupe_docs
 
     docs = [
         ExtractedDoc(str(d["url"]), str(d["text"]), "agent", max(1, len(str(d["text"])) // 10))

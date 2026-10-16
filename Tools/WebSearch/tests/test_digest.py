@@ -9,9 +9,9 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from WebSearch.Core.app.digest import connect, daily, main, status, weekly
-from WebSearch.Core.backend.semantic import LexicalEmbedder
-from WebSearch.Core.frontend.websearchers import SearcherSpec, SearchFn, SearchHit
+from WebSearch.app.digest import connect, daily, main, status, weekly
+from WebSearch.backend.semantic import LexicalEmbedder
+from WebSearch.frontend.websearchers import SearcherSpec, SearchFn, SearchHit
 
 FRI = date(2026, 10, 2)
 SAT = date(2026, 10, 3)

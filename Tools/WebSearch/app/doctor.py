@@ -11,8 +11,8 @@ lazy import importlib
 lazy import importlib.metadata
 lazy from typing import Any
 
-lazy from WebSearch.Core.frontend.report import _credentials
-lazy from WebSearch.Core.frontend.websearchers import (
+lazy from WebSearch.frontend.report import _credentials
+lazy from WebSearch.frontend.websearchers import (
     ProvidersConfig,
     builtin_searchers,
     load_providers,
@@ -69,7 +69,7 @@ def _chromium_ready() -> bool | None:
 
 def _autonomous(cfg: ProvidersConfig) -> dict[str, Any]:
     """Roster readiness. Reports names only; secret values stay in the vault."""
-    from WebSearch.Core.app.browser_agent import model_key_ready, select_ready
+    from WebSearch.app.browser_agent import model_key_ready, select_ready
 
     cache: dict[str, bool] = {}
 

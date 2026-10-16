@@ -3,21 +3,21 @@
 from __future__ import annotations
 
 from WebSearch.benchmarks.bench_rrf_fusion import FIXTURE_BATCHES, run_variant
-from WebSearch.Core.backend.docs import compute_minhash
-from WebSearch.Core.backend.extractors import extract_text
-from WebSearch.Core.backend.normalize import clean_snippet_noise, normalize_text
-from WebSearch.Core.backend.prefilter import (
+from WebSearch.backend.docs import compute_minhash
+from WebSearch.backend.extractors import extract_text
+from WebSearch.backend.normalize import clean_snippet_noise, normalize_text
+from WebSearch.backend.prefilter import (
     PrefilterPolicy,
     RejectReason,
     clean_tracking_url,
     prefilter_hits,
 )
-from WebSearch.Core.frontend.fanout import _enhanced_rrf_fuse
-from WebSearch.Core.frontend.hits import (
+from WebSearch.frontend.fanout import _enhanced_rrf_fuse
+from WebSearch.frontend.hits import (
     is_fuzzy_duplicate_title,
     prune_snippet_to_query,
 )
-from WebSearch.Core.frontend.types import SearchHit
+from WebSearch.frontend.types import SearchHit
 
 
 # 1. URL tracking parameter cleaning

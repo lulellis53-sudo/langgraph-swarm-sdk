@@ -6,9 +6,9 @@ scores every page against the topic prompt and stores it once per ``(topic, url)
 not-yet-ingested documents above ``min_score`` into the vector store, marks them
 ingested and writes a row to the ``signals`` table (the ingest signal).
 
-    python -m WebSearch.Core.app.digest daily
-    python -m WebSearch.Core.app.digest weekly
-    python -m WebSearch.Core.app.digest status
+    python -m WebSearch.app.digest daily
+    python -m WebSearch.app.digest weekly
+    python -m WebSearch.app.digest status
 """
 
 from __future__ import annotations
@@ -24,12 +24,12 @@ lazy from datetime import date, timedelta
 lazy from pathlib import Path
 lazy from typing import TYPE_CHECKING, Any
 
-lazy from WebSearch.Core.agents.agent_tools import search_hits
-lazy from WebSearch.Core.backend import extract_and_normalize
-lazy from WebSearch.Core.backend.route import dedupe_normalize
-lazy from WebSearch.Core.backend.semantic import summarize_score
-lazy from WebSearch.Core.frontend.websearchers import SearchFn, load_providers
-lazy from WebSearch.Core.midend import FetchFn, crawl_then_scrape
+lazy from WebSearch.agents.agent_tools import search_hits
+lazy from WebSearch.backend import extract_and_normalize
+lazy from WebSearch.backend.route import dedupe_normalize
+lazy from WebSearch.backend.semantic import summarize_score
+lazy from WebSearch.frontend.websearchers import SearchFn, load_providers
+lazy from WebSearch.midend import FetchFn, crawl_then_scrape
 
 if TYPE_CHECKING:
     from swarm_sdk.memory.base import MemoryStore
@@ -276,7 +276,7 @@ def main(
     out: Any = None,
 ) -> int:
     """CLI entry point: ``daily``, ``weekly`` or ``status``. Returns the exit code."""
-    parser = argparse.ArgumentParser(prog="python -m WebSearch.Core.app.digest", description=__doc__)
+    parser = argparse.ArgumentParser(prog="python -m WebSearch.app.digest", description=__doc__)
     parser.add_argument("command", choices=("daily", "weekly", "status"))
     parser.add_argument("--db", default=DEFAULT_DB)
     parser.add_argument("--limit", type=int, default=8)

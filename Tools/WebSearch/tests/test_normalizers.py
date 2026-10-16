@@ -7,15 +7,15 @@ Covers registrable-domain site keys (tldextract), the opt-in language gate
 from __future__ import annotations
 
 import pytest
-from WebSearch.Core.backend.extractors import extract_text
-from WebSearch.Core.backend.prefilter import (
+from WebSearch.backend.extractors import extract_text
+from WebSearch.backend.prefilter import (
     PrefilterPolicy,
     RejectReason,
     is_wrong_language,
     prefilter_hits,
 )
-from WebSearch.Core.frontend.hits import _strip_site_suffix
-from WebSearch.Core.frontend.types import SearchHit
+from WebSearch.frontend.hits import _strip_site_suffix
+from WebSearch.frontend.types import SearchHit
 
 _ARTICLE_HTML = """
 <html><head><title>Tech Blog — Python 3.15 lazy imports</title></head>
@@ -142,7 +142,7 @@ def test_lxml_extractor_keeps_body_drops_script() -> None:
 
 def test_extractor_order_includes_lxml_after_trafilatura() -> None:
     """The lxml extractor is registered in providers.yaml order, after trafilatura."""
-    from WebSearch.Core.frontend.registry import load_providers
+    from WebSearch.frontend.registry import load_providers
 
     order = load_providers().extractor_order
     assert "lxml" in order
@@ -151,7 +151,7 @@ def test_extractor_order_includes_lxml_after_trafilatura() -> None:
 
 def test_unknown_extractor_names_stay_in_literal() -> None:
     """Registry accepts the new extractor names in providers.yaml order."""
-    from WebSearch.Core.frontend.registry import load_providers
+    from WebSearch.frontend.registry import load_providers
 
     order = load_providers().extractor_order
     assert "readability" in order

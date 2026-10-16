@@ -7,10 +7,10 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
-from WebSearch.Core.backend.prefilter import prefilter_hits, unwrap_redirect
-from WebSearch.Core.frontend import SearchHit, parallel_search, registry_search
-from WebSearch.Core.frontend.hits import near_dedupe, normalize_hit
-from WebSearch.Core.frontend.websearchers import (
+from WebSearch.backend.prefilter import prefilter_hits, unwrap_redirect
+from WebSearch.frontend import SearchHit, parallel_search, registry_search
+from WebSearch.frontend.hits import near_dedupe, normalize_hit
+from WebSearch.frontend.websearchers import (
     NullSink,
     PrefilterPolicy,
     ProvidersConfig,
@@ -528,7 +528,7 @@ def test_registry_search_drops_rejected_hits_from_a_mixed_batch() -> None:
 def test_either_package_can_be_imported_first(first: str) -> None:
     code = (
         f"import sys; sys.path.insert(0, {repr(str(TESTS_ROOT))}); import conftest; "
-        f"import WebSearch.Core.{first}; import WebSearch.Core.frontend, WebSearch.Core.backend"
+        f"import WebSearch.{first}; import WebSearch.frontend, WebSearch.backend"
     )
     result = subprocess.run(
         [sys.executable, "-c", code],

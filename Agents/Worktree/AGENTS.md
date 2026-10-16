@@ -89,7 +89,7 @@ mutating git. See [`../AgentMethods.md`](../AgentMethods.md) Part I §3 and
 
 | Lane | Worktree | Branch | Owns (conceptual) |
 | --- | --- | --- | --- |
-| WebSearch | `WebSearch/` under repo root | `feature/websearch` | Search/scrape pipeline |
+| WebSearch | `../Workspace-WebSearch` (edits `Tools/WebSearch/`) | `feature/websearch` | Search/scrape pipeline |
 | Prediction | sibling `../Swarm-Prediction` | `feat/prediction-engine` | Prediction engine |
 | Newsletter | sibling `../Newsletter` | `feat/newsletter` | Newsletter MVP |
 | Integration | repo root `Swarm/` | `integration/all-branches` then `main` | SDK, `Agents/`, shared lockfile |

@@ -12,27 +12,27 @@ lazy from datetime import date, timedelta
 lazy from pathlib import Path
 lazy from typing import IO, Any
 
-lazy from WebSearch.Core.agents.agent_tools import (
+lazy from WebSearch.agents.agent_tools import (
     DEFAULT_MAX_TOKENS,
     DEFAULT_MIN_SCORE,
     render_brief,
     search_hits,
 )
-lazy from WebSearch.Core.backend import extract_and_normalize
-lazy from WebSearch.Core.backend.route import (
+lazy from WebSearch.backend import extract_and_normalize
+lazy from WebSearch.backend.route import (
     TARGETS,
     RouteError,
     route,
     semantic_handler,
     sql_handler,
 )
-lazy from WebSearch.Core.backend.store import connect
-lazy from WebSearch.Core.app.browser_agent import BrowseError
-lazy from WebSearch.Core.app.forecast import ForecastUnavailable, forecast_hits, record_run
-lazy from WebSearch.Core.frontend.dorks import DorkError, dork
-lazy from WebSearch.Core.frontend.report import search_report
-lazy from WebSearch.Core.frontend.websearchers import ProvidersConfig, SearchFn, load_providers
-lazy from WebSearch.Core.midend import FetchFn, crawl_then_scrape
+lazy from WebSearch.backend.store import connect
+lazy from WebSearch.app.browser_agent import BrowseError
+lazy from WebSearch.app.forecast import ForecastUnavailable, forecast_hits, record_run
+lazy from WebSearch.frontend.dorks import DorkError, dork
+lazy from WebSearch.frontend.report import search_report
+lazy from WebSearch.frontend.websearchers import ProvidersConfig, SearchFn, load_providers
+lazy from WebSearch.midend import FetchFn, crawl_then_scrape
 
 DEFAULT_DB = "websearch_docs.db"
 _DORK_STRIP = re.compile(r'["()|]')
@@ -165,7 +165,7 @@ def _autonomous_report(
     ready: Callable[[str], bool] | None,
 ) -> dict[str, Any]:
     """``--autonomous``: browse with one model, then drop near-duplicates with another."""
-    from WebSearch.Core.app.browser_agent import run_autonomous
+    from WebSearch.app.browser_agent import run_autonomous
 
     if args.model:
         rest = tuple(name for name in cfg.autonomous_playwright if name != args.model)
@@ -208,7 +208,7 @@ def _browse_report(
     resolver: Callable[[str], list[str]] | None,
 ) -> dict[str, Any]:
     """``--browse``: hand the question to the LLM browser agent instead of a plain search."""
-    from WebSearch.Core.app.browser_agent import browse
+    from WebSearch.app.browser_agent import browse
 
     if args.model:
         cfg = replace(cfg, llm=replace(cfg.llm, model=args.model))
@@ -378,12 +378,12 @@ def main(
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.mcp:
-        from WebSearch.Core.agents.mcp import main as mcp_main
+        from WebSearch.agents.mcp import main as mcp_main
 
         mcp_main()
         return 0
     if args.doctor:
-        from WebSearch.Core.app.doctor import doctor, render
+        from WebSearch.app.doctor import doctor, render
 
         cfg = load_providers(Path(args.providers).expanduser() if args.providers else None)
         report = doctor(cfg)
@@ -408,7 +408,7 @@ def main(
     if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2), file=stream)
     else:
-        from WebSearch.Core.frontend.websearchers import SearchHit
+        from WebSearch.frontend.websearchers import SearchHit
 
         hits = [SearchHit(**h) for h in report["hits"]]
         print(

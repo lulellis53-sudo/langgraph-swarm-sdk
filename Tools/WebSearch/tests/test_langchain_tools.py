@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from WebSearch.Core.agents.langchain_tools import websearch_langchain_tools
-from WebSearch.Core.frontend.websearchers import ProvidersConfig, SearcherSpec, SearchFn, SearchHit
+from WebSearch.agents.langchain_tools import websearch_langchain_tools
+from WebSearch.frontend.websearchers import ProvidersConfig, SearcherSpec, SearchFn, SearchHit
 
 if TYPE_CHECKING:
     from langchain_core.tools import BaseTool
@@ -65,7 +65,7 @@ def test_schema_exposes_agentic_cli_args() -> None:
 
 
 def test_brief_respects_token_budget() -> None:
-    from WebSearch.Core.agents.agent_tools import count_tokens
+    from WebSearch.agents.agent_tools import count_tokens
 
     result = _tools()[0].invoke({"query": "langgraph orchestration", "max_tokens": 120})
     assert isinstance(result, str)

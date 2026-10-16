@@ -15,7 +15,7 @@ lazy from typing import TYPE_CHECKING, Any, Protocol
 if TYPE_CHECKING:
     import pandas as pd
 
-    from WebSearch.Core.frontend.websearchers import SearchHit
+    from WebSearch.frontend.websearchers import SearchHit
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS search_runs (

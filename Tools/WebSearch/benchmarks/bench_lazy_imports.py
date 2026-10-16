@@ -20,10 +20,10 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass
 
 ENTRY_POINTS = (
-    "WebSearch.Core.agents.agent_tools",
-    "WebSearch.Core.app.cli",
-    "WebSearch.Core.midend.crawl",
-    "WebSearch.Core.app.api",
+    "WebSearch.agents.agent_tools",
+    "WebSearch.app.cli",
+    "WebSearch.midend.crawl",
+    "WebSearch.app.api",
 )
 
 #: Third-party roots whose presence in ``sys.modules`` shows a heavy dependency was loaded.
@@ -42,12 +42,12 @@ TRACKED_ROOTS = (
 
 #: What a real caller does right after importing; deferred imports are paid here.
 FIRST_USE = {
-    "WebSearch.Core.agents.agent_tools": (
-        "WebSearch.Core.agents.agent_tools.count_tokens('lazy imports')"
+    "WebSearch.agents.agent_tools": (
+        "WebSearch.agents.agent_tools.count_tokens('lazy imports')"
     ),
-    "WebSearch.Core.app.cli": "WebSearch.Core.app.cli.build_parser()",
-    "WebSearch.Core.midend.crawl": "WebSearch.Core.midend.crawl.crawl_then_scrape",
-    "WebSearch.Core.app.api": "WebSearch.Core.app.api.app",
+    "WebSearch.app.cli": "WebSearch.app.cli.build_parser()",
+    "WebSearch.midend.crawl": "WebSearch.midend.crawl.crawl_then_scrape",
+    "WebSearch.app.api": "WebSearch.app.api.app",
 }
 
 _CHILD = """

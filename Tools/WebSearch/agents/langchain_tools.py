@@ -8,13 +8,13 @@ from __future__ import annotations
 lazy from collections.abc import Mapping
 lazy from typing import TYPE_CHECKING
 
-lazy from WebSearch.Core.agents.agent_tools import (
+lazy from WebSearch.agents.agent_tools import (
     DEFAULT_LIMIT,
     DEFAULT_MAX_TOKENS,
     DEFAULT_MIN_SCORE,
     search_brief,
 )
-lazy from WebSearch.Core.frontend.websearchers import ProvidersConfig, SearchFn
+lazy from WebSearch.frontend.websearchers import ProvidersConfig, SearchFn
 
 if TYPE_CHECKING:
     from langchain_core.tools import BaseTool

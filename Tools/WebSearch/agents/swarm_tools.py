@@ -6,7 +6,7 @@ orchestrator. All tools execute the same core the CLI uses.
 
 Usage from a Swarm SDK worker::
 
-    from WebSearch.Core.agents.swarm_tools import websearch_swarm_tools
+    from WebSearch.agents.swarm_tools import websearch_swarm_tools
 
     tools = websearch_swarm_tools()
     bound = model.bind_tools(tools)
@@ -14,7 +14,7 @@ Usage from a Swarm SDK worker::
 
 Usage with the framework-agnostic layer::
 
-    from WebSearch.Core.agents.swarm_tools import swarm_tool_manifests, swarm_dispatch
+    from WebSearch.agents.swarm_tools import swarm_tool_manifests, swarm_dispatch
 
     manifests = swarm_tool_manifests()       # OpenAI wire format
     result = swarm_dispatch("web_search", {"query": "..."})
@@ -25,13 +25,13 @@ from __future__ import annotations
 lazy from collections.abc import Callable, Mapping
 lazy from typing import TYPE_CHECKING, Any
 
-lazy from WebSearch.Core.agents.agent_tools import search_brief, search_hits
-lazy from WebSearch.Core.agents.toolcalling import dispatch_tool_call, tool_manifests
+lazy from WebSearch.agents.agent_tools import search_brief, search_hits
+lazy from WebSearch.agents.toolcalling import dispatch_tool_call, tool_manifests
 
 if TYPE_CHECKING:
     from langchain_core.tools import BaseTool
 
-    from WebSearch.Core.frontend.websearchers import ProvidersConfig
+    from WebSearch.frontend.websearchers import ProvidersConfig
 
 __all__ = [
     "SWARM_TOOL_NAMES",

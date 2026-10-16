@@ -35,9 +35,9 @@ lazy import asyncio
 lazy from collections.abc import Callable, Mapping, Sequence
 lazy from typing import TYPE_CHECKING, Any, overload
 
-lazy from WebSearch.Core.agents.langchain_tools import websearch_langchain_tools
-lazy from WebSearch.Core.agents.swarm_tools import websearch_swarm_tools
-lazy from WebSearch.Core.agents.toolcalling import (
+lazy from WebSearch.agents.langchain_tools import websearch_langchain_tools
+lazy from WebSearch.agents.swarm_tools import websearch_swarm_tools
+lazy from WebSearch.agents.toolcalling import (
     TOOL_NAMES,
     _resolve_config,
     dispatch_tool_call,
@@ -47,9 +47,9 @@ lazy from WebSearch.Core.agents.toolcalling import (
 if TYPE_CHECKING:
     from langchain_core.tools import BaseTool
 
-    from WebSearch.Core.agents.agent_tools import SearchHit
-    from WebSearch.Core.backend.docs import ExtractedDoc
-    from WebSearch.Core.frontend.websearchers import ProvidersConfig, SearchFn
+    from WebSearch.agents.agent_tools import SearchHit
+    from WebSearch.backend.docs import ExtractedDoc
+    from WebSearch.frontend.websearchers import ProvidersConfig, SearchFn
 
 
 class WebsearchTool:
@@ -152,7 +152,7 @@ class Data:
 
 def _doc_from(row: Mapping[str, object]) -> ExtractedDoc:
     """Build an ``ExtractedDoc`` from a plain mapping (agent dict shape)."""
-    from WebSearch.Core.backend.docs import ExtractedDoc
+    from WebSearch.backend.docs import ExtractedDoc
 
     text = str(row.get("text") or "")
     return ExtractedDoc(
@@ -291,7 +291,7 @@ def Websearch[**P, T](
     """
     from langchain_core.tools import StructuredTool
 
-    from WebSearch.Core.agents.agent_tools import search_brief
+    from WebSearch.agents.agent_tools import search_brief
 
     config, backends = _exclude_providers(config, backends, disable)
     cfg = _resolve_config(config, backends)
@@ -399,7 +399,7 @@ async def aWebsearch(
     Returns:
         str: The numbered brief (same contract as the ``websearch`` tool).
     """
-    from WebSearch.Core.agents.agent_tools import search_brief
+    from WebSearch.agents.agent_tools import search_brief
 
     cfg_backends = backends
     cfg_config, cfg_backends = _exclude_providers(config, cfg_backends, disable)
@@ -472,8 +472,8 @@ def Playwright(
 
     def web_browse(url: str, max_chars: int = max_chars) -> str:
         """Render one page in headless Chromium and return extracted text."""
-        from WebSearch.Core.backend.docs import extract_and_normalize
-        from WebSearch.Core.midend.crawlers import fetch_playwright
+        from WebSearch.backend.docs import extract_and_normalize
+        from WebSearch.midend.crawlers import fetch_playwright
 
         raw = fetch_playwright(url, timeout_s=timeout_s)
         doc = extract_and_normalize(raw.decode("utf-8", errors="replace"), url)
@@ -498,7 +498,7 @@ def Summarize(*, max_results: int = 10) -> BaseTool:
     """
     from langchain_core.tools import StructuredTool
 
-    from WebSearch.Core.agents.agent_tools import summarize_documents
+    from WebSearch.agents.agent_tools import summarize_documents
 
     def web_summarize(
         query: str, documents: list[dict[str, Any]], max_results: int = max_results
@@ -530,7 +530,7 @@ def SemanticSearch(*, top_k: int = 10) -> BaseTool:
         query: str, documents: list[dict[str, Any]], top_k: int = top_k
     ) -> dict[str, Any]:
         """Dedupe/normalize documents, vector-search them, return ranked summaries."""
-        from WebSearch.Core.backend.route import dedupe_normalize, semantic_handler
+        from WebSearch.backend.route import dedupe_normalize, semantic_handler
 
         clean = dedupe_normalize([_doc_from(doc) for doc in documents])
         detail = semantic_handler(query, db_path=":memory:")(clean)
@@ -580,9 +580,9 @@ def DeepResearch(
         max_tokens: int = seconds.research_max_tokens,
     ) -> dict[str, Any]:
         """Search, fetch the best pages, and summarize what was found."""
-        from WebSearch.Core.agents.agent_tools import render_brief, search_hits
-        from WebSearch.Core.backend.docs import extract_and_normalize
-        from WebSearch.Core.backend.route import dedupe_normalize, semantic_handler
+        from WebSearch.agents.agent_tools import render_brief, search_hits
+        from WebSearch.backend.docs import extract_and_normalize
+        from WebSearch.backend.route import dedupe_normalize, semantic_handler
 
         hits = search_hits(query, limit=limit, config=cfg, backends=backends)
         brief = render_brief(list(hits), max_tokens=max_tokens, query=query)
@@ -592,7 +592,7 @@ def DeepResearch(
                 if fetch is not None:
                     raw = fetch(hit.url)
                 else:
-                    from WebSearch.Core.midend.crawl import ordered_fetch
+                    from WebSearch.midend.crawl import ordered_fetch
 
                     raw, _crawler = ordered_fetch(hit.url)
                 doc = extract_and_normalize(raw.decode("utf-8", errors="replace"), hit.url)
@@ -646,7 +646,7 @@ def Normalize(
 
     def web_normalize(documents: list[dict[str, Any]]) -> dict[str, Any]:
         """Normalize document texts; return cleaned rows plus token savings."""
-        from WebSearch.Core.backend.llm_normalize import llm_normalize
+        from WebSearch.backend.llm_normalize import llm_normalize
 
         rows: list[dict[str, Any]] = []
         saved = 0
@@ -682,7 +682,7 @@ def DocFormat(
 
     def doc_format(documents: list[dict[str, Any]]) -> dict[str, Any]:
         """Normalize, dedupe, and format documents (markdown blocks or JSON rows)."""
-        from WebSearch.Core.backend.route import dedupe_normalize
+        from WebSearch.backend.route import dedupe_normalize
 
         clean = dedupe_normalize([_doc_from(doc) for doc in documents])
         if file_type is FileType.JSON:

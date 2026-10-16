@@ -16,9 +16,9 @@ import pytest
 from WebSearch.benchmarks.bench_lazy_imports import measure, probe
 
 _LIGHT_ENTRIES = (
-    "WebSearch.Core.agents.agent_tools",
-    "WebSearch.Core.app.cli",
-    "WebSearch.Core.midend.crawl",
+    "WebSearch.agents.agent_tools",
+    "WebSearch.app.cli",
+    "WebSearch.midend.crawl",
 )
 _HEAVY_ROOTS = {"pandas", "swarm_sdk", "fastapi", "langchain_core"}
 
@@ -26,7 +26,7 @@ _HEAVY_ROOTS = {"pandas", "swarm_sdk", "fastapi", "langchain_core"}
 @pytest.fixture(scope="module")
 def pairs() -> dict[str, tuple[dict[str, object], dict[str, object]]]:
     """Fresh-process (eager, lazy) probe per entry point; deterministic, so run once."""
-    entries = (*_LIGHT_ENTRIES, "WebSearch.Core.app.api")
+    entries = (*_LIGHT_ENTRIES, "WebSearch.app.api")
     return {e: (probe(e, eager=True), probe(e, eager=False)) for e in entries}
 
 
@@ -58,8 +58,8 @@ def test_eager_baseline_really_loads_third_party_code(
 def test_api_entry_point_is_never_worse_when_lazy(
     pairs: dict[str, tuple[dict[str, object], dict[str, object]]],
 ) -> None:
-    """``WebSearch.Core.app.api`` builds a FastAPI app at import, so little can be deferred."""
-    eager, lazy = pairs["WebSearch.Core.app.api"]
+    """``WebSearch.app.api`` builds a FastAPI app at import, so little can be deferred."""
+    eager, lazy = pairs["WebSearch.app.api"]
     assert lazy["modules"] <= eager["modules"]  # type: ignore[operator]
 
 
@@ -67,7 +67,7 @@ def test_lazy_name_loads_its_module_on_first_use_and_results_match_eager() -> No
     code = (
         "import json, sys\n"
         "if {eager}: sys.set_lazy_imports_filter(lambda *a: False)\n"
-        "import WebSearch.Core.agents.agent_tools as tools\n"
+        "import WebSearch.agents.agent_tools as tools\n"
         "before = 'tiktoken' in sys.modules\n"
         "count = tools.count_tokens('lazy imports keep behaviour identical')\n"
         "after = 'tiktoken' in sys.modules\n"
@@ -93,7 +93,7 @@ def test_lazy_name_loads_its_module_on_first_use_and_results_match_eager() -> No
 
 
 def test_cli_import_is_much_faster_lazy_median_of_abba_runs() -> None:
-    row = measure("WebSearch.Core.app.cli", rounds=2)
+    row = measure("WebSearch.app.cli", rounds=2)
     assert row.improvement_pct > 20.0, row
     # Deferred work is paid on first use, so the end-to-end gain must hold too.
     assert row.first_use_improvement_pct > 20.0, row

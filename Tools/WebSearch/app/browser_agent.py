@@ -21,13 +21,13 @@ lazy from pathlib import Path
 lazy from typing import TYPE_CHECKING, Any, Protocol, cast
 lazy from urllib.parse import urlsplit
 
-lazy from WebSearch.Core.agents.agent_tools import render_brief, search_hits
-lazy from WebSearch.Core.backend.docs import ExtractedDoc, dedupe_docs, extract_and_normalize
-lazy from WebSearch.Core.backend.extractors import extract_text
-lazy from WebSearch.Core.backend.normalize import normalize_text
-lazy from WebSearch.Core.backend.store import connect, count_documents, put_documents
-lazy from WebSearch.Core.frontend.websearchers import ProvidersConfig, SearchFn, load_providers
-lazy from WebSearch.Core.midend import FetchFn, PrivateTarget, fetch_playwright
+lazy from WebSearch.agents.agent_tools import render_brief, search_hits
+lazy from WebSearch.backend.docs import ExtractedDoc, dedupe_docs, extract_and_normalize
+lazy from WebSearch.backend.extractors import extract_text
+lazy from WebSearch.backend.normalize import normalize_text
+lazy from WebSearch.backend.store import connect, count_documents, put_documents
+lazy from WebSearch.frontend.websearchers import ProvidersConfig, SearchFn, load_providers
+lazy from WebSearch.midend import FetchFn, PrivateTarget, fetch_playwright
 
 if TYPE_CHECKING:
     from langchain_core.language_models.chat_models import BaseChatModel
@@ -480,7 +480,7 @@ def run_autonomous(
         if base_fetch is not None:
             raw = base_fetch(url)
         else:
-            from WebSearch.Core.midend import fetch_playwright
+            from WebSearch.midend import fetch_playwright
 
             raw = (
                 fetch_playwright(url, timeout_s=cfg.crawl.timeout_s)
@@ -693,7 +693,7 @@ def run_cowork_pipeline(
         ``fetched`` number of fetch steps, ``wall_s`` wall time.
     """
     from swarm_sdk.orchestrator import Plan, run_plan
-    from WebSearch.Core.midend import fetch_playwright
+    from WebSearch.midend import fetch_playwright
 
     cfg = config or load_providers()
     do_fetch: FetchFn = (

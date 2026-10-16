@@ -2,8 +2,8 @@
 
 Run locally (binds loopback only by default)::
 
-    PYTHONPATH=<repo root> uv run python -m WebSearch.Core.app.api          # 127.0.0.1:8765
-    PYTHONPATH=<repo root> uv run uvicorn WebSearch.Core.app.api:app --port 8765
+    PYTHONPATH=<repo root> uv run python -m WebSearch.app.api          # 127.0.0.1:8765
+    PYTHONPATH=<repo root> uv run uvicorn WebSearch.app.api:app --port 8765
 
 The API never accepts a database path, route or forecast option: those write files or spend
 history on the server, so they stay CLI-only. ``/browse`` runs the LLM + Playwright agent and
@@ -21,15 +21,15 @@ lazy from typing import Any, Literal
 lazy from fastapi import FastAPI, HTTPException
 lazy from pydantic import BaseModel, Field
 
-lazy from WebSearch.Core.agents.agent_tools import dedupe_documents, summarize_documents
-lazy from WebSearch.Core.backend.docs import ExtractedDoc
-lazy from WebSearch.Core.app.browser_agent import BrowseError
-lazy from WebSearch.Core.app.cli import build_parser, run
-lazy from WebSearch.Core.app.doctor import doctor
-lazy from WebSearch.Core.frontend.dorks import DorkError
-lazy from WebSearch.Core.frontend.websearchers import SearchFn, load_providers
-lazy from WebSearch.Core.midend import FetchFn
-lazy from WebSearch.Core.app.observability_sentry import configure_sentry
+lazy from WebSearch.agents.agent_tools import dedupe_documents, summarize_documents
+lazy from WebSearch.backend.docs import ExtractedDoc
+lazy from WebSearch.app.browser_agent import BrowseError
+lazy from WebSearch.app.cli import build_parser, run
+lazy from WebSearch.app.doctor import doctor
+lazy from WebSearch.frontend.dorks import DorkError
+lazy from WebSearch.frontend.websearchers import SearchFn, load_providers
+lazy from WebSearch.midend import FetchFn
+lazy from WebSearch.app.observability_sentry import configure_sentry
 
 
 class SearchRequest(BaseModel):
@@ -150,7 +150,7 @@ def create_app(
     @app.post("/browse")
     def browse_endpoint(body: BrowseRequest) -> dict[str, Any]:
         """Run the LLM + Playwright browse agent on ``body.question``."""
-        from WebSearch.Core.app.browser_agent import browse
+        from WebSearch.app.browser_agent import browse
 
         cfg = load_providers()
         try:

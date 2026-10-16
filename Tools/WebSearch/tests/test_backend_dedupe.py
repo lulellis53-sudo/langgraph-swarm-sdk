@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import pytest
-from WebSearch.Core.backend.docs import ExtractedDoc, dedupe_docs
-from WebSearch.Core.backend.normalize import fingerprint_text, normalize_text, normalize_url
-from WebSearch.Core.shared.repeater import normalize_url as shared_normalize_url
+from WebSearch.backend.docs import ExtractedDoc, dedupe_docs
+from WebSearch.backend.normalize import fingerprint_text, normalize_text, normalize_url
+from WebSearch.shared.repeater import normalize_url as shared_normalize_url
 
 
 @pytest.mark.parametrize(

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from WebSearch.Core.agents.tokens import (
+from WebSearch.agents.tokens import (
     count_embedder,
     count_tiktoken,
     count_tokens,

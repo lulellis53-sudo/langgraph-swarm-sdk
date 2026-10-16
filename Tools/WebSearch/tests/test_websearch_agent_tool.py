@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import asyncio
 
-from WebSearch.Core.agents.agent_tools import as_tool, asearch, search
-from WebSearch.Core.frontend.websearchers import (
+from WebSearch.agents.agent_tools import as_tool, asearch, search
+from WebSearch.frontend.websearchers import (
     ProvidersConfig,
     SearcherSpec,
     SearchHit,

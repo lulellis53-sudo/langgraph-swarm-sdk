@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from WebSearch.Core.app.cowork_agents import run_cowork_pipeline
-from WebSearch.Core.backend.store import connect, count_documents
+from WebSearch.app.cowork_agents import run_cowork_pipeline
+from WebSearch.backend.store import connect, count_documents
 
 PAGES = {
     "https://a.example/x": (

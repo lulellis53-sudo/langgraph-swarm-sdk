@@ -14,7 +14,7 @@ lazy import functools
 lazy from collections.abc import Callable
 lazy from typing import ParamSpec, TypeVar, overload
 
-lazy from WebSearch.Core.backend.normalize import normalize_url
+lazy from WebSearch.backend.normalize import normalize_url
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -95,7 +95,7 @@ class _Repeater:
         return decorate
 
 
-#: Public retry decorator factory. Import as ``from WebSearch.Core.shared.repeater import repeater``.
+#: Public retry decorator factory. Import as ``from WebSearch.shared.repeater import repeater``.
 repeater = _Repeater()
 
 __all__ = ["normalize_url", "repeater"]

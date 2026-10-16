@@ -1,20 +1,20 @@
 """Offline tests for the JS-grade stack: DDG + Tavily + Exa fusion, Playwright/Crawlee failover.
 
 No network and no browser: search backends are injected and crawler fetchers are
-monkeypatched at the ``WebSearch.Core.midend.crawl`` dispatch boundary, mirroring the
+monkeypatched at the ``WebSearch.midend.crawl`` dispatch boundary, mirroring the
 yaml crawler order (httpx → ... → scrapy → playwright → crawlee).
 """
 
 from __future__ import annotations
 
 import pytest
-from WebSearch.Core.frontend import providers as providers_mod
-from WebSearch.Core.frontend.fanout import search
-from WebSearch.Core.frontend.registry import load_providers
-from WebSearch.Core.frontend.types import CrawlSpec, ProvidersConfig, SearcherSpec, SearchHit
-from WebSearch.Core.midend import crawl as crawl_mod
-from WebSearch.Core.midend.crawl import ordered_fetch
-from WebSearch.Core.midend.crawlers import crawlee_start
+from WebSearch.frontend import providers as providers_mod
+from WebSearch.frontend.fanout import search
+from WebSearch.frontend.registry import load_providers
+from WebSearch.frontend.types import CrawlSpec, ProvidersConfig, SearcherSpec, SearchHit
+from WebSearch.midend import crawl as crawl_mod
+from WebSearch.midend.crawl import ordered_fetch
+from WebSearch.midend.crawlers import crawlee_start
 
 _URL = "https://docs.example/guide"
 
@@ -320,6 +320,6 @@ def test_zread_and_minimax_ship_disabled() -> None:
 
 def builtin_searchers_ids() -> set[str]:
     """Registered builtin searcher ids."""
-    from WebSearch.Core.frontend.fanout import builtin_searchers
+    from WebSearch.frontend.fanout import builtin_searchers
 
     return set(builtin_searchers())

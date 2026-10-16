@@ -14,7 +14,7 @@ lazy import logging
 lazy import os
 lazy from typing import Any
 
-lazy from WebSearch.Core.backend.normalize import clean_snippet_noise, normalize_text
+lazy from WebSearch.backend.normalize import clean_snippet_noise, normalize_text
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ def llm_normalize(
     if not text.strip() or not _google_api_keys():
         return local
     try:
-        from WebSearch.Core.frontend.http_utils import call_json
+        from WebSearch.frontend.http_utils import call_json
     except ImportError:
         return local
 

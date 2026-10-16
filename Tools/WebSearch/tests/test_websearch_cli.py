@@ -11,13 +11,13 @@ from typing import Any, Never
 
 import numpy as np
 import pytest
-from WebSearch.Core.app.cli import build_parser, build_query, main
-from WebSearch.Core.app.forecast import ForecastUnavailable, forecast_hits, record_run
-from WebSearch.Core.backend.docs import ExtractedDoc
-from WebSearch.Core.backend.route import RouteError, dedupe_normalize, route, semantic_handler
-from WebSearch.Core.backend.semantic import default_embedder, summarize_score
-from WebSearch.Core.backend.store import connect, count_documents, semantic_search
-from WebSearch.Core.frontend.websearchers import SearcherSpec, SearchFn, SearchHit, load_providers
+from WebSearch.app.cli import build_parser, build_query, main
+from WebSearch.app.forecast import ForecastUnavailable, forecast_hits, record_run
+from WebSearch.backend.docs import ExtractedDoc
+from WebSearch.backend.route import RouteError, dedupe_normalize, route, semantic_handler
+from WebSearch.backend.semantic import default_embedder, summarize_score
+from WebSearch.backend.store import connect, count_documents, semantic_search
+from WebSearch.frontend.websearchers import SearcherSpec, SearchFn, SearchHit, load_providers
 
 PAGE = (
     "<html><body><h1>Forecasting with LightGBM</h1>"
@@ -316,8 +316,8 @@ def test_mcp_flag_starts_stdio_server(monkeypatch: pytest.MonkeyPatch) -> None:
     import types
 
     called: list[int] = []
-    fake = types.ModuleType("WebSearch.Core.agents.mcp")
+    fake = types.ModuleType("WebSearch.agents.mcp")
     fake.main = lambda: called.append(1)  # type: ignore[method-assign]
-    monkeypatch.setitem(sys.modules, "WebSearch.Core.agents.mcp", fake)
+    monkeypatch.setitem(sys.modules, "WebSearch.agents.mcp", fake)
     assert main(["--mcp"]) == 0
     assert called == [1]

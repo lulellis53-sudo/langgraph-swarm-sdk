@@ -8,6 +8,7 @@ src = [
   "Core/tests",
   "Agents/tests",
   "Agents/_test",
+  "Tools/WebSearch",
 ]
 extend-exclude = ["Core/Sdk/swarm_sdk/pb", ".pixi"]
 

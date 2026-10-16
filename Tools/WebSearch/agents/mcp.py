@@ -1,13 +1,13 @@
 """MCP server: one ``web_search`` tool (the LangChain agent tool).
 
-Run: ``websearch --mcp`` or ``uv run --extra websearch python -m WebSearch.Core.agents.mcp``.
+Run: ``websearch --mcp`` or ``uv run --extra websearch python -m WebSearch.agents.mcp``.
 """
 
 from __future__ import annotations
 
 from mcp.server.mcpserver import MCPServer
 
-from WebSearch.Core.agents.agent_tools import (
+from WebSearch.agents.agent_tools import (
     DEFAULT_LIMIT,
     DEFAULT_MAX_TOKENS,
     DEFAULT_MIN_SCORE,

@@ -6,7 +6,7 @@ import sys
 from types import SimpleNamespace
 
 import pytest
-from WebSearch.Core.backend.langextract_doc import (
+from WebSearch.backend.langextract_doc import (
     extract_fields,
     grounded_extractions_to_dicts,
 )

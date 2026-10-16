@@ -11,10 +11,10 @@ from pathlib import Path
 
 import pytest
 import yaml
-from WebSearch.Core.frontend import providers as providers_mod
-from WebSearch.Core.frontend.fanout import builtin_searchers, search
-from WebSearch.Core.frontend.registry import load_providers
-from WebSearch.Core.frontend.types import ProvidersConfig, SearcherSpec
+from WebSearch.frontend import providers as providers_mod
+from WebSearch.frontend.fanout import builtin_searchers, search
+from WebSearch.frontend.registry import load_providers
+from WebSearch.frontend.types import ProvidersConfig, SearcherSpec
 
 _VANE_PAYLOAD = {
     "query": "langgraph",
@@ -144,7 +144,7 @@ def test_vane_settings_enable_json_and_wolfram() -> None:
 @pytest.mark.skipif(not os.environ.get("SEARXNG_URL"), reason="SEARXNG_URL not set")
 def test_searxng_live_search() -> None:
     """Live smoke test against a running SearXNG; skipped unless SEARXNG_URL is set."""
-    from WebSearch.Core.agents.agent_tools import search_hits
+    from WebSearch.agents.agent_tools import search_hits
 
     hits = search_hits("langgraph handoffs", limit=3, searcher_id="searxng", timeout_s=15.0)
     assert hits, "running SearXNG instance returned no hits"

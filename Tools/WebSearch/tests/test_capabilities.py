@@ -5,12 +5,12 @@ from __future__ import annotations
 import json
 
 import pytest
-from WebSearch.Core.frontend.capabilities import (
+from WebSearch.frontend.capabilities import (
     capabilities_path,
     load_capabilities,
     provider_capabilities,
 )
-from WebSearch.Core.frontend.registry import load_providers
+from WebSearch.frontend.registry import load_providers
 
 
 def test_registry_file_parses_and_versions() -> None:

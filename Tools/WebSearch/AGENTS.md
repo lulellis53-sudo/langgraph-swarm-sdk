@@ -1,21 +1,18 @@
 # AGENTS.md — WebSearch
 
-3-stage search pipeline: **frontend** (search providers) → **midend** (crawl/scrape) → **backend** (extract/normalize/store). Python package `WebSearch/` — the websearch feature the swarm agents call, part of the LangGraph Swarm SDK monorepo. See the parent `Swarm/AGENTS.md` for branch rules, quality gate, and security.
+3-stage search pipeline: **frontend** (search providers) → **midend** (crawl/scrape) → **backend** (extract/normalize/store). Python package lives at **`Tools/WebSearch/`** (`import WebSearch`); lane branch **`feature/websearch`**, worktree **`../Workspace-WebSearch`**. Shared **`pixi.toml`**, **`Core/Sdk`**, and **`Agents/`** come from the same repo checkout — no nested clone or second lockfile.
 
 ## Commands
 
 ```bash
-# From the repository root (one uv environment, one pyproject.toml):
-uv run --extra websearch websearch --prompt "query" --route semantic   # CLI: search → dedupe → summarize
-uv run --extra websearch websearch --doctor                           # health: crawlers, providers, model readiness
-uv run --extra websearch python -m WebSearch.api                      # FastAPI on 127.0.0.1:8765
-uv run agents                                                         # validate Agents/*/agent.yaml
+# From repo root (Pixi env; PYTHONPATH includes Tools/):
+pixi run python -m WebSearch.cli --prompt "query" --route semantic
+pixi run python -m WebSearch.doctor
+pixi run python -m WebSearch.api
+pixi run test-websearch
 
-# Tests (offline — fake backends, no network, no API keys)
-uv run pytest tests/test_websearch*.py tests/test_toolcalling.py -q
-
-# Lint
-uv run ruff check WebSearch tests
+# Lint (scoped in root ruff.toml)
+pixi run ruff check --config ruff.toml Tools/WebSearch
 ```
 
 ## Architecture

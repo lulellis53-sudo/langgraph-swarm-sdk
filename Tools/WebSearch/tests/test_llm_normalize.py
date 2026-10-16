@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from WebSearch.Core.backend import llm_normalize as llm_mod
-from WebSearch.Core.backend.llm_normalize import llm_normalize
+from WebSearch.backend import llm_normalize as llm_mod
+from WebSearch.backend.llm_normalize import llm_normalize
 
 
 def _gemini_response(text: str) -> dict:
@@ -17,7 +17,7 @@ def test_falls_back_to_local_cleaner_without_key(monkeypatch: pytest.MonkeyPatch
     for name in ("GOOGLE_API_KEY", "GOOGLE_API_KEY_1", "GOOGLE_API_KEY_2"):
         monkeypatch.delenv(name, raising=False)
     calls: list[str] = []
-    from WebSearch.Core.frontend import http_utils
+    from WebSearch.frontend import http_utils
 
     monkeypatch.setattr(http_utils, "call_json", lambda *a, **k: calls.append("http") or None)
     out = llm_normalize("Itâ€™s a tÃ©st snippet with trailing spaces.   ")
@@ -32,7 +32,7 @@ def test_accepts_strictly_shorter_model_output(monkeypatch: pytest.MonkeyPatch) 
         "Oct 11, 2026 — Cookie policy: we use cookies. Python 3.15 ships lazy "
         "imports. Cookie policy: we use cookies. --- Subscribe now! "
     )
-    from WebSearch.Core.frontend import http_utils
+    from WebSearch.frontend import http_utils
 
     monkeypatch.setattr(
         http_utils,
@@ -46,7 +46,7 @@ def test_accepts_strictly_shorter_model_output(monkeypatch: pytest.MonkeyPatch) 
 def test_rejects_longer_model_output(monkeypatch: pytest.MonkeyPatch) -> None:
     """A longer model answer is discarded; the local cleanup wins."""
     monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
-    from WebSearch.Core.frontend import http_utils
+    from WebSearch.frontend import http_utils
 
     monkeypatch.setattr(
         http_utils,
@@ -61,7 +61,7 @@ def test_rejects_longer_model_output(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_malformed_response_falls_back(monkeypatch: pytest.MonkeyPatch) -> None:
     """Unexpected JSON shape never raises; local cleanup is returned."""
     monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
-    from WebSearch.Core.frontend import http_utils
+    from WebSearch.frontend import http_utils
 
     monkeypatch.setattr(http_utils, "call_json", lambda *a, **k: {"error": "quota"})
     out = llm_normalize("Another snippet needing cleanup ... ... done.")
@@ -83,7 +83,7 @@ def test_normalize_tool_reports_char_savings(monkeypatch: pytest.MonkeyPatch) ->
 
 def test_packaged_yaml_uses_gemini_38() -> None:
     """providers.yaml pins the google_search engine to gemini-3.8-flash."""
-    from WebSearch.Core.frontend.registry import load_providers
+    from WebSearch.frontend.registry import load_providers
 
     spec = next(s for s in load_providers().searchers if s.id == "google_search")
     assert spec.engine == "gemini-3.8-flash"

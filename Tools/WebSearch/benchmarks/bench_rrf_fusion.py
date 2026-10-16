@@ -15,9 +15,9 @@ import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
 
-from WebSearch.Core.frontend.fanout import _enhanced_rrf_fuse, _rrf_fuse, dedupe_hits
-from WebSearch.Core.frontend.hits import hit_score, normalize_hit
-from WebSearch.Core.frontend.types import SearchHit
+from WebSearch.frontend.fanout import _enhanced_rrf_fuse, _rrf_fuse, dedupe_hits
+from WebSearch.frontend.hits import hit_score, normalize_hit
+from WebSearch.frontend.types import SearchHit
 
 SAMPLE_QUERIES = [
     "Python 3.15 lazy imports PEP 810 benchmarks and performance",

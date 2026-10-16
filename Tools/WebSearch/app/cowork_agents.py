@@ -19,11 +19,11 @@ lazy from collections.abc import Callable, Sequence
 lazy from pathlib import Path
 lazy from typing import TYPE_CHECKING, Any
 
-lazy from WebSearch.Core.backend.docs import ExtractedDoc, dedupe_docs
-lazy from WebSearch.Core.backend.extractors import extract_text
-lazy from WebSearch.Core.backend.normalize import normalize_text
-lazy from WebSearch.Core.backend.store import connect, count_documents, put_documents
-lazy from WebSearch.Core.frontend.websearchers import ProvidersConfig, load_providers
+lazy from WebSearch.backend.docs import ExtractedDoc, dedupe_docs
+lazy from WebSearch.backend.extractors import extract_text
+lazy from WebSearch.backend.normalize import normalize_text
+lazy from WebSearch.backend.store import connect, count_documents, put_documents
+lazy from WebSearch.frontend.websearchers import ProvidersConfig, load_providers
 
 if TYPE_CHECKING:
     from swarm_sdk.orchestrator import PlanStep
@@ -88,7 +88,7 @@ def run_cowork_pipeline(
         ``fetched`` number of fetch steps, ``wall_s`` wall time.
     """
     from swarm_sdk.orchestrator import Plan, run_plan
-    from WebSearch.Core.midend import fetch_playwright
+    from WebSearch.midend import fetch_playwright
 
     cfg = config or load_providers()
     do_fetch: FetchFn = (

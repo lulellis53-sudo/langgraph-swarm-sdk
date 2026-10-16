@@ -15,10 +15,10 @@ lazy from collections.abc import Callable, Mapping, Sequence
 lazy from dataclasses import asdict, replace
 lazy from typing import Any
 
-lazy from WebSearch.Core.backend.docs import ExtractedDoc
-lazy from WebSearch.Core.backend.normalize import normalize_text
-lazy from WebSearch.Core.backend.route import dedupe_normalize, semantic_handler
-lazy from WebSearch.Core.frontend.websearchers import (
+lazy from WebSearch.backend.docs import ExtractedDoc
+lazy from WebSearch.backend.normalize import normalize_text
+lazy from WebSearch.backend.route import dedupe_normalize, semantic_handler
+lazy from WebSearch.frontend.websearchers import (
     _SEARCH_CACHE_TTL_S,
     ProvidersConfig,
     SearchFn,
@@ -27,8 +27,8 @@ lazy from WebSearch.Core.frontend.websearchers import (
     parallel_search,
     search,
 )
-lazy from WebSearch.Core.shared.repeater import normalize_url
-lazy from WebSearch.Core.agents.tokens import count_tokens
+lazy from WebSearch.shared.repeater import normalize_url
+lazy from WebSearch.agents.tokens import count_tokens
 
 _TITLE_CHARS = 120
 _SNIPPET_CHARS = 200
@@ -93,7 +93,7 @@ def relevance_score(hit: SearchHit, query: str) -> float:
 
     Deliberately lexical and dependency-free: it runs on every hit on every
     search, so it must be cheap and deterministic. It is a *ranking and gating*
-    signal, not a semantic embedding; use :func:`WebSearch.Core.backend.semantic.summarize_score`
+    signal, not a semantic embedding; use :func:`WebSearch.backend.semantic.summarize_score`
     when real semantic similarity is needed.
 
     Args:

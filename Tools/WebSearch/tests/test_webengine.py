@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 
-from WebSearch.Core.frontend.websearchers import ProvidersConfig, SearcherSpec, SearchHit
+from WebSearch.frontend.websearchers import ProvidersConfig, SearcherSpec, SearchHit
 from WebSearch.Webengine import (
     TOOL_NAMES,
     Data,

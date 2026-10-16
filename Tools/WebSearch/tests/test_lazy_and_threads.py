@@ -8,15 +8,15 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
-from WebSearch.Core.agents.agent_tools import count_tokens
-from WebSearch.Core.frontend import http_utils
+from WebSearch.agents.agent_tools import count_tokens
+from WebSearch.frontend import http_utils
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _HEAVY = ("tiktoken", "httpx", "httpx2", "pandas", "fastapi", "langchain_core", "swarm_sdk")
 
 
 @pytest.mark.parametrize(
-    "module", ["WebSearch", "WebSearch.Core.agents.agent_tools", "WebSearch.Core.app.cli"]
+    "module", ["WebSearch", "WebSearch.agents.agent_tools", "WebSearch.app.cli"]
 )
 def test_entry_points_do_not_import_heavy_dependencies(module: str) -> None:
     code = (

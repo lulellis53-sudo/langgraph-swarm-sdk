@@ -1,15 +1,20 @@
 # Multi-lane layout for ~/Desktop/Workspace (single repo, one pixi.toml on main).
-# Agents lane edits only Agents/; integration lane owns Core/, Modules/, pixi.toml.
+# Integration owns Core/, pixi.toml, and shared lockfile; lane worktrees reuse that tree.
 version: 1
 default_branch: main
 lockfile_owner: integration
-merge_order: [agents, integration]
+merge_order: [websearch, agents, integration]
 
 lanes:
   - name: integration
     path: .
     branch: main
-    owns: Core, Modules, Farm, Tools, pixi.toml, ruff.toml, ty.toml
+    owns: Core, Modules, Farm, pixi.toml, ruff.toml, ty.toml
+
+  - name: websearch
+    path: ../Workspace-WebSearch
+    branch: feature/websearch
+    owns: Tools/WebSearch
 
   - name: agents
     path: ../Workspace-Agents
