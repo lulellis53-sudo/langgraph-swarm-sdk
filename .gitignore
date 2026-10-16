@@ -52,6 +52,7 @@ target/
 
 # --- Build and benchmark results ----------------------------------------------
 Agents/benchmark/results/
+Agents/Judge/Benchmark/routing_experience.jsonl
 Main/Essentials/
 
 # --- Docs: keep curated docs; scratch only under docs/superpowers -------------
