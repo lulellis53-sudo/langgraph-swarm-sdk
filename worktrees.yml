@@ -1,0 +1,17 @@
+# Multi-lane layout for ~/Desktop/Workspace (single repo, one pixi.toml on main).
+# Agents lane edits only Agents/; integration lane owns Core/, Modules/, pixi.toml.
+version: 1
+default_branch: main
+lockfile_owner: integration
+merge_order: [agents, integration]
+
+lanes:
+  - name: integration
+    path: .
+    branch: main
+    owns: Core, Modules, Farm, Tools, pixi.toml, ruff.toml, ty.toml
+
+  - name: agents
+    path: ../Workspace-Agents
+    branch: feat/agents
+    owns: Agents

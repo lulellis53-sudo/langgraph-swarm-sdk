@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
+
 from swarm_sdk import vault
 
 

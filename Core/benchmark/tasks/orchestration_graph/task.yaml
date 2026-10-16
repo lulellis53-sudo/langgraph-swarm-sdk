@@ -1,0 +1,3 @@
+name: orchestration_graph
+description: Timed offline invoke of planner/researcher/writer graph with FakeListChatModel.
+offline: true

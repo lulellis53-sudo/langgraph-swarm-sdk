@@ -93,7 +93,7 @@ def run_benchmark() -> BenchmarkResult:
     if not passed and metrics.misroutes:
         for goal, expected, got in metrics.misroutes[:5]:
             print(f"  misroute expected={expected} got={got}: {goal!r}")
-            print(f"  rewind: MR2 (see Agents/_shared/JEV_REFLECT_AUTOLEARN.md)")
+            print("  rewind: MR2 (see Agents/_shared/JEV_REFLECT_AUTOLEARN.md)")
 
     print(
         f"  accuracy={metrics.accuracy:.2%} "

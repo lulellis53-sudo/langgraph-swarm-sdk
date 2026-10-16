@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+
 from swarm_sdk.agents.manifest import AgentManifestLoader
 from swarm_sdk.agents.validate import AgentValidator
 from swarm_sdk.execution import gil_enabled, parallel_cap
@@ -195,13 +196,11 @@ class TestSourceFile:
 
     @staticmethod
     def test_future_annotations_first(path: Path) -> None:
-        """Project rule: ``from __future__ import annotations`` right after the docstring."""
+        """Project rule: ``from __future__ import annotations`` is the first statement (line 1)."""
         body = _parse(path).body
         if not body:
             pytest.skip("empty module")
-        if isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant):
-            body = body[1:]
-        first = body[0] if body else None
+        first = body[0]
         assert (
             isinstance(first, ast.ImportFrom)
             and first.module == "__future__"

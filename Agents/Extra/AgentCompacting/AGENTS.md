@@ -1,3 +1,10 @@
+## Jev multirouter
+
+Swarm-wide flow (code denylist → Noul → Choice → Score → registry → persona):
+[`../_shared/JEV_MULTIROUTER.md`](../_shared/JEV_MULTIROUTER.md).
+
+**This persona:** CHOICE → **AgentCompacting**: run this persona's decision tree only when Layer 2 selected `AgentCompacting`.
+
 # Agent: AgentCompacting
 
 > **Role**: Specialized Session Compaction, Memory Distillation, and Free-Model Transcript Summarization Agent.

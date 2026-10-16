@@ -8,17 +8,17 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from benchmark.tests.test_orchestrator import manifest
 from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 from pydantic import ConfigDict
+
 from swarm_sdk.orchestrator import Plan, PlanStep, make_factory, run_plan
 from swarm_sdk.orchestrator.worker import role_contract
 from swarm_sdk.retrieval.cache import SemanticCache
 from swarm_sdk.retrieval.embeddings import HashEmbedder
-
-from benchmark.tests.test_orchestrator import manifest
 
 DELAY_S = 0.2
 

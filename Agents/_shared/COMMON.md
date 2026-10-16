@@ -1,8 +1,7 @@
 # Shared swarm specialist defaults
 
 Persona authoring: [`../TEMPLATE.md`](../TEMPLATE.md) when present. Method depth:
-[`../AgentMethods.md`](../AgentMethods.md). **Jev routing diagram (all agents):**
-[`JEV_MULTIROUTER.md`](JEV_MULTIROUTER.md).
+[`../AgentMethods.md`](../AgentMethods.md). **Agentic workflow (all agents):** [`../AgentMethods.md`](../AgentMethods.md), [`../TEMPLATE.md`](../TEMPLATE.md).
 
 ## Python modules
 
@@ -38,7 +37,7 @@ Each agent’s **`agent.yaml` → `capabilities`** narrows this list.
 | --- | --- | --- |
 | Tests | `pixi run python -m pytest Core Agents -q --tb=short` | After behavior change |
 | Lint | `pixi run check` | Before handoff |
-| Jev routing | `pixi run python -m Core.benchmark.run --task jev_agent_routing` | After `jev_router` / routing cases change |
+| Routing benchmark | `pixi run python -m Core.benchmark.run --task jev_agent_routing` | After routing keyword changes |
 
 Run the narrowest check first; record commands in `test_commands` or output `checks`.
 

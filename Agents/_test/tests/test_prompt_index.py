@@ -6,6 +6,8 @@ import asyncio
 from pathlib import Path
 
 import pytest
+from benchmark.tests.fakes import Script, ScriptedModel, answer
+
 from swarm_sdk.agents.prompt_index import (
     AgentPromptIndex,
     CorpusTfidfEmbedder,
@@ -13,8 +15,6 @@ from swarm_sdk.agents.prompt_index import (
     PromptBlockedError,
     improve_prompt,
 )
-
-from benchmark.tests.fakes import Script, ScriptedModel, answer
 
 _AGENTS = Path("Agents")
 

@@ -1,0 +1,11 @@
+[workspace]
+channels = ["conda-forge"]
+platforms = ["osx-64"]
+name = "test"
+
+[tool.ruff]
+line-length = 100
+target-version = "py315"
+
+[tool.ruff.lint]
+select = ["E", "F"]

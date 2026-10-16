@@ -1,3 +1,10 @@
+## Jev multirouter
+
+Swarm-wide flow (code denylist → Noul → Choice → Score → registry → persona):
+[`../_shared/JEV_MULTIROUTER.md`](../_shared/JEV_MULTIROUTER.md).
+
+**This persona:** CHOICE → **ShellMaster**: run this persona's decision tree only when Layer 2 selected `ShellMaster`.
+
 # Agent: ShellMaster
 
 > **Role**: Specialized Shell Engineering, Script Automation, and Terminal System Diagnostics Agent.

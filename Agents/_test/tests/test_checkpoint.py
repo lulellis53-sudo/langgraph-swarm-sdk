@@ -4,15 +4,15 @@ import operator
 from pathlib import Path
 from typing import Annotated
 
+from benchmark.tests.fakes import Script, ScriptedModel, answer
 from langgraph.graph import END, START, StateGraph
+from typing_extensions import TypedDict
+
 from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.checkpoint import open_checkpointer
 from swarm_sdk.core.swarm import SwarmSDK
 from swarm_sdk.retrieval.embeddings import HashEmbedder
 from swarm_sdk.retrieval.rerank import IdentityReranker
-from typing_extensions import TypedDict
-
-from benchmark.tests.fakes import Script, ScriptedModel, answer
 
 
 class _State(TypedDict):

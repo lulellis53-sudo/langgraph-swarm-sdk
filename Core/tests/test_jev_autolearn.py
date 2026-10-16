@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from Core.benchmark.jev_autolearn import (
@@ -40,8 +41,6 @@ def test_run_golden_pass_records_low_confidence_not_wrong_agent(tmp_path: Path) 
     assert total == 13
     assert correct == total
     if buffer.is_file():
-        import json
-
         for line in buffer.read_text(encoding="utf-8").splitlines():
             if not line.strip():
                 continue

@@ -49,11 +49,12 @@ from typing import Any
 # harnesses can never drift apart in how they define a metric.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import search_quality as sq  # noqa: E402
 from WebSearch.backend.prefilter import prefilter_hits  # noqa: E402
 from WebSearch.frontend import dedupe_hits  # noqa: E402
 from WebSearch.frontend.hits import near_dedupe, normalize_hit  # noqa: E402
 from WebSearch.frontend.websearchers import SearchHit  # noqa: E402
+
+import search_quality as sq  # noqa: E402
 
 RESULTS_DIR = Path(__file__).resolve().parent / "results" / "websearch_ab"
 BASELINE = RESULTS_DIR / "baseline.json"

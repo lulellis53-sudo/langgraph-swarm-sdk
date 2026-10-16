@@ -20,11 +20,13 @@ def test_parallel_cap_matches_executor_pool() -> None:
     assert parallel_cap() in (8, 32)
 
 
-def test_agents_md_does_not_embed_full_template() -> None:
+def test_agents_md_template_section() -> None:
     text = AGENTS.read_text()
-    assert "class wrappers:" not in text
+    assert "## Rule DON'T EDIT THIS TEMPLATE" in text
     assert "python_static_template.py" in text
     assert "python_static_template_lite.py" in text
+    assert "lazy import json" in text
+    assert "class wrappers:" in text
 
 
 def test_static_template_smoke() -> None:

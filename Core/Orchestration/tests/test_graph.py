@@ -8,6 +8,7 @@ from langchain_core.language_models.fake_chat_models import (
     GenericFakeChatModel,
 )
 from langchain_core.messages import AIMessage
+
 from orchestration.graph import build_graph
 
 

@@ -7,9 +7,6 @@ import random
 import statistics
 
 import pytest
-from hypothesis import given, settings
-from hypothesis import strategies as st
-
 from benchmark.protocol import (
     TAIL_MIN_N,
     abba,
@@ -22,6 +19,8 @@ from benchmark.protocol import (
     summarize,
 )
 from benchmark.Tasks.agent_suite.suite import TAIL_MIN_N as SUITE_TAIL_MIN_N
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 _HYP = settings(max_examples=40, deadline=None)
 _DURATIONS = st.lists(

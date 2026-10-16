@@ -6,6 +6,7 @@ import gc
 import sys
 
 import pytest
+
 from swarm_sdk.core.allocator import AllocatorManager
 
 _BLOCK = 256 * 1024 * 1024

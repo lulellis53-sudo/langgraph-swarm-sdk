@@ -56,14 +56,14 @@ env = {
 [tasks]
 node-version = { cmd = "python -c \"import subprocess, sys; v=subprocess.check_output(['node', '--version'], text=True); sys.exit(0 if '26.11.1' in v else 1)\"" }
 rust-version = "rustc --version"
-lint = { cmd = "ruff check --config ruff.toml .", inputs = ["ruff.toml", "**/*.py"] }
-format = "ruff format --config ruff.toml ."
-format-check = { cmd = "ruff format --check --config ruff.toml .", inputs = ["ruff.toml", "**/*.py"] }
+lint = { cmd = "ruff check --config ruff.toml Core/Sdk Core/Orchestration Core/benchmark Core/Lang Core/tests Agents/_test", inputs = ["ruff.toml", "**/*.py"] }
+format = "ruff format --config ruff.toml Core/Sdk Core/Orchestration Core/benchmark Core/Lang Core/tests Agents/_test"
+format-check = { cmd = "ruff format --check --config ruff.toml Core/Sdk Core/Orchestration Core/benchmark Core/Lang Core/tests Agents/_test", inputs = ["ruff.toml", "**/*.py"] }
 types = { cmd = "ty check --config-file ty.toml", inputs = ["ty.toml", "**/*.py"] }
 biome-check = { cmd = "biome check .", inputs = ["biome.json"] }
 oxlint-check = { cmd = "oxlint ." }
 test = {
-  cmd = "python -m pytest Core/Orchestration Core/tests Core/benchmark -q --tb=short",
+  cmd = "python -m pytest --import-mode=importlib Core/Orchestration Core/tests Core/benchmark -q --tb=short",
   inputs = ["pyproject.toml", "pixi.toml", "ruff.toml", "ty.toml", "Core/**"],
 }
 benchmark = "python -m Core.benchmark.run --task all"

@@ -1,10 +1,22 @@
 line-length = 100
 target-version = "py315"
-src = ["src", "Agents/tests", "Agents/benchmark", "WebSearch", "Prediction", "Main"]
-extend-exclude = ["src/swarm_sdk/pb", ".pixi"]
+src = [
+  "Core/Sdk",
+  "Core/Orchestration",
+  "Core/benchmark",
+  "Core/Lang",
+  "Core/tests",
+  "Agents/tests",
+  "Agents/benchmark",
+  "Agents/_test",
+]
+extend-exclude = ["Core/Sdk/swarm_sdk/pb", ".pixi"]
 
 [lint]
 select = ["E", "F", "I", "UP"]
+
+[lint.per-file-ignores]
+"Agents/_test/conftest.py" = ["E402"]
 
 [format]
 quote-style = "double"

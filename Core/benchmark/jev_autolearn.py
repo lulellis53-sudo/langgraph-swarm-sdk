@@ -9,13 +9,12 @@ from dataclasses import asdict, dataclass
 from enum import StrEnum
 from pathlib import Path
 
-from swarm_sdk.core.jev_router import JevRouter
-
 from Core.benchmark.tasks.jev_agent_routing.cases import (
     AGENT_ROUTING_CASES,
     REVIEW_CONFIDENCE_BELOW,
     SWARM_AGENT_CANDIDATES,
 )
+from swarm_sdk.core.jev_router import JevRouter
 
 _WORKSPACE = Path(__file__).resolve().parents[2]
 _DEFAULT_BUFFER = _WORKSPACE / "Agents" / "Judge" / "Benchmark" / "routing_experience.jsonl"

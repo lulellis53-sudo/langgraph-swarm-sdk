@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inject the shared Jev multirouter section into Agents/*/AGENTS.md (idempotent)."""
+"""Inject the shared Jev multirouter section into Agents/**/AGENTS.md (idempotent)."""
 
 from __future__ import annotations
 
@@ -36,10 +36,24 @@ ROLE_BRANCH: dict[str, str] = {
     "WebResearcher": "CHOICE → bounded web synthesis; hand off claims to Researcher/Judge.",
     "Benchmarket": "CHOICE → Benchmarket: harnesses under benchmark tasks; measured Δ% only.",
     "Refactor": "CHOICE → Refactor: structural refactors with AST workflow ASCII in reports.",
+    "Investigator": "CHOICE → Investigator: read-only RE; facts vs hypotheses; cite evidence.",
 }
 
+COMPACT_MULTIROUTER = """\
+```text
+[inbound] → L0 denylist → L1 Noul → L2 Choice → L3 Score → L4 registry → L5 this persona
+                 |fail       |no         |conf<0.60→MR2 rewind / Orchestrator confirm
+```"""
 
-def jev_section(agent_name: str) -> str:
+JEV_HEADER = "## Jev multirouter"
+
+
+def _shared_prefix(agent_dir: Path) -> str:
+    depth = len(agent_dir.relative_to(AGENTS_ROOT).parts)
+    return "/".join([".."] * depth) + "/_shared"
+
+
+def jev_section(agent_name: str, shared: str) -> str:
     """Build the markdown block for one persona."""
     branch = ROLE_BRANCH.get(
         agent_name,
@@ -48,11 +62,13 @@ def jev_section(agent_name: str) -> str:
     return f"""\
 ## Jev multirouter
 
+{COMPACT_MULTIROUTER}
+
 Swarm-wide flow (code denylist → Noul → Choice → Score → registry → persona):
-[`../_shared/JEV_MULTIROUTER.md`](../_shared/JEV_MULTIROUTER.md).
+[`{shared}/JEV_MULTIROUTER.md`]({shared}/JEV_MULTIROUTER.md).
 
 Reflect, backward rewinds (MR2–MR4 / D2–D4), and autolearn buffer:
-[`../_shared/JEV_REFLECT_AUTOLEARN.md`](../_shared/JEV_REFLECT_AUTOLEARN.md).
+[`{shared}/JEV_REFLECT_AUTOLEARN.md`]({shared}/JEV_REFLECT_AUTOLEARN.md).
 
 **This persona:** {branch}
 
@@ -61,12 +77,9 @@ Reflect, backward rewinds (MR2–MR4 / D2–D4), and autolearn buffer:
 """
 
 
-JEV_HEADER = "## Jev multirouter"
-
-
-def inject_jev(content: str, agent_name: str) -> str:
+def inject_jev(content: str, agent_name: str, agent_dir: Path) -> str:
     """Insert or refresh the Jev multirouter section."""
-    block = jev_section(agent_name)
+    block = jev_section(agent_name, _shared_prefix(agent_dir))
     if JEV_HEADER in content:
         pattern = re.compile(
             r"\n## Jev multirouter\n.*?(?=\n## |\Z)",
@@ -81,15 +94,13 @@ def inject_jev(content: str, agent_name: str) -> str:
         "## Summary",
         "## Tasks",
         "## Responsibilities",
+        "## Task Workflow",
     )
     for anchor in anchors:
         if anchor in content:
             idx = content.index(anchor)
             end = content.find("\n## ", idx + len(anchor))
-            if end == -1:
-                insert_at = len(content)
-            else:
-                insert_at = end
+            insert_at = end if end != -1 else len(content)
             return content[:insert_at] + "\n\n" + block + content[insert_at:]
     return block + content
 
@@ -101,19 +112,28 @@ def _agent_label(path: Path) -> str:
     return parent.name
 
 
+def _persona_paths() -> list[Path]:
+    paths: list[Path] = []
+    for pattern in ("**/AGENTS.md", "**/agents.md"):
+        for path in sorted(AGENTS_ROOT.glob(pattern)):
+            if any(part in SKIP_DIRS for part in path.parts):
+                continue
+            if path.parent.name in SKIP_DIRS:
+                continue
+            if path.name == "AGENTS.md" and path.parent == AGENTS_ROOT:
+                continue
+            paths.append(path)
+    return paths
+
+
 def main() -> None:
-    """Update every persona ``AGENTS.md`` under ``Agents/``."""
+    """Update every persona contract under ``Agents/``."""
     changed = 0
-    paths = sorted(AGENTS_ROOT.glob("**/AGENTS.md"))
-    for path in paths:
-        if any(part in SKIP_DIRS for part in path.parts):
-            continue
-        if path.parent.name in SKIP_DIRS:
-            continue
+    for path in _persona_paths():
         label = _agent_label(path)
         lookup = label if label in ROLE_BRANCH else path.parent.name
         original = path.read_text(encoding="utf-8")
-        updated = inject_jev(original, lookup)
+        updated = inject_jev(original, lookup, path.parent)
         if updated != original:
             path.write_text(updated, encoding="utf-8")
             changed += 1

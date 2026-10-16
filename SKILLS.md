@@ -17,11 +17,9 @@
 | [MLSpecialist](MLSpecialist/AGENTS.md) | model evaluation and integration | gpt-4o | high | [agent.yaml](MLSpecialist/agent.yaml) |
 | [Optimizer](Optimizer/AGENTS.md) | performance tuning | gpt-4o-mini | medium | [agent.yaml](Optimizer/agent.yaml) |
 
-## Jev multirouter
+## Agentic methods
 
-All personas share the same **Noul → Choice → Score → model registry → DARS** flow.
-Diagram, thresholds, and CI golden cases: [`Agents/_shared/JEV_MULTIROUTER.md`](Agents/_shared/JEV_MULTIROUTER.md).  
-Reflect, backward paths, autolearn: [`Agents/_shared/JEV_REFLECT_AUTOLEARN.md`](Agents/_shared/JEV_REFLECT_AUTOLEARN.md).
+Workflow diagrams in every persona file follow [`AgentMethods.md`](AgentMethods.md) and [`TEMPLATE.md`](TEMPLATE.md) (DARS → execute → Reflection → SWE handoff). Hub: [`AGENTS.md`](AGENTS.md).
 
 ## How to use this swarm
 

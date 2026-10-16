@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "core-orchestration"
+version = "0.1.0"
+description = "Planner / researcher / writer LangGraph orchestration for Core."
+requires-python = ">=3.15"
+dependencies = [
+    "langchain-core>=1.6.10,<2",
+    "langgraph>=1.2.15,<2",
+    "langgraph-swarm-sdk",
+    "langsmith>=0.14.9,<0.15",
+    "lifeguard-lazy-imports>=0.5.0,<0.6",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["orchestration"]

@@ -82,6 +82,11 @@ notebooks/.ipynb_checkpoints/
 # Swarm skill CLI state (langgraph_swarm.py)
 .swarm-skill-state/
 
+# Local symlinks and nested clones (not part of this repo)
+/Swarm
+/LangSwarm/
+/PyStart/
+
 # Logs, credentials and local databases
 *.log
 .1password/

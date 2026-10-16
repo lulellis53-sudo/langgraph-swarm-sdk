@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+
 from orchestration.tracing import tracing_enabled
 
 
@@ -28,3 +29,9 @@ def test_enabled_with_flag_and_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LANGSMITH_TRACING", "TRUE")
     monkeypatch.setenv("LANGSMITH_API_KEY", "placeholder")
     assert tracing_enabled() is True
+
+
+def test_disabled_when_flag_is_false(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LANGSMITH_TRACING", "false")
+    monkeypatch.setenv("LANGSMITH_API_KEY", "placeholder")
+    assert tracing_enabled() is False

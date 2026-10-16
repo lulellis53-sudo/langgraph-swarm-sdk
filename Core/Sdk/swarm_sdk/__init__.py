@@ -46,7 +46,6 @@ if TYPE_CHECKING:
         manifest_node_prompt,
     )
     from swarm_sdk.core.swarm import RunResult, SwarmSDK
-    from swarm_sdk.protocols import EmbedFn, RerankFn, SearchFn
     from swarm_sdk.orchestrator.graph import run_plan
     from swarm_sdk.orchestrator.plan import Plan, PlanResult, PlanStep, StepOutput
     from swarm_sdk.orchestrator.task_command import (
@@ -54,6 +53,7 @@ if TYPE_CHECKING:
         resolve_task,
         run_task_command,
     )
+    from swarm_sdk.protocols import EmbedFn, RerankFn, SearchFn
     from swarm_sdk.server.graphs import plan_graph, swarm_graph
 
 _LAZY: dict[str, tuple[str, str]] = {

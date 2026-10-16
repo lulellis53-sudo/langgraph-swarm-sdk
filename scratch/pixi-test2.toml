@@ -1,0 +1,5 @@
+[workspace]
+channels = ["conda-forge"]
+platforms = ["osx-64"]
+[dependencies]
+python = "3.15.*"

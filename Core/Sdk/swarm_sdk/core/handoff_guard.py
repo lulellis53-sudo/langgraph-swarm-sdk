@@ -12,7 +12,7 @@ class HandoffCycleError(Exception):
 
 
 def advance_handoff(source: str, target: str, depth: int, *, max_depth: int) -> int:
-    """Accept one handoff and return its depth.
+    """@advance_handoff Accept one handoff and return its depth.
 
     Args:
         source: Agent handing off.
@@ -40,13 +40,13 @@ def advance_handoff(source: str, target: str, depth: int, *, max_depth: int) -> 
 
 @dataclass(frozen=True, slots=True)
 class HandoffTrail:
-    """Agents visited by successive handoffs.
+    """@HandoffTrail Agents visited by successive handoffs.
 
     Attributes:
         active_agent: Agent that currently owns the turn.
         depth: How many handoffs have completed.
-        max_depth: Cap shared with :func:`advance_handoff`.
-        visited: Agents already entered, including the active one.
+        max_depth: Cap shared with {advance_handoff}.
+        visited: Agents already entered, including the active one (``tuple[str, ...]``).
     """
 
     active_agent: str
@@ -60,7 +60,7 @@ class HandoffTrail:
             object.__setattr__(self, "visited", (*self.visited, self.active_agent))
 
     def handoff(self, target: str) -> HandoffTrail:
-        """Move from the active agent to ``target``.
+        """@handoff Move from the active agent to ``target``.
 
         Raises:
             HandoffCycleError: When ``target`` is already on the trail or the cap is hit.

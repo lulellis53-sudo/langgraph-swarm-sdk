@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import pytest
-from hypothesis import given
-from hypothesis import strategies as st
-
 from benchmark.stats import (
     TAIL_MIN_SAMPLES,
     abba_schedule,
@@ -16,6 +13,8 @@ from benchmark.stats import (
     percentile,
     summarize,
 )
+from hypothesis import given
+from hypothesis import strategies as st
 
 _FLOATS = st.lists(
     st.floats(min_value=0.0, max_value=1e6, allow_nan=False), min_size=1, max_size=200

@@ -1,0 +1,7 @@
+[workspace]
+channels = ["conda-forge"]
+platforms = ["osx-64"]
+[dependencies]
+python = "3.15.*"
+[tool.ruff]
+line-length = 99

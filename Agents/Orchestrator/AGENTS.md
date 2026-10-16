@@ -13,6 +13,56 @@ Follow [`../_shared/COMMON.md`](../_shared/COMMON.md#operating-principles). Role
 - **Primary Execution Method**: **DARS Router** (AgentMethods.md §2.2 & §3.3) — Scope/Risk Gate (L1–L4) $\rightarrow$ Model Cascade Routing (-70% execution cost).
 
 
+
+## Agentic workflow
+
+Source: [`../AgentMethods.md`](../AgentMethods.md) · [`../TEMPLATE.md`](../TEMPLATE.md)
+
+```text
+[Intake: goal, scope, limits, acceptance criteria]
+                    |
+                    v
+         +----------------------+
+         | Clear, permitted,    |
+         | in role?             |
+         +----------+-----------+
+              No   |   Yes
+              v    v
+           blocker  +----------------------+
+                    | DARS classify L1–L4  |
+                    +----------+-----------+
+                               |
+              +----------------+----------------+
+              | L4 ask/block | L1 local | L2/L3 deep
+              v              v          v
+         +----------------------------------------+
+         | Vertical: retrieval | math | code |   |
+         | review | database | SWE | specialist |
+         +--------------------+-------------------+
+                              |
+                              v
+         +----------------------------------------+
+         | Execute: direct | chain | parallel |  |
+         | orchestrator | ReAct observe-act      |
+         +--------------------+-------------------+
+                              |
+                              v
+         +----------------------------------------+
+         | Domain verify (tests, audit, oracle) |
+         +--------------------+-------------------+
+                    pass |          | fail
+                         v          v
+                    handoff JSON   Reflection:
+                                   one fix, rerun
+                                   same check (max 2)
+                                   -> else blocked
+```
+
+**This persona:** Primary: **DARS Router** — L1–L4 gate, assign tasks, merge handoffs.
+
+**Backward / reflection:** failed check → classify (missing evidence | wrong plan | wrong route) → rewind to earliest wrong stage → one bounded fix → rerun the **same** check. Max **2** rewinds, then `blocked` / `needs_input` with evidence.
+
+
 ## Decision tree
 
 ```

@@ -8,13 +8,15 @@
 - Pixi manifest: `pixi.toml` (Python 3.15, osx-64). No `pyproject.toml` for new config.
 - Tool settings live in `ruff.toml`, `ty.toml` and `biome.json`.
 - Run everything through Pixi: `pixi run <task>` or `pixi run python ...`.
-- Tasks: `lint`, `format-check`, `types`, `biome-check`, `oxlint-check`, `check`, `node-version`.
-- Node is the compiled 26.11.1, put first on PATH by the manifest.
+- Tasks: `lint`, `format-check`, `types`, `biome-check`, `oxlint-check`, `check`, `test`, `benchmark`, `node-version`, `rust-version`.
+- Lang stack: editable `Core/Sdk` (`langgraph-swarm-sdk`) and `Core/Orchestration` (`core-orchestration`); run Pixi only from the repo root (no nested `Core/Orchestration/pixi.toml`).
+- Node is the compiled 26.11.1, put first on PATH by the manifest; `ruff` is pinned to 0.17.0. `TY_CONFIG_FILE=ty.toml` in activation.
 - Local wheels (`ormsgpack`, `faiss`) are in `wheels/` and referenced by relative path.
 
 ## Layout
 
-- `Core/`: orchestration code (`Orchestration`, `Websearch`, `src`, `Sdk`) and `Core/tests`.
+- `Core/`: orchestration code (`Orchestration`, `Websearch`, `Sdk`), `Core/benchmark`, optional `Core/Lang` facade, and `Core/tests`.
+- `Core/Sdk/swarm_sdk/`: canonical SDK; OpenCL lives in `swarm_sdk/opencl/` (`gpu/` paths re-export for compatibility).
 - `Agents/`: agent personas and manifests, with `Agents/tests` for manifest checks and `Agents/benchmark` for suites.
 - `scratch/`: temporary files and archives.
 
@@ -80,7 +82,9 @@ Installed CLI tools (checked with `command -v`); use these before the classic to
 
 ## Rules
 
-- Python 3.15 syntax is allowed, including `lazy import` (PEP 810).
+- **Python line 1**: every `.py` file uses `from __future__ import annotations` as the **first line** (module docstring comes after it, not before).
+- **Python docstrings (PEP 257)**: public functions start with `@function_name …`; public classes start with `@ClassName …` plus an `Attributes:` block; refer to other types as `{ClassName}` in doc text. Map annotations to doc lines with PEP 585 (`list[T]`, `tuple[A, B]`, `tuple[T, …]`, `dict[K, V]`). See `.cursor/rules/python-pep-docstrings.mdc`.
+- Python 3.15: [PEP 810](https://peps.python.org/pep-0810/) `lazy import` / `lazy from … import` for deferred loads; static module starter: `.cursor/templates/python_static_template.py` (documented in root `AGENTS.md`, **Rule DON'T EDIT THIS TEMPLATE**).
 - Write the failing test first. Run `pixi run python -m pytest Core Agents -q` before reporting.
 - Sentry MCP is in `.mcp.json` (`https://mcp.sentry.dev/mcp/eudorax/python`); authenticate with `/mcp`. SDK defaults live in `Main/config/sentry.yaml` (env-var names only; set `SENTRY_DSN` for runtime).
 

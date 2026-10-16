@@ -1,0 +1,11 @@
+[project]
+name = "x"
+version = "0.0.0"
+requires-python = ">=3.14"
+
+[tool.ty.environment]
+python = "./.pixi/envs/default"
+python-version = "3.15"
+
+[tool.ty.src]
+exclude = [".pixi/**"]

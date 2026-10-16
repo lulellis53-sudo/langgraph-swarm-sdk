@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 from pydantic import ValidationError
+
 from swarm_sdk.math.types import (
     MathDispatchDecision,
     MathProblem,

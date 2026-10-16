@@ -5,8 +5,8 @@ python-version = "3.15"
 [src]
 exclude = [
   ".pixi/**",
-  "src/swarm_sdk/pb/**",
-  "src/swarm_sdk/memory/faiss_store.py",
-  "src/swarm_sdk/memory/qdrant_store.py",
-  "src/swarm_sdk/gpu/opencl_math.py",
+  "Core/Sdk/swarm_sdk/pb/**",
+  "Core/Sdk/swarm_sdk/memory/faiss_store.py",
+  "Core/Sdk/swarm_sdk/memory/qdrant_store.py",
+  "Core/Sdk/swarm_sdk/opencl/math.py",
 ]

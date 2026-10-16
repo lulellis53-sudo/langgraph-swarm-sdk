@@ -12,7 +12,7 @@ from typing import Any
 
 import numpy as np
 
-from swarm_sdk.gpu._opencl_utils import device_rank, workgroup_size
+from swarm_sdk.opencl.utils import device_rank, workgroup_size
 
 logger = logging.getLogger(__name__)
 

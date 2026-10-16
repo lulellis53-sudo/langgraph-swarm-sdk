@@ -5,7 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from benchmark.tests.fakes import (
+    Script,
+    ScriptedModel,
+    answer,
+    structured,
+)
 from langchain_core.language_models.chat_models import BaseChatModel
+
 from swarm_sdk.agents.manifest import AgentManifest
 from swarm_sdk.config.settings import Settings
 from swarm_sdk.core.swarm import SwarmSDK
@@ -13,13 +20,6 @@ from swarm_sdk.memory.opencl_store import OpenClVecStore
 from swarm_sdk.orchestrator.spawn import spawn
 from swarm_sdk.retrieval.embeddings import HashEmbedder
 from swarm_sdk.retrieval.rerank import IdentityReranker
-
-from benchmark.tests.fakes import (
-    Script,
-    ScriptedModel,
-    answer,
-    structured,
-)
 
 
 @pytest.fixture(autouse=True)

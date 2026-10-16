@@ -1,0 +1,23 @@
+# Baseline Core Lang stack (2026-10-15)
+# Commands run from ~/Desktop/Workspace
+
+## Pre-merge
+- pixi run node-version: v26.11.1
+- pytest Core/Orchestration Core/tests: 205 passed
+- pixi run check: ruff ~339 errors (repo-wide debt)
+
+## Post-merge (gate)
+- pixi install: ok
+- pixi run python -m pytest Core/Orchestration Core/tests Core/benchmark -q --tb=short
+  223 passed in ~7s
+- pixi run benchmark
+  PASS orchestration_graph p50_ms=3.25
+- pixi run node-version: ok (26.11.1)
+- pixi run rust-version: rustc 1.99.0
+- pixi run check: not re-run (scoped success = pytest + benchmark)
+
+## Changes
+- Lang deps: Core/Sdk/pyproject.toml + Core/Orchestration/pyproject.toml; root pixi editable installs
+- Retired: Core/Orchestration/pixi.toml
+- PYTHONPATH: Core/Sdk:Core/Orchestration:Agents:.
+- testpaths: Core/Orchestration, Core/tests, Core/benchmark
