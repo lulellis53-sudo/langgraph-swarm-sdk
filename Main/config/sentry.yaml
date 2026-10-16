@@ -17,7 +17,7 @@ mcp:
   region_url_env: SENTRY_REGION_URL
 
 github_repositories:
-  - repository: lulellis53-sudo/langgraph-swarm-sdk
+  - repository: dantenho/langgraph-swarm-sdk
     default_project: swarm-sdk
     projects:
       python: python

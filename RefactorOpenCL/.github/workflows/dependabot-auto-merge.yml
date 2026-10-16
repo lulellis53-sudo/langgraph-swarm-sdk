@@ -8,7 +8,7 @@ permissions: {}
 jobs:
   auto-merge:
     name: Auto-merge safe updates
-    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'lulellis53-sudo/langgraph-swarm-sdk'
+    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'dantenho/langgraph-swarm-sdk'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

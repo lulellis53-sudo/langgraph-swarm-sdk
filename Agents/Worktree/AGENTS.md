@@ -87,23 +87,29 @@ mutating git. See [`../AgentMethods.md`](../AgentMethods.md) Part I §3 and
 
 ## Fixed lane map (invariant)
 
-| Lane | Worktree | Branch | Owns (conceptual) |
+Canonical source: repo root [`worktrees.yml`](../../worktrees.yml). Active
+worktrees (verify with `git worktree list` from any linked tree):
+
+| Lane | Worktree path | Branch | Owns (edits) |
 | --- | --- | --- | --- |
-| WebSearch | `../Workspace-WebSearch` (edits `Tools/WebSearch/`) | `feature/websearch` | Search/scrape pipeline |
-| Prediction | sibling `../Swarm-Prediction` | `feat/prediction-engine` | Prediction engine |
-| Newsletter | sibling `../Newsletter` | `feat/newsletter` | Newsletter MVP |
-| Integration | repo root `Swarm/` | `integration/all-branches` then `main` | SDK, `Agents/`, shared lockfile |
+| Integration | `~/Desktop/Workspace` | `main` | `Core/`, `Modules/`, `Farm/`, root `pixi.toml`, `ruff.toml`, `ty.toml` |
+| WebSearch | `~/Desktop/Workspace-WebSearch` | `feature/websearch` | `Tools/WebSearch/` only |
+| Agents | `~/Desktop/Workspace-Agents` | `feat/agents` | `Agents/` only |
 
 Do **not** add, remove, or re-point worktrees outside this map. Do not
 `git checkout -b` or create parallel worktrees for agents unless the user
 explicitly requests an exception.
 
-**Lockfile:** at most one lane changes root `uv.lock` per integration window.
+**Branch checkout:** `main` and `feat/agents` are bound to other worktrees.
+From `Workspace-WebSearch`, `git checkout main` fails with *already used by
+worktree* — switch lane by opening that worktree, not by checking out its branch
+here.
 
-**Merge order:** lane branches → `main` (or `integration/all-branches` then `main`).
+**Lockfile:** integration owns `pixi.lock` (`lockfile_owner: integration` in
+`worktrees.yml`); at most one lane changes it per integration window.
 
-Canonical Cursor skill (do not paste into other files): repo
-`.cursor/skills/multi-lane-worktrees/SKILL.md`.
+**Merge order:** `websearch` → `agents` → integration (`main`), per
+`worktrees.yml`.
 
 ## Tasks
 
